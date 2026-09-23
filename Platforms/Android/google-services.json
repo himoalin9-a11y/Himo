@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "664032570591",
+    "project_id": "himo-a2f09",
+    "storage_bucket": "himo-a2f09.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:664032570591:android:782dc3f41b54d75cc9cd6a",
+        "android_client_info": {
+          "package_name": "com.companyname.himo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4REgWrqWO3Z5zpxPm-kJn9z6qHBsJX6A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

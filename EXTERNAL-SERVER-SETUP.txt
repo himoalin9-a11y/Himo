@@ -1,0 +1,19 @@
+HIMO EXTERNAL SERVER - QUICK SETUP
+
+The API can now be deployed as a Linux Docker container.
+
+Container port: 8080
+Health endpoint: /health
+Root endpoint: /
+
+Required production environment variables:
+  ASPNETCORE_URLS=http://0.0.0.0:8080
+  HIMO_DATA_DIR=/var/lib/himo
+  HIMO_FIREBASE_SERVICE_ACCOUNT_JSON=<server-only Firebase service account JSON>
+
+SMS variables are only required when production OTP SMS is enabled:
+  HIMO_SMS_ACCOUNT_SID
+  HIMO_SMS_AUTH_TOKEN
+  HIMO_SMS_FROM
+
+Do not put any Firebase service-account private key in the Android project.

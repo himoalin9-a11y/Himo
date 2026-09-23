@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: himo-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:8080
+      - key: DATABASE_URL
+        sync: false
+      - key: HIMO_FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: HIMO_SMS_ACCOUNT_SID
+        sync: false
+      - key: HIMO_SMS_AUTH_TOKEN
+        sync: false
+      - key: HIMO_SMS_FROM
+        sync: false

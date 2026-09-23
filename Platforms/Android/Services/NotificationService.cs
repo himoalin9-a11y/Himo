@@ -1,0 +1,136 @@
+using Himo.Services;
+
+namespace Himo.Platforms.Android.Services;
+
+public sealed class NotificationService : INotificationService
+{
+    private const string ChannelId = "himo_messages";
+    private const string ChannelName = "رسائل Himo";
+    private const string ChannelDescription = "إشعارات الرسائل الجديدة في Himo";
+    private const int NotificationIdBase = 12000;
+    private const string EnabledPreferenceKey = "himo_notifications_enabled";
+
+    public bool IsEnabled => Preferences.Get(EnabledPreferenceKey, true);
+
+    public Task InitializeAsync()
+    {
+        if (OperatingSystem.IsAndroidVersionAtLeast(26))
+        {
+            var context = global::Android.App.Application.Context;
+            var manager = context.GetSystemService(global::Android.Content.Context.NotificationService)
+                as global::Android.App.NotificationManager;
+
+            if (manager is not null)
+            {
+                var channel = new global::Android.App.NotificationChannel(
+                    ChannelId,
+                    ChannelName,
+                    global::Android.App.NotificationImportance.Default)
+                {
+                    Description = ChannelDescription
+                };
+
+                manager.CreateNotificationChannel(channel);
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task SetEnabledAsync(bool enabled)
+    {
+        Preferences.Set(EnabledPreferenceKey, enabled);
+        if (!enabled)
+            return ClearAllAsync();
+        return Task.CompletedTask;
+    }
+
+    public Task ShowMessageAsync(string senderName, string message, string conversationId)
+    {
+        if (!IsEnabled) return Task.CompletedTask;
+        var context = global::Android.App.Application.Context;
+        if (context is null) return Task.CompletedTask;
+        if (OperatingSystem.IsAndroidVersionAtLeast(33) &&
+            global::AndroidX.Core.Content.ContextCompat.CheckSelfPermission(context, global::Android.Manifest.Permission.PostNotifications) != global::Android.Content.PM.Permission.Granted)
+            return Task.CompletedTask;
+        var title = string.IsNullOrWhiteSpace(senderName) ? "رسالة جديدة" : senderName;
+        var text = string.IsNullOrWhiteSpace(message) ? "لديك رسالة جديدة" : message;
+        var notificationId = GetNotificationId(conversationId);
+
+        var intent = new global::Android.Content.Intent();
+        intent.SetClassName(context, (context.PackageName ?? string.Empty) + ".MainActivity");
+        intent.SetFlags(global::Android.Content.ActivityFlags.SingleTop | global::Android.Content.ActivityFlags.ClearTop);
+        intent.PutExtra("conversation_id", conversationId);
+
+        var pendingIntent = global::Android.App.PendingIntent.GetActivity(
+            context,
+            notificationId,
+            intent,
+            global::Android.App.PendingIntentFlags.UpdateCurrent |
+            (global::Android.OS.Build.VERSION.SdkInt >= global::Android.OS.BuildVersionCodes.M
+                ? global::Android.App.PendingIntentFlags.Immutable
+                : 0));
+        if (pendingIntent is null) return Task.CompletedTask;
+
+        var builder = new global::AndroidX.Core.App.NotificationCompat.Builder(context, ChannelId);
+        if (builder is null) return Task.CompletedTask;
+
+        builder.SetSmallIcon(Resource.Drawable.himo_notification);
+        builder.SetContentTitle(title);
+        builder.SetContentText(text);
+        builder.SetStyle(new global::AndroidX.Core.App.NotificationCompat.BigTextStyle().BigText(text));
+        builder.SetPriority(global::AndroidX.Core.App.NotificationCompat.PriorityDefault);
+        builder.SetAutoCancel(true);
+        builder.SetContentIntent(pendingIntent);
+        builder.SetCategory(global::AndroidX.Core.App.NotificationCompat.CategoryMessage);
+        builder.SetOnlyAlertOnce(false);
+
+        var notification = builder.Build();
+        if (notification is null) return Task.CompletedTask;
+
+        var notificationManager = global::AndroidX.Core.App.NotificationManagerCompat.From(context);
+        notificationManager?.Notify(notificationId, notification);
+
+        return Task.CompletedTask;
+    }
+
+    public Task ClearConversationAsync(string conversationId)
+    {
+        if (string.IsNullOrWhiteSpace(conversationId)) return Task.CompletedTask;
+        var context = global::Android.App.Application.Context;
+        var notificationManager = global::AndroidX.Core.App.NotificationManagerCompat.From(context);
+        notificationManager?.Cancel(GetNotificationId(conversationId));
+        return Task.CompletedTask;
+    }
+
+    public Task ClearAllAsync()
+    {
+        var context = global::Android.App.Application.Context;
+        var notificationManager = global::AndroidX.Core.App.NotificationManagerCompat.From(context);
+        notificationManager?.CancelAll();
+        return Task.CompletedTask;
+    }
+
+    private static int GetNotificationId(string conversationId)
+    {
+        // Conversation IDs generated by the local cache are integers. Using the
+        // integer directly avoids the possibility of two different conversations
+        // colliding after hashing and modulo reduction. Keep the hash fallback for
+        // any older/external notification IDs that are not numeric.
+        if (int.TryParse(conversationId, out var numericId))
+        {
+            unchecked
+            {
+                return NotificationIdBase + (numericId & 0x3fffffff);
+            }
+        }
+
+        unchecked
+        {
+            var hash = 17;
+            foreach (var ch in conversationId ?? string.Empty)
+                hash = (hash * 31) + ch;
+            return NotificationIdBase + (hash & 0x3fffffff);
+        }
+    }
+}

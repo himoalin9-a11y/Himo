@@ -1,0 +1,2 @@
+Himo v234
+Debug configuration updated for Android debugging: DebugType=Full, DebugSymbols=true, AndroidIncludeDebugSymbols=true.

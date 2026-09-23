@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Himo.Views.LoginPage"
+             Title="Himo"
+             FlowDirection="RightToLeft"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="#16052F">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <LinearGradientBrush x:Key="LoginBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#120326" Offset="0" />
+                <GradientStop Color="#32106E" Offset="0.48" />
+                <GradientStop Color="#6D20D5" Offset="1" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="LoginButtonBrush" StartPoint="0,0" EndPoint="1,0">
+                <GradientStop Color="#A968FF" Offset="0" />
+                <GradientStop Color="#7430E8" Offset="0.5" />
+                <GradientStop Color="#5014B9" Offset="1" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="CardBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#FFFFFF" Offset="0" />
+                <GradientStop Color="#F7F2FF" Offset="1" />
+            </LinearGradientBrush>
+            <Color x:Key="LoginText">#211143</Color>
+            <Color x:Key="LoginMuted">#776B91</Color>
+            <Color x:Key="LoginBorder">#DED4F1</Color>
+            <Color x:Key="LoginInput">#FCFAFF</Color>
+            <Color x:Key="LoginAccent">#6336D6</Color>
+
+            <Style x:Key="FieldTitle" TargetType="Label">
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="FontAttributes" Value="Bold" />
+                <Setter Property="TextColor" Value="{StaticResource LoginText}" />
+                <Setter Property="Margin" Value="3,5,3,6" />
+            </Style>
+            <Style x:Key="FieldBorder" TargetType="Border">
+                <Setter Property="BackgroundColor" Value="{StaticResource LoginInput}" />
+                <Setter Property="Stroke" Value="{StaticResource LoginBorder}" />
+                <Setter Property="StrokeThickness" Value="1" />
+                <Setter Property="HeightRequest" Value="58" />
+                <Setter Property="Padding" Value="10,0" />
+                <Setter Property="Margin" Value="0,0,0,3" />
+            </Style>
+            <Style x:Key="OutlineButton" TargetType="Button">
+                <Setter Property="BackgroundColor" Value="#FFFFFF" />
+                <Setter Property="BorderColor" Value="#CDBAF6" />
+                <Setter Property="BorderWidth" Value="1.2" />
+                <Setter Property="TextColor" Value="{StaticResource LoginAccent}" />
+                <Setter Property="CornerRadius" Value="17" />
+                <Setter Property="FontAttributes" Value="Bold" />
+                <Setter Property="HeightRequest" Value="52" />
+            </Style>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <Grid Background="{StaticResource LoginBackgroundBrush}">
+        <!-- Decorative layers: deliberately simple MAUI primitives for reliable startup. -->
+        <Border WidthRequest="620" HeightRequest="620"
+                HorizontalOptions="Start" VerticalOptions="Start"
+                TranslationX="-390" TranslationY="-350"
+                BackgroundColor="Transparent" Stroke="#B66CFF"
+                StrokeThickness="2" Opacity="0.58">
+            <Border.StrokeShape><RoundRectangle CornerRadius="310" /></Border.StrokeShape>
+        </Border>
+        <Border WidthRequest="455" HeightRequest="455"
+                HorizontalOptions="Start" VerticalOptions="Start"
+                TranslationX="-285" TranslationY="-250"
+                BackgroundColor="Transparent" Stroke="#F1DEFF"
+                StrokeThickness="1" Opacity="0.20">
+            <Border.StrokeShape><RoundRectangle CornerRadius="228" /></Border.StrokeShape>
+        </Border>
+        <Border WidthRequest="690" HeightRequest="690"
+                HorizontalOptions="End" VerticalOptions="End"
+                TranslationX="405" TranslationY="380"
+                BackgroundColor="Transparent" Stroke="#DDBFFF"
+                StrokeThickness="2" Opacity="0.48">
+            <Border.StrokeShape><RoundRectangle CornerRadius="345" /></Border.StrokeShape>
+        </Border>
+        <Border WidthRequest="260" HeightRequest="260"
+                HorizontalOptions="End" VerticalOptions="Start"
+                TranslationX="105" TranslationY="100"
+                BackgroundColor="#D58BFF" StrokeThickness="0" Opacity="0.10">
+            <Border.StrokeShape><RoundRectangle CornerRadius="130" /></Border.StrokeShape>
+        </Border>
+        <BoxView BackgroundColor="White" Opacity="0.025" HeightRequest="88"
+                 VerticalOptions="Center" Rotation="-22" TranslationY="-230" />
+        <BoxView BackgroundColor="White" Opacity="0.022" HeightRequest="76"
+                 VerticalOptions="Center" Rotation="18" TranslationY="255" />
+
+        <ScrollView VerticalScrollBarVisibility="Never">
+            <VerticalStackLayout Padding="20,28,20,26" Spacing="0">
+
+                <!-- Premium Himo brand -->
+                <VerticalStackLayout HorizontalOptions="Center" Spacing="0" Margin="0,0,0,18">
+                    <Border WidthRequest="104" HeightRequest="104"
+                            BackgroundColor="#28105D" Stroke="#C48BFF" StrokeThickness="1.5"
+                            Padding="5" HorizontalOptions="Center">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="29" /></Border.StrokeShape>
+                        <Border.Shadow>
+                            <Shadow Brush="#A855F7" Offset="0,7" Radius="24" Opacity="0.56" />
+                        </Border.Shadow>
+                        <Image Source="himo_logo.png" Aspect="AspectFit" />
+                    </Border>
+                    <Label Text="Himo" FontSize="36" FontAttributes="Bold" TextColor="White"
+                           HorizontalTextAlignment="Center" Margin="0,3,0,1" />
+                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="9">
+                        <BoxView WidthRequest="34" HeightRequest="2" BackgroundColor="#A85CFF" VerticalOptions="Center" />
+                        <Label Text="مرحبًا بك من جديد" FontSize="19" FontAttributes="Bold" TextColor="White" />
+                        <BoxView WidthRequest="34" HeightRequest="2" BackgroundColor="#A85CFF" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                    <Label Text="سجّل دخولك للمتابعة والاستمتاع بتجربة Himo"
+                           FontSize="12.5" TextColor="#E9DEFF" HorizontalTextAlignment="Center" Margin="0,4,0,0" />
+                </VerticalStackLayout>
+
+                <!-- Login card -->
+                <Border Background="{StaticResource CardBrush}" Stroke="#FFFFFF" StrokeThickness="1.2"
+                        Padding="20,21,20,18">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="29" /></Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#07000F" Offset="0,14" Radius="28" Opacity="0.32" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="تسجيل الدخول" FontSize="25" FontAttributes="Bold" TextColor="{StaticResource LoginText}" />
+                        <Label Text="أدخل بيانات حسابك للمتابعة" FontSize="12.5" TextColor="{StaticResource LoginMuted}" Margin="0,0,0,8" />
+
+                        <Label Text="البريد الإلكتروني" Style="{StaticResource FieldTitle}" />
+                        <Border x:Name="EmailBorder" Style="{StaticResource FieldBorder}">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                            <Grid ColumnDefinitions="38,*" ColumnSpacing="7">
+                                <Border Grid.Column="0" WidthRequest="33" HeightRequest="33" BackgroundColor="#EEE7FF" StrokeThickness="0" VerticalOptions="Center">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="11" /></Border.StrokeShape>
+                                    <Label Text="@" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource LoginAccent}"
+                                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                </Border>
+                                <Entry x:Name="EmailEntry" Grid.Column="1" Keyboard="Email" ReturnType="Next"
+                                       Placeholder="name@example.com" ClearButtonVisibility="WhileEditing"
+                                       FontSize="15" TextColor="{StaticResource LoginText}" PlaceholderColor="#A59BB9" />
+                            </Grid>
+                        </Border>
+
+                        <Label x:Name="NameLabel" Text="الاسم" Style="{StaticResource FieldTitle}" IsVisible="False" />
+                        <Border x:Name="NameBorder" Style="{StaticResource FieldBorder}" IsVisible="False">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                            <Grid ColumnDefinitions="38,*" ColumnSpacing="7">
+                                <Border Grid.Column="0" WidthRequest="33" HeightRequest="33" BackgroundColor="#EEE7FF" StrokeThickness="0" VerticalOptions="Center">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="11" /></Border.StrokeShape>
+                                    <Label Text="●" FontSize="10" TextColor="{StaticResource LoginAccent}"
+                                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                </Border>
+                                <Entry x:Name="NameEntry" Grid.Column="1" Placeholder="اسمك في Himo" ReturnType="Next" MaxLength="60"
+                                       FontSize="15" TextColor="{StaticResource LoginText}" PlaceholderColor="#A59BB9" />
+                            </Grid>
+                        </Border>
+
+                        <Label x:Name="VerificationLabel" Text="رمز التحقق" Style="{StaticResource FieldTitle}" IsVisible="False" />
+                        <Border x:Name="VerificationBorder" Style="{StaticResource FieldBorder}" IsVisible="False">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                            <Grid ColumnDefinitions="38,*" ColumnSpacing="7">
+                                <Border Grid.Column="0" WidthRequest="33" HeightRequest="33" BackgroundColor="#EEE7FF" StrokeThickness="0" VerticalOptions="Center">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="11" /></Border.StrokeShape>
+                                    <Label Text="6" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource LoginAccent}"
+                                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                </Border>
+                                <Entry x:Name="VerificationCodeEntry" Grid.Column="1" Keyboard="Numeric"
+                                       Placeholder="أدخل رمز التحقق المكوّن من 6 أرقام" MaxLength="6"
+                                       FontSize="14" TextColor="{StaticResource LoginText}" PlaceholderColor="#A59BB9" />
+                            </Grid>
+                        </Border>
+
+                        <Button x:Name="ResendButton" Text="إعادة إرسال رمز التحقق" Style="{StaticResource OutlineButton}"
+                                Clicked="ResendClicked" IsVisible="False" Margin="0,4,0,2" />
+
+                        <Label Text="كلمة المرور" Style="{StaticResource FieldTitle}" />
+                        <Border x:Name="PasswordBorder" Style="{StaticResource FieldBorder}" HeightRequest="60">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                            <Grid ColumnDefinitions="38,*,52" ColumnSpacing="4">
+                                <Border Grid.Column="0" WidthRequest="33" HeightRequest="33" BackgroundColor="#EEE7FF" StrokeThickness="0" VerticalOptions="Center">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="11" /></Border.StrokeShape>
+                                    <Label Text="●" FontSize="13" TextColor="{StaticResource LoginAccent}"
+                                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                </Border>
+                                <Entry x:Name="PasswordEntry" Grid.Column="1" IsPassword="True" Placeholder="أدخل كلمة المرور"
+                                       ReturnType="Done" MaxLength="128" FontSize="15" TextColor="{StaticResource LoginText}" PlaceholderColor="#A59BB9" />
+                                <Border Grid.Column="2" WidthRequest="48" HeightRequest="48"
+                                        BackgroundColor="#EEE7FF" Stroke="#D8C7FA" StrokeThickness="1"
+                                        Padding="0" VerticalOptions="Center" HorizontalOptions="Center">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                                    <ImageButton x:Name="PasswordEyeButton" Source="eye_open.png"
+                                                 BackgroundColor="Transparent" Padding="9"
+                                                 WidthRequest="48" HeightRequest="48" IsVisible="True" Opacity="1"
+                                                 Clicked="TogglePasswordClicked"
+                                                 SemanticProperties.Description="إظهار أو إخفاء كلمة المرور" />
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,4">
+                            <Button x:Name="ForgotPasswordButton" Grid.Column="1" Text="نسيت كلمة المرور؟"
+                                    HeightRequest="38" Padding="0" BackgroundColor="Transparent"
+                                    TextColor="{StaticResource LoginAccent}" FontAttributes="Bold"
+                                    Clicked="ForgotPasswordClicked" HorizontalOptions="End" />
+                        </Grid>
+
+                        <Button x:Name="PrimaryButton" Text="تسجيل الدخول" HeightRequest="56" CornerRadius="19"
+                                Background="{StaticResource LoginButtonBrush}"
+                                TextColor="White" FontSize="16" FontAttributes="Bold" Clicked="PrimaryClicked" Margin="0,3,0,5">
+                            <Button.Shadow>
+                                <Shadow Brush="#7C3AED" Offset="0,7" Radius="16" Opacity="0.40" />
+                            </Button.Shadow>
+                        </Button>
+
+                        <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="12" Margin="2,8,2,8">
+                            <BoxView Grid.Column="0" HeightRequest="1" BackgroundColor="#E2D8F5" VerticalOptions="Center" />
+                            <Label Grid.Column="1" Text="أو" FontSize="12" TextColor="{StaticResource LoginMuted}" VerticalOptions="Center" />
+                            <BoxView Grid.Column="2" HeightRequest="1" BackgroundColor="#E2D8F5" VerticalOptions="Center" />
+                        </Grid>
+
+                        <Button x:Name="ModeButton" Text="إنشاء حساب جديد" Style="{StaticResource OutlineButton}" Clicked="ModeClicked" />
+                        <ActivityIndicator x:Name="BusyIndicator" IsVisible="False" IsRunning="False" HorizontalOptions="Center"
+                                           WidthRequest="28" HeightRequest="28" Color="{StaticResource LoginAccent}" Margin="0,4,0,0" />
+                        <Label x:Name="StatusLabel" FontSize="12" TextColor="{StaticResource LoginMuted}"
+                               HorizontalTextAlignment="Center" Margin="8,4,8,0" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label Text="Himo  •  تواصل أقرب .. دائمًا" FontSize="12" TextColor="#D7C6FF"
+                       HorizontalTextAlignment="Center" Margin="0,16,0,0" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

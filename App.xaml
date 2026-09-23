@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Himo.App">
+    <Application.Resources>
+        <ResourceDictionary>
+            <Color x:Key="HimoBackground">#F4F7FB</Color>
+            <Color x:Key="HimoPrimary">#102A43</Color>
+            <Color x:Key="HimoMuted">#718096</Color>
+            <Color x:Key="HimoCard">#FFFFFF</Color>
+            <Color x:Key="HimoBorder">#E2E8F0</Color>
+            <Color x:Key="HimoInput">#F8FAFC</Color>
+            <Color x:Key="HimoAccent">#2563EB</Color>
+            <Color x:Key="HimoAccentDark">#1D4ED8</Color>
+            <Color x:Key="HimoBubbleMine">#2563EB</Color>
+            <Color x:Key="HimoBubbleOther">#FFFFFF</Color>
+            <Color x:Key="HimoAvatar">#DBEAFE</Color>
+            <Color x:Key="HimoSoft">#EFF6FF</Color>
+            <Color x:Key="HimoSuccess">#16A34A</Color>
+            <Color x:Key="HimoDanger">#DC2626</Color>
+            <Color x:Key="HimoWarning">#D97706</Color>
+            <Color x:Key="HimoHeader">#102A43</Color>
+
+
+            <!-- Stage 6 unified visual system -->
+            <Color x:Key="HimoSurface">#FFFFFF</Color>
+            <Color x:Key="HimoHeaderSoft">#173E64</Color>
+            <Color x:Key="HimoHeaderTextMuted">#C9D9EA</Color>
+            <Color x:Key="HimoTextSecondary">#7A8B9B</Color>
+            <Color x:Key="HimoAvatarSoft">#E9F3FF</Color>
+            <Color x:Key="HimoNavMuted">#8A99A8</Color>
+            <Color x:Key="HimoDangerSoft">#FDECEC</Color>
+
+            <Style x:Key="HimoPageTitle" TargetType="Label">
+                <Setter Property="FontSize" Value="23" />
+                <Setter Property="FontAttributes" Value="Bold" />
+                <Setter Property="TextColor" Value="White" />
+                <Setter Property="HorizontalTextAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="HimoPageSubtitle" TargetType="Label">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="TextColor" Value="{DynamicResource HimoHeaderTextMuted}" />
+                <Setter Property="HorizontalTextAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="HimoBackButton" TargetType="Button">
+                <Setter Property="FontSize" Value="34" />
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="TextColor" Value="White" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="WidthRequest" Value="48" />
+                <Setter Property="HeightRequest" Value="48" />
+            </Style>
+
+            <Style TargetType="Entry">
+                <Setter Property="TextColor" Value="{DynamicResource HimoPrimary}" />
+                <Setter Property="PlaceholderColor" Value="{DynamicResource HimoMuted}" />
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="FontSize" Value="16" />
+                <Setter Property="MinimumHeightRequest" Value="48" />
+            </Style>
+            <Style TargetType="SearchBar">
+                <Setter Property="TextColor" Value="{DynamicResource HimoPrimary}" />
+                <Setter Property="PlaceholderColor" Value="{DynamicResource HimoMuted}" />
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="BackgroundColor" Value="{DynamicResource HimoCard}" />
+            </Style>
+            <Style TargetType="Button">
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="CornerRadius" Value="15" />
+                <Setter Property="MinimumHeightRequest" Value="46" />
+                <Setter Property="Padding" Value="16,0" />
+            </Style>
+            <Style x:Key="HimoPrimaryButton" TargetType="Button">
+                <Setter Property="BackgroundColor" Value="{DynamicResource HimoAccent}" />
+                <Setter Property="TextColor" Value="White" />
+                <Setter Property="FontAttributes" Value="Bold" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="HeightRequest" Value="52" />
+            </Style>
+            <Style x:Key="HimoOutlineButton" TargetType="Button">
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="BorderColor" Value="{DynamicResource HimoBorder}" />
+                <Setter Property="BorderWidth" Value="1" />
+                <Setter Property="TextColor" Value="{DynamicResource HimoPrimary}" />
+                <Setter Property="CornerRadius" Value="15" />
+            </Style>
+            <Style x:Key="HimoCardBorder" TargetType="Border">
+                <Setter Property="BackgroundColor" Value="{DynamicResource HimoCard}" />
+                <Setter Property="Stroke" Value="{DynamicResource HimoBorder}" />
+                <Setter Property="StrokeThickness" Value="1" />
+                <Setter Property="Padding" Value="16" />
+                <Setter Property="Margin" Value="0,5" />
+            </Style>
+            <Style x:Key="HimoInputBorder" TargetType="Border">
+                <Setter Property="BackgroundColor" Value="{DynamicResource HimoInput}" />
+                <Setter Property="Stroke" Value="{DynamicResource HimoBorder}" />
+                <Setter Property="StrokeThickness" Value="1" />
+                <Setter Property="Padding" Value="12,0" />
+            </Style>
+            <Style x:Key="HimoSectionTitle" TargetType="Label">
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="TextColor" Value="{DynamicResource HimoMuted}" />
+                <Setter Property="Margin" Value="2,8,2,2" />
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

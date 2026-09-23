@@ -1,0 +1,2 @@
+Himo v241 - Professional Conversations UI
+Only HomePage.xaml visual styling changed. Conversation logic, bindings, handlers, networking, database, and navigation were preserved.

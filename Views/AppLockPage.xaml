@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Himo.Views.AppLockPage"
+             Title="قفل Himo"
+             FlowDirection="RightToLeft"
+             BackgroundColor="{DynamicResource HimoPrimary}"
+             Shell.NavBarIsVisible="False">
+    <Grid Padding="28" RowDefinitions="*,Auto,*">
+        <VerticalStackLayout Grid.Row="1" Spacing="12" MaximumWidthRequest="360" HorizontalOptions="Center">
+            <Border WidthRequest="82" HeightRequest="82" BackgroundColor="White" StrokeThickness="0" HorizontalOptions="Center">
+                <Border.StrokeShape><RoundRectangle CornerRadius="24" /></Border.StrokeShape>
+                <Label Text="H" FontSize="42" FontAttributes="Bold" TextColor="{DynamicResource HimoAccent}" HorizontalOptions="Center" VerticalOptions="Center" />
+            </Border>
+            <Label Text="Himo" FontSize="30" FontAttributes="Bold" HorizontalTextAlignment="Center" TextColor="White" />
+            <Label Text="التطبيق مقفل" FontSize="21" FontAttributes="Bold" HorizontalTextAlignment="Center" TextColor="White" />
+            <Label Text="أدخل رمز القفل للمتابعة" FontSize="13" HorizontalTextAlignment="Center" TextColor="#CFE1F7" />
+            <Border BackgroundColor="#FFFFFF18" Stroke="#FFFFFF40" StrokeThickness="1" Padding="12,0" Margin="0,8,0,0">
+                <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
+                <Entry x:Name="PinEntry" Keyboard="Numeric" IsPassword="True" MaxLength="6" Placeholder="رمز القفل" PlaceholderColor="#B9CBE0" TextColor="White" HorizontalTextAlignment="Center" FontSize="24" Completed="UnlockClicked" />
+            </Border>
+            <Button x:Name="UnlockButton" Text="فتح القفل" HeightRequest="50" CornerRadius="16" BackgroundColor="{DynamicResource HimoAccent}" TextColor="White" Clicked="UnlockClicked" />
+            <Label x:Name="ErrorLabel" Text="" FontSize="13" TextColor="#FFB4B4" HorizontalTextAlignment="Center" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

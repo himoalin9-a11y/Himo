@@ -1,0 +1,1 @@
+v235: Changed DebugType from Full to Embedded so XamlCTask can read symbols from Himo.dll itself on Android, avoiding SymbolsNotFoundException when no external PDB is produced. DebugSymbols and AndroidIncludeDebugSymbols remain enabled.

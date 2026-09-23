@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Himo.Views.SettingsPage"
+             Title="الإعدادات"
+             FlowDirection="RightToLeft"
+             BackgroundColor="{DynamicResource HimoBackground}"
+             Shell.NavBarIsVisible="False">
+    <Grid RowDefinitions="Auto,*">
+        <Border Grid.Row="0" BackgroundColor="{DynamicResource HimoHeader}" StrokeThickness="0" Padding="18,14,18,20">
+            <Grid ColumnDefinitions="48,*,48">
+                <Button Text="‹" FontSize="34" BackgroundColor="Transparent" TextColor="White" Padding="0" Clicked="BackClicked" />
+                <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="Center">
+                    <Label Text="الإعدادات" FontSize="23" FontAttributes="Bold" TextColor="White" HorizontalTextAlignment="Center" />
+                    <Label Text="خصّص Himo كما تحب" FontSize="12" TextColor="{DynamicResource HimoHeaderTextMuted}" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+                <BoxView Grid.Column="2" Opacity="0" />
+            </Grid>
+        </Border>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="16,18,16,34" Spacing="12">
+                <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="16">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="24" /></Border.StrokeShape>
+                    <Grid ColumnDefinitions="64,*,Auto" ColumnSpacing="12">
+                        <Border WidthRequest="60" HeightRequest="60" BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                            <Image Source="himo_logo.png" Aspect="AspectFit" Margin="5" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                            <Label Text="Himo" FontSize="21" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" />
+                            <Label Text="تواصل أقرب .. دائمًا" FontSize="12" TextColor="{DynamicResource HimoMuted}" />
+                            <Label Text="إعدادات الحساب والتطبيق" FontSize="11" TextColor="{DynamicResource HimoMuted}" />
+                        </VerticalStackLayout>
+                        <Border Grid.Column="2" WidthRequest="11" HeightRequest="11" BackgroundColor="{DynamicResource HimoSuccess}" StrokeThickness="0" VerticalOptions="Center">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="6" /></Border.StrokeShape>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Label Text="الحساب" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource HimoMuted}" Margin="4,10,4,0" />
+                <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="14">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                    <Grid ColumnDefinitions="46,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10">
+                        <Border WidthRequest="42" HeightRequest="42" BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" Grid.RowSpan="2">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                            <Label Text="👤" FontSize="19" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <Label Grid.Column="1" Text="الملف الشخصي" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" />
+                        <Label Grid.Column="1" Grid.Row="1" Text="الاسم والحالة والمعلومات الشخصية" FontSize="12" TextColor="{DynamicResource HimoMuted}" Margin="0,2,0,0" />
+                        <Button Grid.Column="2" Grid.RowSpan="2" Text="فتح" HeightRequest="38" CornerRadius="15" Padding="15,0" BackgroundColor="{DynamicResource HimoSoft}" TextColor="{DynamicResource HimoAccent}" Clicked="ProfileClicked" />
+                    </Grid>
+                </Border>
+
+                <Label Text="التفضيلات" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource HimoMuted}" Margin="4,10,4,0" />
+                <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="14">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                    <Grid ColumnDefinitions="46,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10">
+                        <Border WidthRequest="42" HeightRequest="42" BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" Grid.RowSpan="2">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                            <Label Text="🔔" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <Label Grid.Column="1" Text="الإشعارات" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" />
+                        <Label Grid.Column="1" Grid.Row="1" Text="إشعارات الرسائل الجديدة" FontSize="12" TextColor="{DynamicResource HimoMuted}" />
+                        <Switch x:Name="NotificationsSwitch" Grid.Column="2" Grid.RowSpan="2" Toggled="NotificationsToggled" VerticalOptions="Center" />
+                    </Grid>
+                    <VerticalStackLayout Spacing="5" Margin="56,8,0,0">
+                        <Label x:Name="NotificationPermissionStatusLabel" FontSize="11" TextColor="{DynamicResource HimoMuted}" />
+                        <Button x:Name="OpenNotificationSettingsButton" Text="فتح إعدادات Android" FontSize="12" Padding="12,4" HeightRequest="34" CornerRadius="14" IsVisible="False" Clicked="OpenNotificationSettingsClicked" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="14">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                    <Grid ColumnDefinitions="46,*,Auto" ColumnSpacing="10">
+                        <Border WidthRequest="42" HeightRequest="42" BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                            <Label Text="◐" FontSize="21" TextColor="{DynamicResource HimoAccent}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                            <Label Text="الوضع الداكن" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" />
+                            <Label Text="تغيير مظهر التطبيق" FontSize="12" TextColor="{DynamicResource HimoMuted}" />
+                        </VerticalStackLayout>
+                        <Switch x:Name="DarkModeSwitch" Grid.Column="2" Toggled="DarkModeToggled" VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="14">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="9">
+                        <Grid ColumnDefinitions="46,*,Auto" ColumnSpacing="10">
+                            <Border WidthRequest="42" HeightRequest="42" BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                                <Label Text="🔒" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                <Label Text="قفل التطبيق" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" />
+                                <Label Text="حماية التطبيق برمز سري" FontSize="12" TextColor="{DynamicResource HimoMuted}" />
+                            </VerticalStackLayout>
+                            <Switch x:Name="AppLockSwitch" Grid.Column="2" Toggled="AppLockToggled" VerticalOptions="Center" />
+                        </Grid>
+                        <Entry x:Name="AppLockPinEntry" Placeholder="رمز جديد (4-6 أرقام)" Keyboard="Numeric" IsPassword="True" MaxLength="6" IsVisible="False" />
+                        <Button x:Name="SaveAppLockButton" Text="حفظ رمز القفل" CornerRadius="16" IsVisible="False" BackgroundColor="{DynamicResource HimoHeader}" TextColor="White" Clicked="SaveAppLockClicked" />
+                        <Label x:Name="AppLockStatusLabel" FontSize="11" TextColor="{DynamicResource HimoMuted}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label Text="اتصال الخادم" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource HimoMuted}" Margin="4,10,4,0" />
+                <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="14">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                    <Grid ColumnDefinitions="46,*,Auto" ColumnSpacing="10">
+                        <Border WidthRequest="42" HeightRequest="42" BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                            <Label Text="☁" FontSize="20" TextColor="{DynamicResource HimoAccent}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                            <Label Text="إعداد اتصال الخادم" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" />
+                            <Label Text="تغيير عنوان الخادم واختبار الاتصال" FontSize="12" TextColor="{DynamicResource HimoMuted}" />
+                        </VerticalStackLayout>
+                        <Button Grid.Column="2" Text="إعداد" HeightRequest="38" CornerRadius="15" Padding="14,0" BackgroundColor="{DynamicResource HimoSoft}" TextColor="{DynamicResource HimoAccent}" Clicked="ServerSettingsClicked" />
+                    </Grid>
+                </Border>
+
+                <Label Text="الحساب على هذا الجهاز" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource HimoMuted}" Margin="4,10,4,0" />
+                <Button Text="تسجيل الخروج" HeightRequest="50" CornerRadius="18" BackgroundColor="{DynamicResource HimoSoft}" TextColor="{DynamicResource HimoPrimary}" Clicked="LogoutClicked" />
+                <Button Text="حذف الحساب" HeightRequest="50" CornerRadius="18" BackgroundColor="#FDECEC" TextColor="{DynamicResource HimoDanger}" Clicked="DeleteAccountClicked" />
+
+                <VerticalStackLayout Spacing="2" HorizontalOptions="Center" Margin="0,10,0,0">
+                    <Label Text="Himo" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource HimoMuted}" HorizontalTextAlignment="Center" />
+                    <Label Text="تواصل أقرب .. دائمًا" FontSize="11" TextColor="{DynamicResource HimoMuted}" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

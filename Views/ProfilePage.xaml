@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Himo.Views.ProfilePage"
+             FlowDirection="RightToLeft"
+             BackgroundColor="{DynamicResource HimoBackground}"
+             Title="الملف الشخصي"
+             Shell.NavBarIsVisible="False">
+    <Grid RowDefinitions="Auto,*">
+        <Border Grid.Row="0" BackgroundColor="{DynamicResource HimoHeader}" StrokeThickness="0" Padding="18,14,18,28">
+            <Grid ColumnDefinitions="48,*,48">
+                <Button Text="‹" FontSize="34" BackgroundColor="Transparent" TextColor="White" Padding="0" Clicked="BackClicked" />
+                <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="Center">
+                    <Label Text="ملفي الشخصي" FontSize="23" FontAttributes="Bold" TextColor="White" HorizontalTextAlignment="Center" />
+                    <Label Text="معلوماتك التي تظهر للآخرين" FontSize="12" TextColor="{DynamicResource HimoHeaderTextMuted}" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+                <BoxView Grid.Column="2" Opacity="0" />
+            </Grid>
+        </Border>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="18,22,18,34" Spacing="12">
+                <Border HorizontalOptions="Center" WidthRequest="116" HeightRequest="116" BackgroundColor="{DynamicResource HimoSoft}" Stroke="{DynamicResource HimoAccent}" StrokeThickness="2">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="58" /></Border.StrokeShape>
+                    <Label x:Name="InitialLabel" FontSize="43" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" TextColor="{DynamicResource HimoAccent}" />
+                </Border>
+                <Label Text="معلوماتك" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource HimoMuted}" Margin="4,6,4,0" />
+
+                <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="14">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="7">
+                        <Label Text="الاسم" FontSize="12" TextColor="{DynamicResource HimoMuted}" />
+                        <Border BackgroundColor="{DynamicResource HimoBackground}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="10,0">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
+                            <Entry x:Name="NameEntry" SemanticProperties.Description="الاسم" TextChanged="ProfileFieldChanged" Placeholder="اسمك" FontSize="17" MaxLength="60" />
+                        </Border>
+                        <Label Text="استخدم اسمًا واضحًا ليسهل على أصدقائك العثور عليك." FontSize="11" TextColor="{DynamicResource HimoMuted}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="14">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="7">
+                        <Label Text="الحالة" FontSize="12" TextColor="{DynamicResource HimoMuted}" />
+                        <Border BackgroundColor="{DynamicResource HimoBackground}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="10,0">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
+                            <Entry x:Name="StatusEntry" SemanticProperties.Description="الحالة" TextChanged="ProfileFieldChanged" Placeholder="مثال: متاح الآن" FontSize="17" MaxLength="100" />
+                        </Border>
+                        <Label Text="اكتب جملة قصيرة تعبّر عن حالتك الآن." FontSize="11" TextColor="{DynamicResource HimoMuted}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Button Text="حفظ التغييرات" HeightRequest="54" CornerRadius="20" BackgroundColor="{DynamicResource HimoHeader}" TextColor="White" Clicked="SaveClicked" Margin="0,6,0,0" />
+                <Label Text="يتم حفظ التغييرات على حسابك عند توفر الاتصال." FontSize="11" TextColor="{DynamicResource HimoMuted}" HorizontalTextAlignment="Center" Margin="0,1" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>
