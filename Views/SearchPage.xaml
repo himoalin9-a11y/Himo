@@ -6,64 +6,219 @@
              FlowDirection="RightToLeft"
              BackgroundColor="{DynamicResource HimoBackground}"
              Shell.NavBarIsVisible="False">
-    <Grid RowDefinitions="Auto,Auto,Auto,*">
-        <Border Grid.Row="0" BackgroundColor="{DynamicResource HimoHeader}" StrokeThickness="0" Padding="18,18,18,22">
+    <Grid RowDefinitions="Auto,Auto,*">
+        <!-- Premium search header -->
+        <Border Grid.Row="0"
+                BackgroundColor="{DynamicResource HimoHeader}"
+                StrokeThickness="0"
+                Padding="18,18,18,20">
             <Grid ColumnDefinitions="48,*,48" RowDefinitions="Auto,Auto">
-                <Button Text="‹" FontSize="34" BackgroundColor="Transparent" TextColor="White" Padding="0" Clicked="BackClicked" />
+                <Button Text="‹"
+                        FontSize="34"
+                        BackgroundColor="Transparent"
+                        TextColor="White"
+                        Padding="0"
+                        Clicked="BackClicked" />
+
                 <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="Center">
-                    <Label Text="اكتشف الأشخاص" FontSize="23" FontAttributes="Bold" TextColor="White" HorizontalTextAlignment="Center" />
-                    <Label Text="ابحث وابدأ محادثة جديدة" FontSize="12" TextColor="{DynamicResource HimoHeaderTextMuted}" HorizontalTextAlignment="Center" />
+                    <Label Text="اكتشف الأشخاص"
+                           FontSize="23"
+                           FontAttributes="Bold"
+                           TextColor="White"
+                           HorizontalTextAlignment="Center" />
+                    <Label Text="ابحث وابدأ محادثة جديدة"
+                           FontSize="12"
+                           TextColor="{DynamicResource HimoHeaderTextMuted}"
+                           HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
-                <BoxView Grid.Column="2" WidthRequest="44" Opacity="0" />
-                <Label Grid.Row="1" Grid.ColumnSpan="3" Text="البحث بالبريد الإلكتروني" FontSize="13" TextColor="{DynamicResource HimoHeaderTextMuted}" HorizontalTextAlignment="Center" Margin="0,14,0,0" />
+
+                <Border Grid.Column="2"
+                        WidthRequest="40"
+                        HeightRequest="40"
+                        BackgroundColor="#22FFFFFF"
+                        StrokeThickness="0"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="14" />
+                    </Border.StrokeShape>
+                    <Label Text="⌕"
+                           FontSize="23"
+                           TextColor="White"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+                </Border>
+
+                <Label Grid.Row="1"
+                       Grid.ColumnSpan="3"
+                       Text="ابحث بالبريد الإلكتروني للوصول إلى المستخدم"
+                       FontSize="12"
+                       TextColor="{DynamicResource HimoHeaderTextMuted}"
+                       HorizontalTextAlignment="Center"
+                       Margin="0,12,0,0" />
             </Grid>
         </Border>
-        <Grid Grid.Row="1" Padding="16,16,16,8" ColumnDefinitions="*,Auto" ColumnSpacing="8">
-            <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="14,0">
-                <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                    <Label Text="⌕" FontSize="28" TextColor="{DynamicResource HimoAccent}" VerticalOptions="Center" />
-                    <Entry x:Name="EmailEntry" Grid.Column="1" Placeholder="البريد الإلكتروني" Keyboard="Email" Completed="SearchCompleted" FontSize="16" />
-                </Grid>
-            </Border>
-            <Button x:Name="SearchButton" Grid.Column="1" Text="بحث" BackgroundColor="{DynamicResource HimoHeader}" TextColor="White" CornerRadius="18" Padding="18,0" HeightRequest="52" Clicked="SearchClicked" />
+
+        <!-- Search control -->
+        <Border Grid.Row="1"
+                Margin="16,14,16,10"
+                Padding="7"
+                BackgroundColor="{DynamicResource HimoCard}"
+                Stroke="{DynamicResource HimoBorder}"
+                StrokeThickness="1">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="23" />
+            </Border.StrokeShape>
+            <Grid ColumnDefinitions="48,*,Auto" ColumnSpacing="6" HeightRequest="50">
+                <Border WidthRequest="42"
+                        HeightRequest="42"
+                        BackgroundColor="{DynamicResource HimoSoft}"
+                        StrokeThickness="0"
+                        VerticalOptions="Center">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="14" />
+                    </Border.StrokeShape>
+                    <Label Text="⌕"
+                           FontSize="25"
+                           TextColor="{DynamicResource HimoAccent}"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+                </Border>
+
+                <Entry x:Name="EmailEntry"
+                       Grid.Column="1"
+                       Placeholder="أدخل البريد الإلكتروني"
+                       Keyboard="Email"
+                       Completed="SearchCompleted"
+                       FontSize="16"
+                       TextColor="{DynamicResource HimoPrimary}"
+                       PlaceholderColor="{DynamicResource HimoMuted}"
+                       VerticalOptions="Center" />
+
+                <Button x:Name="SearchButton"
+                        Grid.Column="2"
+                        Text="بحث"
+                        BackgroundColor="{DynamicResource HimoHeader}"
+                        TextColor="White"
+                        CornerRadius="18"
+                        Padding="18,0"
+                        HeightRequest="44"
+                        VerticalOptions="Center"
+                        Clicked="SearchClicked" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2" Margin="12,0">
+            <HorizontalStackLayout x:Name="SearchProgress"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Start"
+                                   Margin="0,2,0,0"
+                                   Spacing="7"
+                                   IsVisible="False">
+                <ActivityIndicator IsRunning="True" WidthRequest="18" HeightRequest="18" />
+                <Label Text="جارٍ البحث..."
+                       VerticalOptions="Center"
+                       FontSize="12"
+                       TextColor="{DynamicResource HimoMuted}" />
+            </HorizontalStackLayout>
+
+            <CollectionView x:Name="Results"
+                            Margin="0,4"
+                            SelectionMode="Single"
+                            SelectionChanged="UserSelected">
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout HorizontalOptions="Center"
+                                         VerticalOptions="Center"
+                                         Spacing="10"
+                                         Padding="24,0">
+                        <Border WidthRequest="82"
+                                HeightRequest="82"
+                                BackgroundColor="{DynamicResource HimoSoft}"
+                                StrokeThickness="0"
+                                HorizontalOptions="Center">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="27" />
+                            </Border.StrokeShape>
+                            <Label Text="⌕"
+                                   FontSize="38"
+                                   TextColor="{DynamicResource HimoAccent}"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
+                        <Label Text="ابحث عن شخص"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               TextColor="{DynamicResource HimoPrimary}"
+                               HorizontalTextAlignment="Center" />
+                        <Label Text="أدخل البريد الإلكتروني لعرض الحساب وبدء محادثة"
+                               FontSize="12"
+                               TextColor="{DynamicResource HimoMuted}"
+                               HorizontalTextAlignment="Center"
+                               MaximumWidthRequest="280" />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:UserSearchDto">
+                        <Border Margin="5,5"
+                                Padding="12"
+                                BackgroundColor="{DynamicResource HimoCard}"
+                                Stroke="{DynamicResource HimoBorder}"
+                                StrokeThickness="1">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="21" />
+                            </Border.StrokeShape>
+                            <Grid ColumnDefinitions="58,*,44" ColumnSpacing="11">
+                                <Border WidthRequest="52"
+                                        HeightRequest="52"
+                                        StrokeThickness="0"
+                                        BackgroundColor="{DynamicResource HimoSoft}"
+                                        VerticalOptions="Center">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="18" />
+                                    </Border.StrokeShape>
+                                    <Label Text="{Binding Initial}"
+                                           FontSize="20"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center"
+                                           FontAttributes="Bold"
+                                           TextColor="{DynamicResource HimoAccent}" />
+                                </Border>
+
+                                <VerticalStackLayout Grid.Column="1"
+                                                     VerticalOptions="Center"
+                                                     Spacing="3">
+                                    <Label Text="{Binding Name}"
+                                           FontSize="16"
+                                           FontAttributes="Bold"
+                                           TextColor="{DynamicResource HimoPrimary}"
+                                           LineBreakMode="TailTruncation" />
+                                    <Label Text="{Binding Email}"
+                                           FontSize="12"
+                                           TextColor="{DynamicResource HimoMuted}"
+                                           LineBreakMode="TailTruncation" />
+                                </VerticalStackLayout>
+
+                                <Border Grid.Column="2"
+                                        WidthRequest="40"
+                                        HeightRequest="40"
+                                        BackgroundColor="{DynamicResource HimoSoft}"
+                                        StrokeThickness="0"
+                                        VerticalOptions="Center">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="14" />
+                                    </Border.StrokeShape>
+                                    <Label Text="›"
+                                           FontSize="27"
+                                           TextColor="{DynamicResource HimoAccent}"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center" />
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
         </Grid>
-        <HorizontalStackLayout Grid.Row="2" Margin="18,0,18,8" Spacing="6" IsVisible="False" x:Name="SearchProgress">
-            <ActivityIndicator IsRunning="True" WidthRequest="18" HeightRequest="18" />
-            <Label Text="جارٍ البحث..." VerticalOptions="Center" FontSize="12" TextColor="{DynamicResource HimoMuted}" />
-        </HorizontalStackLayout>
-        <CollectionView x:Name="Results" Grid.Row="3" Margin="12,0" SelectionMode="Single" SelectionChanged="UserSelected">
-            <CollectionView.EmptyView>
-                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="10">
-                    <Border WidthRequest="72" HeightRequest="72" BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" HorizontalOptions="Center">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="24" /></Border.StrokeShape>
-                        <Label Text="⌕" FontSize="34" TextColor="{DynamicResource HimoAccent}" HorizontalOptions="Center" VerticalOptions="Center" />
-                    </Border>
-                    <Label Text="ابدأ بالبحث عن شخص" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
-                    <Label Text="أدخل البريد الإلكتروني للعثور على المستخدم" FontSize="12" TextColor="{DynamicResource HimoMuted}" HorizontalTextAlignment="Center" />
-                </VerticalStackLayout>
-            </CollectionView.EmptyView>
-            <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="models:UserSearchDto">
-                    <Border Margin="6,5" Padding="14" BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
-                        <Grid ColumnDefinitions="58,*,Auto" ColumnSpacing="12">
-                            <Border WidthRequest="52" HeightRequest="52" StrokeThickness="0" BackgroundColor="{DynamicResource HimoSoft}">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
-                                <Label Text="{Binding Initial}" FontSize="20" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" TextColor="{DynamicResource HimoAccent}" />
-                            </Border>
-                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
-                                <Label Text="{Binding Name}" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" />
-                                <Label Text="{Binding Email}" FontSize="12" TextColor="{DynamicResource HimoMuted}" LineBreakMode="TailTruncation" />
-                            </VerticalStackLayout>
-                            <Border Grid.Column="2" WidthRequest="42" HeightRequest="42" BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" VerticalOptions="Center">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
-                                <Label Text="›" FontSize="28" TextColor="{DynamicResource HimoAccent}" HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
     </Grid>
 </ContentPage>

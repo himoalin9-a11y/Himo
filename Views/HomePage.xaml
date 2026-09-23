@@ -7,47 +7,31 @@
              x:DataType="viewmodels:HomeViewModel"
              Title="Himo"
              FlowDirection="RightToLeft"
-             BackgroundColor="#F7F4FC"
+             BackgroundColor="#F8F6FC"
              Shell.NavBarIsVisible="False">
 
-    <Grid RowDefinitions="Auto,*,Auto" BackgroundColor="#F7F4FC">
+    <Grid RowDefinitions="Auto,*,Auto" BackgroundColor="#F8F6FC">
 
-        <!-- Header / visual only -->
-        <Border Grid.Row="0" BackgroundColor="#5420B8" StrokeThickness="0" Padding="16,14,16,20">
-            <Border.StrokeShape><RoundRectangle CornerRadius="0,0,28,28" /></Border.StrokeShape>
-            <VerticalStackLayout Spacing="13">
-                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                    <Border WidthRequest="42" HeightRequest="42" BackgroundColor="#FFFFFF" Opacity="0.14" StrokeThickness="0">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="13" /></Border.StrokeShape>
-                        <Button Text="⚙" FontSize="18" WidthRequest="42" HeightRequest="42" Padding="0" BackgroundColor="Transparent" TextColor="White" Clicked="SettingsClicked" />
-                    </Border>
+        <!-- Premium compact header -->
+        <Grid Grid.Row="0" Padding="18,16,18,12" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+            <Border WidthRequest="48" HeightRequest="48" BackgroundColor="#EEE8FF" StrokeThickness="0" VerticalOptions="Center">
+                <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
+                <Image Source="himo_logo.png" Aspect="AspectFit" Margin="7" />
+            </Border>
 
-                    <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="0">
-                        <Label Text="Himo" FontSize="21" FontAttributes="Bold" TextColor="White" HorizontalTextAlignment="Center" />
-                        <Label Text="تواصل أقرب .. دائمًا" FontSize="9" TextColor="#E9DDFF" HorizontalTextAlignment="Center" />
-                    </VerticalStackLayout>
-
-                    <Border Grid.Column="2" WidthRequest="48" HeightRequest="48" BackgroundColor="White" Stroke="#DCC6FF" StrokeThickness="1.5" Padding="3">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
-                        <Image Source="himo_logo.png" Aspect="AspectFit" />
-                    </Border>
-                </Grid>
-
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                    <VerticalStackLayout Spacing="1" VerticalOptions="Center">
-                        <Label Text="محادثاتك" FontSize="28" FontAttributes="Bold" TextColor="White" HorizontalTextAlignment="End" />
-                        <Label Text="كل من يهمك في مكان واحد" FontSize="11" TextColor="#E9DDFF" HorizontalTextAlignment="End" />
-                    </VerticalStackLayout>
-                    <Border Grid.Column="1" WidthRequest="44" HeightRequest="44" BackgroundColor="#FFFFFF" Opacity="0.14" StrokeThickness="0" VerticalOptions="Center">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
-                        <Label Text="✦" FontSize="20" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
-                    </Border>
-                </Grid>
+            <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                <Label Text="Himo" FontSize="24" FontAttributes="Bold" TextColor="#24143F" />
+                <Label Text="محادثاتك في مكان واحد" FontSize="11" TextColor="#8A7D9D" />
             </VerticalStackLayout>
-        </Border>
+
+            <Border Grid.Column="2" WidthRequest="44" HeightRequest="44" BackgroundColor="White" Stroke="#E7DFF2" StrokeThickness="1">
+                <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                <Button Text="⚙" FontSize="19" WidthRequest="44" HeightRequest="44" Padding="0" BackgroundColor="Transparent" TextColor="#6336D6" Clicked="SettingsClicked" />
+            </Border>
+        </Grid>
 
         <ScrollView Grid.Row="1">
-            <VerticalStackLayout Spacing="14" Padding="14,14,14,18">
+            <VerticalStackLayout Spacing="14" Padding="16,4,16,18">
 
                 <!-- Hidden connection controls: networking logic remains intact. -->
                 <Grid x:Name="ConnectionStatusContainer" IsVisible="False" HeightRequest="0">
@@ -57,66 +41,74 @@
                 </Grid>
 
                 <!-- Search -->
-                <Border BackgroundColor="White" Stroke="#E4DDF0" StrokeThickness="1" Padding="6,3">
+                <Border BackgroundColor="White" Stroke="#E5DEEE" StrokeThickness="1" Padding="8,3">
                     <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
-                    <Grid ColumnDefinitions="44,*,44" HeightRequest="50" ColumnSpacing="4">
-                        <Border WidthRequest="38" HeightRequest="38" BackgroundColor="#F0E9FF" StrokeThickness="0" VerticalOptions="Center">
+                    <Grid ColumnDefinitions="42,*,42" HeightRequest="50" ColumnSpacing="4">
+                        <Border WidthRequest="36" HeightRequest="36" BackgroundColor="#F0EAFF" StrokeThickness="0" VerticalOptions="Center">
                             <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
-                            <Label Text="⌕" FontSize="25" TextColor="#6336D6" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Label Text="⌕" FontSize="23" TextColor="#6336D6" HorizontalOptions="Center" VerticalOptions="Center" />
                         </Border>
-                        <SearchBar x:Name="Search" Grid.Column="1" Placeholder="ابحث في محادثاتك..." FontSize="13" CancelButtonColor="#6336D6" TextChanged="SearchTextChanged" VerticalOptions="Center" />
-                        <Border Grid.Column="2" WidthRequest="38" HeightRequest="38" BackgroundColor="#F0E9FF" StrokeThickness="0" VerticalOptions="Center">
+                        <SearchBar x:Name="Search" Grid.Column="1" Placeholder="ابحث عن مستخدم أو محادثة..." FontSize="13" CancelButtonColor="#6336D6" TextChanged="SearchTextChanged" VerticalOptions="Center" />
+                        <Border Grid.Column="2" WidthRequest="36" HeightRequest="36" BackgroundColor="#6336D6" StrokeThickness="0" VerticalOptions="Center">
                             <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
-                            <Button Text="⌕" FontSize="18" WidthRequest="38" HeightRequest="38" Padding="0" BackgroundColor="Transparent" TextColor="#6336D6" Clicked="SearchUserClicked" />
+                            <Button Text="⌕" FontSize="17" WidthRequest="36" HeightRequest="36" Padding="0" BackgroundColor="Transparent" TextColor="White" Clicked="SearchUserClicked" />
                         </Border>
                     </Grid>
                 </Border>
 
-                <Grid ColumnDefinitions="*,Auto" Margin="2,2,2,0">
+                <!-- Filters -->
+                <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
                     <VerticalStackLayout Spacing="1">
-                        <Label Text="المحادثات" FontSize="20" FontAttributes="Bold" TextColor="#24134F" />
-                        <Label Text="رسائلك الأخيرة" FontSize="11" TextColor="#8A809B" />
+                        <Label Text="المحادثات" FontSize="21" FontAttributes="Bold" TextColor="#24143F" />
+                        <Label Text="آخر الرسائل والتحديثات" FontSize="11" TextColor="#91869E" />
                     </VerticalStackLayout>
-                    <Border Grid.Column="1" BackgroundColor="#E8DEFF" StrokeThickness="0" Padding="14,8" VerticalOptions="Center">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
-                        <Label Text="الكل" FontSize="11" FontAttributes="Bold" TextColor="#6336D6" />
-                    </Border>
+                    <HorizontalStackLayout Grid.Column="1" Spacing="7" VerticalOptions="End">
+                        <Border BackgroundColor="#6336D6" StrokeThickness="0" Padding="15,8">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="13" /></Border.StrokeShape>
+                            <Label Text="الكل" FontSize="11" FontAttributes="Bold" TextColor="White" />
+                        </Border>
+                        <Border BackgroundColor="White" Stroke="#E5DEEE" StrokeThickness="1" Padding="13,8">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="13" /></Border.StrokeShape>
+                            <Label Text="غير مقروءة" FontSize="11" TextColor="#776B86" />
+                        </Border>
+                    </HorizontalStackLayout>
                 </Grid>
 
                 <RefreshView x:Name="ConversationRefresh" Refreshing="ConversationRefresh_Refreshing" MinimumHeightRequest="180">
                     <CollectionView ItemsSource="{Binding FilteredConversations}"
                                     SelectionMode="Single"
                                     SelectionChanged="ConversationSelected"
-                                    SemanticProperties.Description="قائمة المحادثات">
+                                    SemanticProperties.Description="قائمة المحادثات"
+                                    ItemSizingStrategy="MeasureAllItems">
                         <CollectionView.EmptyView>
-                            <VerticalStackLayout Padding="16,40" Spacing="10" HorizontalOptions="Center" VerticalOptions="Center">
-                                <Border WidthRequest="78" HeightRequest="78" BackgroundColor="#EEE6FF" StrokeThickness="0">
+                            <VerticalStackLayout Padding="16,45" Spacing="11" HorizontalOptions="Center" VerticalOptions="Center">
+                                <Border WidthRequest="76" HeightRequest="76" BackgroundColor="#EEE8FF" StrokeThickness="0">
                                     <Border.StrokeShape><RoundRectangle CornerRadius="25" /></Border.StrokeShape>
-                                    <Label Text="•••" FontSize="28" TextColor="#6336D6" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    <Label Text="✦" FontSize="28" TextColor="#6336D6" HorizontalOptions="Center" VerticalOptions="Center" />
                                 </Border>
-                                <Label x:Name="EmptyTitle" Text="لا توجد محادثات بعد" FontSize="18" FontAttributes="Bold" HorizontalTextAlignment="Center" TextColor="#24134F" />
-                                <Label x:Name="EmptyHint" Text="ابدأ محادثة جديدة مع أصدقائك" FontSize="12" TextColor="#8A809B" HorizontalTextAlignment="Center" />
-                                <Button Text="＋  بدء محادثة" WidthRequest="185" HeightRequest="45" CornerRadius="15" BackgroundColor="#6336D6" TextColor="White" FontAttributes="Bold" Clicked="NewConversationClicked" />
+                                <Label x:Name="EmptyTitle" Text="لا توجد محادثات بعد" FontSize="18" FontAttributes="Bold" HorizontalTextAlignment="Center" TextColor="#24143F" />
+                                <Label x:Name="EmptyHint" Text="ابدأ محادثة جديدة مع أصدقائك" FontSize="12" TextColor="#91869E" HorizontalTextAlignment="Center" />
+                                <Button Text="＋  بدء محادثة" WidthRequest="190" HeightRequest="46" CornerRadius="15" BackgroundColor="#6336D6" TextColor="White" FontAttributes="Bold" Clicked="NewConversationClicked" />
                             </VerticalStackLayout>
                         </CollectionView.EmptyView>
 
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="models:Conversation">
-                                <Border Margin="0,3" Padding="11,10" BackgroundColor="White" Stroke="#E7E0F1" StrokeThickness="1">
-                                    <Border.StrokeShape><RoundRectangle CornerRadius="19" /></Border.StrokeShape>
-                                    <Grid ColumnDefinitions="56,*,Auto" ColumnSpacing="11" MinimumHeightRequest="66">
+                                <Border Margin="0,3" Padding="11,10" BackgroundColor="White" Stroke="#E6DFEF" StrokeThickness="1">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                                    <Grid ColumnDefinitions="56,*,Auto" ColumnSpacing="11" MinimumHeightRequest="64">
                                         <Grid>
-                                            <Border WidthRequest="52" HeightRequest="52" BackgroundColor="#EEE6FF" StrokeThickness="0" VerticalOptions="Center">
+                                            <Border WidthRequest="52" HeightRequest="52" BackgroundColor="#EEE8FF" Stroke="#DCCBFF" StrokeThickness="1" VerticalOptions="Center">
                                                 <Border.StrokeShape><RoundRectangle CornerRadius="17" /></Border.StrokeShape>
                                                 <Label Text="{Binding Initial}" TextColor="#6336D6" HorizontalOptions="Center" VerticalOptions="Center" FontSize="18" FontAttributes="Bold" />
                                             </Border>
-                                            <Ellipse WidthRequest="11" HeightRequest="11" Fill="#31B56B" Stroke="White" StrokeThickness="2" HorizontalOptions="Start" VerticalOptions="End" Margin="0,0,0,1" />
+                                            <Ellipse WidthRequest="11" HeightRequest="11" Fill="#35B978" Stroke="White" StrokeThickness="2" HorizontalOptions="Start" VerticalOptions="End" Margin="0,0,0,1" />
                                         </Grid>
-                                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="3">
-                                            <Label Text="{Binding Name}" FontSize="15" FontAttributes="Bold" TextColor="#24134F" LineBreakMode="TailTruncation" />
-                                            <Label Text="{Binding LastMessage}" FontSize="11.5" TextColor="#81768F" LineBreakMode="TailTruncation" MaxLines="1" />
+                                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4">
+                                            <Label Text="{Binding Name}" FontSize="15" FontAttributes="Bold" TextColor="#24143F" LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding LastMessage}" FontSize="11.5" TextColor="#81758F" LineBreakMode="TailTruncation" MaxLines="1" />
                                         </VerticalStackLayout>
-                                        <VerticalStackLayout Grid.Column="2" Spacing="5" HorizontalOptions="End" VerticalOptions="Center">
+                                        <VerticalStackLayout Grid.Column="2" Spacing="6" HorizontalOptions="End" VerticalOptions="Center">
                                             <Label Text="{Binding Time}" FontSize="9.5" TextColor="#9B91A8" HorizontalTextAlignment="End" />
                                             <Border BackgroundColor="#6336D6" WidthRequest="21" HeightRequest="21" StrokeThickness="0">
                                                 <Border.Triggers>
@@ -138,35 +130,52 @@
         </ScrollView>
 
         <!-- Bottom navigation -->
-        <Border Grid.Row="2" BackgroundColor="White" Stroke="#E3DCEE" StrokeThickness="1" Padding="10,7,10,9">
-            <Border.StrokeShape><RoundRectangle CornerRadius="24,24,0,0" /></Border.StrokeShape>
-            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="2">
+        <Border Grid.Row="2" BackgroundColor="White" Stroke="#E4DDEE" StrokeThickness="1" Padding="12,8,12,10">
+            <Border.StrokeShape><RoundRectangle CornerRadius="25,25,0,0" /></Border.StrokeShape>
+            <Grid ColumnDefinitions="*,*,*,*,*" ColumnSpacing="2">
                 <VerticalStackLayout HorizontalOptions="Center" Spacing="1">
-                    <Label Text="⌂" FontSize="21" HorizontalTextAlignment="Center" TextColor="#9A90A8" />
-                    <Label Text="الرئيسية" FontSize="9.5" TextColor="#9A90A8" />
+                    <Border WidthRequest="42" HeightRequest="30" BackgroundColor="#EEE8FF" StrokeThickness="0">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="13" /></Border.StrokeShape>
+                        <Label Text="⌂" FontSize="20" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" TextColor="#6336D6" />
+                    </Border>
+                    <Label Text="المحادثات" FontSize="9.5" TextColor="#6336D6" FontAttributes="Bold" />
                 </VerticalStackLayout>
 
                 <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="1">
-                    <Border WidthRequest="48" HeightRequest="48" BackgroundColor="#6336D6" StrokeThickness="0" Margin="0,-17,0,0">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="24" /></Border.StrokeShape>
-                        <Button Text="＋" FontSize="25" WidthRequest="48" HeightRequest="48" Padding="0" BackgroundColor="Transparent" TextColor="White" Clicked="NewConversationClicked" />
+                    <Border WidthRequest="46" HeightRequest="46" BackgroundColor="#6336D6" StrokeThickness="0" Margin="0,-16,0,0">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
+                        <Button Text="＋" FontSize="24" WidthRequest="46" HeightRequest="46" Padding="0" BackgroundColor="Transparent" TextColor="White" Clicked="NewConversationClicked" />
                     </Border>
-                    <Label Text="محادثة" FontSize="9.5" TextColor="#6336D6" FontAttributes="Bold" Margin="0,-3,0,0" />
+                    <Label Text="محادثة جديدة" FontSize="9.5" TextColor="#6336D6" FontAttributes="Bold" Margin="0,-1,0,0" />
                 </VerticalStackLayout>
 
                 <VerticalStackLayout Grid.Column="2" HorizontalOptions="Center" Spacing="1">
-                    <Label Text="⌕" FontSize="21" HorizontalTextAlignment="Center" TextColor="#9A90A8" />
-                    <Label Text="البحث" FontSize="9.5" TextColor="#9A90A8" />
+                    <Border WidthRequest="42" HeightRequest="30" BackgroundColor="Transparent" StrokeThickness="0">
+                        <Label Text="⌕" FontSize="22" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" TextColor="#968BA4" />
+                    </Border>
+                    <Label Text="البحث" FontSize="9.5" TextColor="#968BA4" />
                     <VerticalStackLayout.GestureRecognizers>
                         <TapGestureRecognizer Tapped="SearchUserClicked" />
                     </VerticalStackLayout.GestureRecognizers>
                 </VerticalStackLayout>
 
                 <VerticalStackLayout Grid.Column="3" HorizontalOptions="Center" Spacing="1">
-                    <Label Text="⚙" FontSize="20" HorizontalTextAlignment="Center" TextColor="#9A90A8" />
-                    <Label Text="الإعدادات" FontSize="9.5" TextColor="#9A90A8" />
+                    <Border WidthRequest="42" HeightRequest="30" BackgroundColor="Transparent" StrokeThickness="0">
+                        <Label Text="⚙" FontSize="19" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" TextColor="#968BA4" />
+                    </Border>
+                    <Label Text="الإعدادات" FontSize="9.5" TextColor="#968BA4" />
                     <VerticalStackLayout.GestureRecognizers>
                         <TapGestureRecognizer Tapped="SettingsClicked" />
+                    </VerticalStackLayout.GestureRecognizers>
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Grid.Column="4" HorizontalOptions="Center" Spacing="1">
+                    <Border WidthRequest="42" HeightRequest="30" BackgroundColor="Transparent" StrokeThickness="0">
+                        <Label Text="◉" FontSize="19" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" TextColor="#968BA4" />
+                    </Border>
+                    <Label Text="الملف الشخصي" FontSize="9.5" TextColor="#968BA4" />
+                    <VerticalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="ProfileClicked" />
                     </VerticalStackLayout.GestureRecognizers>
                 </VerticalStackLayout>
             </Grid>
