@@ -21,14 +21,14 @@
         <ScrollView Grid.Row="1">
             <VerticalStackLayout Padding="16,18,16,34" Spacing="12">
                 <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="16">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="24" /></Border.StrokeShape>
-                    <Grid ColumnDefinitions="64,*,Auto" ColumnSpacing="12">
-                        <Border WidthRequest="60" HeightRequest="60" BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0">
-                            <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                    <Border.StrokeShape><RoundRectangle CornerRadius="26" /></Border.StrokeShape>
+                    <Grid ColumnDefinitions="68,*,Auto" ColumnSpacing="12">
+                        <Border WidthRequest="62" HeightRequest="62" BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" VerticalOptions="Center">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
                             <Image Source="himo_logo.png" Aspect="AspectFit" Margin="5" />
                         </Border>
-                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
-                            <Label Text="Himo" FontSize="21" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" />
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="3">
+                            <Label Text="Himo" FontSize="22" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" />
                             <Label Text="تواصل أقرب .. دائمًا" FontSize="12" TextColor="{DynamicResource HimoMuted}" />
                             <Label Text="إعدادات الحساب والتطبيق" FontSize="11" TextColor="{DynamicResource HimoMuted}" />
                         </VerticalStackLayout>
@@ -53,20 +53,25 @@
                 </Border>
 
                 <Label Text="التفضيلات" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource HimoMuted}" Margin="4,10,4,0" />
+
                 <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="14">
                     <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
-                    <Grid ColumnDefinitions="46,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10">
-                        <Border WidthRequest="42" HeightRequest="42" BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" Grid.RowSpan="2">
-                            <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
-                            <Label Text="🔔" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
-                        </Border>
-                        <Label Grid.Column="1" Text="الإشعارات" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" />
-                        <Label Grid.Column="1" Grid.Row="1" Text="إشعارات الرسائل الجديدة" FontSize="12" TextColor="{DynamicResource HimoMuted}" />
-                        <Switch x:Name="NotificationsSwitch" Grid.Column="2" Grid.RowSpan="2" Toggled="NotificationsToggled" VerticalOptions="Center" />
-                    </Grid>
-                    <VerticalStackLayout Spacing="5" Margin="56,8,0,0">
-                        <Label x:Name="NotificationPermissionStatusLabel" FontSize="11" TextColor="{DynamicResource HimoMuted}" />
-                        <Button x:Name="OpenNotificationSettingsButton" Text="فتح إعدادات Android" FontSize="12" Padding="12,4" HeightRequest="34" CornerRadius="14" IsVisible="False" Clicked="OpenNotificationSettingsClicked" />
+                    <VerticalStackLayout Spacing="7">
+                        <Grid ColumnDefinitions="46,*,Auto" ColumnSpacing="10">
+                            <Border WidthRequest="42" HeightRequest="42" BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                                <Label Text="🔔" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                <Label Text="الإشعارات" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" />
+                                <Label Text="إشعارات الرسائل الجديدة" FontSize="12" TextColor="{DynamicResource HimoMuted}" />
+                            </VerticalStackLayout>
+                            <Switch x:Name="NotificationsSwitch" Grid.Column="2" Toggled="NotificationsToggled" VerticalOptions="Center" />
+                        </Grid>
+                        <VerticalStackLayout Spacing="5" Margin="56,2,0,0">
+                            <Label x:Name="NotificationPermissionStatusLabel" FontSize="11" TextColor="{DynamicResource HimoMuted}" />
+                            <Button x:Name="OpenNotificationSettingsButton" Text="فتح إعدادات Android" FontSize="12" Padding="12,4" HeightRequest="34" CornerRadius="14" IsVisible="False" Clicked="OpenNotificationSettingsClicked" />
+                        </VerticalStackLayout>
                     </VerticalStackLayout>
                 </Border>
 

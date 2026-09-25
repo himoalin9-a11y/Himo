@@ -4,7 +4,7 @@
              xmlns:models="clr-namespace:Himo.Models"
              x:Class="Himo.Views.ChatPage"
              FlowDirection="RightToLeft"
-             BackgroundColor="#F4F7FC"
+             BackgroundColor="#F7F4FC"
              Shell.NavBarIsVisible="False">
     <Grid RowDefinitions="Auto,*,Auto">
 
@@ -13,30 +13,33 @@
             <Border.StrokeShape>
                 <RoundRectangle CornerRadius="0,0,20,20" />
             </Border.StrokeShape>
-            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+            <Grid RowDefinitions="3,Auto" RowSpacing="7">
+                <BoxView Grid.Row="0" HeightRequest="3" CornerRadius="2" BackgroundColor="#7042A5" Opacity="0.9" />
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                 <Button Text="‹" FontSize="36" WidthRequest="44" HeightRequest="44" Padding="0"
-                        BackgroundColor="#F0F5FA" TextColor="#17324D" CornerRadius="22"
+                        BackgroundColor="#F3EEFB" TextColor="#5B3A8E" CornerRadius="22"
                         Clicked="BackClicked" SemanticProperties.Description="العودة إلى المحادثات" />
 
                 <Grid Grid.Column="1" ColumnDefinitions="56,*" ColumnSpacing="10" VerticalOptions="Center">
-                    <Border WidthRequest="52" HeightRequest="52" BackgroundColor="#E8F1FF" StrokeThickness="0">
+                    <Border WidthRequest="52" HeightRequest="52" BackgroundColor="#EEE5FA" StrokeThickness="0">
                         <Border.StrokeShape><RoundRectangle CornerRadius="26" /></Border.StrokeShape>
                         <Label x:Name="InitialLabel" Text="" FontSize="20" FontAttributes="Bold"
-                               TextColor="#1670E8" HorizontalOptions="Center" VerticalOptions="Center" />
+                               TextColor="#7042A5" HorizontalOptions="Center" VerticalOptions="Center" />
                     </Border>
                     <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
                         <Label x:Name="NameLabel" FontSize="18" FontAttributes="Bold"
-                               TextColor="#17324D" LineBreakMode="TailTruncation" />
+                               TextColor="#2E2140" LineBreakMode="TailTruncation" />
                         <HorizontalStackLayout Spacing="6">
-                            <BoxView WidthRequest="8" HeightRequest="8" CornerRadius="4" Color="#21B47A" VerticalOptions="Center" />
-                            <Label Text="متصل الآن" FontSize="12" TextColor="#7C8EA3" />
+                            <BoxView WidthRequest="8" HeightRequest="8" CornerRadius="4" Color="#7A56B3" VerticalOptions="Center" />
+                            <Label Text="متصل الآن" FontSize="12" TextColor="#8A7B9C" />
                         </HorizontalStackLayout>
                     </VerticalStackLayout>
                 </Grid>
 
                 <Button Grid.Column="2" Text="⋮" FontSize="28" WidthRequest="44" HeightRequest="44" Padding="0"
-                        BackgroundColor="#F0F5FA" TextColor="#17324D" CornerRadius="22"
+                        BackgroundColor="#F3EEFB" TextColor="#5B3A8E" CornerRadius="22"
                         SemanticProperties.Description="خيارات المحادثة" />
+                </Grid>
             </Grid>
         </Border>
 
@@ -50,7 +53,7 @@
                         <Grid Padding="2,4" ColumnDefinitions="*,Auto">
                             <Border Grid.Column="0" Margin="0,0,54,0" Padding="13,10"
                                     MaximumWidthRequest="330" HorizontalOptions="Start"
-                                    BackgroundColor="#FFFFFF" Stroke="#E4EBF3" StrokeThickness="1">
+                                    BackgroundColor="#FFFFFF" Stroke="#E8E0F1" StrokeThickness="1">
                                 <Border.StrokeShape><RoundRectangle CornerRadius="19,19,19,7" /></Border.StrokeShape>
                                 <VerticalStackLayout Spacing="6">
                                     <Border IsVisible="False" HeightRequest="190" WidthRequest="285" StrokeThickness="0"
@@ -63,7 +66,7 @@
                                             </DataTrigger>
                                         </Border.Triggers>
                                     </Border>
-                                    <Label Text="{Binding Text}" FontSize="15" LineHeight="1.15" TextColor="#17324D">
+                                    <Label Text="{Binding Text}" FontSize="15" LineHeight="1.15" TextColor="#2E2140">
                                         <Label.Triggers>
                                             <DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True">
                                                 <Setter Property="TextColor" Value="White" />
@@ -73,13 +76,13 @@
                                     <HorizontalStackLayout Spacing="7" HorizontalOptions="Start">
                                         <Button Text="▶ تشغيل الصوت" SemanticProperties.Description="تشغيل الرسالة الصوتية"
                                                 IsVisible="{Binding IsAudioAttachment}" FontSize="12" Padding="8,2" HeightRequest="30"
-                                                BackgroundColor="Transparent" TextColor="#1670E8" Clicked="AudioClicked" />
+                                                BackgroundColor="Transparent" TextColor="#7042A5" Clicked="AudioClicked" />
                                         <Button Text="فتح المرفق" SemanticProperties.Description="فتح المرفق"
                                                 IsVisible="{Binding IsAttachment}" FontSize="12" Padding="8,2" HeightRequest="30"
-                                                BackgroundColor="Transparent" TextColor="#1670E8" Clicked="AttachmentClicked" />
+                                                BackgroundColor="Transparent" TextColor="#7042A5" Clicked="AttachmentClicked" />
                                     </HorizontalStackLayout>
                                     <Label Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" FontSize="9"
-                                           TextColor="#8A9AAF" HorizontalOptions="End">
+                                           TextColor="#988BA6" HorizontalOptions="End">
                                         <Label.Triggers>
                                             <DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True">
                                                 <Setter Property="TextColor" Value="#D8E8FF" />
@@ -103,37 +106,37 @@
 
             <VerticalStackLayout x:Name="EmptyState" IsVisible="False" HorizontalOptions="Center" VerticalOptions="Center"
                                  Spacing="9" Padding="30">
-                <Border WidthRequest="82" HeightRequest="82" BackgroundColor="#E5F0FF" StrokeThickness="0" HorizontalOptions="Center">
+                <Border WidthRequest="82" HeightRequest="82" BackgroundColor="#EEE5FA" StrokeThickness="0" HorizontalOptions="Center">
                     <Border.StrokeShape><RoundRectangle CornerRadius="41" /></Border.StrokeShape>
                     <Label Text="💬" FontSize="36" HorizontalOptions="Center" VerticalOptions="Center" />
                 </Border>
                 <Label Text="لا توجد رسائل بعد" FontSize="20" FontAttributes="Bold"
-                       HorizontalTextAlignment="Center" TextColor="#17324D" />
+                       HorizontalTextAlignment="Center" TextColor="#2E2140" />
                 <Label Text="ابدأ المحادثة بإرسال أول رسالة" FontSize="13"
-                       HorizontalTextAlignment="Center" TextColor="#8191A6" />
+                       HorizontalTextAlignment="Center" TextColor="#8F829C" />
             </VerticalStackLayout>
         </Grid>
 
         <!-- Modern composer -->
         <Border Grid.Row="2" Margin="12,6,12,12" Padding="7" BackgroundColor="#FFFFFF"
-                Stroke="#E0E8F1" StrokeThickness="1">
+                Stroke="#E5DCEE" StrokeThickness="1">
             <Border.StrokeShape><RoundRectangle CornerRadius="28" /></Border.StrokeShape>
             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="5" VerticalOptions="Center">
                 <Button x:Name="RecordButton" Text="🎙" SemanticProperties.Description="تسجيل رسالة صوتية أو إيقاف التسجيل"
-                        FontSize="19" WidthRequest="44" HeightRequest="44" Padding="0" BackgroundColor="{DynamicResource HimoSoft}"
-                        TextColor="#1670E8" CornerRadius="22" Clicked="RecordAudioClicked" />
+                        FontSize="19" WidthRequest="44" HeightRequest="44" Padding="0" BackgroundColor="#F1EAF8"
+                        TextColor="#7042A5" CornerRadius="22" Clicked="RecordAudioClicked" />
                 <Grid Grid.Column="1" ColumnDefinitions="*,Auto" VerticalOptions="Center">
                     <Entry x:Name="MessageEntry" Placeholder="اكتب رسالتك..." ReturnType="Send"
                            ClearButtonVisibility="WhileEditing" MaxLength="4000" Completed="SendClicked"
-                           FontSize="15" TextColor="#17324D" PlaceholderColor="#9AA9BB"
+                           FontSize="15" TextColor="#2E2140" PlaceholderColor="#9AA9BB"
                            VerticalOptions="Center" />
                     <Button Grid.Column="1" Text="📎" SemanticProperties.Description="إضافة صورة أو ملف"
                             FontSize="19" WidthRequest="40" HeightRequest="40" Padding="0" BackgroundColor="Transparent"
-                            TextColor="#1670E8" Clicked="AttachmentButtonClicked" />
+                            TextColor="#7042A5" Clicked="AttachmentButtonClicked" />
                 </Grid>
                 <Button x:Name="SendButton" Grid.Column="2" SemanticProperties.Description="إرسال الرسالة"
                         Text="➤" FontSize="21" WidthRequest="46" HeightRequest="46" Padding="0"
-                        CornerRadius="23" BackgroundColor="#1670E8" TextColor="White" Clicked="SendClicked" />
+                        CornerRadius="23" BackgroundColor="#7042A5" TextColor="White" Clicked="SendClicked" />
             </Grid>
         </Border>
     </Grid>

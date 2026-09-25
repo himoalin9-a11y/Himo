@@ -229,4 +229,11 @@ public partial class HomePage : ContentPage
         if (shell is null) return;
         await shell.GoToAsync("settings");
     }
+
+    private async void ProfileClicked(object sender, EventArgs e)
+    {
+        var shell = Shell.Current;
+        if (shell is null) return;
+        await shell.GoToAsync("profile");
+    }
 }
