@@ -393,15 +393,40 @@ webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequ
     }
     var message = store.AddMessage(id, session.UserId, session.PhoneNumber, text, clientMessageId);
     var recipientIds = store.GetOtherParticipantUserIds(id, session.UserId);
-    await hub.Clients.Groups(recipientIds.Select(userId => HimoChatHub.UserGroup(userId)))
-        .SendAsync("MessageReceived", message, http.HttpContext.RequestAborted);
-    var tokens = store.GetPushTokens(recipientIds);
-    if (tokens.Count > 0)
+
+    // The message is already persisted. Do not make the sender wait for
+    // SignalR or Firebase; either notification path can be slow or unavailable.
+    // The recipient can still receive the message through normal sync/polling.
+    _ = Task.Run(async () =>
     {
-        var senderName = session.Name;
-        var push = webApp.Services.GetRequiredService<FcmPushService>();
-        await push.SendMessageAsync(tokens, senderName, message.Text, message.ConversationId, http.HttpContext.RequestAborted);
-    }
+        try
+        {
+            await hub.Clients.Groups(recipientIds.Select(userId => HimoChatHub.UserGroup(userId)))
+                .SendAsync("MessageReceived", message, CancellationToken.None);
+        }
+        catch
+        {
+            // Realtime delivery is best-effort.
+        }
+
+        try
+        {
+            var tokens = store.GetPushTokens(recipientIds);
+            if (tokens.Count > 0)
+            {
+                var senderName = session.Name;
+                var push = webApp.Services.GetRequiredService<FcmPushService>();
+                await push.SendMessageAsync(tokens, senderName, message.Text, message.ConversationId, CancellationToken.None);
+            }
+        }
+        catch
+        {
+            // Push delivery is best-effort.
+        }
+    });
+
+    // Return the saved message immediately. Notification delivery must never
+    // delay or fail the HTTP request used to send the message.
     return Results.Created($"/api/conversations/{id}/messages/{message.Id}", message);
 });
 
@@ -1781,7 +1806,7 @@ LIMIT 1;";
             insert.Transaction = transaction;
             insert.CommandText = string.IsNullOrWhiteSpace(clientMessageId)
                 ? "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,ClientMessageId) VALUES(@id,@conversation,@user,@phone,@text,@sent,@client);"
-                : "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,ClientMessageId) VALUES(@id,@conversation,@user,@phone,@text,@sent,@client) ON CONFLICT(ConversationId,SenderUserId,ClientMessageId) DO NOTHING;";
+                : "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,ClientMessageId) VALUES(@id,@conversation,@user,@phone,@text,@sent,@client) ON CONFLICT DO NOTHING;";
             insert.Parameters.AddWithValue("@id", message.Id.ToString());
             insert.Parameters.AddWithValue("@conversation", conversationId.ToString());
             insert.Parameters.AddWithValue("@user", userId.ToString());
