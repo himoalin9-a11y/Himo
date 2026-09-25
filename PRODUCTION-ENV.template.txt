@@ -1,0 +1,9 @@
+# Himo.Api production environment template
+# Replace the placeholders on the SERVER only. Never commit real values.
+# Persistent data directory for the API database. On a Linux host, point this to persistent storage.
+HIMO_DATA_DIR=/var/lib/himo
+ASPNETCORE_URLS=http://0.0.0.0:5080
+HIMO_SMS_ACCOUNT_SID=YOUR_TWILIO_ACCOUNT_SID
+HIMO_SMS_AUTH_TOKEN=YOUR_TWILIO_AUTH_TOKEN
+HIMO_SMS_FROM=YOUR_TWILIO_SENDER
+HIMO_FIREBASE_SERVICE_ACCOUNT_JSON=PASTE_FIREBASE_SERVICE_ACCOUNT_JSON_ON_SERVER_ONLY
