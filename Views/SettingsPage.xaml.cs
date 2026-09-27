@@ -27,6 +27,8 @@ public partial class SettingsPage : ContentPage
         if (NotificationsSwitch is not null)
             NotificationsSwitch.IsToggled = _notifications.IsEnabled;
         _initializingNotificationsSwitch = false;
+        if (NotificationPreviewSwitch is not null)
+            NotificationPreviewSwitch.IsToggled = Preferences.Default.Get("himo_notification_preview", true);
         UpdateNotificationPermissionStatus();
         _initializingThemeSwitch = true;
         if (DarkModeSwitch is not null)
@@ -42,7 +44,12 @@ public partial class SettingsPage : ContentPage
     {
         var shell = Shell.Current;
         if (shell is null) return;
-        await shell.GoToAsync("profile");
+        await shell.GoToAsync("profile", false);
+    }
+
+    private void NotificationPreviewToggled(object sender, ToggledEventArgs e)
+    {
+        Preferences.Default.Set("himo_notification_preview", e.Value);
     }
 
     private void DarkModeToggled(object sender, ToggledEventArgs e)
@@ -204,6 +211,43 @@ public partial class SettingsPage : ContentPage
         }
     }
 
+
+    private async void LogoutAllClicked(object sender, EventArgs e)
+    {
+        if (Interlocked.Exchange(ref _accountActionInProgress, 1) != 0) return;
+        try
+        {
+            var confirm = await DisplayAlertAsync("تسجيل الخروج من جميع الأجهزة",
+                "سيتم إنهاء جميع جلسات Himo وإيقاف إشعارات الأجهزة المسجلة. هل تريد المتابعة؟",
+                "متابعة", "إلغاء");
+            if (!confirm) return;
+
+            try
+            {
+                await _api.LogoutAllAsync();
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlertAsync("تسجيل الخروج", $"تعذر تنفيذ العملية: {ex.Message}", "حسنًا");
+                return;
+            }
+
+            try { await _notifications.ClearAllAsync(); } catch { }
+            _account.SignOut();
+            _chat.ClearAll();
+            _api.ClearToken();
+            Preferences.Default.Remove(PushTokenKey);
+
+            var window = Application.Current?.Windows.FirstOrDefault();
+            if (window is not null)
+                window.Page = new LoginPage(_account, _api);
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _accountActionInProgress, 0);
+        }
+    }
+
     private async void LogoutClicked(object sender, EventArgs e)
     {
         if (Interlocked.Exchange(ref _accountActionInProgress, 1) != 0) return;
@@ -297,6 +341,6 @@ public partial class SettingsPage : ContentPage
     {
         var shell = Shell.Current;
         if (shell is null) return;
-        await shell.GoToAsync("..");
+        await shell.GoToAsync("..", false);
     }
 }

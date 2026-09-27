@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Himo.Views.CreateGroupPage"
+             FlowDirection="RightToLeft"
+             BackgroundColor="{DynamicResource HimoBackground}"
+             Shell.NavBarIsVisible="False">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="16,10,16,18">
+        <Grid ColumnDefinitions="48,*,48">
+            <Button Grid.Column="0" Text="‹" Style="{StaticResource HimoBackButton}" Clicked="BackClicked" />
+            <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="1">
+                <Label Text="مجموعة جديدة" FontSize="21" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
+                <Label Text="أضف عدة أشخاص في محادثة واحدة" FontSize="11" TextColor="{DynamicResource HimoMuted}" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <Border Grid.Row="1" Margin="0,12,0,8" Padding="14,4" Style="{StaticResource HimoInputBorder}">
+            <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
+            <Entry x:Name="GroupNameEntry" Placeholder="اسم المجموعة" FontSize="16" />
+        </Border>
+
+        <CollectionView Grid.Row="2" x:Name="MembersView" SelectionMode="None">
+            <CollectionView.EmptyView>
+                <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="8">
+                    <Label Text="👥" FontSize="42" HorizontalTextAlignment="Center" />
+                    <Label Text="لم تتم إضافة أعضاء بعد" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
+                    <Label Text="في المرحلة التالية سيتم ربطها باختيار المستخدمين من الخادم." FontSize="11" TextColor="{DynamicResource HimoMuted}" HorizontalTextAlignment="Center" MaximumWidthRequest="280" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Margin="0,4" Padding="12" Style="{StaticResource HimoListCard}">
+                        <Grid ColumnDefinitions="44,*,Auto" ColumnSpacing="10">
+                            <Border WidthRequest="44" HeightRequest="44" BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                                <Label Text="{Binding Initial}" FontAttributes="Bold" TextColor="{DynamicResource HimoAccent}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                                <Label Text="{Binding Name}" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" />
+                                <Label Text="{Binding Email}" FontSize="11" TextColor="{DynamicResource HimoMuted}" />
+                            </VerticalStackLayout>
+                            <Button Grid.Column="2" Text="إزالة" Style="{StaticResource HimoPillButton}" Clicked="RemoveMemberClicked" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,10,0,0">
+            <Button Grid.Column="0" Text="إضافة أعضاء" Style="{StaticResource HimoOutlineButton}" Clicked="AddMembersClicked" />
+            <Button Grid.Column="1" Text="إنشاء المجموعة" Style="{StaticResource HimoActionButton}" Clicked="CreateClicked" />
+        </Grid>
+    </Grid>
+</ContentPage>

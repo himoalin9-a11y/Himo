@@ -125,7 +125,169 @@ public sealed class ChatService
         }
     }
 
-    public bool AddRemoteMessage(int conversationId, string text, DateTime sentAt, bool isMine, string? remoteId = null, string? attachmentFileName = null, string? attachmentContentType = null, long? attachmentSize = null)
+    public ChatMessage? AddPendingMessage(int conversationId, string text, string clientMessageId, string? replyToRemoteId = null, string? replyToText = null, bool isEdited = false, string? editedAt = null)
+    {
+        var clean = text.Trim();
+        if (conversationId <= 0 || string.IsNullOrWhiteSpace(clean) || string.IsNullOrWhiteSpace(clientMessageId)) return null;
+
+        lock (_sync)
+        {
+            EnsureLoaded();
+            var conversation = Conversations.FirstOrDefault(x => x.Id == conversationId);
+            if (conversation is null) return null;
+
+            var messages = GetMessages(conversationId);
+            var next = messages.Count == 0 ? 1 : messages.Max(x => x.Id) + 1;
+            var now = DateTime.Now;
+            var message = new ChatMessage
+            {
+                Id = next,
+                ConversationId = conversationId,
+                Text = clean,
+                SentAt = now,
+                IsMine = true,
+                IsPending = true,
+                DeliveryStatus = "sending",
+                ClientMessageId = clientMessageId,
+                ReplyToRemoteId = replyToRemoteId,
+                ReplyToText = replyToText
+            };
+
+            messages.Add(message);
+            conversation.LastMessage = clean;
+            conversation.Time = now.ToString("HH:mm");
+            conversation.UpdatedAt = now;
+            Save();
+            return message;
+        }
+    }
+
+    public void CompletePendingMessage(int conversationId, string clientMessageId, string remoteId, DateTime sentAt)
+    {
+        if (string.IsNullOrWhiteSpace(clientMessageId) || string.IsNullOrWhiteSpace(remoteId)) return;
+
+        lock (_sync)
+        {
+            EnsureLoaded();
+            var messages = GetMessages(conversationId);
+            var pending = messages.FirstOrDefault(x => string.Equals(x.ClientMessageId, clientMessageId, StringComparison.OrdinalIgnoreCase));
+            if (pending is null) return;
+
+            pending.RemoteId = remoteId;
+            pending.IsPending = false;
+            pending.DeliveryStatus = "sent";
+            pending.ClientMessageId = null;
+            // ChatMessage uses init-only values for text/time, so keep the optimistic
+            // timestamp for a stable UI and only attach the authoritative server ID.
+            Save();
+        }
+    }
+
+    public void FailPendingMessage(int conversationId, string clientMessageId)
+    {
+        if (string.IsNullOrWhiteSpace(clientMessageId)) return;
+
+        lock (_sync)
+        {
+            EnsureLoaded();
+            var messages = GetMessages(conversationId);
+            var pending = messages.FirstOrDefault(x => string.Equals(x.ClientMessageId, clientMessageId, StringComparison.OrdinalIgnoreCase));
+            if (pending is null) return;
+            pending.IsPending = true;
+            pending.DeliveryStatus = "failed";
+            Save();
+        }
+    }
+
+    public IReadOnlyList<ChatMessage> GetPendingMessages()
+    {
+        lock (_sync)
+        {
+            EnsureLoaded();
+            return _messages.Values
+                .SelectMany(x => x)
+                .Where(x => x.IsMine && x.IsPending && !string.IsNullOrWhiteSpace(x.ClientMessageId))
+                .OrderBy(x => x.SentAt)
+                .ToList();
+        }
+    }
+
+    public bool MarkPendingSending(string clientMessageId)
+    {
+        if (string.IsNullOrWhiteSpace(clientMessageId)) return false;
+        lock (_sync)
+        {
+            EnsureLoaded();
+            foreach (var messages in _messages.Values)
+            {
+                var pending = messages.FirstOrDefault(x => string.Equals(x.ClientMessageId, clientMessageId, StringComparison.OrdinalIgnoreCase) && x.IsPending);
+                if (pending is null) continue;
+                pending.DeliveryStatus = "sending";
+                Save();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public bool UpdateDeliveryStatus(string remoteId, string status)
+    {
+        if (string.IsNullOrWhiteSpace(remoteId) || string.IsNullOrWhiteSpace(status)) return false;
+        lock (_sync)
+        {
+            EnsureLoaded();
+            foreach (var messages in _messages.Values)
+            {
+                var message = messages.FirstOrDefault(x => string.Equals(x.RemoteId, remoteId, StringComparison.OrdinalIgnoreCase) && x.IsMine);
+                if (message is null) continue;
+                message.DeliveryStatus = status;
+                Save();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public bool UpdateMessageDeleted(string remoteId)
+    {
+        if (string.IsNullOrWhiteSpace(remoteId)) return false;
+        lock (_sync)
+        {
+            EnsureLoaded();
+            foreach (var messages in _messages.Values)
+            {
+                var message = messages.FirstOrDefault(x => string.Equals(x.RemoteId, remoteId, StringComparison.OrdinalIgnoreCase));
+                if (message is null) continue;
+                message.Text = "تم حذف هذه الرسالة";
+                message.IsDeleted = true;
+                message.IsEdited = false;
+                Save();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public bool UpdateMessageText(string remoteId, string text, DateTime? editedAt = null)
+    {
+        if (string.IsNullOrWhiteSpace(remoteId)) return false;
+        lock (_sync)
+        {
+            EnsureLoaded();
+            foreach (var messages in _messages.Values)
+            {
+                var message = messages.FirstOrDefault(x => string.Equals(x.RemoteId, remoteId, StringComparison.OrdinalIgnoreCase));
+                if (message is null) continue;
+                message.Text = text;
+                message.IsEdited = true;
+                Save();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public bool AddRemoteMessage(int conversationId, string text, DateTime sentAt, bool isMine, string? remoteId = null, string? attachmentFileName = null, string? attachmentContentType = null, long? attachmentSize = null, string? deliveryStatus = null, string? replyToRemoteId = null, string? replyToText = null, bool isEdited = false, string? editedAt = null, bool isDeleted = false)
     {
         lock (_sync)
         {
@@ -135,6 +297,26 @@ public sealed class ChatService
 
             if (!string.IsNullOrWhiteSpace(remoteId))
             {
+                // A sender sees the authoritative server response through HTTP, while
+                // polling may also discover it before that response is processed.
+                // Reconcile an optimistic pending copy instead of adding a duplicate.
+                if (isMine)
+                {
+                    var pending = messages.FirstOrDefault(x =>
+                        x.IsPending &&
+                        x.IsMine &&
+                        string.Equals(x.Text, text, StringComparison.Ordinal) &&
+                        Math.Abs((x.SentAt - localTime).TotalSeconds) <= 10);
+                    if (pending is not null)
+                    {
+                        pending.RemoteId = remoteId;
+                        pending.IsPending = false;
+                        pending.ClientMessageId = null;
+                        Save();
+                        return false;
+                    }
+                }
+
                 // Server messages have stable IDs; use them as the authoritative
                 // deduplication key so two legitimate identical messages sent close
                 // together are never collapsed into one.
@@ -149,7 +331,7 @@ public sealed class ChatService
             }
 
             var next = messages.Count == 0 ? 1 : messages.Max(x => x.Id) + 1;
-            messages.Add(new ChatMessage { Id = next, RemoteId = remoteId, ConversationId = conversationId, Text = text, SentAt = localTime, IsMine = isMine, AttachmentFileName = attachmentFileName, AttachmentContentType = attachmentContentType, AttachmentSize = attachmentSize });
+            messages.Add(new ChatMessage { Id = next, RemoteId = remoteId, ConversationId = conversationId, Text = text, SentAt = localTime, IsMine = isMine, AttachmentFileName = attachmentFileName, AttachmentContentType = attachmentContentType, AttachmentSize = attachmentSize, DeliveryStatus = string.IsNullOrWhiteSpace(deliveryStatus) ? (isMine ? "sent" : "received") : deliveryStatus, ReplyToRemoteId = replyToRemoteId, ReplyToText = replyToText, IsEdited = isEdited, IsDeleted = isDeleted });
             var c = Conversations.FirstOrDefault(x => x.Id == conversationId);
             if (c != null)
             {
@@ -186,6 +368,12 @@ public sealed class ChatService
 
                             foreach (var message in group.OrderBy(x => x.SentAt))
                             {
+                                // Pending messages are durable outbox entries. Keep them
+                                // across app restarts so an interrupted request can be
+                                // retried safely with the same ClientMessageId.
+                                if (message.IsPending)
+                                    message.DeliveryStatus = "failed";
+
                                 if (!string.IsNullOrWhiteSpace(message.RemoteId) &&
                                     !seenRemoteIds.Add(message.RemoteId))
                                     continue;
@@ -225,16 +413,57 @@ public sealed class ChatService
 
     private void EnsureLoaded() { if (!_loaded) Load(); }
 
+    private int _saveRequested;
+    private int _saveWorkerRunning;
+
     private void Save()
+    {
+        // Persistence must not serialize the entire chat store on the UI thread.
+        // Delivery/read updates can happen frequently and the synchronous JSON write
+        // was causing visible freezes as the local cache grew.
+        Interlocked.Exchange(ref _saveRequested, 1);
+        if (Interlocked.Exchange(ref _saveWorkerRunning, 1) != 0) return;
+        _ = Task.Run(SaveWorkerAsync);
+    }
+
+    private async Task SaveWorkerAsync()
     {
         try
         {
-            TrimMessageCache();
-            var store = new ChatStore { Conversations = Conversations.ToList(), Messages = _messages.Values.SelectMany(x => x).OrderBy(x => x.SentAt).ToList() };
-            Directory.CreateDirectory(FileSystem.Current.AppDataDirectory);
-            File.WriteAllText(_storePath, JsonSerializer.Serialize(store));
+            do
+            {
+                Interlocked.Exchange(ref _saveRequested, 0);
+
+                ChatStore snapshot;
+                lock (_sync)
+                {
+                    TrimMessageCache();
+                    snapshot = new ChatStore
+                    {
+                        Conversations = Conversations.ToList(),
+                        Messages = _messages.Values.SelectMany(x => x).OrderBy(x => x.SentAt).ToList()
+                    };
+                }
+
+                var json = JsonSerializer.Serialize(snapshot);
+                Directory.CreateDirectory(FileSystem.Current.AppDataDirectory);
+                await File.WriteAllTextAsync(_storePath, json).ConfigureAwait(false);
+            }
+            while (Volatile.Read(ref _saveRequested) != 0);
         }
-        catch { }
+        catch
+        {
+            // Local persistence must never block or crash the UI.
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _saveWorkerRunning, 0);
+            // A mutation can arrive between the last loop check and releasing the
+            // worker flag. Start another worker in that narrow race window.
+            if (Volatile.Read(ref _saveRequested) != 0 &&
+                Interlocked.Exchange(ref _saveWorkerRunning, 1) == 0)
+                _ = Task.Run(SaveWorkerAsync);
+        }
     }
 
     private void TrimMessageCache()

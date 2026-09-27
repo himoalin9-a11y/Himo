@@ -109,7 +109,11 @@ public sealed class HomeViewModel
     {
         FilteredConversations.Clear();
         var term = SearchText?.Trim() ?? "";
-        foreach (var item in Conversations.OrderByDescending(x => x.UpdatedAt).Where(x => string.IsNullOrWhiteSpace(term) || x.Name.Contains(term, StringComparison.OrdinalIgnoreCase) || x.LastMessage.Contains(term, StringComparison.OrdinalIgnoreCase)))
+        var archived = Preferences.Default.Get("himo_archived_conversations", string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var item in Conversations.OrderByDescending(x => x.UpdatedAt)
+                     .Where(x => string.IsNullOrWhiteSpace(x.RemoteId) || !archived.Contains(x.RemoteId, StringComparer.OrdinalIgnoreCase))
+                     .Where(x => string.IsNullOrWhiteSpace(term) || x.Name.Contains(term, StringComparison.OrdinalIgnoreCase) || x.LastMessage.Contains(term, StringComparison.OrdinalIgnoreCase)))
             FilteredConversations.Add(item);
     }
 }

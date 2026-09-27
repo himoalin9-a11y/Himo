@@ -7,7 +7,7 @@ Backend API for Himo.
 - The MAUI client polls the active conversation every 2 seconds while it is open.
 - Incoming messages are identified using the signed-in phone number and stored with their remote message id to prevent duplicates.
 
-Development OTP remains `123456` and must be replaced with a real SMS provider before production.
+Email verification is the current mobile registration flow. Legacy phone/SMS OTP code remains only for backward-compatible API paths and is not used by the current mobile UI.
 
 
 ## v48

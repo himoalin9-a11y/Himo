@@ -39,6 +39,18 @@ public static class MauiProgram
         builder.Services.AddSingleton<ProfileService>();
         builder.Services.AddSingleton<HimoApiClient>();
         builder.Services.AddSingleton<HimoRealtimeService>();
+        builder.Services.AddSingleton<ICallService, CallService>();
+        #if ANDROID
+        builder.Services.AddSingleton<ICallMediaController, Platforms.Android.Services.AndroidCallMediaController>();
+#else
+        builder.Services.AddSingleton<ICallMediaController, NoOpCallMediaController>();
+#endif
+        #if ANDROID
+        builder.Services.AddSingleton<IWebRtcMediaEngine, Platforms.Android.Services.AndroidWebRtcMediaEngine>();
+        builder.Services.AddSingleton<WebRtcNegotiationCoordinator>();
+#else
+        builder.Services.AddSingleton<IWebRtcMediaEngine, NoOpWebRtcMediaEngine>();
+#endif
 #if ANDROID
         builder.Services.AddSingleton<INotificationService, Platforms.Android.Services.NotificationService>();
 #else
@@ -47,10 +59,12 @@ public static class MauiProgram
         builder.Services.AddTransient<HomeViewModel>();
         builder.Services.AddTransient<Views.HomePage>();
         builder.Services.AddTransient<Views.LoginPage>();
-        builder.Services.AddTransient<Views.ChatPage>();
-        builder.Services.AddTransient<Views.SettingsPage>();
-        builder.Services.AddTransient<Views.ProfilePage>();
+        builder.Services.AddSingleton<Views.ChatPage>();
+        builder.Services.AddSingleton<Views.SettingsPage>();
+        builder.Services.AddSingleton<Views.ProfilePage>();
         builder.Services.AddTransient<Views.SearchPage>();
+        builder.Services.AddTransient<Views.CallPage>();
+        builder.Services.AddTransient<Views.CreateGroupPage>();
 
 
         return builder.Build();

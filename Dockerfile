@@ -1,9 +1,10 @@
-# Himo.Api - Linux container deployment
+# Himo.Api - Linux container deployment (root build context)
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY Himo.Api.csproj ./
-RUN dotnet restore Himo.Api.csproj
-COPY . ./
+COPY Himo.Api/Himo.Api.csproj Himo.Api/
+RUN dotnet restore Himo.Api/Himo.Api.csproj
+COPY Himo.Api/ Himo.Api/
+WORKDIR /src/Himo.Api
 RUN dotnet publish Himo.Api.csproj -c Release -o /app/publish --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime

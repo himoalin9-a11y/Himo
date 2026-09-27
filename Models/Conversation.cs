@@ -54,9 +54,60 @@ public sealed class ChatMessage : INotifyPropertyChanged
     public int Id { get; init; }
     public string? RemoteId { get; set; }
     public int ConversationId { get; init; }
-    public string Text { get; init; } = "";
+    private string _text = "";
+    public string Text
+    {
+        get => _text;
+        set
+        {
+            if (string.Equals(_text, value, StringComparison.Ordinal)) return;
+            _text = value ?? string.Empty;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Text)));
+        }
+    }
     public DateTime SentAt { get; init; }
     public bool IsMine { get; init; }
+    public bool IsPending { get; set; }
+    private string _deliveryStatus = "sent";
+    public string DeliveryStatus
+    {
+        get => _deliveryStatus;
+        set
+        {
+            if (string.Equals(_deliveryStatus, value, StringComparison.OrdinalIgnoreCase)) return;
+            _deliveryStatus = string.IsNullOrWhiteSpace(value) ? "sent" : value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DeliveryStatus)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DeliveryStatusText)));
+        }
+    }
+    public string DeliveryStatusText => DeliveryStatus switch
+    {
+        "sending" => "◷",
+        "read" => "✓✓",
+        "delivered" => "✓✓",
+        "failed" => "!",
+        _ => "✓"
+    };
+    public string? ClientMessageId { get; set; }
+    public string? ReplyToRemoteId { get; set; }
+    public string? ReplyToText { get; set; }
+    public bool IsEdited { get; set; }
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value) return;
+            _isSelected = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+        }
+    }
+    public bool IsDeleted { get; set; }
+    public string EditedLabel => IsEdited ? "(معدلة)" : string.Empty;
+    public string DateSeparatorText { get; set; } = string.Empty;
+    public bool HasDateSeparator => !string.IsNullOrWhiteSpace(DateSeparatorText);
+    public bool HasReply => !string.IsNullOrWhiteSpace(ReplyToRemoteId) || !string.IsNullOrWhiteSpace(ReplyToText);
     public string? AttachmentFileName { get; init; }
     public string? AttachmentContentType { get; init; }
     public long? AttachmentSize { get; init; }
@@ -69,10 +120,12 @@ public sealed class ChatMessage : INotifyPropertyChanged
             if (string.Equals(_attachmentLocalPath, value, StringComparison.Ordinal)) return;
             _attachmentLocalPath = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AttachmentLocalPath)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasLocalImagePreview)));
         }
     }
     public bool IsAttachment => !string.IsNullOrWhiteSpace(AttachmentFileName);
     public bool IsImageAttachment => AttachmentContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
+    public bool HasLocalImagePreview => IsImageAttachment && !string.IsNullOrWhiteSpace(AttachmentLocalPath) && File.Exists(AttachmentLocalPath);
     public bool IsAudioAttachment => AttachmentContentType?.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) == true;
     public string AttachmentLabel => string.IsNullOrWhiteSpace(AttachmentFileName)
         ? string.Empty

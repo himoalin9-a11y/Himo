@@ -5,7 +5,7 @@
              Title="Himo"
              FlowDirection="RightToLeft"
              Shell.NavBarIsVisible="False"
-             BackgroundColor="#16052F">
+             BackgroundColor="#14042D">
 
     <ContentPage.Resources>
         <ResourceDictionary>
@@ -90,20 +90,20 @@
                  VerticalOptions="Center" Rotation="18" TranslationY="255" />
 
         <ScrollView VerticalScrollBarVisibility="Never">
-            <VerticalStackLayout Padding="20,28,20,26" Spacing="0">
+            <VerticalStackLayout Padding="20,24,20,24" Spacing="0">
 
                 <!-- Premium Himo brand -->
                 <VerticalStackLayout HorizontalOptions="Center" Spacing="0" Margin="0,0,0,18">
                     <Border WidthRequest="104" HeightRequest="104"
                             BackgroundColor="#28105D" Stroke="#C48BFF" StrokeThickness="1.5"
                             Padding="5" HorizontalOptions="Center">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="29" /></Border.StrokeShape>
+                        <Border.StrokeShape><RoundRectangle CornerRadius="27" /></Border.StrokeShape>
                         <Border.Shadow>
                             <Shadow Brush="#A855F7" Offset="0,7" Radius="24" Opacity="0.56" />
                         </Border.Shadow>
                         <Image Source="himo_logo.png" Aspect="AspectFit" />
                     </Border>
-                    <Label Text="Himo" FontSize="36" FontAttributes="Bold" TextColor="White"
+                    <Label Text="Himo" FontSize="34" FontAttributes="Bold" TextColor="White"
                            HorizontalTextAlignment="Center" Margin="0,3,0,1" />
                     <HorizontalStackLayout HorizontalOptions="Center" Spacing="9">
                         <BoxView WidthRequest="34" HeightRequest="2" BackgroundColor="#A85CFF" VerticalOptions="Center" />
@@ -116,13 +116,13 @@
 
                 <!-- Login card -->
                 <Border Background="{StaticResource CardBrush}" Stroke="#FFFFFF" StrokeThickness="1.2"
-                        Padding="20,21,20,18">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="29" /></Border.StrokeShape>
+                        Padding="20,19,20,18">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="27" /></Border.StrokeShape>
                     <Border.Shadow>
                         <Shadow Brush="#07000F" Offset="0,14" Radius="28" Opacity="0.32" />
                     </Border.Shadow>
                     <VerticalStackLayout Spacing="4">
-                        <Label Text="تسجيل الدخول" FontSize="25" FontAttributes="Bold" TextColor="{StaticResource LoginText}" />
+                        <Label Text="تسجيل الدخول" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource LoginText}" />
                         <Label Text="أدخل بيانات حسابك للمتابعة" FontSize="12.5" TextColor="{StaticResource LoginMuted}" Margin="0,0,0,8" />
 
                         <Label Text="البريد الإلكتروني" Style="{StaticResource FieldTitle}" />
@@ -173,7 +173,7 @@
                                 Clicked="ResendClicked" IsVisible="False" Margin="0,4,0,2" />
 
                         <Label Text="كلمة المرور" Style="{StaticResource FieldTitle}" />
-                        <Border x:Name="PasswordBorder" Style="{StaticResource FieldBorder}" HeightRequest="60">
+                        <Border x:Name="PasswordBorder" Style="{StaticResource FieldBorder}" HeightRequest="58">
                             <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
                             <Grid ColumnDefinitions="38,*,52" ColumnSpacing="4">
                                 <Border Grid.Column="0" WidthRequest="33" HeightRequest="33" BackgroundColor="#EEE7FF" StrokeThickness="0" VerticalOptions="Center">
@@ -191,7 +191,7 @@
                                                  BackgroundColor="Transparent" Padding="9"
                                                  WidthRequest="48" HeightRequest="48" IsVisible="True" Opacity="1"
                                                  Clicked="TogglePasswordClicked"
-                                                 SemanticProperties.Description="إظهار أو إخفاء كلمة المرور" />
+ />
                                 </Border>
                             </Grid>
                         </Border>
@@ -203,7 +203,7 @@
                                     Clicked="ForgotPasswordClicked" HorizontalOptions="End" />
                         </Grid>
 
-                        <Button x:Name="PrimaryButton" Text="تسجيل الدخول" HeightRequest="56" CornerRadius="19"
+                        <Button x:Name="PrimaryButton" Text="تسجيل الدخول" HeightRequest="54" CornerRadius="18"
                                 Background="{StaticResource LoginButtonBrush}"
                                 TextColor="White" FontSize="16" FontAttributes="Bold" Clicked="PrimaryClicked" Margin="0,3,0,5">
                             <Button.Shadow>

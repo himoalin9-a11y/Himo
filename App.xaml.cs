@@ -34,6 +34,7 @@ public partial class App : Application
         _api.SessionExpired += OnSessionExpired;
         RequestedThemeChanged += (_, _) => ApplyThemeResources();
         ApplyThemeResources();
+        _ = SynchronizeAccountIdentityAsync();
 #if ANDROID
         // Firebase event registration must never be allowed to prevent the MAUI
         // window from being created. Some Android/plugin states can initialize
@@ -50,6 +51,20 @@ public partial class App : Application
 #endif
     }
 
+
+    private async Task SynchronizeAccountIdentityAsync()
+    {
+        if (!_account.IsSignedIn || !_api.HasToken || _account.CurrentAccount?.UserId != Guid.Empty) return;
+        try
+        {
+            var profile = await _api.GetMyProfileAsync();
+            _account.SetUserId(profile.UserId);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Account identity sync skipped: {ex.Message}");
+        }
+    }
 
     public void MarkSessionUnlocked() => _sessionUnlocked = true;
 
@@ -134,6 +149,16 @@ public partial class App : Application
         resources["HimoSoft"] = Color.FromArgb(dark ? "#14385C" : "#EAF4FF");
         resources["HimoSuccess"] = Color.FromArgb(dark ? "#62D7A4" : "#1F9D68");
         resources["HimoDanger"] = Color.FromArgb(dark ? "#FF8A80" : "#C62828");
+        resources["HimoHeader"] = Color.FromArgb(dark ? "#214F8D" : "#632CCB");
+        resources["HimoHeaderSoft"] = Color.FromArgb(dark ? "#285D9F" : "#6F3BD2");
+        resources["HimoHeaderTextMuted"] = Color.FromArgb(dark ? "#C9DBEF" : "#E8DDF8");
+        resources["HimoTextSecondary"] = Color.FromArgb(dark ? "#B2C4D8" : "#766D82");
+        resources["HimoAvatarSoft"] = Color.FromArgb(dark ? "#1A3D61" : "#EEE7FA");
+        resources["HimoNavMuted"] = Color.FromArgb(dark ? "#8EA8C2" : "#8D8498");
+        resources["HimoDangerSoft"] = Color.FromArgb(dark ? "#48222A" : "#FDECEC");
+        resources["HimoSurfaceElevated"] = Color.FromArgb(dark ? "#142B42" : "#FFFFFF");
+        resources["HimoDivider"] = Color.FromArgb(dark ? "#24425F" : "#ECE7F4");
+        resources["HimoFocus"] = Color.FromArgb(dark ? "#6DA8E8" : "#B99AEF");
     }
 
 #if ANDROID

@@ -23,6 +23,7 @@ public partial class SearchPage : ContentPage
             _busy = true;
             if (SearchButton is not null) SearchButton.IsEnabled = false;
             if (SearchProgress is not null) SearchProgress.IsVisible = true;
+            if (SearchLoadingOverlay is not null) SearchLoadingOverlay.IsVisible = true;
 
             var email = EmailEntry?.Text?.Trim() ?? string.Empty;
             if (!IsValidEmail(email))
@@ -41,13 +42,14 @@ public partial class SearchPage : ContentPage
             _busy = false;
             if (SearchButton is not null) SearchButton.IsEnabled = true;
             if (SearchProgress is not null) SearchProgress.IsVisible = false;
+            if (SearchLoadingOverlay is not null) SearchLoadingOverlay.IsVisible = false;
         }
     }
 
     private async void BackClicked(object sender, EventArgs e)
     {
         if (Shell.Current is not null)
-            await Shell.Current.GoToAsync("..");
+            await Shell.Current.GoToAsync("..", false);
     }
 
     private async void SearchClicked(object sender, EventArgs e)
@@ -79,7 +81,7 @@ public partial class SearchPage : ContentPage
             var conversation = await _home.CreateConversationWithUserAsync(user.Name, user.Id);
             var shell = Shell.Current;
             if (shell is null) return;
-            await shell.GoToAsync($"chat?id={conversation.Id}");
+            await shell.GoToAsync($"chat?id={conversation.Id}", false);
         }
         catch (Exception ex)
         {

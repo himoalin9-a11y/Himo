@@ -1,5 +1,6 @@
 using Himo.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui.Controls;
 
 namespace Himo;
 
@@ -7,11 +8,13 @@ public partial class AppShell : Shell
 {
     static AppShell()
     {
-        // Shell routes are global. Register them once so logging out and
-        // signing back in cannot try to register the same route twice.
-        Routing.RegisterRoute("chat", typeof(ChatPage));
-        Routing.RegisterRoute("settings", typeof(SettingsPage));
-        Routing.RegisterRoute("profile", typeof(ProfilePage));
+        // The pages are registered as singletons in MauiProgram. Registering the
+        // route by Type alone lets Shell create a fresh page for every navigation,
+        // which defeats that singleton registration and forces InitializeComponent
+        // to rebuild the entire visual tree each time.
+        Routing.RegisterRoute("chat", new SingletonRouteFactory<ChatPage>());
+        Routing.RegisterRoute("settings", new SingletonRouteFactory<SettingsPage>());
+        Routing.RegisterRoute("profile", new SingletonRouteFactory<ProfilePage>());
         Routing.RegisterRoute("search", typeof(SearchPage));
     }
 
@@ -24,4 +27,26 @@ public partial class AppShell : Shell
 
         HomeContent.Content = services.GetRequiredService<HomePage>();
     }
+}
+
+/// <summary>
+/// Makes Shell navigation resolve a page from MAUI DI instead of constructing a
+/// new instance from the registered page type on every navigation.
+/// </summary>
+internal sealed class SingletonRouteFactory<TPage> : RouteFactory
+    where TPage : Element
+{
+    public override Element GetOrCreate()
+    {
+        var services = Application.Current?.Handler?.MauiContext?.Services
+            ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق.");
+
+        return services.GetRequiredService<TPage>();
+    }
+
+    public override Element GetOrCreate(IServiceProvider services)
+    {
+        return services.GetRequiredService<TPage>();
+    }
+
 }

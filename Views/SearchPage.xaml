@@ -11,18 +11,15 @@
         <Border Grid.Row="0"
                 BackgroundColor="{DynamicResource HimoHeader}"
                 StrokeThickness="0"
-                Padding="18,18,18,20">
+                Padding="18,12,18,18">
             <Grid ColumnDefinitions="48,*,48" RowDefinitions="Auto,Auto">
                 <Button Text="‹"
-                        FontSize="34"
-                        BackgroundColor="Transparent"
-                        TextColor="White"
-                        Padding="0"
+                        Style="{StaticResource HimoBackButton}"
                         Clicked="BackClicked" />
 
                 <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="Center">
                     <Label Text="اكتشف الأشخاص"
-                           FontSize="23"
+                           FontSize="22"
                            FontAttributes="Bold"
                            TextColor="White"
                            HorizontalTextAlignment="Center" />
@@ -67,9 +64,9 @@
                 Stroke="{DynamicResource HimoBorder}"
                 StrokeThickness="1">
             <Border.StrokeShape>
-                <RoundRectangle CornerRadius="23" />
+                <RoundRectangle CornerRadius="22" />
             </Border.StrokeShape>
-            <Grid ColumnDefinitions="48,*,Auto" ColumnSpacing="6" HeightRequest="50">
+            <Grid ColumnDefinitions="48,*,Auto" ColumnSpacing="6" HeightRequest="48">
                 <Border WidthRequest="42"
                         HeightRequest="42"
                         BackgroundColor="{DynamicResource HimoSoft}"
@@ -97,7 +94,7 @@
 
                 <Button x:Name="SearchButton"
                         Grid.Column="2"
-                        Text="بحث"
+                        Text="بحث" Style="{StaticResource HimoActionButton}"
                         BackgroundColor="{DynamicResource HimoHeader}"
                         TextColor="White"
                         CornerRadius="18"
@@ -160,13 +157,13 @@
 
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:UserSearchDto">
-                        <Border Margin="5,5"
-                                Padding="12"
+                        <Border Margin="4,5"
+                                Padding="12,11"
                                 BackgroundColor="{DynamicResource HimoCard}"
                                 Stroke="{DynamicResource HimoBorder}"
                                 StrokeThickness="1">
                             <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="21" />
+                                <RoundRectangle CornerRadius="19" />
                             </Border.StrokeShape>
                             <Grid ColumnDefinitions="58,*,44" ColumnSpacing="11">
                                 <Border WidthRequest="52"
@@ -219,6 +216,15 @@
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
+        </Grid>
+        <Grid Grid.Row="1" Grid.RowSpan="2" x:Name="SearchLoadingOverlay" IsVisible="False" BackgroundColor="#66000000">
+            <Border WidthRequest="150" HeightRequest="112" BackgroundColor="White" Stroke="#E3DCEC" StrokeThickness="1" Padding="16" HorizontalOptions="Center" VerticalOptions="Center">
+                <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                <VerticalStackLayout Spacing="8" HorizontalOptions="Center" VerticalOptions="Center">
+                    <ActivityIndicator IsRunning="True" Color="#6736D8" WidthRequest="28" HeightRequest="28" />
+                    <Label Text="جارٍ البحث..." FontSize="12" TextColor="#403A4B" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Border>
         </Grid>
     </Grid>
 </ContentPage>

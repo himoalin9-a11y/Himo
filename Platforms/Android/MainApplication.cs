@@ -3,6 +3,9 @@ using Microsoft.Maui;
 using Microsoft.Maui.Hosting;
 using Plugin.Firebase.CloudMessaging;
 
+[assembly: global::Android.App.UsesPermission(global::Android.Manifest.Permission.RecordAudio)]
+[assembly: global::Android.App.UsesPermission(global::Android.Manifest.Permission.Camera)]
+
 namespace Himo;
 
 [global::Android.App.Application]

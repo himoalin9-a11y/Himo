@@ -35,7 +35,7 @@ public partial class HomePage : ContentPage
             ((CollectionView)sender).SelectedItem = null;
             var shell = Shell.Current;
             if (shell is null) return;
-            await shell.GoToAsync($"chat?id={conversation.Id}");
+            await shell.GoToAsync($"chat?id={conversation.Id}", false);
         }
     }
 
@@ -46,19 +46,31 @@ public partial class HomePage : ContentPage
         // of creating a local-only or empty conversation.
         var shell = Shell.Current;
         if (shell is null) return;
-        await shell.GoToAsync("search");
+        await shell.GoToAsync("search", false);
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await _notifications.InitializeAsync();
-#if ANDROID
-        Himo.MainActivity.RequestNotificationPermissionIfNeeded();
-#endif
         UpdateEmptyState();
-        await RefreshAsync(showNotifications: true);
         StartPolling();
+        // Let the first frame render before notification/network work.
+        _ = InitializeHomeAsync();
+    }
+
+
+    private async Task InitializeHomeAsync()
+    {
+        await Task.Yield();
+        try
+        {
+            await _notifications.InitializeAsync();
+#if ANDROID
+            Himo.MainActivity.RequestNotificationPermissionIfNeeded();
+#endif
+            await RefreshAsync(showNotifications: true);
+        }
+        catch { }
     }
 
     protected override void OnDisappearing()
@@ -106,15 +118,31 @@ public partial class HomePage : ContentPage
 
             foreach (var conversation in _vm.Conversations)
             {
+                if (!string.IsNullOrWhiteSpace(conversation.RemoteId) &&
+                    Preferences.Default.Get("himo_blocked_conversations", string.Empty)
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Contains(conversation.RemoteId, StringComparer.OrdinalIgnoreCase))
+                    continue;
+
                 var key = conversation.RemoteId ?? $"local:{conversation.Id}";
                 var previousUnread = before.TryGetValue(key, out var unread) ? unread : 0;
 
                 if (conversation.UnreadCount > previousUnread && conversation.UnreadCount > 0)
                 {
-                    await _notifications.ShowMessageAsync(
-                        conversation.Name,
-                        conversation.LastMessage,
-                        conversation.Id.ToString());
+                    var muted = !string.IsNullOrWhiteSpace(conversation.RemoteId) &&
+                        Preferences.Default.Get("himo_muted_conversations", string.Empty)
+                            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                            .Contains(conversation.RemoteId, StringComparer.OrdinalIgnoreCase);
+                    if (!muted)
+                    {
+                        var notificationText = Preferences.Default.Get("himo_notification_preview", true)
+                            ? conversation.LastMessage
+                            : "لديك رسالة جديدة";
+                        await _notifications.ShowMessageAsync(
+                            conversation.Name,
+                            notificationText,
+                            conversation.Id.ToString());
+                    }
                 }
             }
         }
@@ -165,7 +193,7 @@ public partial class HomePage : ContentPage
         {
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
                 await RefreshAsync(showNotifications: true);
             }
             catch (OperationCanceledException)
@@ -216,24 +244,38 @@ public partial class HomePage : ContentPage
         }
     }
 
+    private async void CreateGroupClicked(object? sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("CreateGroupPage");
+    }
+
     private async void SearchUserClicked(object sender, EventArgs e)
     {
         var shell = Shell.Current;
         if (shell is null) return;
-        await shell.GoToAsync("search");
+        await shell.GoToAsync("search", false);
+    }
+
+    private void OverflowMenuClicked(object sender, TappedEventArgs e)
+    {
+        if (OverflowMenu is not null)
+            OverflowMenu.IsVisible = !OverflowMenu.IsVisible;
     }
 
     private async void SettingsClicked(object sender, EventArgs e)
     {
+        if (OverflowMenu is not null)
+            OverflowMenu.IsVisible = false;
+
         var shell = Shell.Current;
         if (shell is null) return;
-        await shell.GoToAsync("settings");
+        await shell.GoToAsync("settings", false);
     }
 
     private async void ProfileClicked(object sender, EventArgs e)
     {
         var shell = Shell.Current;
         if (shell is null) return;
-        await shell.GoToAsync("profile");
+        await shell.GoToAsync("profile", false);
     }
 }

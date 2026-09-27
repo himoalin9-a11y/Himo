@@ -15,6 +15,11 @@ public partial class ProfilePage : ContentPage
         InitializeComponent();
         _profile = profile;
         _api = api;
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
         LoadProfile();
     }
 
@@ -67,6 +72,7 @@ public partial class ProfilePage : ContentPage
     private async void SaveClicked(object sender, EventArgs e)
     {
         if (_busy) return;
+        await UiMotion.PressAsync(sender as VisualElement);
         try
         {
             _busy = true;
@@ -125,6 +131,6 @@ public partial class ProfilePage : ContentPage
     {
         var shell = Shell.Current;
         if (shell is null) return;
-        await shell.GoToAsync("..");
+        await shell.GoToAsync("..", false);
     }
 }

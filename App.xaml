@@ -4,31 +4,35 @@
              x:Class="Himo.App">
     <Application.Resources>
         <ResourceDictionary>
-            <Color x:Key="HimoBackground">#F4F7FB</Color>
-            <Color x:Key="HimoPrimary">#102A43</Color>
-            <Color x:Key="HimoMuted">#718096</Color>
+            <Color x:Key="HimoBackground">#F6F4FA</Color>
+            <Color x:Key="HimoPrimary">#5A2BC2</Color>
+            <Color x:Key="HimoMuted">#7A7187</Color>
             <Color x:Key="HimoCard">#FFFFFF</Color>
-            <Color x:Key="HimoBorder">#E2E8F0</Color>
-            <Color x:Key="HimoInput">#F8FAFC</Color>
-            <Color x:Key="HimoAccent">#2563EB</Color>
-            <Color x:Key="HimoAccentDark">#1D4ED8</Color>
-            <Color x:Key="HimoBubbleMine">#2563EB</Color>
+            <Color x:Key="HimoBorder">#E2DDEA</Color>
+            <Color x:Key="HimoInput">#FCFAFF</Color>
+            <Color x:Key="HimoAccent">#6A32D0</Color>
+            <Color x:Key="HimoAccentDark">#5425B8</Color>
+            <Color x:Key="HimoBubbleMine">#6A32D0</Color>
             <Color x:Key="HimoBubbleOther">#FFFFFF</Color>
-            <Color x:Key="HimoAvatar">#DBEAFE</Color>
-            <Color x:Key="HimoSoft">#EFF6FF</Color>
+            <Color x:Key="HimoAvatar">#EAE0F7</Color>
+            <Color x:Key="HimoSoft">#F1ECFB</Color>
             <Color x:Key="HimoSuccess">#16A34A</Color>
             <Color x:Key="HimoDanger">#DC2626</Color>
             <Color x:Key="HimoWarning">#D97706</Color>
-            <Color x:Key="HimoHeader">#102A43</Color>
+            <Color x:Key="HimoHeader">#632CCB</Color>
+            <Color x:Key="HimoOnAccent">#FFFFFF</Color>
+            <Color x:Key="HimoSurfaceElevated">#FFFFFF</Color>
+            <Color x:Key="HimoDivider">#ECE7F4</Color>
+            <Color x:Key="HimoFocus">#B99AEF</Color>
 
 
             <!-- Stage 6 unified visual system -->
             <Color x:Key="HimoSurface">#FFFFFF</Color>
-            <Color x:Key="HimoHeaderSoft">#173E64</Color>
-            <Color x:Key="HimoHeaderTextMuted">#C9D9EA</Color>
-            <Color x:Key="HimoTextSecondary">#7A8B9B</Color>
-            <Color x:Key="HimoAvatarSoft">#E9F3FF</Color>
-            <Color x:Key="HimoNavMuted">#8A99A8</Color>
+            <Color x:Key="HimoHeaderSoft">#632CCB</Color>
+            <Color x:Key="HimoHeaderTextMuted">#E3D8F8</Color>
+            <Color x:Key="HimoTextSecondary">#766D82</Color>
+            <Color x:Key="HimoAvatarSoft">#EEE7FA</Color>
+            <Color x:Key="HimoNavMuted">#8D8498</Color>
             <Color x:Key="HimoDangerSoft">#FDECEC</Color>
 
             <Style x:Key="HimoPageTitle" TargetType="Label">
@@ -49,6 +53,22 @@
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="WidthRequest" Value="48" />
                 <Setter Property="HeightRequest" Value="48" />
+                <Setter Property="MinimumHeightRequest" Value="44" />
+                <Setter Property="HorizontalOptions" Value="Center" />
+                <Setter Property="VerticalOptions" Value="Center" />
+                <Setter Property="VisualStateManager.VisualStateGroups">
+                    <VisualStateGroupList>
+                        <VisualStateGroup Name="CommonStates">
+                            <VisualState Name="Normal" />
+                            <VisualState Name="Pressed">
+                                <VisualState.Setters>
+                                    <Setter Property="Opacity" Value="0.72" />
+                                    <Setter Property="Scale" Value="0.96" />
+                                </VisualState.Setters>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateGroupList>
+                </Setter>
             </Style>
 
             <Style TargetType="Entry">
@@ -67,8 +87,8 @@
             <Style TargetType="Button">
                 <Setter Property="FontSize" Value="15" />
                 <Setter Property="CornerRadius" Value="15" />
-                <Setter Property="MinimumHeightRequest" Value="46" />
-                <Setter Property="Padding" Value="16,0" />
+                <Setter Property="MinimumHeightRequest" Value="44" />
+                <Setter Property="Padding" Value="15,0" />
             </Style>
             <Style x:Key="HimoPrimaryButton" TargetType="Button">
                 <Setter Property="BackgroundColor" Value="{DynamicResource HimoAccent}" />
@@ -101,6 +121,105 @@
                 <Setter Property="FontSize" Value="13" />
                 <Setter Property="TextColor" Value="{DynamicResource HimoMuted}" />
                 <Setter Property="Margin" Value="2,8,2,2" />
+            </Style>
+
+            <Style x:Key="HimoBodyLabel" TargetType="Label">
+                <Setter Property="TextColor" Value="{DynamicResource HimoPrimary}" />
+                <Setter Property="FontSize" Value="15" />
+            </Style>
+            <Style x:Key="HimoCaption" TargetType="Label">
+                <Setter Property="TextColor" Value="{DynamicResource HimoTextSecondary}" />
+                <Setter Property="FontSize" Value="12" />
+            </Style>
+            <Style x:Key="HimoIconTile" TargetType="Border">
+                <Setter Property="WidthRequest" Value="44" />
+                <Setter Property="HeightRequest" Value="44" />
+                <Setter Property="BackgroundColor" Value="{DynamicResource HimoSoft}" />
+                <Setter Property="StrokeThickness" Value="0" />
+            </Style>
+            <Style x:Key="HimoListCard" TargetType="Border">
+                <Setter Property="BackgroundColor" Value="{DynamicResource HimoCard}" />
+                <Setter Property="Stroke" Value="{DynamicResource HimoBorder}" />
+                <Setter Property="StrokeThickness" Value="1" />
+                <Setter Property="Padding" Value="14,12" />
+                <Setter Property="Margin" Value="0,4" />
+                <Setter Property="VisualStateManager.VisualStateGroups">
+                    <VisualStateGroupList>
+                        <VisualStateGroup Name="CommonStates">
+                            <VisualState Name="Normal" />
+                            <VisualState Name="PointerOver">
+                                <VisualState.Setters>
+                                    <Setter Property="Stroke" Value="{DynamicResource HimoFocus}" />
+                                </VisualState.Setters>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateGroupList>
+                </Setter>
+            </Style>
+
+            <Style x:Key="HimoIconButton" TargetType="Button">
+                <Setter Property="BackgroundColor" Value="{DynamicResource HimoSoft}" />
+                <Setter Property="TextColor" Value="{DynamicResource HimoAccent}" />
+                <Setter Property="CornerRadius" Value="15" />
+                <Setter Property="WidthRequest" Value="46" />
+                <Setter Property="HeightRequest" Value="46" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="VisualStateManager.VisualStateGroups">
+                    <VisualStateGroupList>
+                        <VisualStateGroup Name="CommonStates">
+                            <VisualState Name="Normal" />
+                            <VisualState Name="Pressed">
+                                <VisualState.Setters>
+                                    <Setter Property="Opacity" Value="0.78" />
+                                    <Setter Property="Scale" Value="0.94" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState Name="Disabled">
+                                <VisualState.Setters>
+                                    <Setter Property="Opacity" Value="0.45" />
+                                </VisualState.Setters>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateGroupList>
+                </Setter>
+            </Style>
+
+            <Style x:Key="HimoPillButton" TargetType="Button">
+                <Setter Property="BackgroundColor" Value="{DynamicResource HimoSoft}" />
+                <Setter Property="TextColor" Value="{DynamicResource HimoAccent}" />
+                <Setter Property="FontAttributes" Value="Bold" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="CornerRadius" Value="17" />
+                <Setter Property="HeightRequest" Value="38" />
+                <Setter Property="Padding" Value="14,0" />
+            </Style>
+
+            <!-- Stage 6: consistent pressed/disabled states across the app. -->
+            <Style x:Key="HimoActionButton" TargetType="Button">
+                <Setter Property="BackgroundColor" Value="{DynamicResource HimoAccent}" />
+                <Setter Property="TextColor" Value="White" />
+                <Setter Property="FontAttributes" Value="Bold" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="MinimumHeightRequest" Value="46" />
+                <Setter Property="Padding" Value="16,0" />
+                <Setter Property="VisualStateManager.VisualStateGroups">
+                    <VisualStateGroupList>
+                        <VisualStateGroup Name="CommonStates">
+                            <VisualState Name="Normal" />
+                            <VisualState Name="Pressed">
+                                <VisualState.Setters>
+                                    <Setter Property="Opacity" Value="0.86" />
+                                    <Setter Property="Scale" Value="0.98" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState Name="Disabled">
+                                <VisualState.Setters>
+                                    <Setter Property="Opacity" Value="0.48" />
+                                </VisualState.Setters>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateGroupList>
+                </Setter>
             </Style>
         </ResourceDictionary>
     </Application.Resources>

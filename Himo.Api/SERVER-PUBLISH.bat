@@ -1,1 +1,17 @@
-@echo off\nsetlocal\ncd /d "%~dp0"\necho === Himo.Api Release Publish ===\ndotnet restore Himo.Api.csproj || goto :fail\ndotnet publish Himo.Api.csproj -c Release -o bin\Release\publish || goto :fail\necho.\necho Publish completed. Output:\necho %CD%\bin\Release\publish\necho.\npause\nexit /b 0\n:fail\necho.\necho Publish failed.\npause\nexit /b 1\n
+@echo off
+setlocal
+cd /d "%~dp0"
+echo === Himo.Api Release Publish ===
+dotnet restore Himo.Api.csproj || goto :fail
+dotnet publish Himo.Api.csproj -c Release -o bin\Release\publish || goto :fail
+echo.
+echo Publish completed. Output:
+echo %CD%\bin\Release\publish
+echo.
+pause
+exit /b 0
+:fail
+echo.
+echo Publish failed.
+pause
+exit /b 1

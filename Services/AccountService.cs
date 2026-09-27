@@ -27,8 +27,9 @@ public sealed class AccountService
         Load();
     }
 
-    public void SignIn(string email, string name)
+    public void SignIn(Guid userId, string email, string name)
     {
+        if (userId == Guid.Empty) throw new ArgumentException("معرّف المستخدم غير صالح.", nameof(userId));
         var cleanEmail = email.Trim().ToLowerInvariant();
         var cleanName = name.Trim();
         if (string.IsNullOrWhiteSpace(cleanEmail)) throw new ArgumentException("البريد الإلكتروني مطلوب.", nameof(email));
@@ -39,7 +40,19 @@ public sealed class AccountService
         lock (_sync)
         {
             EnsureLoaded();
-            _account = new Account { Email = cleanEmail, Name = cleanName };
+            _account = new Account { UserId = userId, Email = cleanEmail, Name = cleanName };
+            Save();
+        }
+    }
+
+    public void SetUserId(Guid userId)
+    {
+        if (userId == Guid.Empty) return;
+        lock (_sync)
+        {
+            EnsureLoaded();
+            if (_account is null || _account.UserId == userId) return;
+            _account.UserId = userId;
             Save();
         }
     }

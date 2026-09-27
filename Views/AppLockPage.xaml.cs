@@ -18,6 +18,7 @@ public partial class AppLockPage : ContentPage
     private async void UnlockClicked(object? sender, EventArgs e)
     {
         if (Interlocked.Exchange(ref _busy, 1) != 0) return;
+        await UiMotion.PressAsync(UnlockButton);
         try
         {
             var pin = PinEntry?.Text?.Trim() ?? string.Empty;

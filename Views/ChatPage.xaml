@@ -4,98 +4,248 @@
              xmlns:models="clr-namespace:Himo.Models"
              x:Class="Himo.Views.ChatPage"
              FlowDirection="RightToLeft"
-             BackgroundColor="#F7F4FC"
+             BackgroundColor="{DynamicResource HimoBackground}"
              Shell.NavBarIsVisible="False">
-    <Grid RowDefinitions="Auto,*,Auto">
 
-        <!-- Premium chat header -->
-        <Border StrokeThickness="0" BackgroundColor="#FFFFFF" Padding="12,10,12,10">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="0,0,20,20" />
-            </Border.StrokeShape>
-            <Grid RowDefinitions="3,Auto" RowSpacing="7">
-                <BoxView Grid.Row="0" HeightRequest="3" CornerRadius="2" BackgroundColor="#7042A5" Opacity="0.9" />
-                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                <Button Text="‹" FontSize="36" WidthRequest="44" HeightRequest="44" Padding="0"
-                        BackgroundColor="#F3EEFB" TextColor="#5B3A8E" CornerRadius="22"
-                        Clicked="BackClicked" SemanticProperties.Description="العودة إلى المحادثات" />
+    <ContentPage.Resources>
+        <Style x:Key="HeaderIconButtonStyle" TargetType="ImageButton">
+            <Setter Property="BackgroundColor" Value="Transparent" />
+            <Setter Property="Padding" Value="9" />
+            <Setter Property="WidthRequest" Value="40" />
+            <Setter Property="HeightRequest" Value="40" />
+            <Setter Property="Aspect" Value="AspectFit" />
+        </Style>
+        <Style x:Key="MetaTextStyle" TargetType="Label">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="TextColor" Value="#8C8493" />
+        </Style>
+        <Style x:Key="ComposerIconButtonStyle" TargetType="ImageButton">
+            <Setter Property="BackgroundColor" Value="Transparent" />
+            <Setter Property="Padding" Value="9" />
+            <Setter Property="WidthRequest" Value="40" />
+            <Setter Property="HeightRequest" Value="40" />
+            <Setter Property="Aspect" Value="AspectFit" />
+        </Style>
+        <Style x:Key="AttachmentOpenButtonStyle" TargetType="Button">
+            <Setter Property="BackgroundColor" Value="#F1EDF8" />
+            <Setter Property="TextColor" Value="#5B35B7" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="Padding" Value="13,0" />
+            <Setter Property="HeightRequest" Value="30" />
+            <Setter Property="CornerRadius" Value="15" />
+        </Style>
+    </ContentPage.Resources>
 
-                <Grid Grid.Column="1" ColumnDefinitions="56,*" ColumnSpacing="10" VerticalOptions="Center">
-                    <Border WidthRequest="52" HeightRequest="52" BackgroundColor="#EEE5FA" StrokeThickness="0">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="26" /></Border.StrokeShape>
-                        <Label x:Name="InitialLabel" Text="" FontSize="20" FontAttributes="Bold"
-                               TextColor="#7042A5" HorizontalOptions="Center" VerticalOptions="Center" />
+    <Grid RowDefinitions="Auto,Auto,*,Auto" BackgroundColor="{DynamicResource HimoBackground}">
+
+        <!-- CLEAN CHAT HEADER -->
+        <Border Grid.Row="0" Padding="14,8" BackgroundColor="#FFFFFF" StrokeThickness="0">
+            <Grid RowDefinitions="64,1" ColumnDefinitions="42,*,Auto" RowSpacing="0" ColumnSpacing="6">
+                <ImageButton Grid.Column="0" Source="icon_search_black.png" Style="{StaticResource HeaderIconButtonStyle}" Clicked="SearchMessagesClicked" />
+                <Grid Grid.Column="1" ColumnDefinitions="46,*" ColumnSpacing="10" HorizontalOptions="Center" VerticalOptions="Center">
+                    <Border Grid.Column="0" WidthRequest="44" HeightRequest="44" BackgroundColor="#F0EBF8" StrokeThickness="0">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                        <Label x:Name="InitialLabel" Text="H" FontSize="17" FontAttributes="Bold" TextColor="#5B35B7" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                     </Border>
-                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
-                        <Label x:Name="NameLabel" FontSize="18" FontAttributes="Bold"
-                               TextColor="#2E2140" LineBreakMode="TailTruncation" />
-                        <HorizontalStackLayout Spacing="6">
-                            <BoxView WidthRequest="8" HeightRequest="8" CornerRadius="4" Color="#7A56B3" VerticalOptions="Center" />
-                            <Label Text="متصل الآن" FontSize="12" TextColor="#8A7B9C" />
+                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center" MaximumWidthRequest="190">
+                        <Label x:Name="NameLabel" Text="محادثة" FontSize="15" FontAttributes="Bold" TextColor="#2F2936" MaxLines="1" LineBreakMode="TailTruncation" />
+                        <HorizontalStackLayout Spacing="5">
+                            <BoxView x:Name="StatusDot" WidthRequest="6" HeightRequest="6" CornerRadius="3" Color="#AAA4B0" VerticalOptions="Center" />
+                            <Label x:Name="StatusLabel" Text="غير متصل" FontSize="10" TextColor="#8B8392" />
                         </HorizontalStackLayout>
                     </VerticalStackLayout>
                 </Grid>
-
-                <Button Grid.Column="2" Text="⋮" FontSize="28" WidthRequest="44" HeightRequest="44" Padding="0"
-                        BackgroundColor="#F3EEFB" TextColor="#5B3A8E" CornerRadius="22"
-                        SemanticProperties.Description="خيارات المحادثة" />
-                </Grid>
+                <HorizontalStackLayout Grid.Column="2" Spacing="2" VerticalOptions="Center">
+                    <Button Text="صوت" FontSize="10" Padding="9,0" HeightRequest="32" BackgroundColor="#F3EFF9" TextColor="#5B35B7" CornerRadius="16" Clicked="AudioCallClicked" />
+                    <Button Text="فيديو" FontSize="10" Padding="9,0" HeightRequest="32" BackgroundColor="#F3EFF9" TextColor="#5B35B7" CornerRadius="16" Clicked="VideoCallClicked" />
+                    <ImageButton Source="icon_back_dark.png" Style="{StaticResource HeaderIconButtonStyle}" Clicked="BackClicked" />
+                </HorizontalStackLayout>
+                <BoxView Grid.Row="1" Grid.ColumnSpan="3" Color="#ECE8F0" HeightRequest="1" />
             </Grid>
         </Border>
 
-        <!-- Messages -->
-        <Grid Grid.Row="1" Padding="12,12,12,4">
+        <!-- SELECTION BAR -->
+        <Border x:Name="SelectionBar" Grid.Row="1" IsVisible="False" Margin="14,6,14,0" Padding="8,6"
+                BackgroundColor="#FFFFFF" Stroke="#EAE6EE" StrokeThickness="1">
+            <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                <Label x:Name="SelectionCountLabel" Grid.Column="0" Text="0 محددة" FontSize="13" FontAttributes="Bold"
+                       TextColor="{DynamicResource HimoPrimary}" VerticalTextAlignment="Center" />
+                <Button Grid.Column="1" Text="حذف" FontSize="11" Padding="12,0" HeightRequest="32"
+                        BackgroundColor="#FCEBEC" TextColor="{DynamicResource HimoDanger}" CornerRadius="16" Clicked="DeleteSelectedClicked" />
+                <Button Grid.Column="2" Text="إلغاء" FontSize="11" Padding="12,0" HeightRequest="32"
+                        BackgroundColor="{DynamicResource HimoSoft}" TextColor="{DynamicResource HimoAccent}" CornerRadius="16" Clicked="CancelSelectionClicked" />
+            </Grid>
+        </Border>
+
+        <!-- MESSAGE AREA -->
+        <Grid Grid.Row="2" Padding="14,10,14,4">
+            <Border x:Name="UnreadDivider" IsVisible="False" ZIndex="2"
+                    HorizontalOptions="Center" VerticalOptions="Start" Margin="0,0,0,0"
+                    Padding="14,5" BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0">
+                <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                <Label Text="رسائل جديدة" FontSize="11" FontAttributes="Bold" TextColor="{DynamicResource HimoAccent}" />
+            </Border>
+            <Border x:Name="MessageSearchBar" IsVisible="False" ZIndex="10" HorizontalOptions="Fill" VerticalOptions="Start" Margin="0,0,0,0" Padding="8" BackgroundColor="#FFFFFF" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <SearchBar x:Name="MessageSearchEntry" Grid.Column="0" Placeholder="بحث في الرسائل..." FontSize="14"
+                               SearchButtonPressed="MessageSearchChanged" TextChanged="MessageSearchChanged" />
+                    <Button Grid.Column="1" Text="×" WidthRequest="38" HeightRequest="38" CornerRadius="19"
+                            BackgroundColor="{DynamicResource HimoSoft}" TextColor="{DynamicResource HimoAccent}" Clicked="CloseMessageSearchClicked" />
+                </Grid>
+            </Border>
+
             <CollectionView x:Name="Messages" SelectionMode="None"
                             ItemsUpdatingScrollMode="KeepLastItemInView"
-                            VerticalScrollBarVisibility="Never">
+                            VerticalScrollBarVisibility="Never" Scrolled="MessagesScrolled">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:ChatMessage">
-                        <Grid Padding="2,4" ColumnDefinitions="*,Auto">
-                            <Border Grid.Column="0" Margin="0,0,54,0" Padding="13,10"
-                                    MaximumWidthRequest="330" HorizontalOptions="Start"
-                                    BackgroundColor="#FFFFFF" Stroke="#E8E0F1" StrokeThickness="1">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="19,19,19,7" /></Border.StrokeShape>
+                        <Grid Padding="4,4,4,3">
+                            <Label Text="{Binding DateSeparatorText}" IsVisible="{Binding HasDateSeparator}"
+                                   FontSize="10" FontAttributes="Bold" TextColor="#7B7185"
+                                   HorizontalOptions="Center" Margin="0,2,0,6" />
+                            <Border MaximumWidthRequest="330" Padding="12,10,12,8"
+                                    HorizontalOptions="End" BackgroundColor="#FFFFFF"
+                                    Stroke="#E8E4EE" StrokeThickness="1">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="16" />
+                                </Border.StrokeShape>
+
                                 <VerticalStackLayout Spacing="6">
-                                    <Border IsVisible="False" HeightRequest="190" WidthRequest="285" StrokeThickness="0"
-                                            BackgroundColor="#EEF4FB">
-                                        <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
-                                        <Image Source="{Binding AttachmentLocalPath}" Aspect="AspectFill" SemanticProperties.Description="معاينة صورة مرفقة" />
+                                    <!-- REPLY QUOTE -->
+                                    <Border IsVisible="{Binding HasReply}" Padding="8,6"
+                                            BackgroundColor="#F5F1F8" StrokeThickness="0">
+                                        <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
+                                        <VerticalStackLayout Spacing="1">
+                                            <Label Text="رد على رسالة" FontSize="9" FontAttributes="Bold" TextColor="#5B35B7" />
+                                            <Label Text="{Binding ReplyToText}" FontSize="11" TextColor="#665D70" MaxLines="2" LineBreakMode="TailTruncation" />
+                                        </VerticalStackLayout>
+                                    </Border>
+
+                                    <!-- IMAGE -->
+                                    <Border IsVisible="{Binding HasLocalImagePreview}"
+                                            HeightRequest="164" MaximumWidthRequest="282"
+                                            Padding="0" StrokeThickness="0" BackgroundColor="#EEE8F6">
+                                        <Border.StrokeShape><RoundRectangle CornerRadius="13" /></Border.StrokeShape>
+                                        <Image Source="{Binding AttachmentLocalPath}" Aspect="AspectFill" />
+                                    </Border>
+
+                                    <!-- ATTACHMENT CARD -->
+                                    <Border IsVisible="{Binding IsAttachment}" Padding="9"
+                                            BackgroundColor="#FBFAFD" Stroke="#ECE7F0" StrokeThickness="1">
                                         <Border.Triggers>
-                                            <DataTrigger TargetType="Border" Binding="{Binding IsImageAttachment}" Value="True">
-                                                <Setter Property="IsVisible" Value="True" />
+                                            <DataTrigger TargetType="Border" Binding="{Binding IsAudioAttachment}" Value="True">
+                                                <Setter Property="IsVisible" Value="False" />
                                             </DataTrigger>
                                         </Border.Triggers>
+                                        <Border.StrokeShape><RoundRectangle CornerRadius="13" /></Border.StrokeShape>
+                                        <Grid ColumnDefinitions="40,*,Auto" ColumnSpacing="9">
+                                            <Border Grid.Column="0" WidthRequest="38" HeightRequest="38"
+                                                    BackgroundColor="#F1ECFA" StrokeThickness="0" VerticalOptions="Center">
+                                                <Border.StrokeShape><RoundRectangle CornerRadius="11" /></Border.StrokeShape>
+                                                <Label Text="PDF" FontSize="9" FontAttributes="Bold"
+                                                       TextColor="{DynamicResource HimoAccent}" HorizontalTextAlignment="Center"
+                                                       VerticalTextAlignment="Center" />
+                                            </Border>
+                                            <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                                                <Label Text="{Binding AttachmentLabel}" FontSize="11"
+                                                       TextColor="{DynamicResource HimoPrimary}" MaxLines="2" LineBreakMode="TailTruncation" />
+                                                <Label Text="ملف مرفق" FontSize="9" TextColor="#9A91A4" />
+                                            </VerticalStackLayout>
+                                            <Button Grid.Column="2" Text="فتح" Style="{StaticResource AttachmentOpenButtonStyle}"
+                                                    Clicked="AttachmentClicked" CommandParameter="{Binding .}"
+                                                    BindingContext="{Binding .}" />
+                                        </Grid>
                                     </Border>
-                                    <Label Text="{Binding Text}" FontSize="15" LineHeight="1.15" TextColor="#2E2140">
+
+                                    <!-- AUDIO -->
+                                    <Grid IsVisible="{Binding IsAudioAttachment}" ColumnDefinitions="44,*,Auto" ColumnSpacing="10"
+                                          Padding="2,3" HeightRequest="52">
+                                        <Button Grid.Column="0" Text="▶" FontSize="14" WidthRequest="40" HeightRequest="40"
+                                                Padding="0" BackgroundColor="#F0EBF8" TextColor="#5B35B7" CornerRadius="20"
+                                                Clicked="AudioClicked" />
+                                        <HorizontalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center" HorizontalOptions="Fill">
+                                            <BoxView WidthRequest="3" HeightRequest="12" CornerRadius="2" Color="#B9A9D8" />
+                                            <BoxView WidthRequest="3" HeightRequest="20" CornerRadius="2" Color="#8D72C2" />
+                                            <BoxView WidthRequest="3" HeightRequest="15" CornerRadius="2" Color="#B9A9D8" />
+                                            <BoxView WidthRequest="3" HeightRequest="25" CornerRadius="2" Color="#6F4BB8" />
+                                            <BoxView WidthRequest="3" HeightRequest="17" CornerRadius="2" Color="#A995CF" />
+                                            <BoxView WidthRequest="3" HeightRequest="22" CornerRadius="2" Color="#7B5AC0" />
+                                            <BoxView WidthRequest="3" HeightRequest="12" CornerRadius="2" Color="#C2B3DA" />
+                                            <BoxView WidthRequest="3" HeightRequest="19" CornerRadius="2" Color="#9277C5" />
+                                            <BoxView WidthRequest="3" HeightRequest="14" CornerRadius="2" Color="#C2B3DA" />
+                                        </HorizontalStackLayout>
+                                        <VerticalStackLayout Grid.Column="2" Spacing="1" VerticalOptions="Center">
+                                            <Label Text="رسالة صوتية" FontSize="10" TextColor="#8C8493" />
+                                            <Label Text="اضغط للتشغيل" FontSize="8" TextColor="#AAA1B1" />
+                                        </VerticalStackLayout>
+                                    </Grid>
+
+                                    <!-- TEXT -->
+                                    <Label Text="{Binding Text}" FontSize="15" LineHeight="1.12"
+                                           TextColor="#2F2937" LineBreakMode="WordWrap">
                                         <Label.Triggers>
                                             <DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True">
-                                                <Setter Property="TextColor" Value="White" />
+                                                <Setter Property="TextColor" Value="#2F2937" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Label" Binding="{Binding HasLocalImagePreview}" Value="True">
+                                                <Setter Property="IsVisible" Value="False" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsAttachment}" Value="True">
+                                                <Setter Property="IsVisible" Value="False" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsAudioAttachment}" Value="True">
+                                                <Setter Property="IsVisible" Value="False" />
                                             </DataTrigger>
                                         </Label.Triggers>
                                     </Label>
-                                    <HorizontalStackLayout Spacing="7" HorizontalOptions="Start">
-                                        <Button Text="▶ تشغيل الصوت" SemanticProperties.Description="تشغيل الرسالة الصوتية"
-                                                IsVisible="{Binding IsAudioAttachment}" FontSize="12" Padding="8,2" HeightRequest="30"
-                                                BackgroundColor="Transparent" TextColor="#7042A5" Clicked="AudioClicked" />
-                                        <Button Text="فتح المرفق" SemanticProperties.Description="فتح المرفق"
-                                                IsVisible="{Binding IsAttachment}" FontSize="12" Padding="8,2" HeightRequest="30"
-                                                BackgroundColor="Transparent" TextColor="#7042A5" Clicked="AttachmentClicked" />
+
+                                    <BoxView HeightRequest="0" IsVisible="False" />
+
+                                    <!-- TIME + SEND STATUS -->
+                                    <HorizontalStackLayout HorizontalOptions="End" Spacing="4">
+                                        <Label Text="{Binding EditedLabel}" FontSize="9" TextColor="{DynamicResource HimoTextSecondary}" VerticalOptions="Center" />
+                                        <Label Text="{Binding SentAt, StringFormat='{0:HH:mm}'}"
+                                               Style="{StaticResource MetaTextStyle}" VerticalOptions="Center">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True">
+                                                    <Setter Property="TextColor" Value="#7A6A95" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                        <Label FontSize="11" VerticalOptions="Center" Text="{Binding DeliveryStatusText}">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True">
+                                                    <Setter Property="TextColor" Value="#7A6A95" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding IsPending}" Value="True">
+                                                    <Setter Property="Text" Value="◷" />
+                                                    <Setter Property="TextColor" Value="#CFC5DC" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read">
+                                                    <Setter Property="TextColor" Value="#6F52B0" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="failed">
+                                                    <Setter Property="Text" Value="!" />
+                                                    <Setter Property="TextColor" Value="#FFB5B5" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
                                     </HorizontalStackLayout>
-                                    <Label Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" FontSize="9"
-                                           TextColor="#988BA6" HorizontalOptions="End">
-                                        <Label.Triggers>
-                                            <DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True">
-                                                <Setter Property="TextColor" Value="#D8E8FF" />
-                                            </DataTrigger>
-                                        </Label.Triggers>
-                                    </Label>
                                 </VerticalStackLayout>
+
                                 <Border.Triggers>
                                     <DataTrigger TargetType="Border" Binding="{Binding IsMine}" Value="True">
-                                        <Setter Property="HorizontalOptions" Value="End" />
-                                        <Setter Property="Margin" Value="54,0,0,0" />
-                                        <Setter Property="BackgroundColor" Value="#1670E8" />
-                                        <Setter Property="StrokeThickness" Value="0" />
+                                        <Setter Property="HorizontalOptions" Value="Start" />
+                                        <Setter Property="Margin" Value="30,0,0,0" />
+                                        <Setter Property="BackgroundColor" Value="#EEE7FF" />
+                                        <Setter Property="Stroke" Value="#E3D9F7" />
+                                        <Setter Property="StrokeThickness" Value="1" />
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                        <Setter Property="Stroke" Value="#6427C7" />
+                                        <Setter Property="StrokeThickness" Value="2" />
                                     </DataTrigger>
                                 </Border.Triggers>
                             </Border>
@@ -103,41 +253,65 @@
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
+            <Button x:Name="ScrollToBottomButton" Text="↓" IsVisible="False"
+                    HorizontalOptions="End" VerticalOptions="End" Margin="0,0,4,10"
+                    WidthRequest="40" HeightRequest="40" CornerRadius="20"
+                    BackgroundColor="#FFFFFF" TextColor="#5B35B7" FontSize="19" FontAttributes="Bold"
+                    Clicked="ScrollToBottomClicked" />
 
-            <VerticalStackLayout x:Name="EmptyState" IsVisible="False" HorizontalOptions="Center" VerticalOptions="Center"
-                                 Spacing="9" Padding="30">
-                <Border WidthRequest="82" HeightRequest="82" BackgroundColor="#EEE5FA" StrokeThickness="0" HorizontalOptions="Center">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="41" /></Border.StrokeShape>
-                    <Label Text="💬" FontSize="36" HorizontalOptions="Center" VerticalOptions="Center" />
+            <VerticalStackLayout x:Name="EmptyState" IsVisible="False"
+                                 HorizontalOptions="Center" VerticalOptions="Center" Spacing="9" Padding="28">
+                <Border WidthRequest="58" HeightRequest="58" BackgroundColor="#F0EBF7" StrokeThickness="0">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="33" /></Border.StrokeShape>
+                    <Label Text="✦" FontSize="23" TextColor="#5B35B7"
+                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                 </Border>
-                <Label Text="لا توجد رسائل بعد" FontSize="20" FontAttributes="Bold"
-                       HorizontalTextAlignment="Center" TextColor="#2E2140" />
+                <Label Text="لا توجد رسائل بعد" FontSize="17" FontAttributes="Bold"
+                       HorizontalTextAlignment="Center" TextColor="#30283A" />
                 <Label Text="ابدأ المحادثة بإرسال أول رسالة" FontSize="13"
-                       HorizontalTextAlignment="Center" TextColor="#8F829C" />
+                       HorizontalTextAlignment="Center" TextColor="#8D8496" />
             </VerticalStackLayout>
         </Grid>
 
-        <!-- Modern composer -->
-        <Border Grid.Row="2" Margin="12,6,12,12" Padding="7" BackgroundColor="#FFFFFF"
-                Stroke="#E5DCEE" StrokeThickness="1">
-            <Border.StrokeShape><RoundRectangle CornerRadius="28" /></Border.StrokeShape>
-            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="5" VerticalOptions="Center">
-                <Button x:Name="RecordButton" Text="🎙" SemanticProperties.Description="تسجيل رسالة صوتية أو إيقاف التسجيل"
-                        FontSize="19" WidthRequest="44" HeightRequest="44" Padding="0" BackgroundColor="#F1EAF8"
-                        TextColor="#7042A5" CornerRadius="22" Clicked="RecordAudioClicked" />
-                <Grid Grid.Column="1" ColumnDefinitions="*,Auto" VerticalOptions="Center">
-                    <Entry x:Name="MessageEntry" Placeholder="اكتب رسالتك..." ReturnType="Send"
-                           ClearButtonVisibility="WhileEditing" MaxLength="4000" Completed="SendClicked"
-                           FontSize="15" TextColor="#2E2140" PlaceholderColor="#9AA9BB"
-                           VerticalOptions="Center" />
-                    <Button Grid.Column="1" Text="📎" SemanticProperties.Description="إضافة صورة أو ملف"
-                            FontSize="19" WidthRequest="40" HeightRequest="40" Padding="0" BackgroundColor="Transparent"
-                            TextColor="#7042A5" Clicked="AttachmentButtonClicked" />
+        <!-- COMPOSER -->
+        <Border Grid.Row="3" Margin="14,4,14,12" Padding="7,5,7,5"
+                BackgroundColor="#FFFFFF" Stroke="#E8E3EC" StrokeThickness="1">
+            <Border.StrokeShape><RoundRectangle CornerRadius="25" /></Border.StrokeShape>
+            <VerticalStackLayout Spacing="2">
+                <Grid x:Name="ReplyPreview" IsVisible="False" Padding="9,5"
+                      ColumnDefinitions="*,Auto" BackgroundColor="#F7F4F9">
+                    <VerticalStackLayout Grid.Column="0" Spacing="1">
+                        <Label Text="رد على رسالة" FontSize="10" FontAttributes="Bold" TextColor="{DynamicResource HimoAccent}" />
+                        <Label x:Name="ReplyPreviewLabel" FontSize="11" TextColor="#665D70" MaxLines="1" LineBreakMode="TailTruncation" />
+                    </VerticalStackLayout>
+                    <Button Grid.Column="1" Text="×" FontSize="20" WidthRequest="32" HeightRequest="32"
+                            Padding="0" BackgroundColor="Transparent" TextColor="{DynamicResource HimoAccent}" Clicked="ClearReplyClicked" />
                 </Grid>
-                <Button x:Name="SendButton" Grid.Column="2" SemanticProperties.Description="إرسال الرسالة"
-                        Text="➤" FontSize="21" WidthRequest="46" HeightRequest="46" Padding="0"
-                        CornerRadius="23" BackgroundColor="#7042A5" TextColor="White" Clicked="SendClicked" />
-            </Grid>
+                <Grid x:Name="RecordingBar" IsVisible="False" Padding="10,2"
+                      ColumnDefinitions="Auto,*,Auto">
+                    <BoxView Grid.Column="0" WidthRequest="8" HeightRequest="8" CornerRadius="4"
+                             Color="#E84B67" VerticalOptions="Center" />
+                    <Label Grid.Column="1" Text="جارٍ تسجيل رسالة صوتية..." FontSize="12"
+                           FontAttributes="Bold" TextColor="#5E5368" VerticalTextAlignment="Center" />
+                    <Label Grid.Column="2" Text="اضغط لإيقاف التسجيل" FontSize="10"
+                           TextColor="#9B92A4" VerticalTextAlignment="Center" />
+                </Grid>
+                <Grid ColumnDefinitions="46,*,46,50" ColumnSpacing="6" HeightRequest="54">
+                    <ImageButton x:Name="RecordButton" Grid.Column="0" Source="icon_mic.png" Style="{StaticResource ComposerIconButtonStyle}"
+                                 Clicked="RecordAudioClicked" />
+                    <Entry x:Name="MessageEntry" Grid.Column="1" Placeholder="اكتب رسالتك..." ReturnType="Send"
+                           ClearButtonVisibility="WhileEditing" MaxLength="4000" Completed="SendClicked" TextChanged="MessageEntryTextChanged"
+                           FontSize="15" TextColor="#30283A" PlaceholderColor="#A39AAA"
+                           VerticalOptions="Center" HorizontalTextAlignment="Start" Margin="2,0" />
+                    <ImageButton Grid.Column="2" Source="icon_attachment.png" WidthRequest="40" HeightRequest="40"
+                                 Padding="9" BackgroundColor="Transparent"
+                                 Clicked="AttachmentButtonClicked"
+                                 VerticalOptions="Center" />
+                    <ImageButton x:Name="SendButton" Grid.Column="3" Source="icon_send.png"
+                                 WidthRequest="46" HeightRequest="46" Padding="11" BackgroundColor="{DynamicResource HimoHeader}"
+                                 CornerRadius="21" Clicked="SendClicked" HorizontalOptions="Center" VerticalOptions="Center" />
+                </Grid>
+            </VerticalStackLayout>
         </Border>
     </Grid>
 </ContentPage>

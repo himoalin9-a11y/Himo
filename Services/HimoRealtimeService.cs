@@ -11,62 +11,348 @@ public sealed class HimoRealtimeService
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     public event EventHandler<MessageDto>? MessageReceived;
-    public bool IsConnected => _connection?.State == HubConnectionState.Connected;
+    public event EventHandler<(Guid UserId, bool IsOnline)>? UserPresenceChanged;
+    public event EventHandler<(Guid UserId, Guid ConversationId, bool IsTyping)>? UserTypingChanged;
+    public event EventHandler<(Guid MessageId, Guid UserId, string Status)>? MessageDeliveryChanged;
+    public event EventHandler<MessageDto>? MessageEdited;
+    public event EventHandler<MessageDto>? MessageDeleted;
+    public event EventHandler? Reconnected;
+    public event EventHandler<CallSignalMessage>? CallSignalReceived;
 
-    public HimoRealtimeService(HimoApiClient api) => _api = api;
+    public bool IsConnected =>
+        _connection?.State == HubConnectionState.Connected;
+
+    public HimoRealtimeService(HimoApiClient api)
+    {
+        _api = api;
+    }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
-        if (!_api.HasToken) return;
+        if (!_api.HasToken)
+            return;
+
         await _gate.WaitAsync(cancellationToken);
+
         try
         {
-            if (IsConnected) return;
-            await StopCoreAsync();
+            var existing = _connection;
+
+            // لا تعيد إنشاء الاتصال إذا كان يعمل أو في طور الاتصال/إعادة الاتصال.
+            if (existing is not null)
+            {
+                if (existing.State == HubConnectionState.Connected ||
+                    existing.State == HubConnectionState.Connecting ||
+                    existing.State == HubConnectionState.Reconnecting)
+                {
+                    return;
+                }
+
+                // يوجد اتصال قديم لكنه متوقف.
+                _connection = null;
+
+                try
+                {
+                    await existing.DisposeAsync();
+                }
+                catch
+                {
+                    // لا نسمح لاتصال قديم متوقف بمنع إنشاء الاتصال الجديد.
+                }
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
             var baseUri = new Uri(_api.BaseUrl);
             var hubUri = new Uri(baseUri, "hubs/chat");
-            _connection = new HubConnectionBuilder()
+
+            var connection = new HubConnectionBuilder()
                 .WithUrl(hubUri, options =>
                 {
-                    options.AccessTokenProvider = () => Task.FromResult(_api.GetAccessToken());
+                    options.AccessTokenProvider = () =>
+                        Task.FromResult(_api.GetAccessToken());
                 })
-                .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15) })
+                .WithAutomaticReconnect(
+                    new[]
+                    {
+                        TimeSpan.Zero,
+                        TimeSpan.FromSeconds(2),
+                        TimeSpan.FromSeconds(5),
+                        TimeSpan.FromSeconds(15)
+                    })
                 .Build();
 
-            _connection.On<MessageDto>("MessageReceived", message =>
+            RegisterHandlers(connection);
+
+            _connection = connection;
+
+            try
             {
-                MainThread.BeginInvokeOnMainThread(() => MessageReceived?.Invoke(this, message));
+                await connection.StartAsync(cancellationToken);
+            }
+            catch
+            {
+                // إذا فشل الاتصال، ننظف هذا الاتصال فقط.
+                if (ReferenceEquals(_connection, connection))
+                    _connection = null;
+
+                try
+                {
+                    await connection.DisposeAsync();
+                }
+                catch
+                {
+                    // تجاهل فشل تنظيف الاتصال.
+                }
+
+                // HTTP incremental sync يبقى مسار الاحتياط.
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    private void RegisterHandlers(HubConnection connection)
+    {
+        connection.On<MessageDto>(
+            "MessageReceived",
+            message =>
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    MessageReceived?.Invoke(this, message);
+                });
             });
 
-            _connection.Closed += async _ =>
+        connection.On<Guid, bool>(
+            "UserPresenceChanged",
+            (userId, isOnline) =>
             {
-                // Automatic reconnect handles transient network loss. A closed
-                // connection is left stopped until the next page appearance.
-                await Task.CompletedTask;
-            };
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    UserPresenceChanged?.Invoke(
+                        this,
+                        (userId, isOnline));
+                });
+            });
 
-            await _connection.StartAsync(cancellationToken);
+        connection.On<Guid, Guid, bool>(
+            "UserTypingChanged",
+            (userId, conversationId, isTyping) =>
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    UserTypingChanged?.Invoke(
+                        this,
+                        (userId, conversationId, isTyping));
+                });
+            });
+
+        connection.On<MessageDto>(
+            "MessageEdited",
+            message =>
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    MessageEdited?.Invoke(this, message);
+                });
+            });
+
+        connection.On<MessageDto>(
+            "MessageDeleted",
+            message =>
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    MessageDeleted?.Invoke(this, message);
+                });
+            });
+
+        connection.On<CallSignalMessage>(
+            "CallSignalReceived",
+            signal =>
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    CallSignalReceived?.Invoke(this, signal);
+                });
+            });
+
+        connection.On<Guid, Guid, string>(
+            "MessageDeliveryChanged",
+            (messageId, userId, status) =>
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    MessageDeliveryChanged?.Invoke(
+                        this,
+                        (messageId, userId, status));
+                });
+            });
+
+        connection.Reconnecting += _ =>
+        {
+            return Task.CompletedTask;
+        };
+
+        connection.Reconnected += _ =>
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                Reconnected?.Invoke(this, EventArgs.Empty);
+            });
+
+            return Task.CompletedTask;
+        };
+
+        connection.Closed += _ =>
+        {
+            // لا ننشئ اتصالاً جديداً من هنا.
+            // AutomaticReconnect يتولى حالات انقطاع الشبكة المؤقتة.
+            // إذا أصبح الاتصال Closed نهائياً، StartAsync في الصفحة التالية
+            // يستطيع إنشاء اتصال جديد.
+            return Task.CompletedTask;
+        };
+    }
+
+
+    public async Task SendCallSignalAsync(
+        Guid conversationId,
+        string type,
+        string? payload = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_api.HasToken)
+            throw new InvalidOperationException("لم يتم تسجيل الدخول إلى الخادم.");
+
+        var connection = _connection;
+        if (connection?.State != HubConnectionState.Connected)
+        {
+            // CallPage may be entered immediately after ChatPage stops the hub.
+            // Re-establish signaling instead of silently dropping the call signal.
+            await StartAsync(cancellationToken);
+            connection = _connection;
+        }
+
+        if (connection?.State != HubConnectionState.Connected)
+            throw new InvalidOperationException("تعذر الاتصال بخادم المكالمات.");
+
+        await connection.SendAsync(
+            "SendCallSignal",
+            conversationId,
+            type,
+            payload,
+            cancellationToken);
+    }
+
+    public async Task<bool> GetPresenceAsync(
+        Guid conversationId,
+        CancellationToken cancellationToken = default)
+    {
+        var connection = _connection;
+
+        if (connection?.State != HubConnectionState.Connected)
+            return false;
+
+        try
+        {
+            return await connection.InvokeAsync<bool>(
+                "GetPresence",
+                conversationId,
+                cancellationToken);
         }
         catch
         {
-            await StopCoreAsync();
-            // HTTP incremental sync remains the fallback path.
+            return false;
         }
-        finally { _gate.Release(); }
+    }
+
+    public async Task MarkMessageDeliveredAsync(
+        Guid messageId,
+        CancellationToken cancellationToken = default)
+    {
+        var connection = _connection;
+
+        if (connection?.State != HubConnectionState.Connected)
+            return;
+
+        try
+        {
+            await connection.SendAsync(
+                "MarkMessageDelivered",
+                messageId,
+                cancellationToken);
+        }
+        catch
+        {
+            // HTTP synchronization remains the fallback.
+        }
+    }
+
+    public async Task SetTypingAsync(
+        Guid conversationId,
+        bool isTyping,
+        CancellationToken cancellationToken = default)
+    {
+        var connection = _connection;
+
+        if (connection?.State != HubConnectionState.Connected)
+            return;
+
+        try
+        {
+            await connection.SendAsync(
+                isTyping ? "StartTyping" : "StopTyping",
+                conversationId,
+                cancellationToken);
+        }
+        catch
+        {
+            // Typing state is best-effort.
+        }
     }
 
     public async Task StopAsync()
     {
         await _gate.WaitAsync();
-        try { await StopCoreAsync(); }
-        finally { _gate.Release(); }
-    }
 
-    private async Task StopCoreAsync()
-    {
-        if (_connection is null) return;
-        try { await _connection.StopAsync(); } catch { }
-        try { await _connection.DisposeAsync(); } catch { }
-        _connection = null;
+        try
+        {
+            var connection = _connection;
+
+            if (connection is null)
+                return;
+
+            // إزالة المرجع أولاً حتى لا تبدأ صفحة أخرى باستخدام الاتصال
+            // أثناء عملية الإغلاق.
+            _connection = null;
+
+            try
+            {
+                if (connection.State != HubConnectionState.Disconnected)
+                    await connection.StopAsync();
+            }
+            catch
+            {
+                // لا نسمح لفشل إغلاق WebSocket بتعطيل الصفحة.
+            }
+
+            try
+            {
+                await connection.DisposeAsync();
+            }
+            catch
+            {
+                // تجاهل أخطاء التنظيف.
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 }
+
+public sealed record CallSignalMessage(Guid ConversationId, Guid SenderUserId, string Type, string? Payload);

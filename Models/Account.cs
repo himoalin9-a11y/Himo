@@ -2,6 +2,7 @@ namespace Himo.Models;
 
 public sealed class Account
 {
+    public Guid UserId { get; set; }
     public string Email { get; set; } = "";
     public string Name { get; set; } = "مستخدم Himo";
     public string Initial => GetInitial(Name);

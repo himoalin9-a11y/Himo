@@ -26,14 +26,16 @@ public sealed class HimoApiClient
         var handler = new SocketsHttpHandler
         {
             UseProxy = false,
-            ConnectTimeout = TimeSpan.FromSeconds(10),
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+            AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
+            ConnectTimeout = TimeSpan.FromSeconds(20),
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2)
         };
 
         var client = new HttpClient(handler)
         {
             BaseAddress = new Uri(baseUrl),
-            Timeout = TimeSpan.FromSeconds(20)
+            Timeout = TimeSpan.FromSeconds(60)
         };
 
         ApplyToken(client);
@@ -129,11 +131,11 @@ public sealed class HimoApiClient
 
     private Account ApplyAuthResponse(AuthResponse? result)
     {
-        if (result is null || string.IsNullOrWhiteSpace(result.Token) || string.IsNullOrWhiteSpace(result.Email))
+        if (result is null || result.UserId == Guid.Empty || string.IsNullOrWhiteSpace(result.Token) || string.IsNullOrWhiteSpace(result.Email))
             throw new InvalidOperationException("استجابة تسجيل الدخول غير صالحة.");
         Preferences.Default.Set(TokenKey, result.Token);
         ApplyToken();
-        return new Account { Email = result.Email, Name = result.Name };
+        return new Account { UserId = result.UserId, Email = result.Email, Name = result.Name };
     }
 
     private static string NormalizeEmail(string? value)
@@ -199,6 +201,13 @@ public sealed class HimoApiClient
         }
     }
 
+    public async Task LogoutAllAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsync("api/auth/logout-all", content: null, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        ClearToken();
+    }
+
     public void ClearToken()
     {
         Preferences.Default.Remove(TokenKey);
@@ -228,6 +237,15 @@ public sealed class HimoApiClient
         using var response = await _http.GetAsync("api/conversations", cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<List<ConversationDto>>(cancellationToken: cancellationToken) ?? new List<ConversationDto>();
+    }
+
+    public async Task ReportConversationAsync(Guid conversationId, string reason, CancellationToken cancellationToken = default)
+    {
+        reason = reason?.Trim() ?? string.Empty;
+        if (reason.Length is < 3 or > 200)
+            throw new ArgumentException("سبب البلاغ غير صالح.", nameof(reason));
+        using var response = await _http.PostAsJsonAsync($"api/conversations/{conversationId}/report", new { reason }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
     }
 
     public async Task MarkConversationReadAsync(Guid conversationId, CancellationToken cancellationToken = default)
@@ -266,12 +284,71 @@ public sealed class HimoApiClient
         return await response.Content.ReadFromJsonAsync<List<MessageDto>>(cancellationToken: cancellationToken) ?? new List<MessageDto>();
     }
 
-    public async Task<MessageDto> SendMessageAsync(Guid conversationId, string text, string? clientMessageId = null, CancellationToken cancellationToken = default)
+    public async Task<MessageDto> SendMessageAsync(Guid conversationId, string text, string? clientMessageId = null, Guid? replyToMessageId = null, CancellationToken cancellationToken = default)
     {
-        using var response = await _http.PostAsJsonAsync($"api/conversations/{conversationId}/messages", new { text, clientMessageId }, cancellationToken);
+        // The production server may wake from an idle state and Android can keep
+        // an old pooled HTTPS connection after that. Retry once with a completely
+        // fresh HttpClient so the second attempt cannot reuse a stale connection.
+        var attempts = new[] { TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(45) };
+        Exception? lastError = null;
+
+        for (var attempt = 0; attempt < attempts.Length; attempt++)
+        {
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(attempts[attempt]);
+
+            try
+            {
+                using var response = await _http.PostAsJsonAsync(
+                    $"api/conversations/{conversationId}/messages",
+                    new { text, clientMessageId, replyToMessageId },
+                    timeoutCts.Token);
+
+                await EnsureSuccessAsync(response, timeoutCts.Token);
+                return await response.Content.ReadFromJsonAsync<MessageDto>(cancellationToken: timeoutCts.Token)
+                    ?? throw new InvalidOperationException("استجابة الخادم غير صالحة.");
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                lastError = new TaskCanceledException("انتهت مهلة إرسال الرسالة.");
+                if (attempt == attempts.Length - 1) throw lastError;
+                await RecreateHttpClientForRetryAsync();
+            }
+            catch (HttpRequestException ex)
+            {
+                lastError = ex;
+                if (!HasToken || attempt == attempts.Length - 1) throw;
+                await RecreateHttpClientForRetryAsync();
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+            }
+        }
+
+        throw lastError ?? new HttpRequestException("تعذر إرسال الرسالة.");
+    }
+
+    private async Task RecreateHttpClientForRetryAsync()
+    {
+        var fresh = CreateHttpClient(_http.BaseAddress?.ToString() ?? GetBaseUrl());
+        var old = _http;
+        _http = fresh;
+        old.Dispose();
+        await Task.CompletedTask;
+    }
+
+    public async Task<MessageDto> EditMessageAsync(Guid messageId, string text, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PutAsJsonAsync($"api/messages/{messageId}", new { text }, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<MessageDto>(cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException("استجابة الخادم غير صالحة.");
+    }
+
+    public async Task<MessageDto> DeleteMessageAsync(Guid messageId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.DeleteAsync($"api/messages/{messageId}", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<MessageDto>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("استجابة حذف الرسالة غير صالحة.");
     }
 
     public async Task<MessageDto> UploadAttachmentAsync(Guid conversationId, FileResult file, CancellationToken cancellationToken = default)
@@ -331,17 +408,13 @@ public sealed class HimoApiClient
 
     private static string GetBaseUrl()
     {
-        // Production/default endpoint: the Himo API is hosted externally over HTTPS.
-        // Keep the URL configurable through Settings so development/LAN servers can
-        // still be used when explicitly selected by the user.
+        // Production is the default only when the user has never selected a
+        // server. Once a server is explicitly saved in Settings, keep it across
+        // restarts; this is required for LAN, emulator and self-hosted setups.
         const string productionUrl = "https://himo-3buh.onrender.com/";
         var saved = Preferences.Default.Get(BaseUrlKey, string.Empty).Trim();
 
-        // Migrate installations that still contain the previous PC/LAN endpoint.
-        if (string.IsNullOrWhiteSpace(saved) ||
-            saved.Contains("192.168.8.85", StringComparison.OrdinalIgnoreCase) ||
-            saved.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
-            saved.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(saved))
         {
             Preferences.Default.Set(BaseUrlKey, productionUrl);
             return productionUrl;
@@ -382,9 +455,9 @@ public sealed class HimoApiClient
     }
 
     public sealed record ConversationDto(Guid Id, string Name, string LastMessage, DateTimeOffset UpdatedAt, int UnreadCount);
-    public sealed record MessageDto(Guid Id, Guid ConversationId, Guid SenderUserId, string SenderPhoneNumber, string Text, DateTimeOffset SentAt, string? AttachmentFileName = null, string? AttachmentContentType = null, long? AttachmentSize = null);
-    private sealed record AuthResponse(string Token, string Email, string Name);
-    public sealed record UserProfileResponse(string Email, string Name, string Status);
+    public sealed record MessageDto(Guid Id, Guid ConversationId, Guid SenderUserId, string SenderPhoneNumber, string Text, DateTimeOffset SentAt, string? AttachmentFileName = null, string? AttachmentContentType = null, long? AttachmentSize = null, string Status = "sent", Guid? ReplyToMessageId = null, string? ReplyToText = null, bool IsEdited = false, string? EditedAt = null, bool IsDeleted = false);
+    private sealed record AuthResponse(string Token, Guid UserId, string Email, string Name);
+    public sealed record UserProfileResponse(Guid UserId, string Email, string Name, string Status);
     private sealed record RequestCodeResponse(string Message, string? DevelopmentCode);
     private sealed record ApiError(string? Message);
 }

@@ -28,6 +28,7 @@ public partial class LoginPage : ContentPage
     private async void PrimaryClicked(object sender, EventArgs e)
     {
         if (_busy) return;
+        await UiMotion.PressAsync(PrimaryButton);
 
         if (_registerMode && _verificationPending)
         {
@@ -140,7 +141,7 @@ public partial class LoginPage : ContentPage
 
     private async Task CompleteSignInAsync(Account account)
     {
-        _account.SignIn(account.Email, account.Name);
+        _account.SignIn(account.UserId, account.Email, account.Name);
 #if ANDROID
         _ = AppRuntimeBridge.RegisterCurrentPushTokenAsync();
 #endif
@@ -161,7 +162,7 @@ public partial class LoginPage : ContentPage
             SetBusy(true);
             StatusLabel.Text = "جارٍ إرسال رمز إعادة التعيين...";
             await _api.RequestPasswordResetAsync(email);
-            var code = await DisplayPromptAsync("رمز إعادة التعيين", "أدخل رمز التحقق المكوّن من 6 أرقام المرسل إلى بريدك.", "متابعة", "إلغاء", "123456", 6, Keyboard.Numeric);
+            var code = await DisplayPromptAsync("رمز إعادة التعيين", "أدخل رمز التحقق المكوّن من 6 أرقام المرسل إلى بريدك.", "متابعة", "إلغاء", "رمز من 6 أرقام", 6, Keyboard.Numeric);
             if (string.IsNullOrWhiteSpace(code)) return;
             var newPassword = await DisplayPromptAsync("كلمة مرور جديدة", "أدخل كلمة المرور الجديدة (8 أحرف على الأقل).", "تغيير كلمة المرور", "إلغاء", "كلمة المرور", 128, Keyboard.Default);
             if (string.IsNullOrWhiteSpace(newPassword)) return;

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net10.0-android</TargetFrameworks>
+    <TargetFrameworks>net10.0-android36.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <RootNamespace>Himo</RootNamespace>
     <UseMaui>true</UseMaui>
@@ -10,9 +10,9 @@
     <Nullable>enable</Nullable>
     <ApplicationTitle>Himo</ApplicationTitle>
     <ApplicationId>com.companyname.himo</ApplicationId>
-    <ApplicationDisplayVersion>11.5</ApplicationDisplayVersion>
-    <ApplicationVersion>115</ApplicationVersion>
-    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net10.0-android'">24.0</SupportedOSPlatformVersion>
+    <ApplicationDisplayVersion>11.11</ApplicationDisplayVersion>
+    <ApplicationVersion>121</ApplicationVersion>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net10.0-android36.0'">30.0</SupportedOSPlatformVersion>
     <!-- Disable Android Fast Deployment. The phone crash log showed an empty __override__ directory, which causes Mono to abort before the MAUI app starts. -->
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <UseNativeHttpHandler>false</UseNativeHttpHandler>
@@ -54,6 +54,15 @@
     <MauiIcon Include="Resources\AppIcon\appicon.png" BaseSize="1024,1024" />
     <MauiSplashScreen Include="Resources\Splash\splash.png" Color="#17083D" BaseSize="1024,1024" />
     <MauiImage Include="Resources\Images\himo_logo.png" />
+    <MauiImage Include="Resources\Images\icon_chat.png" />
+    <MauiImage Include="Resources\Images\icon_conversations.png" />
+    <MauiImage Include="Resources\Images\icon_search.png" />
+    <MauiImage Include="Resources\Images\icon_search_black.png" />
+    <MauiImage Include="Resources\Images\icon_profile.png" />
+    <MauiImage Include="Resources\Images\icon_settings.png" />
+    <MauiImage Include="Resources\Images\icon_edit.png" />
+    <MauiImage Include="Resources\Images\icon_home.png" />
+    <MauiImage Include="Resources\Images\icon_plus.png" />
     <MauiImage Include="Resources\Images\himo_brand.png" />
     <MauiImage Include="Resources\Images\eye_open.png" />
     <MauiImage Include="Resources\Images\eye_closed.png" />
@@ -65,14 +74,31 @@
     <!-- Keep the Account model explicitly included. This avoids IDE/project-item resolution issues. -->
     <Compile Remove="Models\Account.cs" />
     <Compile Include="Models\Account.cs" />
+    <!-- Explicitly include the app-lock service so it is always compiled. -->
+    <Compile Remove="Services\AppLockService.cs" />
+    <Compile Include="Services\AppLockService.cs" />
+    <!-- Explicitly include Android notification service for Android builds. -->
+    <Compile Remove="Platforms\Android\Services\NotificationService.cs" />
+    <Compile Include="Platforms\Android\Services\NotificationService.cs" Condition="'$(TargetFramework)' == 'net10.0-android36.0'" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Himo.Api is a separate project; do not compile its ASP.NET source into the MAUI app. -->
+    <!-- Himo.Api is a separate ASP.NET project. Do not compile any server-side
+         source files that are present beside the MAUI project into the Android app. -->
     <Compile Remove="Himo.Api\**" />
     <EmbeddedResource Remove="Himo.Api\**" />
     <MauiXaml Remove="Himo.Api\**" />
     <None Remove="Himo.Api\**" />
+
+    <!-- These are legacy server-side copies. The real server source lives in Himo.Api.
+         Compiling them into MAUI causes FirebaseAdmin/Npgsql/ASP.NET errors and also
+         creates duplicate global MessageDto/UserSearchDto definitions. -->
+    <Compile Remove="Program.cs" />
+    <Compile Remove="FcmPushService.cs" />
+    <Compile Remove="EmailVerificationService.cs" />
+    <None Include="Program.cs" />
+    <None Include="FcmPushService.cs" />
+    <None Include="EmailVerificationService.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -81,9 +107,10 @@
     <PackageReference Include="CommunityToolkit.Maui" Version="12.3.0" />
     <PackageReference Include="Plugin.Firebase.CloudMessaging" Version="4.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.12" />
+    <PackageReference Include="FsWebRTC.Bindings.Maui.Android" Version="0.9.3.15" Condition="'$(TargetFramework)' == 'net10.0-android36.0'" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android36.0'">
     <GoogleServicesJson Include="Platforms\Android\google-services.json" />
   </ItemGroup>
 

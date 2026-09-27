@@ -185,7 +185,7 @@ webApp.MapPost("/api/auth/verify-email", (VerifyEmailRequest request, PostgresSt
         var user = store.CreateEmailUser(email, pending.Name, pending.PasswordHash, true);
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         store.CreateSession(token, user.Id, DateTimeOffset.UtcNow.AddDays(30));
-        return Results.Ok(new AuthResponse(token, user.PhoneNumber, user.Name));
+        return Results.Ok(new AuthResponse(token, user.Id, email, user.Name));
     }
     catch (InvalidOperationException ex)
     {
@@ -203,7 +203,7 @@ webApp.MapPost("/api/auth/login-email", (EmailLoginRequest request, PostgresStor
     if (user is null) return Results.Json(new { message = "البريد الإلكتروني أو كلمة المرور غير صحيحة." }, statusCode: StatusCodes.Status401Unauthorized);
     var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     store.CreateSession(token, user.Id, DateTimeOffset.UtcNow.AddDays(30));
-    return Results.Ok(new AuthResponse(token, user.PhoneNumber, user.Name));
+    return Results.Ok(new AuthResponse(token, user.Id, email, user.Name));
 }).RequireRateLimiting("auth");
 
 webApp.MapPost("/api/auth/request-password-reset", async (PasswordResetRequest request, PostgresStore store, EmailVerificationService emailService, IHostEnvironment environment, CancellationToken cancellationToken) =>
@@ -268,11 +268,18 @@ webApp.MapPost("/api/auth/reset-password", (PasswordResetConfirmRequest request,
 
     var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     store.CreateSession(token, result!.UserId, DateTimeOffset.UtcNow.AddDays(30));
-    return Results.Ok(new AuthResponse(token, result.Email, result.Name));
+    return Results.Ok(new AuthResponse(token, result.UserId, result.Email, result.Name));
 }).RequireRateLimiting("auth");
 
 webApp.MapPost("/api/auth/logout", (HttpRequest http, PostgresStore store) =>
     store.RevokeSession(http) ? Results.NoContent() : Results.Unauthorized());
+
+webApp.MapPost("/api/auth/logout-all", (HttpRequest http, PostgresStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    store.RevokeAllSessions(session.UserId);
+    return Results.NoContent();
+});
 
 webApp.MapGet("/api/me", (HttpRequest http, PostgresStore store) =>
 {
@@ -334,12 +341,25 @@ webApp.MapGet("/api/conversations", (HttpRequest http, PostgresStore store) =>
     return Results.Ok(store.GetConversations(session.UserId));
 });
 
-webApp.MapPost("/api/conversations/{id:guid}/read", (Guid id, HttpRequest http, PostgresStore store) =>
+webApp.MapPost("/api/conversations/{id:guid}/read", async (Guid id, HttpRequest http, PostgresStore store, IHubContext<HimoChatHub> hub) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
     if (!store.ExistsConversation(id, session.UserId)) return Results.NotFound();
-    store.MarkConversationRead(id, session.UserId);
+    var readReceipts = store.MarkConversationRead(id, session.UserId);
+    foreach (var receipt in readReceipts)
+        await hub.Clients.Group(HimoChatHub.UserGroup(receipt.SenderUserId))
+            .SendAsync("MessageDeliveryChanged", receipt.MessageId, session.UserId, "read");
     return Results.NoContent();
+});
+
+webApp.MapPost("/api/conversations/{id:guid}/report", async (Guid id, HttpRequest http, [Microsoft.AspNetCore.Mvc.FromBody] ReportConversationRequest request, PostgresStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    if (!store.ExistsConversation(id, session.UserId)) return Results.NotFound();
+    var reason = (request.Reason ?? string.Empty).Trim();
+    if (reason.Length is < 3 or > 200) return Results.BadRequest(new { message = "سبب البلاغ غير صالح." });
+    store.ReportConversation(id, session.UserId, reason);
+    return Results.Ok(new { reported = true });
 });
 
 webApp.MapPost("/api/conversations", (HttpRequest http, CreateConversationRequest request, PostgresStore store) =>
@@ -372,7 +392,7 @@ webApp.MapGet("/api/conversations/{id:guid}/messages", (Guid id, HttpRequest htt
         since = parsedSince;
     }
 
-    return Results.Ok(store.GetMessages(id, since));
+    return Results.Ok(store.GetMessages(id, since, session.UserId));
 });
 
 webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequest http, [Microsoft.AspNetCore.Mvc.FromBody] SendMessageRequest request, PostgresStore store, IHubContext<HimoChatHub> hub) =>
@@ -391,7 +411,9 @@ webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequ
         // even if a retry sends different casing or GUID formatting.
         clientMessageId = parsedClientMessageId.ToString("D");
     }
-    var message = store.AddMessage(id, session.UserId, session.PhoneNumber, text, clientMessageId);
+    if (request.ReplyToMessageId.HasValue && !store.MessageBelongsToConversation(request.ReplyToMessageId.Value, id))
+        return Results.BadRequest(new { message = "الرسالة المقتبس منها غير موجودة في هذه المحادثة." });
+    var message = store.AddMessage(id, session.UserId, session.PhoneNumber, text, clientMessageId, request.ReplyToMessageId);
     var recipientIds = store.GetOtherParticipantUserIds(id, session.UserId);
 
     // The message is already persisted. Do not make the sender wait for
@@ -428,6 +450,39 @@ webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequ
     // Return the saved message immediately. Notification delivery must never
     // delay or fail the HTTP request used to send the message.
     return Results.Created($"/api/conversations/{id}/messages/{message.Id}", message);
+});
+
+webApp.MapPut("/api/messages/{messageId:guid}", async (Guid messageId, HttpRequest http, PostgresStore store, IHubContext<HimoChatHub> hub) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    var body = await http.ReadFromJsonAsync<EditMessageRequest>(http.HttpContext.RequestAborted);
+    var text = body?.Text?.Trim();
+    if (string.IsNullOrWhiteSpace(text) || text.Length > 4000) return Results.BadRequest(new { message = "نص الرسالة غير صالح." });
+    var result = store.EditMessage(messageId, session.UserId, text);
+    if (result.Message is null) return Results.NotFound();
+    var recipients = store.GetOtherParticipantUserIds(result.Message.ConversationId, session.UserId);
+    try
+    {
+        await hub.Clients.Groups(recipients.Select(userId => HimoChatHub.UserGroup(userId)))
+            .SendAsync("MessageEdited", result.Message, http.HttpContext.RequestAborted);
+    }
+    catch { }
+    return Results.Ok(result.Message);
+});
+
+webApp.MapDelete("/api/messages/{messageId:guid}", async (Guid messageId, HttpRequest http, PostgresStore store, IHubContext<HimoChatHub> hub) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    var message = store.DeleteMessage(messageId, session.UserId);
+    if (message is null) return Results.NotFound();
+    var recipients = store.GetOtherParticipantUserIds(message.ConversationId, session.UserId);
+    try
+    {
+        await hub.Clients.Groups(recipients.Select(userId => HimoChatHub.UserGroup(userId)))
+            .SendAsync("MessageDeleted", message, http.HttpContext.RequestAborted);
+    }
+    catch { }
+    return Results.Ok(message);
 });
 
 webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpRequest http, PostgresStore store, IHubContext<HimoChatHub> hub) =>
@@ -855,6 +910,8 @@ CREATE TABLE IF NOT EXISTS Messages (
     AttachmentFileName TEXT NULL,
     AttachmentContentType TEXT NULL,
     AttachmentSize BIGINT NULL,
+    ReplyToMessageId TEXT NULL,
+    EditedAt TEXT NULL,
     FOREIGN KEY(ConversationId) REFERENCES Conversations(Id) ON DELETE CASCADE,
     FOREIGN KEY(SenderUserId) REFERENCES Users(Id) ON DELETE CASCADE
 );
@@ -871,7 +928,31 @@ CREATE INDEX IF NOT EXISTS IX_Conversations_Owner_Updated ON Conversations(Owner
 CREATE INDEX IF NOT EXISTS IX_Sessions_Expires ON Sessions(ExpiresAt);
 CREATE INDEX IF NOT EXISTS IX_Participants_User ON ConversationParticipants(UserId, JoinedAt);
 CREATE UNIQUE INDEX IF NOT EXISTS IX_Messages_ClientId ON Messages(ConversationId, SenderUserId, ClientMessageId) WHERE ClientMessageId IS NOT NULL;
+CREATE TABLE IF NOT EXISTS ConversationReports (
+    ConversationId TEXT NOT NULL,
+    ReporterUserId TEXT NOT NULL,
+    Reason TEXT NOT NULL,
+    CreatedAt TEXT NOT NULL,
+    PRIMARY KEY(ConversationId, ReporterUserId),
+    FOREIGN KEY(ConversationId) REFERENCES Conversations(Id) ON DELETE CASCADE,
+    FOREIGN KEY(ReporterUserId) REFERENCES Users(Id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS IX_ConversationReports_CreatedAt ON ConversationReports(CreatedAt);
+CREATE TABLE IF NOT EXISTS MessageReceipts (
+    MessageId TEXT NOT NULL,
+    RecipientUserId TEXT NOT NULL,
+    DeliveredAt TEXT NULL,
+    ReadAt TEXT NULL,
+    PRIMARY KEY(MessageId, RecipientUserId),
+    FOREIGN KEY(MessageId) REFERENCES Messages(Id) ON DELETE CASCADE,
+    FOREIGN KEY(RecipientUserId) REFERENCES Users(Id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS IX_MessageReceipts_Recipient ON MessageReceipts(RecipientUserId, DeliveredAt, ReadAt);
 CREATE INDEX IF NOT EXISTS IX_Messages_Conversation_Sent_Id ON Messages(ConversationId, SentAt DESC, Id DESC);
+ALTER TABLE Messages ADD COLUMN IF NOT EXISTS ReplyToMessageId TEXT NULL;
+ALTER TABLE Messages ADD COLUMN IF NOT EXISTS EditedAt TEXT NULL;
+ALTER TABLE Messages ADD COLUMN IF NOT EXISTS DeletedAt TEXT NULL;
+CREATE INDEX IF NOT EXISTS IX_Messages_ReplyTo ON Messages(ReplyToMessageId);
 ";
         command.ExecuteNonQuery();
 
@@ -895,7 +976,7 @@ WHERE NOT EXISTS (SELECT 1 FROM ConversationParticipants cp WHERE cp.Conversatio
             if (!reader.Read()) throw new InvalidOperationException("المستخدم غير موجود.");
             if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2))
                 throw new InvalidOperationException("بيانات الملف الشخصي غير صالحة.");
-            return new { email = reader.GetString(0), name = reader.GetString(1), status = reader.GetString(2) };
+            return new { userId, email = reader.GetString(0), name = reader.GetString(1), status = reader.GetString(2) };
         }
     }
 
@@ -1403,6 +1484,29 @@ ON CONFLICT(Email) DO UPDATE SET Code=@code,ExpiresAt=@expires,FailedAttempts=0,
         }
     }
 
+    public void RevokeAllSessions(Guid userId)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var transaction = connection.BeginTransaction();
+
+            using var sessions = connection.CreateCommand();
+            sessions.Transaction = transaction;
+            sessions.CommandText = "DELETE FROM Sessions WHERE UserId=@user;";
+            sessions.Parameters.AddWithValue("@user", userId.ToString());
+            sessions.ExecuteNonQuery();
+
+            using var pushTokens = connection.CreateCommand();
+            pushTokens.Transaction = transaction;
+            pushTokens.CommandText = "DELETE FROM PushTokens WHERE UserId=@user;";
+            pushTokens.Parameters.AddWithValue("@user", userId.ToString());
+            pushTokens.ExecuteNonQuery();
+
+            transaction.Commit();
+        }
+    }
+
     public bool TryGetSession(HttpRequest request, out SessionRecord? session)
     {
         session = null;
@@ -1710,6 +1814,24 @@ LIMIT 1;";
         }
     }
 
+    public void ReportConversation(Guid conversationId, Guid userId, string reason)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+INSERT INTO ConversationReports(ConversationId,ReporterUserId,Reason,CreatedAt)
+VALUES(@conversation,@user,@reason,@created)
+ON CONFLICT(ConversationId,ReporterUserId) DO UPDATE SET Reason=excluded.Reason, CreatedAt=excluded.CreatedAt;";
+            command.Parameters.AddWithValue("@conversation", conversationId.ToString());
+            command.Parameters.AddWithValue("@user", userId.ToString());
+            command.Parameters.AddWithValue("@reason", reason);
+            command.Parameters.AddWithValue("@created", DateTimeOffset.UtcNow.ToString("O"));
+            command.ExecuteNonQuery();
+        }
+    }
+
     public bool ExistsConversation(Guid id, Guid userId)
     {
         lock (_sync)
@@ -1723,21 +1845,76 @@ LIMIT 1;";
         }
     }
 
-    public void MarkConversationRead(Guid conversationId, Guid userId)
+    public IReadOnlyList<(Guid MessageId, Guid SenderUserId)> MarkConversationRead(Guid conversationId, Guid userId)
     {
         lock (_sync)
         {
             using var connection = Open();
-        using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE ConversationParticipants SET LastReadAt=@read WHERE ConversationId=@conversation AND UserId=@user;";
-            command.Parameters.AddWithValue("@read", DateTimeOffset.UtcNow.ToString("O"));
-            command.Parameters.AddWithValue("@conversation", conversationId.ToString());
-            command.Parameters.AddWithValue("@user", userId.ToString());
-        command.ExecuteNonQuery();
+            using var transaction = connection.BeginTransaction();
+            var result = new List<(Guid MessageId, Guid SenderUserId)>();
+            using (var find = connection.CreateCommand())
+            {
+                find.Transaction = transaction;
+                find.CommandText = @"SELECT m.Id,m.SenderUserId FROM Messages m JOIN MessageReceipts r ON r.MessageId=m.Id WHERE m.ConversationId=@conversation AND r.RecipientUserId=@user AND r.ReadAt IS NULL AND m.SenderUserId<>@user;";
+                find.Parameters.AddWithValue("@conversation", conversationId.ToString());
+                find.Parameters.AddWithValue("@user", userId.ToString());
+                using var reader = find.ExecuteReader();
+                while (reader.Read() && Guid.TryParse(reader.GetString(0), out var messageId) && Guid.TryParse(reader.GetString(1), out var senderId))
+                    result.Add((messageId, senderId));
+            }
+            using (var update = connection.CreateCommand())
+            {
+                update.Transaction = transaction;
+                update.CommandText = "UPDATE MessageReceipts SET ReadAt=COALESCE(ReadAt,@read), DeliveredAt=COALESCE(DeliveredAt,@read) WHERE RecipientUserId=@user AND MessageId IN (SELECT Id FROM Messages WHERE ConversationId=@conversation AND SenderUserId<>@user);";
+                update.Parameters.AddWithValue("@read", DateTimeOffset.UtcNow.ToString("O"));
+                update.Parameters.AddWithValue("@user", userId.ToString());
+                update.Parameters.AddWithValue("@conversation", conversationId.ToString());
+                update.ExecuteNonQuery();
+            }
+            using (var conversationUpdate = connection.CreateCommand())
+            {
+                conversationUpdate.Transaction = transaction;
+                conversationUpdate.CommandText = "UPDATE ConversationParticipants SET LastReadAt=@read WHERE ConversationId=@conversation AND UserId=@user;";
+                conversationUpdate.Parameters.AddWithValue("@read", DateTimeOffset.UtcNow.ToString("O"));
+                conversationUpdate.Parameters.AddWithValue("@conversation", conversationId.ToString());
+                conversationUpdate.Parameters.AddWithValue("@user", userId.ToString());
+                conversationUpdate.ExecuteNonQuery();
+            }
+            transaction.Commit();
+            return result;
         }
     }
 
-    public IReadOnlyList<MessageDto> GetMessages(Guid id, DateTimeOffset? since = null)
+    public (Guid? SenderUserId, bool Changed) MarkMessageDelivered(Guid messageId, Guid userId)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var transaction = connection.BeginTransaction();
+            Guid? senderId = null;
+            using (var find = connection.CreateCommand())
+            {
+                find.Transaction = transaction;
+                find.CommandText = "SELECT m.SenderUserId FROM Messages m JOIN ConversationParticipants cp ON cp.ConversationId=m.ConversationId WHERE m.Id=@message AND cp.UserId=@user AND m.SenderUserId<>@user LIMIT 1;";
+                find.Parameters.AddWithValue("@message", messageId.ToString());
+                find.Parameters.AddWithValue("@user", userId.ToString());
+                var value = find.ExecuteScalar() as string;
+                if (!Guid.TryParse(value, out var parsedSender)) return (null, false);
+                senderId = parsedSender;
+            }
+            using var update = connection.CreateCommand();
+            update.Transaction = transaction;
+            update.CommandText = "UPDATE MessageReceipts SET DeliveredAt=COALESCE(DeliveredAt,@delivered) WHERE MessageId=@message AND RecipientUserId=@user AND DeliveredAt IS NULL;";
+            update.Parameters.AddWithValue("@delivered", DateTimeOffset.UtcNow.ToString("O"));
+            update.Parameters.AddWithValue("@message", messageId.ToString());
+            update.Parameters.AddWithValue("@user", userId.ToString());
+            var changed = update.ExecuteNonQuery() > 0;
+            transaction.Commit();
+            return (senderId, changed);
+        }
+    }
+
+    public IReadOnlyList<MessageDto> GetMessages(Guid id, DateTimeOffset? since = null, Guid? currentUserId = null)
     {
         lock (_sync)
         {
@@ -1746,9 +1923,10 @@ LIMIT 1;";
             // The initial load returns the most recent 500 messages. Incremental
             // syncs return only messages at or after the supplied timestamp; the
             // client deduplicates the boundary message using its stable server ID.
+            var statusSql = currentUserId.HasValue ? @", COALESCE((SELECT CASE WHEN COUNT(*) = 0 THEN 'sent' WHEN SUM(CASE WHEN mr.ReadAt IS NOT NULL THEN 1 ELSE 0 END) = COUNT(*) THEN 'read' WHEN SUM(CASE WHEN mr.DeliveredAt IS NOT NULL THEN 1 ELSE 0 END) = COUNT(*) THEN 'delivered' ELSE 'sent' END FROM MessageReceipts mr WHERE mr.MessageId=m.Id AND mr.RecipientUserId<>m.SenderUserId), 'sent')" : ", 'sent'";
             command.CommandText = since.HasValue
-                ? "SELECT Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,AttachmentFileName,AttachmentContentType,AttachmentSize FROM Messages WHERE ConversationId=@id AND SentAt >= @since ORDER BY SentAt ASC, Id ASC LIMIT 500;"
-                : "SELECT Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,AttachmentFileName,AttachmentContentType,AttachmentSize FROM Messages WHERE ConversationId=@id ORDER BY SentAt DESC, Id DESC LIMIT 500;";
+                ? $"SELECT m.Id,m.ConversationId,m.SenderUserId,m.SenderPhoneNumber,m.Text,m.SentAt,m.AttachmentFileName,m.AttachmentContentType,m.AttachmentSize{statusSql},m.ReplyToMessageId,rm.Text AS ReplyToText,m.EditedAt,m.DeletedAt FROM Messages m LEFT JOIN Messages rm ON rm.Id=m.ReplyToMessageId WHERE m.ConversationId=@id AND m.SentAt >= @since ORDER BY m.SentAt ASC, m.Id ASC LIMIT 500;"
+                : $"SELECT m.Id,m.ConversationId,m.SenderUserId,m.SenderPhoneNumber,m.Text,m.SentAt,m.AttachmentFileName,m.AttachmentContentType,m.AttachmentSize{statusSql},m.ReplyToMessageId,rm.Text AS ReplyToText,m.EditedAt,m.DeletedAt FROM Messages m LEFT JOIN Messages rm ON rm.Id=m.ReplyToMessageId WHERE m.ConversationId=@id ORDER BY m.SentAt DESC, m.Id DESC LIMIT 500;";
             command.Parameters.AddWithValue("@id", id.ToString());
             if (since.HasValue)
                 command.Parameters.AddWithValue("@since", since.Value.ToString("O"));
@@ -1762,7 +1940,7 @@ LIMIT 1;";
                     reader.IsDBNull(3) || reader.IsDBNull(4) ||
                     !DateTimeOffset.TryParse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var sentAt))
                     continue;
-                result.Add(new MessageDto(messageId, conversationId, senderId, reader.GetString(3), reader.GetString(4), sentAt, reader.IsDBNull(6) ? null : reader.GetString(6), reader.IsDBNull(7) ? null : reader.GetString(7), reader.IsDBNull(8) ? null : reader.GetInt64(8)));
+                result.Add(new MessageDto(messageId, conversationId, senderId, reader.GetString(3), reader.GetString(4), sentAt, reader.IsDBNull(6) ? null : reader.GetString(6), reader.IsDBNull(7) ? null : reader.GetString(7), reader.IsDBNull(8) ? null : reader.GetInt64(8), reader.IsDBNull(9) ? "sent" : reader.GetString(9), reader.IsDBNull(10) || !Guid.TryParse(reader.GetString(10), out var replyToId) ? null : replyToId, reader.IsDBNull(11) ? null : reader.GetString(11), !reader.IsDBNull(12), reader.IsDBNull(12) ? null : reader.GetString(12), !reader.IsDBNull(13)) );
             }
             if (!since.HasValue)
                 result.Reverse();
@@ -1770,7 +1948,40 @@ LIMIT 1;";
         }
     }
 
-    public MessageDto AddMessage(Guid conversationId, Guid userId, string senderPhone, string text, string? clientMessageId)
+    public IReadOnlyList<Guid> GetPresenceRecipientUserIds(Guid userId)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT DISTINCT cp2.UserId
+FROM ConversationParticipants cp1
+JOIN ConversationParticipants cp2 ON cp2.ConversationId = cp1.ConversationId
+WHERE cp1.UserId=@user AND cp2.UserId<>@user;";
+            command.Parameters.AddWithValue("@user", userId.ToString());
+            using var reader = command.ExecuteReader();
+            var result = new List<Guid>();
+            while (reader.Read() && Guid.TryParse(reader.GetString(0), out var id))
+                result.Add(id);
+            return result;
+        }
+    }
+
+    public bool MessageBelongsToConversation(Guid messageId, Guid conversationId)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT 1 FROM Messages WHERE Id=@id AND ConversationId=@conversation LIMIT 1;";
+            command.Parameters.AddWithValue("@id", messageId.ToString());
+            command.Parameters.AddWithValue("@conversation", conversationId.ToString());
+            return command.ExecuteScalar() is not null;
+        }
+    }
+
+    public MessageDto AddMessage(Guid conversationId, Guid userId, string senderPhone, string text, string? clientMessageId, Guid? replyToMessageId = null)
     {
         lock (_sync)
         {
@@ -1800,13 +2011,13 @@ LIMIT 1;";
                 }
             }
 
-            var message = new MessageDto(Guid.NewGuid(), conversationId, userId, senderPhone, text, DateTimeOffset.UtcNow);
+            var message = new MessageDto(Guid.NewGuid(), conversationId, userId, senderPhone, text, DateTimeOffset.UtcNow, null, null, null, "sent", replyToMessageId, null);
             using var transaction = connection.BeginTransaction();
             using var insert = connection.CreateCommand();
             insert.Transaction = transaction;
             insert.CommandText = string.IsNullOrWhiteSpace(clientMessageId)
-                ? "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,ClientMessageId) VALUES(@id,@conversation,@user,@phone,@text,@sent,@client);"
-                : "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,ClientMessageId) VALUES(@id,@conversation,@user,@phone,@text,@sent,@client) ON CONFLICT DO NOTHING;";
+                ? "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,ClientMessageId,ReplyToMessageId) VALUES(@id,@conversation,@user,@phone,@text,@sent,@client,@reply);"
+                : "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,ClientMessageId,ReplyToMessageId) VALUES(@id,@conversation,@user,@phone,@text,@sent,@client,@reply) ON CONFLICT DO NOTHING;";
             insert.Parameters.AddWithValue("@id", message.Id.ToString());
             insert.Parameters.AddWithValue("@conversation", conversationId.ToString());
             insert.Parameters.AddWithValue("@user", userId.ToString());
@@ -1814,6 +2025,7 @@ LIMIT 1;";
             insert.Parameters.AddWithValue("@text", text);
             insert.Parameters.AddWithValue("@sent", message.SentAt.ToString("O"));
             insert.Parameters.AddWithValue("@client", (object?)clientMessageId ?? DBNull.Value);
+            insert.Parameters.AddWithValue("@reply", (object?)replyToMessageId?.ToString("D") ?? DBNull.Value);
             var inserted = insert.ExecuteNonQuery();
             if (inserted == 0 && !string.IsNullOrWhiteSpace(clientMessageId))
             {
@@ -1835,6 +2047,16 @@ LIMIT 1;";
                 }
                 throw new InvalidOperationException("تعذر حفظ الرسالة.");
             }
+            using (var receipt = connection.CreateCommand())
+            {
+                receipt.Transaction = transaction;
+                receipt.CommandText = "INSERT INTO MessageReceipts(MessageId,RecipientUserId) SELECT @message,UserId FROM ConversationParticipants WHERE ConversationId=@conversation AND UserId<>@sender ON CONFLICT DO NOTHING;";
+                receipt.Parameters.AddWithValue("@message", message.Id.ToString());
+                receipt.Parameters.AddWithValue("@conversation", conversationId.ToString());
+                receipt.Parameters.AddWithValue("@sender", userId.ToString());
+                receipt.ExecuteNonQuery();
+            }
+
             using var update = connection.CreateCommand();
             update.Transaction = transaction;
             update.CommandText = "UPDATE Conversations SET LastMessage=@text, UpdatedAt=@updated WHERE Id=@id;";
@@ -1844,6 +2066,90 @@ LIMIT 1;";
             update.ExecuteNonQuery();
             transaction.Commit();
             return message;
+        }
+    }
+
+    public (MessageDto? Message, bool Changed) EditMessage(Guid messageId, Guid userId, string text)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var transaction = connection.BeginTransaction();
+            Guid conversationId;
+            Guid senderId;
+            using (var find = connection.CreateCommand())
+            {
+                find.Transaction = transaction;
+                find.CommandText = "SELECT ConversationId,SenderUserId,AttachmentFileName FROM Messages WHERE Id=@id LIMIT 1;";
+                find.Parameters.AddWithValue("@id", messageId.ToString());
+                using var reader = find.ExecuteReader();
+                if (!reader.Read() || !Guid.TryParse(reader.GetString(0), out conversationId) || !Guid.TryParse(reader.GetString(1), out senderId))
+                    return (null, false);
+                if (senderId != userId || !reader.IsDBNull(2)) return (null, false);
+            }
+
+            var editedAt = DateTimeOffset.UtcNow;
+            using (var update = connection.CreateCommand())
+            {
+                update.Transaction = transaction;
+                update.CommandText = "UPDATE Messages SET Text=@text,EditedAt=@edited WHERE Id=@id AND SenderUserId=@user;";
+                update.Parameters.AddWithValue("@text", text);
+                update.Parameters.AddWithValue("@edited", editedAt.ToString("O"));
+                update.Parameters.AddWithValue("@id", messageId.ToString());
+                update.Parameters.AddWithValue("@user", userId.ToString());
+                if (update.ExecuteNonQuery() == 0) return (null, false);
+            }
+
+            using (var latest = connection.CreateCommand())
+            {
+                latest.Transaction = transaction;
+                latest.CommandText = "UPDATE Conversations SET LastMessage=@text,UpdatedAt=@updated WHERE Id=@conversation AND EXISTS (SELECT 1 FROM Messages WHERE Id=@message AND SentAt=(SELECT MAX(SentAt) FROM Messages WHERE ConversationId=@conversation));";
+                latest.Parameters.AddWithValue("@text", text);
+                latest.Parameters.AddWithValue("@updated", editedAt.ToString("O"));
+                latest.Parameters.AddWithValue("@conversation", conversationId.ToString());
+                latest.Parameters.AddWithValue("@message", messageId.ToString());
+                latest.ExecuteNonQuery();
+            }
+            transaction.Commit();
+
+            var messages = GetMessages(conversationId, null, userId);
+            var message = messages.FirstOrDefault(x => x.Id == messageId);
+            return (message, message is not null);
+        }
+    }
+
+    public MessageDto? DeleteMessage(Guid messageId, Guid userId)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var transaction = connection.BeginTransaction();
+            Guid conversationId;
+            Guid senderId;
+            using (var find = connection.CreateCommand())
+            {
+                find.Transaction = transaction;
+                find.CommandText = "SELECT ConversationId,SenderUserId FROM Messages WHERE Id=@id AND DeletedAt IS NULL LIMIT 1;";
+                find.Parameters.AddWithValue("@id", messageId.ToString());
+                using var reader = find.ExecuteReader();
+                if (!reader.Read() || !Guid.TryParse(reader.GetString(0), out conversationId) || !Guid.TryParse(reader.GetString(1), out senderId))
+                    return null;
+                if (senderId != userId) return null;
+            }
+
+            var deletedAt = DateTimeOffset.UtcNow;
+            using (var update = connection.CreateCommand())
+            {
+                update.Transaction = transaction;
+                update.CommandText = "UPDATE Messages SET Text=@text,DeletedAt=@deleted,EditedAt=NULL WHERE Id=@id AND SenderUserId=@user AND DeletedAt IS NULL;";
+                update.Parameters.AddWithValue("@text", "تم حذف هذه الرسالة");
+                update.Parameters.AddWithValue("@deleted", deletedAt.ToString("O"));
+                update.Parameters.AddWithValue("@id", messageId.ToString());
+                update.Parameters.AddWithValue("@user", userId.ToString());
+                if (update.ExecuteNonQuery() == 0) return null;
+            }
+            transaction.Commit();
+            return GetMessages(conversationId, null, userId).FirstOrDefault(x => x.Id == messageId);
         }
     }
 
@@ -1867,6 +2173,16 @@ LIMIT 1;";
             insert.Parameters.AddWithValue("@type", contentType);
             insert.Parameters.AddWithValue("@size", size);
             insert.ExecuteNonQuery();
+
+            using (var receipt = connection.CreateCommand())
+            {
+                receipt.Transaction = transaction;
+                receipt.CommandText = "INSERT INTO MessageReceipts(MessageId,RecipientUserId) SELECT @message,UserId FROM ConversationParticipants WHERE ConversationId=@conversation AND UserId<>@sender ON CONFLICT DO NOTHING;";
+                receipt.Parameters.AddWithValue("@message", message.Id.ToString());
+                receipt.Parameters.AddWithValue("@conversation", conversationId.ToString());
+                receipt.Parameters.AddWithValue("@sender", userId.ToString());
+                receipt.ExecuteNonQuery();
+            }
 
             using var update = connection.CreateCommand();
             update.Transaction = transaction;
@@ -1936,6 +2252,8 @@ WHERE m.Id=@id AND c.UserId=@user AND m.AttachmentFileName IS NOT NULL LIMIT 1;"
 sealed class HimoChatHub : Hub
 {
     private readonly PostgresStore _store;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, int> OnlineUsers = new();
+
     public HimoChatHub(PostgresStore store) => _store = store;
 
     public static string UserGroup(Guid userId) => $"user:{userId:D}";
@@ -1950,7 +2268,91 @@ sealed class HimoChatHub : Hub
         }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, UserGroup(session.UserId));
+        var becameOnline = OnlineUsers.AddOrUpdate(session.UserId, 1, static (_, count) => count + 1) == 1;
+        if (becameOnline)
+        {
+            foreach (var recipientId in _store.GetPresenceRecipientUserIds(session.UserId))
+                await Clients.Group(UserGroup(recipientId)).SendAsync("UserPresenceChanged", session.UserId, true);
+        }
+
         await base.OnConnectedAsync();
+    }
+
+    public Task<bool> GetPresence(Guid conversationId)
+    {
+        var session = GetSessionOrAbort();
+        if (session is null || !_store.ExistsConversation(conversationId, session.UserId))
+            return Task.FromResult(false);
+
+        foreach (var userId in _store.GetOtherParticipantUserIds(conversationId, session.UserId))
+            if (OnlineUsers.TryGetValue(userId, out var count) && count > 0)
+                return Task.FromResult(true);
+        return Task.FromResult(false);
+    }
+
+    public async Task MarkMessageDelivered(Guid messageId)
+    {
+        var session = GetSessionOrAbort();
+        if (session is null) return;
+        var result = _store.MarkMessageDelivered(messageId, session.UserId);
+        if (result.Changed && result.SenderUserId.HasValue)
+            await Clients.Group(UserGroup(result.SenderUserId.Value))
+                .SendAsync("MessageDeliveryChanged", messageId, session.UserId, "delivered");
+    }
+
+    public async Task SendCallSignal(Guid conversationId, string type, string? payload)
+    {
+        var session = GetSessionOrAbort();
+        if (session is null || string.IsNullOrWhiteSpace(type) || type.Length > 32)
+            return;
+
+        if (!_store.ExistsConversation(conversationId, session.UserId))
+            return;
+
+        var message = new CallSignalMessage(conversationId, session.UserId, type.Trim(), payload);
+        foreach (var recipientId in _store.GetOtherParticipantUserIds(conversationId, session.UserId))
+            await Clients.Group(UserGroup(recipientId)).SendAsync("CallSignalReceived", message);
+    }
+
+    public async Task StartTyping(Guid conversationId)
+    {
+        var session = GetSessionOrAbort();
+        if (session is null || !_store.ExistsConversation(conversationId, session.UserId)) return;
+        foreach (var recipientId in _store.GetOtherParticipantUserIds(conversationId, session.UserId))
+            await Clients.Group(UserGroup(recipientId)).SendAsync("UserTypingChanged", session.UserId, conversationId, true);
+    }
+
+    public async Task StopTyping(Guid conversationId)
+    {
+        var session = GetSessionOrAbort();
+        if (session is null || !_store.ExistsConversation(conversationId, session.UserId)) return;
+        foreach (var recipientId in _store.GetOtherParticipantUserIds(conversationId, session.UserId))
+            await Clients.Group(UserGroup(recipientId)).SendAsync("UserTypingChanged", session.UserId, conversationId, false);
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        var http = Context.GetHttpContext();
+        if (http is not null && _store.TryGetSession(http.Request, out var session) && session is not null)
+        {
+            var wentOffline = OnlineUsers.AddOrUpdate(session.UserId, 0, static (_, count) => Math.Max(0, count - 1)) == 0;
+            if (wentOffline)
+            {
+                OnlineUsers.TryRemove(session.UserId, out _);
+                foreach (var recipientId in _store.GetPresenceRecipientUserIds(session.UserId))
+                    await Clients.Group(UserGroup(recipientId)).SendAsync("UserPresenceChanged", session.UserId, false);
+            }
+        }
+        await base.OnDisconnectedAsync(exception);
+    }
+
+    private SessionRecord? GetSessionOrAbort()
+    {
+        var http = Context.GetHttpContext();
+        if (http is not null && _store.TryGetSession(http.Request, out var session) && session is not null)
+            return session;
+        Context.Abort();
+        return null;
     }
 }
 
@@ -1994,8 +2396,10 @@ enum PasswordResetFailure { None, InvalidCode, RateLimited }
 record PushTokenRequest(string? Token);
 record UpdateProfileRequest(string? Name, string? Status);
 record CreateConversationRequest(string? Name, Guid? UserId);
-record SendMessageRequest(string? Text, string? ClientMessageId);
-record AuthResponse(string Token, string Email, string Name);
+record CallSignalMessage(Guid ConversationId, Guid SenderUserId, string Type, string? Payload);
+record SendMessageRequest(string? Text, string? ClientMessageId, Guid? ReplyToMessageId);
+record ReportConversationRequest(string? Reason);
+record AuthResponse(string Token, Guid UserId, string Email, string Name);
 record UserRecord(Guid Id, string PhoneNumber, string Name);
 record EmailVerificationPending(string Email, string Name, string PasswordHash, DateTimeOffset ExpiresAt, int FailedAttempts);
 record SessionRecord(Guid UserId, string PhoneNumber, string Name, DateTimeOffset ExpiresAt);
@@ -2022,5 +2426,6 @@ sealed class ConversationDto
         UnreadCount = unreadCount;
     }
 }
-record MessageDto(Guid Id, Guid ConversationId, Guid SenderUserId, string SenderPhoneNumber, string Text, DateTimeOffset SentAt, string? AttachmentFileName = null, string? AttachmentContentType = null, long? AttachmentSize = null);
+record MessageDto(Guid Id, Guid ConversationId, Guid SenderUserId, string SenderPhoneNumber, string Text, DateTimeOffset SentAt, string? AttachmentFileName = null, string? AttachmentContentType = null, long? AttachmentSize = null, string Status = "sent", Guid? ReplyToMessageId = null, string? ReplyToText = null, bool IsEdited = false, string? EditedAt = null, bool IsDeleted = false);
+record EditMessageRequest(string Text);
 record UserSearchDto(Guid Id, string Email, string Name);
