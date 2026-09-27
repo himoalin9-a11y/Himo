@@ -12,7 +12,6 @@
 
     <ContentPage.Resources>
         <ResourceDictionary>
-            <!-- Reference-screen palette -->
             <Color x:Key="HimoHomeBackground">#08071A</Color>
             <Color x:Key="HimoHomeSurface">#15132D</Color>
             <Color x:Key="HimoHomeSurface2">#0D0B20</Color>
@@ -25,108 +24,70 @@
             <Color x:Key="HimoHomeDivider">#292354</Color>
             <Color x:Key="HimoHomeOnline">#20D66B</Color>
             <Color x:Key="HimoHomeDanger">#FF334A</Color>
-            <Color x:Key="HimoHomeBorder">#43357A</Color>
-
-            <LinearGradientBrush x:Key="HimoHomePrimaryGradient" StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#8B5CF6" Offset="0" />
-                <GradientStop Color="#5B21B6" Offset="1" />
-            </LinearGradientBrush>
-
-            <LinearGradientBrush x:Key="HimoHomeTabGradient" StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#914CF7" Offset="0" />
-                <GradientStop Color="#742EE6" Offset="1" />
-            </LinearGradientBrush>
 
             <Style x:Key="HomeNavText" TargetType="Label">
-                <Setter Property="FontSize" Value="14" />
+                <Setter Property="FontSize" Value="13" />
                 <Setter Property="TextColor" Value="{DynamicResource HimoHomeSecondary}" />
                 <Setter Property="HorizontalTextAlignment" Value="Center" />
-                <Setter Property="VerticalTextAlignment" Value="Center" />
             </Style>
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <!--
-        The proportions below intentionally follow the supplied 720x1600
-        reference: tall header, 60dp search/tabs, compact conversation rows,
-        right-side FAB and rounded bottom navigation.
-    -->
-    <Grid RowDefinitions="130,70,66,*,88"
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto"
           BackgroundColor="{DynamicResource HimoHomeBackground}">
 
-        <!-- Large soft purple shape at the top of the reference -->
+        <!-- Soft top glow -->
         <Ellipse Grid.Row="0"
-                 WidthRequest="380"
+                 WidthRequest="300"
                  HeightRequest="190"
-                 Fill="#25145F"
-                 Opacity="0.78"
+                 Fill="#2A145F"
+                 Opacity="0.46"
                  HorizontalOptions="Start"
                  VerticalOptions="Start"
-                 TranslationX="-118"
-                 TranslationY="-105"
-                 InputTransparent="True" />
-        <Ellipse Grid.Row="0"
-                 WidthRequest="270"
-                 HeightRequest="130"
-                 Fill="#321A79"
-                 Opacity="0.18"
-                 HorizontalOptions="Start"
-                 VerticalOptions="Start"
-                 TranslationX="-80"
-                 TranslationY="-62"
+                 TranslationX="-110"
+                 TranslationY="-82"
                  InputTransparent="True" />
 
-        <!-- HEADER: mirrors the supplied reference: profile left, centered brand, search/menu right. -->
+        <!-- HEADER -->
         <Grid Grid.Row="0"
-              Padding="18,10,18,0"
-              ColumnDefinitions="58,*,88"
+              HeightRequest="84"
+              Padding="18,10,18,6"
+              ColumnDefinitions="56,*,56"
               FlowDirection="LeftToRight">
 
-            <!-- Profile -->
-            <Border Grid.Column="0"
-                    WidthRequest="52"
-                    HeightRequest="52"
-                    BackgroundColor="#15132D"
-                    Stroke="#51438F"
-                    StrokeThickness="1.2"
-                    HorizontalOptions="Start"
-                    VerticalOptions="Center">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="26" />
-                </Border.StrokeShape>
-                <Image Source="icon_profile_white.svg"
-                       WidthRequest="28"
-                       HeightRequest="28"
-                       Opacity="0.95"
-                       HorizontalOptions="Center"
-                       VerticalOptions="Center" />
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="ProfileClicked" />
-                </Border.GestureRecognizers>
-            </Border>
+            <!-- Left side: search + more -->
+            <HorizontalStackLayout Grid.Column="0" Spacing="2" HorizontalOptions="Start" VerticalOptions="Center">
+                <Border WidthRequest="46" HeightRequest="46" BackgroundColor="Transparent" StrokeThickness="0">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
+                    <Image Source="icon_search_header_white.svg" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" />
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="SearchUserClicked" />
+                    </Border.GestureRecognizers>
+                </Border>
+                <Border WidthRequest="46" HeightRequest="46" BackgroundColor="Transparent" StrokeThickness="0">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
+                    <Image Source="icon_more.svg" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" />
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OverflowMenuClicked" />
+                    </Border.GestureRecognizers>
+                </Border>
+            </HorizontalStackLayout>
 
-            <!-- Centered brand -->
-            <HorizontalStackLayout Grid.Column="1"
-                                   HorizontalOptions="Center"
-                                   VerticalOptions="Center"
-                                   Spacing="8"
-                                   FlowDirection="LeftToRight">
+            <!-- Center brand -->
+            <HorizontalStackLayout Grid.Column="1" HorizontalOptions="Center" VerticalOptions="Center" Spacing="8" FlowDirection="LeftToRight">
                 <Label Text="Himo"
-                       FontSize="27"
+                       FontSize="26"
                        FontAttributes="Bold"
                        TextColor="{DynamicResource HimoHomeText}"
                        VerticalTextAlignment="Center" />
-                <Border WidthRequest="43"
-                        HeightRequest="43"
-                        Background="{DynamicResource HimoHomePrimaryGradient}"
-                        Stroke="#A889FF"
-                        StrokeThickness="1"
-                        VerticalOptions="Center">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="22" />
-                    </Border.StrokeShape>
+                <Border WidthRequest="42"
+                        HeightRequest="42"
+                        BackgroundColor="{DynamicResource HimoHomePrimary}"
+                        Stroke="#9C72FF"
+                        StrokeThickness="1">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
                     <Border.Shadow>
-                        <Shadow Brush="#7C3AED" Offset="0,2" Radius="11" Opacity="0.52" />
+                        <Shadow Brush="#6E3CEB" Offset="0,2" Radius="10" Opacity="0.38" />
                     </Border.Shadow>
                     <Label Text="H"
                            FontSize="25"
@@ -137,44 +98,32 @@
                 </Border>
             </HorizontalStackLayout>
 
-            <!-- Search + overflow -->
-            <HorizontalStackLayout Grid.Column="2"
-                                   Spacing="14"
-                                   HorizontalOptions="End"
-                                   VerticalOptions="Center"
-                                   FlowDirection="LeftToRight">
-                <Image Source="icon_search_header_white.svg"
-                       WidthRequest="27"
-                       HeightRequest="27"
-                       Opacity="0.92"
-                       Aspect="AspectFit">
-                    <Image.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="SearchUserClicked" />
-                    </Image.GestureRecognizers>
-                </Image>
-                <Image Source="icon_more.svg"
-                       WidthRequest="25"
-                       HeightRequest="25"
-                       Opacity="0.92"
-                       Aspect="AspectFit">
-                    <Image.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OverflowMenuClicked" />
-                    </Image.GestureRecognizers>
-                </Image>
-            </HorizontalStackLayout>
+            <!-- Right side: profile -->
+            <Border Grid.Column="2"
+                    WidthRequest="52"
+                    HeightRequest="52"
+                    BackgroundColor="#1C173D"
+                    Stroke="#51438F"
+                    StrokeThickness="1"
+                    HorizontalOptions="End"
+                    VerticalOptions="Center">
+                <Border.StrokeShape><RoundRectangle CornerRadius="26" /></Border.StrokeShape>
+                <Image Source="icon_profile_white.svg" WidthRequest="27" HeightRequest="27" Aspect="AspectFit" />
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="ProfileClicked" />
+                </Border.GestureRecognizers>
+            </Border>
         </Grid>
 
         <!-- SEARCH -->
         <Border Grid.Row="1"
-                Margin="36,7,36,5"
-                HeightRequest="58"
-                Padding="6"
+                Margin="36,3,36,10"
+                HeightRequest="60"
+                Padding="7"
                 BackgroundColor="{DynamicResource HimoHomeSurface}"
-                Stroke="{DynamicResource HimoHomeBorder}"
+                Stroke="#43357A"
                 StrokeThickness="1.2">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="29" />
-            </Border.StrokeShape>
+            <Border.StrokeShape><RoundRectangle CornerRadius="30" /></Border.StrokeShape>
             <Grid FlowDirection="LeftToRight" ColumnDefinitions="48,*">
                 <Border Grid.Column="0"
                         WidthRequest="44"
@@ -182,14 +131,8 @@
                         BackgroundColor="Transparent"
                         StrokeThickness="0"
                         VerticalOptions="Center">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="22" />
-                    </Border.StrokeShape>
-                    <Image Source="icon_search_header_white.svg"
-                           WidthRequest="23"
-                           HeightRequest="23"
-                           Aspect="AspectFit"
-                           Opacity="0.86" />
+                    <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                    <Image Source="icon_search_header_white.svg" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" Opacity="0.78" />
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="SearchUserClicked" />
                     </Border.GestureRecognizers>
@@ -200,7 +143,7 @@
                        Placeholder="البحث في المحادثات..."
                        PlaceholderColor="{DynamicResource HimoHomeLight}"
                        TextColor="{DynamicResource HimoHomeText}"
-                       FontSize="18"
+                       FontSize="17"
                        BackgroundColor="Transparent"
                        ClearButtonVisibility="WhileEditing"
                        HorizontalOptions="Fill"
@@ -209,58 +152,44 @@
             </Grid>
         </Border>
 
-        <!-- TABS: exact order/shape of the supplied screenshot -->
+        <!-- TABS -->
         <Border Grid.Row="2"
-                Margin="36,2,36,5"
-                HeightRequest="58"
-                BackgroundColor="#0E0B23"
-                Stroke="#3B2E70"
-                StrokeThickness="1.1">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="22" />
-            </Border.StrokeShape>
-            <Grid ColumnDefinitions="*,*,*" FlowDirection="RightToLeft" Padding="3">
+                Margin="36,0,36,8"
+                HeightRequest="60"
+                BackgroundColor="#0F0C24"
+                Stroke="#3C306F"
+                StrokeThickness="1">
+            <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+            <Grid ColumnDefinitions="*,*,*" FlowDirection="RightToLeft" Padding="4">
                 <Border Grid.Column="0"
-                        Background="{DynamicResource HimoHomeTabGradient}"
+                        BackgroundColor="{DynamicResource HimoHomePrimary}"
                         StrokeThickness="0"
-                        Margin="0">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="20" />
-                    </Border.StrokeShape>
-                    <Label Text="المحادثات"
-                           FontSize="17"
-                           FontAttributes="Bold"
-                           TextColor="White"
-                           HorizontalTextAlignment="Center"
-                           VerticalTextAlignment="Center" />
+                        Margin="1">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="19" /></Border.StrokeShape>
+                    <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
+                        <Image Source="icon_chat_empty.svg" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" />
+                        <Label Text="المحادثات" FontSize="16" FontAttributes="Bold" TextColor="White" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
                 </Border>
-                <Border Grid.Column="1"
-                        BackgroundColor="Transparent"
-                        StrokeThickness="0">
-                    <Label Text="الجهات"
-                           FontSize="17"
-                           TextColor="{DynamicResource HimoHomeLight}"
-                           HorizontalTextAlignment="Center"
-                           VerticalTextAlignment="Center" />
+                <Border Grid.Column="1" BackgroundColor="Transparent" StrokeThickness="0">
+                    <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
+                        <Image Source="icon_user.svg" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" />
+                        <Label Text="الجهات" FontSize="16" TextColor="{DynamicResource HimoHomeLight}" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
                 </Border>
-                <Border Grid.Column="2"
-                        BackgroundColor="Transparent"
-                        StrokeThickness="0">
-                    <Label Text="المكالمات"
-                           FontSize="17"
-                           TextColor="{DynamicResource HimoHomeLight}"
-                           HorizontalTextAlignment="Center"
-                           VerticalTextAlignment="Center" />
+                <Border Grid.Column="2" BackgroundColor="Transparent" StrokeThickness="0">
+                    <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
+                        <Image Source="icon_call_end.svg" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" Opacity="0.78" />
+                        <Label Text="المكالمات" FontSize="16" TextColor="{DynamicResource HimoHomeLight}" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
                 </Border>
             </Grid>
         </Border>
 
         <!-- CONTENT -->
         <Grid Grid.Row="3">
-            <!-- Existing status controls retained for code-behind. -->
-            <Grid x:Name="ConnectionStatusContainer"
-                  IsVisible="False"
-                  HeightRequest="0">
+            <!-- Kept for existing connection logic; hidden. -->
+            <Grid x:Name="ConnectionStatusContainer" IsVisible="False" HeightRequest="0">
                 <Label x:Name="ConnectionLabel" Text="" />
                 <ActivityIndicator x:Name="RefreshIndicator" IsRunning="False" IsVisible="False" />
                 <Button x:Name="RetryButton" IsVisible="False" Clicked="RetryClicked" />
@@ -275,24 +204,16 @@
                                 ItemSizingStrategy="MeasureAllItems"
                                 BackgroundColor="Transparent"
                                 FlowDirection="RightToLeft"
-                                VerticalScrollBarVisibility="Never"
-                                Margin="0,4,0,0">
+                                VerticalScrollBarVisibility="Never">
                     <CollectionView.EmptyView>
                         <Grid HeightRequest="300" Padding="20,34">
-                            <VerticalStackLayout HorizontalOptions="Center"
-                                                 VerticalOptions="Center"
-                                                 Spacing="12">
-                                <Border WidthRequest="72"
-                                        HeightRequest="72"
+                            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="12">
+                                <Border WidthRequest="72" HeightRequest="72"
                                         BackgroundColor="{DynamicResource HimoHomeDark}"
                                         Stroke="#51438F"
                                         StrokeThickness="1">
-                                    <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="24" />
-                                    </Border.StrokeShape>
-                                    <Image Source="icon_chat_empty.svg"
-                                           WidthRequest="36"
-                                           HeightRequest="36" />
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="24" /></Border.StrokeShape>
+                                    <Image Source="icon_chat_empty.svg" WidthRequest="36" HeightRequest="36" />
                                 </Border>
                                 <Label x:Name="EmptyTitle"
                                        Text="لا توجد محادثات بعد"
@@ -319,41 +240,33 @@
 
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="models:Conversation">
-                            <!-- Compact flat row: avatar right, details center, time/unread/chevron left. -->
                             <Grid FlowDirection="LeftToRight"
                                   ColumnDefinitions="74,*,96"
-                                  ColumnSpacing="10"
-                                  Padding="0,8"
+                                  ColumnSpacing="12"
+                                  Padding="0,9"
                                   MinimumHeightRequest="76">
 
-                                <!-- LEFT META -->
+                                <!-- Left meta: time, unread, chevron -->
                                 <Grid Grid.Column="0"
-                                      ColumnDefinitions="*,24"
+                                      ColumnDefinitions="*,28"
                                       RowDefinitions="Auto,Auto"
                                       VerticalOptions="Center">
-                                    <Label Grid.Row="0"
-                                           Grid.Column="0"
+                                    <Label Grid.Row="0" Grid.Column="0"
                                            Text="{Binding Time}"
                                            FontSize="13"
                                            TextColor="{DynamicResource HimoHomeSecondary}"
                                            HorizontalTextAlignment="Start"
                                            VerticalTextAlignment="Center" />
-
-                                    <Border Grid.Row="1"
-                                            Grid.Column="0"
+                                    <Border Grid.Row="1" Grid.Column="0"
                                             WidthRequest="27"
                                             HeightRequest="27"
-                                            Margin="0,5,0,0"
                                             BackgroundColor="{DynamicResource HimoHomePrimary}"
                                             StrokeThickness="0"
-                                            HorizontalOptions="Start">
-                                        <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="14" />
-                                        </Border.StrokeShape>
+                                            HorizontalOptions="Start"
+                                            Margin="0,5,0,0">
+                                        <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
                                         <Border.Triggers>
-                                            <DataTrigger TargetType="Border"
-                                                         Binding="{Binding UnreadCount}"
-                                                         Value="0">
+                                            <DataTrigger TargetType="Border" Binding="{Binding UnreadCount}" Value="0">
                                                 <Setter Property="IsVisible" Value="False" />
                                             </DataTrigger>
                                         </Border.Triggers>
@@ -364,23 +277,20 @@
                                                HorizontalTextAlignment="Center"
                                                VerticalTextAlignment="Center" />
                                     </Border>
-
-                                    <Image Grid.Row="0"
-                                           Grid.RowSpan="2"
-                                           Grid.Column="1"
+                                    <Image Grid.Row="0" Grid.RowSpan="2" Grid.Column="1"
                                            Source="icon_chevron_right.svg"
-                                           WidthRequest="17"
-                                           HeightRequest="17"
+                                           WidthRequest="18"
+                                           HeightRequest="18"
                                            HorizontalOptions="End"
                                            VerticalOptions="Center"
-                                           Opacity="0.88" />
+                                           Opacity="0.9" />
                                 </Grid>
 
-                                <!-- CENTER DETAILS -->
+                                <!-- Center conversation details -->
                                 <VerticalStackLayout Grid.Column="1"
                                                      VerticalOptions="Center"
                                                      HorizontalOptions="Fill"
-                                                     Spacing="2"
+                                                     Spacing="4"
                                                      FlowDirection="RightToLeft">
                                     <Label Text="{Binding Name}"
                                            FontSize="18"
@@ -389,14 +299,14 @@
                                            LineBreakMode="TailTruncation"
                                            HorizontalTextAlignment="End" />
                                     <Label Text="{Binding LastMessage}"
-                                           FontSize="15"
+                                           FontSize="14"
                                            TextColor="{DynamicResource HimoHomeSecondary}"
                                            LineBreakMode="TailTruncation"
                                            MaxLines="1"
                                            HorizontalTextAlignment="End" />
                                 </VerticalStackLayout>
 
-                                <!-- RIGHT AVATAR + ONLINE DOT -->
+                                <!-- Right avatar -->
                                 <Grid Grid.Column="2"
                                       WidthRequest="62"
                                       HeightRequest="62"
@@ -406,12 +316,10 @@
                                             HeightRequest="58"
                                             BackgroundColor="#352078"
                                             Stroke="#5D43A2"
-                                            StrokeThickness="1.1"
+                                            StrokeThickness="1.2"
                                             HorizontalOptions="End"
                                             VerticalOptions="Center">
-                                        <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="29" />
-                                        </Border.StrokeShape>
+                                        <Border.StrokeShape><RoundRectangle CornerRadius="29" /></Border.StrokeShape>
                                         <Label Text="{Binding Initial}"
                                                TextColor="{DynamicResource HimoHomeLight}"
                                                FontSize="22"
@@ -430,7 +338,7 @@
                                              TranslationY="-1" />
                                 </Grid>
 
-                                <!-- Reference divider -->
+                                <!-- Divider -->
                                 <BoxView Grid.Column="0"
                                          Grid.ColumnSpan="3"
                                          HeightRequest="1"
@@ -443,96 +351,73 @@
                 </CollectionView>
             </RefreshView>
 
-            <!-- Low-contrast waves behind the bottom controls. -->
+            <!-- Bottom decorative waves -->
             <Image Source="login_waves.svg"
-                   HeightRequest="86"
+                   HeightRequest="130"
                    Aspect="Fill"
                    VerticalOptions="End"
                    HorizontalOptions="Fill"
-                   Opacity="0.34"
+                   Opacity="0.50"
                    InputTransparent="True"
                    ZIndex="-1" />
 
-            <!-- FAB is intentionally on the right, matching the supplied screenshot. -->
-            <Border WidthRequest="64"
-                    HeightRequest="64"
-                    HorizontalOptions="End"
+            <!-- Floating new conversation button -->
+            <Border WidthRequest="66"
+                    HeightRequest="66"
+                    HorizontalOptions="Start"
                     VerticalOptions="End"
-                    Margin="0,0,22,16"
-                    Background="{DynamicResource HimoHomePrimaryGradient}"
+                    Margin="20,0,0,12"
+                    BackgroundColor="{DynamicResource HimoHomeBright}"
                     Stroke="#A58AFF"
                     StrokeThickness="1"
                     ZIndex="5">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="32" />
-                </Border.StrokeShape>
+                <Border.StrokeShape><RoundRectangle CornerRadius="33" /></Border.StrokeShape>
                 <Border.Shadow>
-                    <Shadow Brush="#7C3AED" Offset="0,4" Radius="16" Opacity="0.56" />
+                    <Shadow Brush="#7C3AED" Offset="0,4" Radius="15" Opacity="0.55" />
                 </Border.Shadow>
-                <Image Source="icon_plus.png"
-                       WidthRequest="30"
-                       HeightRequest="30"
-                       Aspect="AspectFit" />
+                <Image Source="icon_plus.png" WidthRequest="31" HeightRequest="31" Aspect="AspectFit" />
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="NewConversationClicked" />
                 </Border.GestureRecognizers>
             </Border>
         </Grid>
 
-        <!-- BOTTOM NAVIGATION: rounded, low-profile and close to the reference. -->
+        <!-- BOTTOM NAVIGATION -->
         <Border Grid.Row="4"
-                Margin="16,5,16,9"
-                Padding="6,6,6,4"
+                Margin="16,4,16,10"
+                Padding="7,7,7,5"
                 BackgroundColor="#0D0B20"
                 Stroke="#302762"
                 StrokeThickness="1"
-                HeightRequest="80"
+                HeightRequest="84"
                 ZIndex="10">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="28" />
-            </Border.StrokeShape>
+            <Border.StrokeShape><RoundRectangle CornerRadius="28" /></Border.StrokeShape>
             <Grid ColumnDefinitions="*,*,*,*" FlowDirection="RightToLeft">
-                <!-- Active Home: icon + label + indicator -->
-                <VerticalStackLayout Grid.Column="0"
-                                     Spacing="0"
-                                     HorizontalOptions="Center"
-                                     VerticalOptions="Center">
-                    <Image Source="icon_home.png"
-                           WidthRequest="25"
-                           HeightRequest="25"
-                           Aspect="AspectFit" />
-                    <Label Text="الرئيسية"
-                           FontSize="14"
-                           FontAttributes="Bold"
-                           TextColor="{DynamicResource HimoHomeBright}"
-                           HorizontalTextAlignment="Center" />
-                    <Border HeightRequest="3"
-                            WidthRequest="30"
-                            BackgroundColor="{DynamicResource HimoHomeBright}"
-                            StrokeThickness="0"
-                            HorizontalOptions="Center">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="2" />
-                        </Border.StrokeShape>
+                <!-- Home -->
+                <VerticalStackLayout Grid.Column="0" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
+                    <Image Source="icon_home.png" WidthRequest="24" HeightRequest="24" Aspect="AspectFit" />
+                    <Label Text="الرئيسية" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource HimoHomeBright}" HorizontalTextAlignment="Center" />
+                    <Border HeightRequest="3" WidthRequest="30" BackgroundColor="{DynamicResource HimoHomeBright}" StrokeThickness="0" HorizontalOptions="Center">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="2" /></Border.StrokeShape>
                     </Border>
                 </VerticalStackLayout>
 
-                <!-- Chats -->
-                <VerticalStackLayout Grid.Column="1" Spacing="1" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Image Source="icon_conversations.png" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" Opacity="0.82" />
-                    <Label Text="المحادثات" Style="{StaticResource HomeNavText}" HorizontalTextAlignment="Center" />
+                <!-- Conversations -->
+                <VerticalStackLayout Grid.Column="1" Spacing="3" HorizontalOptions="Center" VerticalOptions="Center">
+                    <Image Source="icon_chat_empty.svg" WidthRequest="24" HeightRequest="24" Aspect="AspectFit" Opacity="0.72" />
+                    <Label Text="المحادثات" Style="{StaticResource HomeNavText}" />
                 </VerticalStackLayout>
 
                 <!-- Calls -->
-                <VerticalStackLayout Grid.Column="2" Spacing="1" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Image Source="icon_call_end.svg" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" Opacity="0.82" />
-                    <Label Text="المكالمات" Style="{StaticResource HomeNavText}" HorizontalTextAlignment="Center" />
+                <VerticalStackLayout Grid.Column="2" Spacing="3" HorizontalOptions="Center" VerticalOptions="Center">
+                    <Image Source="icon_call_end.svg" WidthRequest="24" HeightRequest="24" Aspect="AspectFit" Opacity="0.72" />
+                    <Label Text="المكالمات" Style="{StaticResource HomeNavText}" />
                 </VerticalStackLayout>
 
                 <!-- Contacts -->
-                <VerticalStackLayout Grid.Column="3" Spacing="1" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Image Source="icon_profile_white.svg" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" Opacity="0.82" />
-                    <Label Text="الجهات" Style="{StaticResource HomeNavText}" HorizontalTextAlignment="Center" />
+                <VerticalStackLayout Grid.Column="3" Spacing="3" HorizontalOptions="Center" VerticalOptions="Center">
+                    <Image Source="icon_profile_white.svg" WidthRequest="24" HeightRequest="24" Aspect="AspectFit" Opacity="0.72" />
+                    <Label Text="الجهات" Style="{StaticResource HomeNavText}" />
                 </VerticalStackLayout>
             </Grid>
         </Border>
@@ -552,39 +437,25 @@
                 VerticalOptions="Start"
                 Margin="12,66,0,0"
                 ZIndex="100">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="16" />
-            </Border.StrokeShape>
+            <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
             <Border.Shadow>
                 <Shadow Brush="#000000" Offset="0,5" Radius="14" Opacity="0.5" />
             </Border.Shadow>
-            <Grid RowDefinitions="48,48,48"
-                  ColumnDefinitions="34,*"
-                  ColumnSpacing="8"
-                  RowSpacing="0"
-                  FlowDirection="RightToLeft">
+            <Grid RowDefinitions="48,48,48" ColumnDefinitions="34,*" ColumnSpacing="8" RowSpacing="0" FlowDirection="RightToLeft">
                 <Image Grid.Row="0" Grid.Column="1" Source="icon_settings.png" WidthRequest="22" HeightRequest="22" HorizontalOptions="End" VerticalOptions="Center" />
                 <Label Grid.Row="0" Grid.Column="0" Text="الإعدادات" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource HimoHomeText}" VerticalTextAlignment="Center" HorizontalTextAlignment="End" />
                 <Grid Grid.Row="0" Grid.ColumnSpan="2">
-                    <Grid.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="SettingsClicked" />
-                    </Grid.GestureRecognizers>
+                    <Grid.GestureRecognizers><TapGestureRecognizer Tapped="SettingsClicked" /></Grid.GestureRecognizers>
                 </Grid>
-
                 <Image Grid.Row="1" Grid.Column="1" Source="icon_profile_white.svg" WidthRequest="22" HeightRequest="22" HorizontalOptions="End" VerticalOptions="Center" />
                 <Label Grid.Row="1" Grid.Column="0" Text="الملف الشخصي" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource HimoHomeText}" VerticalTextAlignment="Center" HorizontalTextAlignment="End" />
                 <Grid Grid.Row="1" Grid.ColumnSpan="2">
-                    <Grid.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="ProfileClicked" />
-                    </Grid.GestureRecognizers>
+                    <Grid.GestureRecognizers><TapGestureRecognizer Tapped="ProfileClicked" /></Grid.GestureRecognizers>
                 </Grid>
-
                 <Image Grid.Row="2" Grid.Column="1" Source="icon_plus.png" WidthRequest="22" HeightRequest="22" HorizontalOptions="End" VerticalOptions="Center" />
                 <Label Grid.Row="2" Grid.Column="0" Text="إنشاء مجموعة" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource HimoHomeText}" VerticalTextAlignment="Center" HorizontalTextAlignment="End" />
                 <Grid Grid.Row="2" Grid.ColumnSpan="2">
-                    <Grid.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="CreateGroupClicked" />
-                    </Grid.GestureRecognizers>
+                    <Grid.GestureRecognizers><TapGestureRecognizer Tapped="CreateGroupClicked" /></Grid.GestureRecognizers>
                 </Grid>
             </Grid>
         </Border>

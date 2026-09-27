@@ -14,10 +14,12 @@ public sealed class HimoApiClient
     private const string BaseUrlKey = "himo_api_base_url";
     private const string TokenKey = "himo_api_token";
     private HttpClient _http;
+    private string? _accessToken;
 
     public HimoApiClient()
     {
         _http = CreateHttpClient(GetBaseUrl());
+        _ = InitializeTokenAsync();
     }
 
     private static HttpClient CreateHttpClient(string baseUrl)
@@ -38,26 +40,25 @@ public sealed class HimoApiClient
             Timeout = TimeSpan.FromSeconds(60)
         };
 
-        ApplyToken(client);
+        ApplyToken(client, null);
         return client;
     }
 
     public string BaseUrl => _http.BaseAddress?.ToString() ?? string.Empty;
     public bool HasToken => !string.IsNullOrWhiteSpace(GetAccessToken());
 
-    public string? GetAccessToken() => Preferences.Default.Get(TokenKey, string.Empty) is var token && !string.IsNullOrWhiteSpace(token) ? token : null;
+    public string? GetAccessToken() => _accessToken;
 
     public event EventHandler? SessionExpired;
 
-    private static void ApplyToken(HttpClient client)
+    private static void ApplyToken(HttpClient client, string? token)
     {
         client.DefaultRequestHeaders.Authorization = null;
-        var token = Preferences.Default.Get(TokenKey, string.Empty);
         if (!string.IsNullOrWhiteSpace(token))
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 
-    private void ApplyToken() => ApplyToken(_http);
+    private void ApplyToken() => ApplyToken(_http, _accessToken);
 
     public async Task<bool> HealthAsync(CancellationToken cancellationToken = default)
     {
@@ -133,7 +134,9 @@ public sealed class HimoApiClient
     {
         if (result is null || result.UserId == Guid.Empty || string.IsNullOrWhiteSpace(result.Token) || string.IsNullOrWhiteSpace(result.Email))
             throw new InvalidOperationException("استجابة تسجيل الدخول غير صالحة.");
-        Preferences.Default.Set(TokenKey, result.Token);
+        _accessToken = result.Token;
+        SecureStorage.Default.SetAsync(TokenKey, result.Token).GetAwaiter().GetResult();
+        Preferences.Default.Remove(TokenKey);
         ApplyToken();
         return new Account { UserId = result.UserId, Email = result.Email, Name = result.Name };
     }
@@ -210,8 +213,38 @@ public sealed class HimoApiClient
 
     public void ClearToken()
     {
+        _accessToken = null;
         Preferences.Default.Remove(TokenKey);
+        SecureStorage.Default.Remove(TokenKey);
         _http.DefaultRequestHeaders.Authorization = null;
+    }
+
+    private async Task InitializeTokenAsync()
+    {
+        try
+        {
+            var secureToken = await SecureStorage.Default.GetAsync(TokenKey);
+            if (!string.IsNullOrWhiteSpace(secureToken))
+            {
+                _accessToken = secureToken;
+                ApplyToken();
+                return;
+            }
+
+            // One-time migration from the old Preferences location.
+            var legacyToken = Preferences.Default.Get(TokenKey, string.Empty);
+            if (!string.IsNullOrWhiteSpace(legacyToken))
+            {
+                await SecureStorage.Default.SetAsync(TokenKey, legacyToken);
+                Preferences.Default.Remove(TokenKey);
+                _accessToken = legacyToken;
+                ApplyToken();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Secure token initialization failed: {ex}");
+        }
     }
 
     public async Task RegisterPushTokenAsync(string token, CancellationToken cancellationToken = default)

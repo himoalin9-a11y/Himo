@@ -79,21 +79,66 @@ public sealed class CallService : ICallService, IDisposable
 
     public async Task StartAsync(CallRequest request, CancellationToken cancellationToken = default)
     {
-        await _media.StartAsync(request.Mode, cancellationToken);
-        _current = new CallState(request.ConversationId, request.Mode, false, false, _media.IsSpeakerEnabled, _webRtc.IsRemoteAudioEnabled);
-        await _webRtc.StartAsync(request.Mode, cancellationToken);
-        RaiseState();
-        await _realtime.SendCallSignalAsync(request.ConversationId, CallSignalType.Invite.ToString(),
-            JsonSerializer.Serialize(new { mode = request.Mode.ToString().ToLowerInvariant() }), cancellationToken);
+        await _remoteAudioGate.WaitAsync(cancellationToken);
+        try
+        {
+            await _media.StartAsync(request.Mode, cancellationToken);
+            _current = new CallState(request.ConversationId, request.Mode, false, false,
+                _media.IsSpeakerEnabled, _webRtc.IsRemoteAudioEnabled);
+
+            try
+            {
+                await _webRtc.StartAsync(request.Mode, cancellationToken);
+                RaiseState();
+                await _realtime.SendCallSignalAsync(
+                    request.ConversationId,
+                    CallSignalType.Invite.ToString(),
+                    JsonSerializer.Serialize(new { mode = request.Mode.ToString().ToLowerInvariant() }),
+                    cancellationToken);
+            }
+            catch
+            {
+                await StopCallResourcesAsync(CancellationToken.None);
+                _current = null;
+                throw;
+            }
+        }
+        finally
+        {
+            _remoteAudioGate.Release();
+        }
     }
 
     public async Task AcceptAsync(CancellationToken cancellationToken = default)
     {
-        if (_current is null) return;
-        await _media.StartAsync(_current.Mode, cancellationToken);
-        _current = _current with { IsSpeakerOn = _media.IsSpeakerEnabled };
-        await _webRtc.StartAsync(_current.Mode, cancellationToken);
-        await _realtime.SendCallSignalAsync(_current.ConversationId, CallSignalType.Accept.ToString(), null, cancellationToken);
+        await _remoteAudioGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (_current is null) return;
+
+            await _media.StartAsync(_current.Mode, cancellationToken);
+            _current = _current with { IsSpeakerOn = _media.IsSpeakerEnabled };
+
+            try
+            {
+                await _webRtc.StartAsync(_current.Mode, cancellationToken);
+                await _realtime.SendCallSignalAsync(
+                    _current.ConversationId,
+                    CallSignalType.Accept.ToString(),
+                    null,
+                    cancellationToken);
+            }
+            catch
+            {
+                await StopCallResourcesAsync(CancellationToken.None);
+                _current = null;
+                throw;
+            }
+        }
+        finally
+        {
+            _remoteAudioGate.Release();
+        }
     }
 
     public async Task RejectAsync(CancellationToken cancellationToken = default)
@@ -103,8 +148,7 @@ public sealed class CallService : ICallService, IDisposable
         {
             if (_current is null) return;
             await _realtime.SendCallSignalAsync(_current.ConversationId, CallSignalType.Reject.ToString(), null, cancellationToken);
-            await _media.StopAsync(cancellationToken);
-            await _webRtc.StopAsync(cancellationToken);
+            await StopCallResourcesAsync(cancellationToken);
             Clear();
         }
         finally
@@ -120,8 +164,7 @@ public sealed class CallService : ICallService, IDisposable
         {
             if (_current is not null)
                 await _realtime.SendCallSignalAsync(_current.ConversationId, CallSignalType.End.ToString(), null, cancellationToken);
-            await _media.StopAsync(cancellationToken);
-            await _webRtc.StopAsync(cancellationToken);
+            await StopCallResourcesAsync(cancellationToken);
             Clear();
         }
         finally
@@ -233,11 +276,36 @@ public sealed class CallService : ICallService, IDisposable
         CallEnded?.Invoke(this, EventArgs.Empty);
     }
 
+    private async Task StopCallResourcesAsync(CancellationToken cancellationToken)
+    {
+        Exception? firstError = null;
+
+        try
+        {
+            await _media.StopAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            firstError = ex;
+        }
+
+        try
+        {
+            await _webRtc.StopAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            firstError ??= ex;
+        }
+
+        if (firstError is not null)
+            throw firstError;
+    }
+
     private async Task ClearAsync(CancellationToken cancellationToken = default)
     {
         if (_current is null) return;
-        await _media.StopAsync(cancellationToken);
-        await _webRtc.StopAsync(cancellationToken);
+        await StopCallResourcesAsync(cancellationToken);
         Clear();
     }
 

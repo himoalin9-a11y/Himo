@@ -247,7 +247,6 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
     private object? _remoteVideoTrack;
     private object? _remoteAudioTrack;
 
-    /// <summary>Called by the PeerConnection layer when a remote VideoTrack is received.</summary>
     /// <summary>Called by the PeerConnection layer when a remote AudioTrack is received.</summary>
     public void SetRemoteAudioTrack(object? track)
     {
@@ -567,11 +566,13 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
 
         // Stage 43: connect the native PeerConnection observer so locally
         // gathered ICE candidates can be forwarded through the existing signal path.
-        var method = peerConnectionType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+        // CreatePeerConnection is a PeerConnectionFactory method, not a PeerConnection instance method.
+        var factoryType = _factory!.GetType();
+        var method = factoryType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
             .FirstOrDefault(m => string.Equals(m.Name, "CreatePeerConnection", StringComparison.OrdinalIgnoreCase)
                 && m.GetParameters().Length == 2);
         if (method is null)
-            throw new MissingMethodException(peerConnectionType.FullName, "CreatePeerConnection");
+            throw new MissingMethodException(factoryType.FullName, "CreatePeerConnection");
 
         _peerConnectionObserver = new PeerConnectionObserverBridge(
             candidate =>
@@ -614,11 +615,85 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             InvokeOptional(_peerConnection, "AddTrack", _videoTrack, streamIds);
     }
 
+    private static readonly object FactoryInitializationGate = new();
+    private static bool FactoryInitialized;
+
     private void InitializeFactory(Type factoryType)
     {
+        EnsurePeerConnectionFactoryInitialized(factoryType);
+
         var builderType = RequiredType("Org.Webrtc.PeerConnectionFactory+Builder");
-        var builder = Activator.CreateInstance(builderType) ?? throw new InvalidOperationException("PeerConnectionFactory.Builder could not be created.");
+        var builder = Activator.CreateInstance(builderType)
+            ?? throw new InvalidOperationException("WebRTC PeerConnectionFactory.Builder could not be created.");
+
         _factory = InvokeRequired(builder, "CreatePeerConnectionFactory");
+    }
+
+    private static void EnsurePeerConnectionFactoryInitialized(Type factoryType)
+    {
+        lock (FactoryInitializationGate)
+        {
+            if (FactoryInitialized) return;
+
+            var context = global::Android.App.Application.Context;
+            if (context is null)
+                throw new InvalidOperationException("Android application context is unavailable for WebRTC initialization.");
+
+            // Modern libwebrtc requires PeerConnectionFactory.initialize(...) before
+            // the first factory is created. Older bindings exposed only
+            // initializeAndroidGlobals(...), so keep a compatible fallback.
+            var initialize = factoryType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+                .FirstOrDefault(m => string.Equals(m.Name, "Initialize", StringComparison.OrdinalIgnoreCase)
+                    && m.GetParameters().Length == 1);
+
+            if (initialize is not null)
+            {
+                var options = CreateInitializationOptions(factoryType, context);
+                initialize.Invoke(null, new[] { options });
+                FactoryInitialized = true;
+                return;
+            }
+
+            var legacy = factoryType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+                .FirstOrDefault(m => string.Equals(m.Name, "InitializeAndroidGlobals", StringComparison.OrdinalIgnoreCase));
+            if (legacy is not null)
+            {
+                var parameters = legacy.GetParameters();
+                if (parameters.Length == 0)
+                    legacy.Invoke(null, null);
+                else if (parameters.Length == 1)
+                    legacy.Invoke(null, new object?[] { context });
+                else
+                    throw new MissingMethodException(factoryType.FullName, "InitializeAndroidGlobals");
+
+                FactoryInitialized = true;
+                return;
+            }
+
+            throw new MissingMethodException(factoryType.FullName, "Initialize");
+        }
+    }
+
+    private static object CreateInitializationOptions(Type factoryType, global::Android.Content.Context context)
+    {
+        var optionsType = factoryType.GetNestedType("InitializationOptions", BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("WebRTC InitializationOptions type was not found in the Android binding.");
+
+        var builderType = optionsType.GetNestedType("Builder", BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("WebRTC InitializationOptions.Builder type was not found in the Android binding.");
+
+        object? builder = null;
+        try { builder = Activator.CreateInstance(builderType, context); } catch { }
+        builder ??= Activator.CreateInstance(builderType);
+        if (builder is null)
+            throw new InvalidOperationException("WebRTC InitializationOptions.Builder could not be created.");
+
+        // These setters are optional across WebRTC releases. The application context
+        // constructor is the stable part of the Android API.
+        InvokeOptional(builder, "SetEnableInternalTracer", false);
+        InvokeOptional(builder, "SetFieldTrials", string.Empty);
+
+        return InvokeRequired(builder, "CreateInitializationOptions");
     }
 
     private object AttachRenderer(VisualElement host, bool mirror, object? existing)

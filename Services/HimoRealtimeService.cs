@@ -218,6 +218,29 @@ public sealed class HimoRealtimeService
     }
 
 
+    public async Task EnsureConnectedAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_api.HasToken)
+            throw new InvalidOperationException("لم يتم تسجيل الدخول إلى الخادم.");
+
+        await StartAsync(cancellationToken);
+
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(12);
+        while (DateTime.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (_connection?.State == HubConnectionState.Connected)
+                return;
+
+            if (_connection is null || _connection.State == HubConnectionState.Disconnected)
+                await StartAsync(cancellationToken);
+
+            await Task.Delay(150, cancellationToken);
+        }
+
+        throw new InvalidOperationException("تعذر الاتصال بخادم المكالمات. تحقق من اتصال الإنترنت ثم حاول مرة أخرى.");
+    }
+
     public async Task SendCallSignalAsync(
         Guid conversationId,
         string type,
@@ -227,15 +250,8 @@ public sealed class HimoRealtimeService
         if (!_api.HasToken)
             throw new InvalidOperationException("لم يتم تسجيل الدخول إلى الخادم.");
 
+        await EnsureConnectedAsync(cancellationToken);
         var connection = _connection;
-        if (connection?.State != HubConnectionState.Connected)
-        {
-            // CallPage may be entered immediately after ChatPage stops the hub.
-            // Re-establish signaling instead of silently dropping the call signal.
-            await StartAsync(cancellationToken);
-            connection = _connection;
-        }
-
         if (connection?.State != HubConnectionState.Connected)
             throw new InvalidOperationException("تعذر الاتصال بخادم المكالمات.");
 

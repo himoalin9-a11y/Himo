@@ -101,9 +101,9 @@ public partial class CallPage : ContentPage
 
         try
         {
-            // ChatPage stops the SignalR connection when it leaves the screen.
-            // A call must own a live signaling connection for its entire lifetime.
-            await _realtime.StartAsync();
+            // ChatPage can stop SignalR while navigation to this page is still in progress.
+            // Wait for a fully connected signaling channel before touching WebRTC.
+            await _realtime.EnsureConnectedAsync();
 
             var granted = await _calls.RequestPermissionsAsync(_mode);
             if (!granted)
@@ -127,7 +127,7 @@ public partial class CallPage : ContentPage
         }
         catch (Exception ex)
         {
-            StatusLabel.Text = "تعذر تجهيز الاتصال";
+            StatusLabel.Text = $"تعذر تجهيز الاتصال: {ex.Message}";
             System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Start failed: {ex}");
         }
     }

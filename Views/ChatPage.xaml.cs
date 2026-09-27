@@ -1,3 +1,4 @@
+using Microsoft.Maui.Graphics;
 using System.Net.Http;
 using Himo.Services;
 using Himo.Models;
@@ -464,7 +465,13 @@ public partial class ChatPage : ContentPage
     {
         if (_remoteTyping) return;
         if (StatusLabel is not null) StatusLabel.Text = isOnline ? "متصل الآن" : "غير متصل";
-        if (StatusDot is not null) StatusDot.Color = isOnline ? Color.FromArgb("#49D486") : Color.FromArgb("#A7A0B2");
+        if (StatusDot is not null)
+        {
+            StatusDot.Fill = new SolidColorBrush(
+                isOnline
+                    ? Color.FromArgb("#49D486")
+                    : Color.FromArgb("#A7A0B2"));
+        }
     }
 
     private void MessageEntryTextChanged(object? sender, TextChangedEventArgs e)
@@ -699,9 +706,9 @@ public partial class ChatPage : ContentPage
             }
 
             _audioRecordingPath = Path.Combine(FileSystem.Current.CacheDirectory, $"himo_voice_{Guid.NewGuid():N}.m4a");
-            #pragma warning disable CA1422 // MediaRecorder is the available Android API for this recording path; no supported .NET replacement is exposed here.
+#pragma warning disable CA1422 // MediaRecorder is the available Android API for this recording path; no supported .NET replacement is exposed here.
             _audioRecorder = new global::Android.Media.MediaRecorder();
-            #pragma warning restore CA1422
+#pragma warning restore CA1422
             _audioRecorder.SetAudioSource(global::Android.Media.AudioSource.Mic);
             _audioRecorder.SetOutputFormat(global::Android.Media.OutputFormat.Mpeg4);
             _audioRecorder.SetAudioEncoder(global::Android.Media.AudioEncoder.Aac);
