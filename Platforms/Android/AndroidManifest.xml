@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <application
-      android:icon="@mipmap/appicon">
+  <application android:icon="@drawable/himo_launcher" android:roundIcon="@drawable/himo_launcher" android:label="Himo">
     <provider
       android:name="androidx.core.content.FileProvider"
       android:authorities="${applicationId}.fileprovider"

@@ -223,7 +223,7 @@
                 </Grid>
             </Border>
 
-            <CollectionView x:Name="Messages" FlowDirection="LeftToRight" SelectionMode="None" VerticalScrollBarVisibility="Never"
+            <CollectionView x:Name="Messages" SelectionMode="None" VerticalScrollBarVisibility="Never"
                             Loaded="MessagesLoaded" Scrolled="MessagesScrolled" BackgroundColor="Transparent">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:ChatMessage">
@@ -239,7 +239,7 @@
                             </Grid>
 
                             <Border MaximumWidthRequest="360" Padding="13,10,13,8"
-                                    FlowDirection="RightToLeft" HorizontalOptions="Start" BackgroundColor="#FFFFFF"
+                                    HorizontalOptions="End" BackgroundColor="#FFFFFF"
                                     Stroke="#E0E8F2" StrokeThickness="1"
                                     Loaded="MessageBubbleLoaded">
                                 <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
@@ -255,65 +255,55 @@
 
                                     <!-- IMAGE ATTACHMENT -->
                                     <Border IsVisible="{Binding IsImageAttachment}" BackgroundColor="#EEF5FD"
-                                            Stroke="#DCE6F1" StrokeThickness="1" Padding="0" Loaded="ImageAttachmentLoaded">
+                                            Stroke="#DCE6F1" StrokeThickness="1" Padding="0">
                                         <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
-                                        <Grid HeightRequest="220">
-                                            <Image Source="{Binding AttachmentPreviewLocalPath}" Aspect="AspectFill"
-                                                   HorizontalOptions="Fill" VerticalOptions="Fill"
-                                                   IsVisible="{Binding HasLocalImagePreview}"
-                                                   Loaded="ImagePreviewLoaded">
-                                                <Image.GestureRecognizers>
-                                                    <TapGestureRecognizer Tapped="ImagePreviewClicked" NumberOfTapsRequired="1" />
-                                                </Image.GestureRecognizers>
-                                            </Image>
-                                            <ActivityIndicator IsVisible="True" IsRunning="True" WidthRequest="32" HeightRequest="32"
-                                                               HorizontalOptions="Center" VerticalOptions="Center" Color="#2F80ED">
-                                                <ActivityIndicator.Triggers>
-                                                    <DataTrigger TargetType="ActivityIndicator" Binding="{Binding HasLocalImagePreview}" Value="True">
+                                        <Grid HeightRequest="210">
+                                            <Image Source="{Binding AttachmentLocalPath}" Aspect="AspectFit" HeightRequest="210"
+                                                   HorizontalOptions="Fill" IsVisible="{Binding HasLocalImagePreview}" />
+                                            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="5">
+                                                <VerticalStackLayout.Triggers>
+                                                    <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding HasLocalImagePreview}" Value="True">
                                                         <Setter Property="IsVisible" Value="False" />
                                                     </DataTrigger>
-                                                </ActivityIndicator.Triggers>
-                                            </ActivityIndicator>
+                                                </VerticalStackLayout.Triggers>
+                                                <Label Text="🖼" FontSize="34" HorizontalTextAlignment="Center" />
+                                                <Label Text="صورة" FontSize="12" FontAttributes="Bold" TextColor="#172033" HorizontalTextAlignment="Center" />
+                                                <Label Text="اضغط للعرض" FontSize="9.5" TextColor="#718096" HorizontalTextAlignment="Center" />
+                                                <Label Text="{Binding AttachmentFileName}" FontSize="8.5" TextColor="#8A98AA" MaxLines="1" LineBreakMode="TailTruncation" HorizontalTextAlignment="Center" />
+                                            </VerticalStackLayout>
+                                            <Grid.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="ImagePreviewCardTapped" NumberOfTapsRequired="1" />
+                                            </Grid.GestureRecognizers>
                                         </Grid>
                                     </Border>
 
-                                    <!-- VIDEO ATTACHMENT: downloaded locally first, then previewed from a local thumbnail -->
-                                    <Border IsVisible="{Binding IsVideoAttachment}" Padding="0" BackgroundColor="#0F172A"
-                                            Loaded="VideoAttachmentLoaded" Stroke="#C9DCF3" StrokeThickness="1">
-                                        <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
-                                        <Grid HeightRequest="220">
-                                            <Image Source="{Binding AttachmentPreviewLocalPath}" Aspect="AspectFill"
-                                                   HorizontalOptions="Fill" VerticalOptions="Fill"
-                                                   IsVisible="{Binding HasLocalAttachmentPreview}" />
-                                            <BoxView Color="#33000000" HorizontalOptions="Fill" VerticalOptions="Fill" />
-                                            <ActivityIndicator IsRunning="True" WidthRequest="34" HeightRequest="34"
-                                                               HorizontalOptions="Center" VerticalOptions="Center" Color="White">
-                                                <ActivityIndicator.Triggers>
-                                                    <DataTrigger TargetType="ActivityIndicator" Binding="{Binding HasLocalAttachmentPreview}" Value="True">
-                                                        <Setter Property="IsVisible" Value="False" />
-                                                    </DataTrigger>
-                                                </ActivityIndicator.Triggers>
-                                            </ActivityIndicator>
-                                            <Border WidthRequest="62" HeightRequest="62" BackgroundColor="#CC2F80ED"
-                                                    HorizontalOptions="Center" VerticalOptions="Center" StrokeThickness="0">
-                                                <Border.StrokeShape><RoundRectangle CornerRadius="31" /></Border.StrokeShape>
-                                                <Border.GestureRecognizers>
-                                                    <TapGestureRecognizer Tapped="VideoPreviewTapped" NumberOfTapsRequired="1" />
-                                                </Border.GestureRecognizers>
-                                                <Label Text="▶" FontSize="25" TextColor="White"
-                                                       HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                    <!-- VIDEO ATTACHMENT -->
+                                    <Border IsVisible="True" Padding="9" BackgroundColor="#EEF5FD" Loaded="VideoAttachmentLoaded"
+                                            Stroke="#C9DCF3" StrokeThickness="1">
+                                        <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                                        <Border.Triggers>
+                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/mp4"><Setter Property="IsVisible" Value="True" /></DataTrigger>
+                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/webm"><Setter Property="IsVisible" Value="True" /></DataTrigger>
+                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/quicktime"><Setter Property="IsVisible" Value="True" /></DataTrigger>
+                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/3gpp"><Setter Property="IsVisible" Value="True" /></DataTrigger>
+                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/3gpp2"><Setter Property="IsVisible" Value="True" /></DataTrigger>
+                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/x-matroska"><Setter Property="IsVisible" Value="True" /></DataTrigger>
+                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/mpeg"><Setter Property="IsVisible" Value="True" /></DataTrigger>
+                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/ogg"><Setter Property="IsVisible" Value="True" /></DataTrigger>
+                                        </Border.Triggers>
+                                        <Grid ColumnDefinitions="44,*,44" ColumnSpacing="8">
+                                            <Border WidthRequest="42" HeightRequest="42" BackgroundColor="#2F80ED" StrokeThickness="0" VerticalOptions="Center">
+                                                <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
+                                                <Label Text="▶" TextColor="White" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center" />
                                             </Border>
-                                            <Border HorizontalOptions="Fill" VerticalOptions="End" Padding="10,8"
-                                                    BackgroundColor="#990B0F14" StrokeThickness="0">
-                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                                                    <Label Text="فيديو" FontSize="11" FontAttributes="Bold" TextColor="White" VerticalTextAlignment="Center" />
-                                                    <Label Grid.Column="1" Text="{Binding AttachmentFileName}" FontSize="9.5" TextColor="#D8E2EE"
-                                                           MaxLines="1" LineBreakMode="TailTruncation" VerticalTextAlignment="Center" />
-                                                    <Button Grid.Column="2" Text="▶" FontSize="14" WidthRequest="40" HeightRequest="40"
-                                                            Padding="0" BackgroundColor="#2F80ED" TextColor="White" CornerRadius="20"
-                                                            VerticalOptions="Center" Clicked="VideoPreviewClicked" />
-                                                </Grid>
-                                            </Border>
+                                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
+                                                <Label Text="فيديو" FontSize="12" FontAttributes="Bold" TextColor="#172033" />
+                                                <Label Text="اضغط للتشغيل" FontSize="9.5" TextColor="#718096" />
+                                                <Label Text="{Binding AttachmentFileName}" FontSize="9" TextColor="#8A98AA" MaxLines="1" LineBreakMode="TailTruncation" />
+                                            </VerticalStackLayout>
+                                            <Button Grid.Column="2" Text="▶" FontSize="12" WidthRequest="40" HeightRequest="40"
+                                                    Padding="0" BackgroundColor="#2F80ED" TextColor="White" CornerRadius="20"
+                                                    VerticalOptions="Center" Clicked="VideoPreviewClicked" />
                                         </Grid>
                                     </Border>
 
@@ -329,9 +319,6 @@
                                                 <Setter Property="IsVisible" Value="False" />
                                             </DataTrigger>
                                             <DataTrigger TargetType="Border" Binding="{Binding IsImageAttachment}" Value="True">
-                                                <Setter Property="IsVisible" Value="False" />
-                                            </DataTrigger>
-                                            <DataTrigger TargetType="Border" Binding="{Binding IsVideoAttachment}" Value="True">
                                                 <Setter Property="IsVisible" Value="False" />
                                             </DataTrigger>
                                             <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/mp4"><Setter Property="IsVisible" Value="False" /></DataTrigger>
@@ -421,7 +408,7 @@
 
                                 <Border.Triggers>
                                     <DataTrigger TargetType="Border" Binding="{Binding IsMine}" Value="True">
-                                        <Setter Property="HorizontalOptions" Value="End" />
+                                        <Setter Property="HorizontalOptions" Value="Start" />
                                         <Setter Property="Margin" Value="34,0,0,0" />
                                         <Setter Property="BackgroundColor" Value="#DDEEFF" />
                                         <Setter Property="Stroke" Value="#BBD8F8" />
@@ -437,6 +424,12 @@
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
+
+            <ContentView x:Name="HiddenAudioPlayerHost" Grid.RowSpan="4"
+                         WidthRequest="1" HeightRequest="1"
+                         HorizontalOptions="Start" VerticalOptions="Start"
+                         Opacity="0.01" InputTransparent="True" IsVisible="True"
+                         ZIndex="1" />
 
             <Button x:Name="ScrollToBottomButton" Text="↓" IsVisible="False" HorizontalOptions="End"
                     VerticalOptions="End" Margin="0,0,5,12" WidthRequest="42" HeightRequest="42"

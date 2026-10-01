@@ -1031,19 +1031,6 @@ public sealed class HimoApiClient
                 "استجابة المرفق غير صالحة.");
     }
 
-    public string? GetAttachmentStreamingUrl(Guid messageId)
-    {
-        var token = GetAccessToken();
-        if (string.IsNullOrWhiteSpace(token) || _http.BaseAddress is null)
-            return null;
-
-        var endpoint = new Uri(
-            _http.BaseAddress,
-            $"api/messages/{messageId:D}/attachment");
-
-        return $"{endpoint}?access_token={Uri.EscapeDataString(token)}";
-    }
-
     public async Task<string> DownloadAttachmentAsync(
         Guid messageId,
         string fileName,
@@ -1084,7 +1071,7 @@ public sealed class HimoApiClient
         if (!info.Exists || info.Length == 0)
         {
             try { File.Delete(path); } catch { }
-            throw new InvalidOperationException("الخادم أعاد ملفًا صوتيًا فارغًا.");
+            throw new InvalidOperationException("الخادم أعاد ملف مرفق فارغًا.");
         }
 
         return path;

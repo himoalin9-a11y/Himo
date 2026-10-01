@@ -1,0 +1,15 @@
+Himo media/icon repair v27
+
+Fixed:
+1. Android launcher icon: explicit @drawable/himo_launcher and bundled launcher PNG.
+2. Attachments: durable BYTEA storage in PostgreSQL, with local Render files kept as a cache/fallback.
+3. Legacy local attachments: successful downloads are imported into PostgreSQL automatically.
+4. Audio playback: switched from Android MediaPlayer to CommunityToolkit MediaElement used in the chat.
+5. Images: image attachment always has a visible card; cached image is shown when available, otherwise tapping downloads/opens it.
+6. Attachment download error text made generic.
+
+Server change:
+- Messages.AttachmentData BYTEA is added automatically with ALTER TABLE IF NOT EXISTS.
+
+Do not touch login/session code.
+Do not change WebRTC/call code.

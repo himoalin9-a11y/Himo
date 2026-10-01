@@ -522,7 +522,7 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
     if (string.IsNullOrWhiteSpace(originalName) || originalName.Length > 180) return Results.BadRequest(new { message = "اسم الملف غير صالح." });
     var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType.Trim();
     var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    { "image/jpeg", "image/png", "image/webp", "image/gif", "image/bmp", "image/heic", "image/heif", "application/pdf", "text/plain", "application/zip", "application/octet-stream",
+    { "image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf", "text/plain", "application/zip", "application/octet-stream",
       "audio/mp4", "audio/m4a", "audio/aac", "audio/mpeg", "audio/ogg", "audio/wav",
       "video/mp4", "video/webm", "video/quicktime", "video/3gpp", "video/3gpp2", "video/x-matroska", "video/x-msvideo", "video/mpeg", "video/ogg" };
 
@@ -550,28 +550,7 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
             : extension.Equals(".3gp", StringComparison.OrdinalIgnoreCase) ? "video/3gpp"
             : extension.Equals(".3g2", StringComparison.OrdinalIgnoreCase) ? "video/3gpp2"
             : extension.Equals(".mkv", StringComparison.OrdinalIgnoreCase) ? "video/x-matroska"
-            : extension.Equals(".avi", StringComparison.OrdinalIgnoreCase) ? "video/x-msvideo"
-            : extension.Equals(".mpeg", StringComparison.OrdinalIgnoreCase) || extension.Equals(".mpg", StringComparison.OrdinalIgnoreCase) ? "video/mpeg"
-            : extension.Equals(".ogv", StringComparison.OrdinalIgnoreCase) ? "video/ogg"
             : "video/mp4";
-    }
-    else if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) ||
-             extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
-             extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase) ||
-             extension.Equals(".png", StringComparison.OrdinalIgnoreCase) ||
-             extension.Equals(".webp", StringComparison.OrdinalIgnoreCase) ||
-             extension.Equals(".gif", StringComparison.OrdinalIgnoreCase) ||
-             extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase) ||
-             extension.Equals(".heic", StringComparison.OrdinalIgnoreCase) ||
-             extension.Equals(".heif", StringComparison.OrdinalIgnoreCase))
-    {
-        contentType = extension.Equals(".png", StringComparison.OrdinalIgnoreCase) ? "image/png"
-            : extension.Equals(".webp", StringComparison.OrdinalIgnoreCase) ? "image/webp"
-            : extension.Equals(".gif", StringComparison.OrdinalIgnoreCase) ? "image/gif"
-            : extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase) ? "image/bmp"
-            : extension.Equals(".heic", StringComparison.OrdinalIgnoreCase) ? "image/heic"
-            : extension.Equals(".heif", StringComparison.OrdinalIgnoreCase) ? "image/heif"
-            : "image/jpeg";
     }
 
     if (!allowed.Contains(contentType)) return Results.BadRequest(new { message = "نوع الملف غير مدعوم حاليًا." });
@@ -582,8 +561,21 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
     var safeName = new string(originalName.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c).ToArray());
     var storedName = messageId.ToString("D") + "_" + safeName;
     var fullPath = Path.Combine(uploads, storedName);
-    await using (var stream = File.Create(fullPath)) await file.CopyToAsync(stream, http.HttpContext.RequestAborted);
-    var attachmentData = await File.ReadAllBytesAsync(fullPath, http.HttpContext.RequestAborted);
+
+    await using var input = file.OpenReadStream();
+    await using var memory = new MemoryStream();
+    await input.CopyToAsync(memory, http.HttpContext.RequestAborted);
+    var attachmentData = memory.ToArray();
+
+    // Keep a local copy as a best-effort cache for the current server process.
+    try
+    {
+        await File.WriteAllBytesAsync(fullPath, attachmentData, http.HttpContext.RequestAborted);
+    }
+    catch
+    {
+        // The PostgreSQL copy below is the durable source of truth.
+    }
 
     try
     {
@@ -594,7 +586,7 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
                 : contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)
                     ? $"🎬 {originalName}"
                     : $"📎 {originalName}";
-        var message = store.AddAttachmentMessage(messageId, id, session.UserId, session.PhoneNumber, displayText, originalName, contentType, file.Length, attachmentData);
+        var message = store.AddAttachmentMessage(messageId, id, session.UserId, session.PhoneNumber, displayText, originalName, contentType, attachmentData.LongLength, attachmentData);
         var recipientIds = store.GetOtherParticipantUserIds(id, session.UserId);
         await hub.Clients.Groups(recipientIds.Select(userId => HimoChatHub.UserGroup(userId)))
             .SendAsync("MessageReceived", message, http.HttpContext.RequestAborted);
@@ -616,23 +608,28 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
 webApp.MapGet("/api/messages/{messageId:guid}/attachment", (Guid messageId, HttpRequest http, PostgresStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
-
     var attachment = store.GetAttachment(messageId, session.UserId);
     if (attachment is null) return Results.NotFound();
 
-    // Prefer the persistent database copy. The Render container filesystem is not
-    // guaranteed to survive a restart/sleep/redeploy, so relying only on App_Data/uploads
-    // makes an otherwise valid attachment suddenly return 404.
-    if (attachment.Data is { Length: > 0 })
-    {
-        var memory = new MemoryStream(attachment.Data, writable: false);
-        return Results.File(memory, attachment.ContentType, attachment.FileName, enableRangeProcessing: true);
-    }
+    if (attachment.Data is { Length: > 0 } data)
+        return Results.File(data, attachment.ContentType, attachment.FileName, enableRangeProcessing: false);
+
+    if (string.IsNullOrWhiteSpace(attachment.RelativePath))
+        return Results.NotFound();
 
     var root = Path.Combine(AppContext.BaseDirectory, "App_Data");
+    var uploadRoot = Path.GetFullPath(Path.Combine(root, "uploads"));
     var full = Path.GetFullPath(Path.Combine(root, attachment.RelativePath));
-    if (!full.StartsWith(Path.GetFullPath(Path.Combine(root, "uploads")), StringComparison.OrdinalIgnoreCase) || !File.Exists(full))
+    if (!full.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase) || !File.Exists(full))
         return Results.NotFound();
+
+    // Import legacy files into PostgreSQL so a future Render restart does not break them.
+    try
+    {
+        var bytes = File.ReadAllBytes(full);
+        if (bytes.Length > 0) store.SaveAttachmentData(messageId, session.UserId, bytes);
+    }
+    catch { }
 
     return Results.File(full, attachment.ContentType, attachment.FileName, enableRangeProcessing: true);
 });
@@ -1045,8 +1042,6 @@ ALTER TABLE Messages ADD COLUMN IF NOT EXISTS AttachmentData BYTEA NULL;
 CREATE INDEX IF NOT EXISTS IX_Messages_ReplyTo ON Messages(ReplyToMessageId);
 ";
         command.ExecuteNonQuery();
-
-        BackfillMissingAttachmentData(connection);
 
         using var backfill = connection.CreateCommand();
         backfill.CommandText = @"
@@ -2317,8 +2312,7 @@ WHERE cp1.UserId=@user AND cp2.UserId<>@user;";
         {
             using var connection = Open();
             using var command = connection.CreateCommand();
-            command.CommandText = @"
-SELECT m.AttachmentFileName,m.AttachmentContentType,m.AttachmentData
+            command.CommandText = @"SELECT m.AttachmentFileName,m.AttachmentContentType,m.AttachmentData
 FROM Messages m
 WHERE m.Id=@id
   AND m.AttachmentFileName IS NOT NULL
@@ -2333,60 +2327,33 @@ LIMIT 1;";
             command.Parameters.AddWithValue("@user", userId.ToString());
             using var reader = command.ExecuteReader();
             if (!reader.Read()) return null;
-
             var fileName = reader.GetString(0);
             var contentType = reader.IsDBNull(1) ? "application/octet-stream" : reader.GetString(1);
-            var data = reader.IsDBNull(2) ? null : (byte[])reader.GetValue(2);
-            var relativePath = Path.Combine("uploads", messageId.ToString("D") + "_" + SanitizeFileName(fileName));
-            return new AttachmentRecord(fileName, contentType, relativePath, data);
+            byte[]? data = reader.IsDBNull(2) ? null : (byte[])reader.GetValue(2);
+            return new AttachmentRecord(
+                fileName,
+                contentType,
+                data,
+                Path.Combine("uploads", messageId.ToString("D") + "_" + SanitizeFileName(fileName)));
         }
     }
 
-    private void BackfillMissingAttachmentData(NpgsqlConnection connection)
+    public void SaveAttachmentData(Guid messageId, Guid userId, byte[] data)
     {
-        try
+        if (data.Length == 0) return;
+        lock (_sync)
         {
-            var uploadsRoot = Path.Combine(AppContext.BaseDirectory, "App_Data", "uploads");
-            if (!Directory.Exists(uploadsRoot)) return;
-
-            using var find = connection.CreateCommand();
-            find.CommandText = @"
-SELECT Id,AttachmentFileName
-FROM Messages
-WHERE AttachmentFileName IS NOT NULL
-  AND AttachmentData IS NULL;";
-
-            var pending = new List<(Guid Id, string FileName)>();
-            using (var reader = find.ExecuteReader())
-            {
-                while (reader.Read() && Guid.TryParse(reader.GetString(0), out var id))
-                    pending.Add((id, reader.GetString(1)));
-            }
-
-            foreach (var item in pending)
-            {
-                var safeName = SanitizeFileName(item.FileName);
-                var path = Path.Combine(uploadsRoot, item.Id.ToString("D") + "_" + safeName);
-                if (!File.Exists(path)) continue;
-
-                var info = new FileInfo(path);
-                if (info.Length <= 0 || info.Length > 25L * 1024 * 1024) continue;
-
-                var bytes = File.ReadAllBytes(path);
-                using var update = connection.CreateCommand();
-                update.CommandText = "UPDATE Messages SET AttachmentData=@data WHERE Id=@id AND AttachmentData IS NULL;";
-                update.Parameters.AddWithValue("@id", item.Id.ToString());
-                update.Parameters.Add("@data", NpgsqlTypes.NpgsqlDbType.Bytea).Value = bytes;
-                update.ExecuteNonQuery();
-            }
-        }
-        catch
-        {
-            // Attachment backfill must never prevent the API from starting.
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"UPDATE Messages SET AttachmentData=@data
+WHERE Id=@id AND AttachmentFileName IS NOT NULL
+  AND EXISTS (SELECT 1 FROM ConversationParticipants cp WHERE cp.ConversationId=Messages.ConversationId AND cp.UserId=@user);";
+            command.Parameters.Add("@data", NpgsqlTypes.NpgsqlDbType.Bytea).Value = data;
+            command.Parameters.AddWithValue("@id", messageId.ToString());
+            command.Parameters.AddWithValue("@user", userId.ToString());
+            command.ExecuteNonQuery();
         }
     }
-
-    public sealed record AttachmentRecord(string FileName, string ContentType, string RelativePath, byte[]? Data);
 
     private static string SanitizeFileName(string fileName)
     {
@@ -2636,5 +2603,6 @@ sealed class ConversationDto
     }
 }
 record MessageDto(Guid Id, Guid ConversationId, Guid SenderUserId, string SenderPhoneNumber, string Text, DateTimeOffset SentAt, string? AttachmentFileName = null, string? AttachmentContentType = null, long? AttachmentSize = null, string Status = "sent", Guid? ReplyToMessageId = null, string? ReplyToText = null, bool IsEdited = false, string? EditedAt = null, bool IsDeleted = false);
+record AttachmentRecord(string FileName, string ContentType, byte[]? Data, string RelativePath);
 record EditMessageRequest(string Text);
 record UserSearchDto(Guid Id, string Email, string Name);

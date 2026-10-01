@@ -1,0 +1,13 @@
+Himo v26 repair from Himo-basic-original baseline.
+
+Changed only to restore a clean, buildable MediaElement integration and remove picker obsoletion warnings:
+- Himo.csproj: added CommunityToolkit.Maui.MediaElement 7.0.0.
+- MauiProgram.cs: added .UseMauiCommunityToolkitMediaElement().
+- Platforms/Android/MainActivity.cs: MediaElement-required ResizeableActivity=true and LaunchMode=SingleTask.
+- Views/ChatPage.xaml.cs: added CommunityToolkit.Maui.Views using, switched PickPhoto/PickVideo to PickPhotos/PickVideos with SelectionLimit=1.
+
+No v20-v25 attachment persistence code was added.
+No duplicate ChatPage/HimoApiClient/Conversation/ChatMessage definitions were added.
+Login/WebRTC code was not intentionally modified by this repair.
+
+The environment used for this repair does not include dotnet, so a real MSBuild build could not be executed here.
