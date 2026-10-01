@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:models="clr-namespace:Himo.Models"
              x:Class="Himo.Views.ChatPage"
+             x:Name="ChatRoot"
              FlowDirection="RightToLeft"
              BackgroundColor="#F5F9FE"
              Shell.NavBarIsVisible="False">
@@ -64,17 +65,42 @@
             </Grid>
         </Border>
 
-        <!-- SELECTION -->
-        <Border x:Name="SelectionBar" Grid.Row="1" IsVisible="False" Margin="14,5" Padding="8,6"
-                BackgroundColor="#FFFFFF" Stroke="#D9E5F2" StrokeThickness="1">
-            <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
-            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                <Label x:Name="SelectionCountLabel" Grid.Column="0" Text="0 محددة" FontSize="13"
-                       FontAttributes="Bold" TextColor="#2F80ED" VerticalTextAlignment="Center" />
-                <Button Grid.Column="1" Text="حذف" FontSize="11" Padding="12,0" HeightRequest="32"
-                        BackgroundColor="#FDEBEC" TextColor="#D92D3E" CornerRadius="16" Clicked="DeleteSelectedClicked" />
-                <Button Grid.Column="2" Text="إلغاء" FontSize="11" Padding="12,0" HeightRequest="32"
-                        BackgroundColor="#EEF5FD" TextColor="#2F80ED" CornerRadius="16" Clicked="CancelSelectionClicked" />
+        <!-- SELECTION ACTION BAR -->
+        <Border x:Name="SelectionBar" Grid.Row="0" IsVisible="False" ZIndex="50"
+                HorizontalOptions="Fill" VerticalOptions="Start"
+                HeightRequest="58" Padding="10,4"
+                BackgroundColor="#10181B" StrokeThickness="0">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto"
+                  ColumnSpacing="7" FlowDirection="LeftToRight">
+                <!-- More -->
+                <Button Grid.Column="0" Text="⋮" FontSize="28" FontAttributes="Bold"
+                        WidthRequest="40" HeightRequest="50" Padding="0"
+                        BackgroundColor="Transparent" TextColor="White" />
+
+                <!-- Share / Forward -->
+                <Button Grid.Column="1" Text="↗" FontSize="29" FontAttributes="Bold"
+                        WidthRequest="44" HeightRequest="50" Padding="0"
+                        BackgroundColor="Transparent" TextColor="White"
+                        Clicked="ShareSelectedClicked" />
+
+                <!-- Delete -->
+                <Button Grid.Column="2" Text="🗑" FontSize="23"
+                        WidthRequest="44" HeightRequest="50" Padding="0"
+                        BackgroundColor="Transparent" TextColor="White"
+                        Clicked="DeleteSelectedClicked" />
+
+                <!-- Comment / Reply -->
+                <Button Grid.Column="3" Text="↩" FontSize="30" FontAttributes="Bold"
+                        WidthRequest="44" HeightRequest="50" Padding="0"
+                        BackgroundColor="Transparent" TextColor="White"
+                        Clicked="CommentSelectedClicked" />
+
+                <!-- Selected count -->
+                <Label Grid.Column="5" x:Name="SelectionCountLabel" Text="1"
+                       FontSize="18" FontAttributes="Bold" TextColor="White"
+                       HorizontalTextAlignment="Center" VerticalTextAlignment="Center"
+                       WidthRequest="42" />
+
             </Grid>
         </Border>
 
@@ -120,7 +146,8 @@
 
                             <Border MaximumWidthRequest="360" Padding="13,10,13,8"
                                     HorizontalOptions="End" BackgroundColor="#FFFFFF"
-                                    Stroke="#E0E8F2" StrokeThickness="1">
+                                    Stroke="#E0E8F2" StrokeThickness="1"
+                                    Loaded="MessageBubbleLoaded">
                                 <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
                                 <VerticalStackLayout Spacing="5">
 
@@ -133,13 +160,29 @@
                                     </Border>
 
                                     <!-- IMAGE ATTACHMENT -->
-                                    <Image Source="{Binding AttachmentLocalPath}" Aspect="AspectFill" HeightRequest="190"
-                                           HorizontalOptions="Fill" IsVisible="{Binding HasLocalImagePreview}" />
+                                    <Border IsVisible="{Binding HasLocalImagePreview}" BackgroundColor="#EEF5FD"
+                                            Stroke="#DCE6F1" StrokeThickness="1" Padding="0">
+                                        <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
+                                        <Image Source="{Binding AttachmentLocalPath}" Aspect="AspectFit" HeightRequest="210"
+                                               HorizontalOptions="Fill" Loaded="ImagePreviewLoaded">
+                                            <Image.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="ImagePreviewClicked" NumberOfTapsRequired="1" />
+                                            </Image.GestureRecognizers>
+                                        </Image>
+                                    </Border>
 
                                     <!-- FILE -->
                                     <Border IsVisible="{Binding IsAttachment}" Padding="8" BackgroundColor="#F4F8FD"
                                             Stroke="#DCE6F1" StrokeThickness="1">
                                         <Border.StrokeShape><RoundRectangle CornerRadius="13" /></Border.StrokeShape>
+                                        <Border.Triggers>
+                                            <DataTrigger TargetType="Border" Binding="{Binding IsAudioAttachment}" Value="True">
+                                                <Setter Property="IsVisible" Value="False" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Border" Binding="{Binding IsImageAttachment}" Value="True">
+                                                <Setter Property="IsVisible" Value="False" />
+                                            </DataTrigger>
+                                        </Border.Triggers>
                                         <Grid ColumnDefinitions="38,*" ColumnSpacing="8">
                                             <Border WidthRequest="38" HeightRequest="38" BackgroundColor="#EAF3FF" StrokeThickness="0">
                                                 <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
@@ -154,22 +197,38 @@
                                     </Border>
 
                                     <!-- AUDIO -->
-                                    <Grid IsVisible="{Binding IsAudioAttachment}" ColumnDefinitions="42,*,Auto" ColumnSpacing="9" Padding="2">
-                                        <Button Grid.Column="0" Text="▶" FontSize="13" WidthRequest="42" HeightRequest="42"
-                                                Padding="0" BackgroundColor="#EAF3FF" TextColor="#2F80ED" CornerRadius="21"
-                                                Clicked="AudioClicked" />
-                                        <HorizontalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
-                                            <BoxView WidthRequest="3" HeightRequest="11" CornerRadius="2" Color="#A9C9F2" />
-                                            <BoxView WidthRequest="3" HeightRequest="20" CornerRadius="2" Color="#6FA9EE" />
-                                            <BoxView WidthRequest="3" HeightRequest="14" CornerRadius="2" Color="#2F80ED" />
-                                            <BoxView WidthRequest="3" HeightRequest="25" CornerRadius="2" Color="#2F80ED" />
-                                            <BoxView WidthRequest="3" HeightRequest="17" CornerRadius="2" Color="#73ACED" />
-                                            <BoxView WidthRequest="3" HeightRequest="22" CornerRadius="2" Color="#2F80ED" />
-                                            <BoxView WidthRequest="3" HeightRequest="12" CornerRadius="2" Color="#A9C9F2" />
-                                            <BoxView WidthRequest="3" HeightRequest="19" CornerRadius="2" Color="#6FA9EE" />
-                                        </HorizontalStackLayout>
-                                        <Label Grid.Column="2" Text="صوت" FontSize="9.5" TextColor="#718096" VerticalOptions="Center" />
-                                    </Grid>
+                                    <Border IsVisible="{Binding IsAudioAttachment}" Padding="7,6"
+                                            BackgroundColor="#F7FBFF" Stroke="#CFE2F8" StrokeThickness="1">
+                                        <Border.StrokeShape><RoundRectangle CornerRadius="17" /></Border.StrokeShape>
+                                        <Grid ColumnDefinitions="44,*,Auto" ColumnSpacing="9" HeightRequest="50">
+                                            <Button Grid.Column="0" Text="▶" FontSize="13" WidthRequest="40" HeightRequest="40"
+                                                    Padding="0" BackgroundColor="#2F80ED" TextColor="#FFFFFF" CornerRadius="20"
+                                                    VerticalOptions="Center" Clicked="AudioClicked" />
+
+                                            <Grid Grid.Column="1" RowDefinitions="*,Auto" RowSpacing="3" VerticalOptions="Center">
+                                                <HorizontalStackLayout Grid.Row="0" Spacing="2.5" VerticalOptions="Center">
+                                                    <BoxView WidthRequest="3" HeightRequest="10" CornerRadius="2" Color="#B7D5F5" />
+                                                    <BoxView WidthRequest="3" HeightRequest="18" CornerRadius="2" Color="#8CB8EF" />
+                                                    <BoxView WidthRequest="3" HeightRequest="26" CornerRadius="2" Color="#2F80ED" />
+                                                    <BoxView WidthRequest="3" HeightRequest="15" CornerRadius="2" Color="#5D9FEB" />
+                                                    <BoxView WidthRequest="3" HeightRequest="22" CornerRadius="2" Color="#2F80ED" />
+                                                    <BoxView WidthRequest="3" HeightRequest="30" CornerRadius="2" Color="#2F80ED" />
+                                                    <BoxView WidthRequest="3" HeightRequest="17" CornerRadius="2" Color="#6FA9EE" />
+                                                    <BoxView WidthRequest="3" HeightRequest="24" CornerRadius="2" Color="#2F80ED" />
+                                                    <BoxView WidthRequest="3" HeightRequest="12" CornerRadius="2" Color="#9CC3F0" />
+                                                    <BoxView WidthRequest="3" HeightRequest="20" CornerRadius="2" Color="#6FA9EE" />
+                                                    <BoxView WidthRequest="3" HeightRequest="28" CornerRadius="2" Color="#2F80ED" />
+                                                    <BoxView WidthRequest="3" HeightRequest="14" CornerRadius="2" Color="#A5C8F2" />
+                                                </HorizontalStackLayout>
+                                                <BoxView Grid.Row="1" HeightRequest="2" CornerRadius="1" Color="#D7E7F8" HorizontalOptions="Fill" />
+                                            </Grid>
+
+                                            <VerticalStackLayout Grid.Column="2" Spacing="1" VerticalOptions="Center" HorizontalOptions="End">
+                                                <Label Text="صوت" FontSize="9" TextColor="#718096" HorizontalTextAlignment="Center" />
+                                                <Label Text="♪" FontSize="15" TextColor="#7C96B5" HorizontalTextAlignment="Center" />
+                                            </VerticalStackLayout>
+                                        </Grid>
+                                    </Border>
 
                                     <!-- TEXT -->
                                     <Label Text="{Binding Text}" FontSize="16" LineHeight="1.12" TextColor="#172033" LineBreakMode="WordWrap">

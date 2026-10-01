@@ -45,6 +45,9 @@ public partial class ChatPage : ContentPage
     private ChatMessage? _replyingTo;
     private readonly HashSet<int> _selectedMessageIds = new();
     private bool _selectionMode;
+#if ANDROID
+    private readonly HashSet<global::Android.Views.View> _longPressViews = new();
+#endif
     private bool IsConversationMuted => !string.IsNullOrWhiteSpace(_remoteConversationId) && Preferences.Default.Get("himo_muted_conversations", string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Contains(_remoteConversationId, StringComparer.OrdinalIgnoreCase);
     private bool IsConversationArchived => !string.IsNullOrWhiteSpace(_remoteConversationId) && Preferences.Default.Get("himo_archived_conversations", string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Contains(_remoteConversationId, StringComparer.OrdinalIgnoreCase);
     private bool IsConversationBlocked => !string.IsNullOrWhiteSpace(_remoteConversationId) && Preferences.Default.Get("himo_blocked_conversations", string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Contains(_remoteConversationId, StringComparer.OrdinalIgnoreCase);
@@ -411,6 +414,7 @@ public partial class ChatPage : ContentPage
         var recent = _chat.GetRecentMessages(_conversationId, MessagePageSize);
 
         SetMessagesItemsSource(recent);
+        _ = PrepareVisibleImagePreviewsAsync(recent);
 
         // A local cache may contain more history than the first page.
         // We do not sort/copy the whole history just to determine this.
@@ -1092,6 +1096,14 @@ public partial class ChatPage : ContentPage
             }
 
             var allMessages = _chat.GetMessages(_conversationId);
+            var recentImageMessages = allMessages
+                .OrderBy(x => x.SentAt)
+                .ThenBy(x => x.Id)
+                .TakeLast(MessagePageSize)
+                .Where(x => x.IsImageAttachment)
+                .ToList();
+            await PrepareVisibleImagePreviewsAsync(recentImageMessages).ConfigureAwait(false);
+
             var receivedNewMessages = allMessages.Count > messageCountBeforeSync;
 
             if (receivedNewMessages)
@@ -1373,47 +1385,36 @@ public partial class ChatPage : ContentPage
         try
         {
             var path = message.AttachmentLocalPath;
-            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path) || new FileInfo(path).Length == 0)
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path) || new FileInfo(path).Length <= 0)
             {
-                if (!string.IsNullOrWhiteSpace(path))
-                {
-                    try { File.Delete(path); } catch { }
-                }
-
-                path = await _api.DownloadAttachmentAsync(
-                    messageId,
-                    message.AttachmentFileName ?? "voice.m4a");
+                path = await _api.DownloadAttachmentAsync(messageId, message.AttachmentFileName ?? "voice.m4a");
                 message.AttachmentLocalPath = path;
             }
 
-            var info = new FileInfo(path);
-            if (!info.Exists || info.Length == 0)
-                throw new InvalidOperationException("ملف التسجيل الذي تم تنزيله فارغ.");
+            if (!File.Exists(path) || new FileInfo(path).Length <= 0)
+                throw new IOException("لم يتم تنزيل ملف التسجيل من الخادم.");
 
             StopAudioPlayback();
-            var player = new global::Android.Media.MediaPlayer();
-            _audioPlayer = player;
-
-            player.Completion += (_, _) =>
+            _audioPlayer = new global::Android.Media.MediaPlayer();
+            _audioPlayer.SetDataSource(path);
+            _audioPlayer.Prepared += (_, _) =>
             {
-                MainThread.BeginInvokeOnMainThread(StopAudioPlayback);
-            };
-
-            player.Error += (_, args) =>
-            {
-                MainThread.BeginInvokeOnMainThread(async () =>
+                try { _audioPlayer?.Start(); }
+                catch (Exception startEx)
                 {
+                    MainThread.BeginInvokeOnMainThread(async () =>
+                        await DisplayAlertAsync("الرسالة الصوتية", $"تم تنزيل التسجيل لكن الهاتف لم يستطع تشغيله: {startEx.Message}", "حسنًا"));
                     StopAudioPlayback();
-                    await DisplayAlertAsync(
-                        "الرسالة الصوتية",
-                        $"تعذر تشغيل ملف الصوت على الجهاز. الخطأ: {args.What}/{args.Extra}",
-                        "حسنًا");
-                });
+                }
             };
-
-            player.SetDataSource(path);
-            player.Prepare();
-            player.Start();
+            _audioPlayer.Error += (_, args) =>
+            {
+                StopAudioPlayback();
+                MainThread.BeginInvokeOnMainThread(async () =>
+                    await DisplayAlertAsync("الرسالة الصوتية", $"تم تنزيل التسجيل، لكن صيغة الصوت غير مدعومة على الجهاز. MediaPlayer: {args.What}/{args.Extra}", "حسنًا"));
+            };
+            _audioPlayer.Completion += (_, _) => StopAudioPlayback();
+            _audioPlayer.PrepareAsync();
         }
         catch (Exception ex)
         {
@@ -1461,11 +1462,47 @@ public partial class ChatPage : ContentPage
                 return;
             }
 
-            var choice = await DisplayActionSheetAsync("إضافة مرفق", "إلغاء", null, "صورة", "ملف");
-            if (string.Equals(choice, "إلغاء", StringComparison.Ordinal) || string.IsNullOrWhiteSpace(choice)) return;
+            var choice = await DisplayActionSheetAsync(
+                "إضافة مرفق",
+                "إلغاء",
+                null,
+                "التقاط صورة",
+                "تصوير فيديو",
+                "اختيار صورة",
+                "ملف");
 
-            FileResult? file;
-            if (string.Equals(choice, "صورة", StringComparison.Ordinal))
+            if (string.IsNullOrWhiteSpace(choice) || string.Equals(choice, "إلغاء", StringComparison.Ordinal))
+                return;
+
+            FileResult? file = null;
+
+            if (string.Equals(choice, "التقاط صورة", StringComparison.Ordinal))
+            {
+                if (!MediaPicker.Default.IsCaptureSupported)
+                {
+                    await DisplayAlertAsync("الكاميرا", "التقاط الصور غير متاح على هذا الجهاز.", "حسنًا");
+                    return;
+                }
+
+                file = await MediaPicker.Default.CapturePhotoAsync(new MediaPickerOptions
+                {
+                    Title = "التقاط صورة"
+                });
+            }
+            else if (string.Equals(choice, "تصوير فيديو", StringComparison.Ordinal))
+            {
+                if (!MediaPicker.Default.IsCaptureSupported)
+                {
+                    await DisplayAlertAsync("الكاميرا", "تصوير الفيديو غير متاح على هذا الجهاز.", "حسنًا");
+                    return;
+                }
+
+                file = await MediaPicker.Default.CaptureVideoAsync(new MediaPickerOptions
+                {
+                    Title = "تصوير فيديو"
+                });
+            }
+            else if (string.Equals(choice, "اختيار صورة", StringComparison.Ordinal))
             {
                 file = await FilePicker.Default.PickAsync(new PickOptions
                 {
@@ -1480,6 +1517,7 @@ public partial class ChatPage : ContentPage
                     PickerTitle = "اختر ملفًا"
                 });
             }
+
             if (file is null) return;
 
             if (file.FileName.Length > 180)
@@ -1499,22 +1537,64 @@ public partial class ChatPage : ContentPage
 
             SendButton.IsEnabled = false;
             var message = await _api.UploadAttachmentAsync(remoteIdGuid, file);
-            _chat.AddRemoteMessage(_conversationId, message.Text, message.SentAt.LocalDateTime, true, message.Id.ToString(), message.AttachmentFileName, message.AttachmentContentType, message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"), message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted);
+            _chat.AddRemoteMessage(
+                _conversationId,
+                message.Text,
+                message.SentAt.LocalDateTime,
+                true,
+                message.Id.ToString(),
+                message.AttachmentFileName,
+                message.AttachmentContentType,
+                message.AttachmentSize,
+                message.Status,
+                message.ReplyToMessageId?.ToString("D"),
+                message.ReplyToText,
+                message.IsEdited,
+                message.EditedAt,
+                message.IsDeleted);
+
             RefreshMessagesView(scrollToEnd: true);
-            await PrepareImagePreviewAsync(_chat.GetMessages(_conversationId).LastOrDefault(x => string.Equals(x.RemoteId, message.Id.ToString(), StringComparison.OrdinalIgnoreCase)));
+
+            var localMessage = _chat.GetMessages(_conversationId)
+                .LastOrDefault(x => string.Equals(x.RemoteId, message.Id.ToString(), StringComparison.OrdinalIgnoreCase));
+
+            if (localMessage?.IsImageAttachment == true)
+                await PrepareImagePreviewAsync(localMessage);
         }
         catch (HttpRequestException ex)
         {
             await DisplayAlertAsync("المرفقات", ex.Message, "حسنًا");
         }
+        catch (FeatureNotSupportedException)
+        {
+            await DisplayAlertAsync("الكاميرا", "هذه الميزة غير مدعومة على الجهاز الحالي.", "حسنًا");
+        }
+        catch (PermissionException)
+        {
+            await DisplayAlertAsync("صلاحية الكاميرا", "اسمح للتطبيق باستخدام الكاميرا ثم حاول مرة أخرى.", "حسنًا");
+        }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("المرفقات", $"تعذر إرسال الملف: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync("المرفقات", $"تعذر إرسال المرفق: {ex.Message}", "حسنًا");
         }
         finally
         {
             if (SendButton is not null) SendButton.IsEnabled = true;
         }
+    }
+
+    private async Task PrepareVisibleImagePreviewsAsync(IEnumerable<ChatMessage> messages)
+    {
+        if (messages is null) return;
+
+        var imageMessages = messages
+            .Where(x => x is not null && x.IsImageAttachment)
+            .ToList();
+
+        if (imageMessages.Count == 0) return;
+
+        var tasks = imageMessages.Select(PrepareImagePreviewAsync);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     private async Task PrepareImagePreviewAsync(ChatMessage? message)
@@ -1530,6 +1610,40 @@ public partial class ChatPage : ContentPage
         catch
         {
             // Inline preview is optional; the attachment can still be opened manually.
+        }
+    }
+
+    private async void ImagePreviewClicked(object? sender, TappedEventArgs e)
+    {
+        if (sender is not Image image || image.BindingContext is not ChatMessage message || !message.IsImageAttachment || !Guid.TryParse(message.RemoteId, out var messageId))
+            return;
+
+        // When message selection mode is active, tapping the image selects/deselects
+        // the message instead of opening the image. This keeps image messages
+        // consistent with normal text messages during multi-selection.
+        if (_selectionMode)
+        {
+            ToggleMessageSelection(message);
+            return;
+        }
+
+        try
+        {
+            var path = message.AttachmentLocalPath;
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path) || new FileInfo(path).Length <= 0)
+            {
+                path = await _api.DownloadAttachmentAsync(messageId, message.AttachmentFileName ?? "image");
+                message.AttachmentLocalPath = path;
+            }
+
+            if (!File.Exists(path) || new FileInfo(path).Length <= 0)
+                throw new IOException("لم يتم تنزيل الصورة بشكل صحيح.");
+
+            await Launcher.Default.OpenAsync(new OpenFileRequest(message.AttachmentFileName ?? "image", new ReadOnlyFile(path)));
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("الصورة", $"تعذر فتح الصورة: {ex.Message}", "حسنًا");
         }
     }
 
@@ -1657,6 +1771,170 @@ public partial class ChatPage : ContentPage
             DeleteClicked(button, EventArgs.Empty);
     }
 
+#if ANDROID
+    private void ImagePreviewLoaded(object? sender, EventArgs e)
+    {
+        if (sender is not Image image || image.Handler?.PlatformView is not global::Android.Views.View nativeView)
+            return;
+
+        // The Image consumes the touch sequence itself, so the parent message
+        // bubble cannot receive a long-press when the user presses directly
+        // on the photo. Attach the same native long-click behavior to the image.
+        if (!nativeView.LongClickable)
+            nativeView.LongClickable = true;
+
+        nativeView.LongClick += (_, args) =>
+        {
+            if (image.BindingContext is ChatMessage message && !message.IsDeleted)
+            {
+                MessageLongPressed(message);
+                args.Handled = true;
+            }
+        };
+    }
+
+    private void MessageBubbleLoaded(object? sender, EventArgs e)
+    {
+        if (sender is not Border border || border.Handler?.PlatformView is not global::Android.Views.View nativeView)
+            return;
+
+        // CollectionView recycles message cells. Attach the native tap/long-click
+        // handlers only once to each native view, while always reading the current
+        // Border.BindingContext when the gesture happens.
+        if (!_longPressViews.Add(nativeView))
+            return;
+
+        nativeView.Clickable = true;
+        nativeView.LongClickable = true;
+
+        // While selection mode is active, a light tap toggles this message
+        // instead of cancelling the selection. This allows selecting multiple
+        // messages one after another.
+        nativeView.Click += (_, _) =>
+        {
+            if (!_selectionMode) return;
+            if (border.BindingContext is ChatMessage message && !message.IsDeleted)
+                ToggleMessageSelection(message);
+        };
+
+        nativeView.LongClick += (_, args) =>
+        {
+            if (border.BindingContext is ChatMessage message && !message.IsDeleted)
+            {
+                MessageLongPressed(message);
+                args.Handled = true;
+            }
+        };
+    }
+#endif
+
+    private void MessageLongPressed(ChatMessage? message)
+    {
+        if (message is null || message.IsDeleted) return;
+
+        // First long-press starts selection with this message. If selection mode
+        // is already active, a long-press toggles this message as well.
+        if (_selectionMode)
+        {
+            ToggleMessageSelection(message);
+            return;
+        }
+
+        _selectionMode = true;
+        _selectedMessageIds.Clear();
+        _selectedMessageIds.Add(message.Id);
+
+        foreach (var item in _chat.GetMessages(_conversationId))
+            item.IsSelected = item.Id == message.Id;
+
+        UpdateSelectionBar();
+    }
+
+    private async void ShareSelectedClicked(object? sender, EventArgs e)
+    {
+        var selected = _chat.GetMessages(_conversationId)
+            .Where(x => _selectedMessageIds.Contains(x.Id) && !x.IsDeleted)
+            .OrderBy(x => x.SentAt)
+            .ToList();
+
+        if (selected.Count == 0)
+        {
+            ExitSelectionMode();
+            return;
+        }
+
+        if (selected.Count > 1)
+        {
+            var text = string.Join(Environment.NewLine + Environment.NewLine,
+                selected.Select(x => string.IsNullOrWhiteSpace(x.Text) ? "رسالة مرفقة" : x.Text.Trim()));
+            await Share.Default.RequestAsync(new ShareTextRequest
+            {
+                Title = "مشاركة الرسائل",
+                Text = text
+            });
+            ExitSelectionMode();
+            return;
+        }
+
+        var message = selected[0];
+        try
+        {
+            if (message.IsAttachment && Guid.TryParse(message.RemoteId, out var messageId))
+            {
+                var path = message.AttachmentLocalPath;
+                if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                {
+                    path = await _api.DownloadAttachmentAsync(messageId, message.AttachmentFileName ?? "file");
+                    message.AttachmentLocalPath = path;
+                }
+
+                await Share.Default.RequestAsync(new ShareFileRequest
+                {
+                    Title = "مشاركة المرفق",
+                    File = new ShareFile(path)
+                });
+            }
+            else
+            {
+                await Share.Default.RequestAsync(new ShareTextRequest
+                {
+                    Title = "مشاركة الرسالة",
+                    Text = message.Text ?? string.Empty
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("مشاركة الرسالة", $"تعذر مشاركة الرسالة: {ex.Message}", "حسنًا");
+        }
+        finally
+        {
+            ExitSelectionMode();
+        }
+    }
+
+    private void CommentSelectedClicked(object? sender, EventArgs e)
+    {
+        var selected = _chat.GetMessages(_conversationId)
+            .Where(x => _selectedMessageIds.Contains(x.Id) && !x.IsDeleted)
+            .OrderBy(x => x.SentAt)
+            .ToList();
+
+        if (selected.Count != 1)
+        {
+            _ = DisplayAlertAsync("التعليق", "اختر رسالة واحدة فقط للتعليق عليها.", "حسنًا");
+            return;
+        }
+
+        var message = selected[0];
+        ExitSelectionMode();
+        _replyingTo = message;
+        ReplyPreviewLabel?.SetValue(Label.TextProperty,
+            string.IsNullOrWhiteSpace(message.Text) ? "رسالة مرفقة" : message.Text);
+        if (ReplyPreview is not null) ReplyPreview.IsVisible = true;
+        MessageEntry?.Focus();
+    }
+
     private void ToggleMessageSelection(ChatMessage message)
     {
         if (message.IsDeleted) return;
@@ -1696,8 +1974,6 @@ public partial class ChatPage : ContentPage
         if (sender is not Button button || button.BindingContext is not ChatMessage message) return;
         ToggleMessageSelection(message);
     }
-
-    private void CancelSelectionClicked(object? sender, EventArgs e) => ExitSelectionMode();
 
     private async void DeleteSelectedClicked(object? sender, EventArgs e)
     {

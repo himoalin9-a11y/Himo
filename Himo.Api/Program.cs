@@ -520,10 +520,39 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
 
     var originalName = Path.GetFileName(file.FileName);
     if (string.IsNullOrWhiteSpace(originalName) || originalName.Length > 180) return Results.BadRequest(new { message = "اسم الملف غير صالح." });
-    var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+    var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType.Trim();
     var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     { "image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf", "text/plain", "application/zip", "application/octet-stream",
-      "audio/mp4", "audio/m4a", "audio/aac", "audio/mpeg", "audio/ogg", "audio/wav" };
+      "audio/mp4", "audio/m4a", "audio/aac", "audio/mpeg", "audio/ogg", "audio/wav",
+      "video/mp4", "video/webm", "video/quicktime", "video/3gpp", "video/3gpp2", "video/x-matroska", "video/x-msvideo", "video/mpeg", "video/ogg" };
+
+    // Android MediaPicker may report different video MIME types (or even
+    // application/octet-stream) depending on the device/gallery provider.
+    // Accept video/* and known video extensions, then normalize the stored
+    // type so playback/download remains consistent.
+    var extension = Path.GetExtension(originalName);
+    var isVideoExtension = extension.Equals(".mp4", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".m4v", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".webm", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".mov", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".3gp", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".3g2", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".mkv", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".avi", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".mpeg", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".mpg", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".ogv", StringComparison.OrdinalIgnoreCase);
+
+    if (contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase) || isVideoExtension)
+    {
+        contentType = extension.Equals(".webm", StringComparison.OrdinalIgnoreCase) ? "video/webm"
+            : extension.Equals(".mov", StringComparison.OrdinalIgnoreCase) ? "video/quicktime"
+            : extension.Equals(".3gp", StringComparison.OrdinalIgnoreCase) ? "video/3gpp"
+            : extension.Equals(".3g2", StringComparison.OrdinalIgnoreCase) ? "video/3gpp2"
+            : extension.Equals(".mkv", StringComparison.OrdinalIgnoreCase) ? "video/x-matroska"
+            : "video/mp4";
+    }
+
     if (!allowed.Contains(contentType)) return Results.BadRequest(new { message = "نوع الملف غير مدعوم حاليًا." });
 
     var uploads = Path.Combine(AppContext.BaseDirectory, "App_Data", "uploads");
@@ -540,7 +569,9 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
             ? $"📷 {originalName}"
             : contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)
                 ? $"🎙️ {originalName}"
-                : $"📎 {originalName}";
+                : contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)
+                    ? $"🎬 {originalName}"
+                    : $"📎 {originalName}";
         var message = store.AddAttachmentMessage(messageId, id, session.UserId, session.PhoneNumber, displayText, originalName, contentType, file.Length);
         var recipientIds = store.GetOtherParticipantUserIds(id, session.UserId);
         await hub.Clients.Groups(recipientIds.Select(userId => HimoChatHub.UserGroup(userId)))
