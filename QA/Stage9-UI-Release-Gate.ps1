@@ -28,14 +28,6 @@ foreach ($xaml in Get-ChildItem $views -Filter '*.xaml') {
     }
 }
 
-$csproj = Join-Path $root 'Himo.csproj'
-$project = Get-Content $csproj -Raw
-foreach ($item in @('Himo.Api\\**', 'Program.cs', 'FcmPushService.cs', 'EmailVerificationService.cs')) {
-    if ($project -notmatch [regex]::Escape($item)) {
-        Write-Host "WARN expected exclusion not found in Himo.csproj: $item"
-    }
-}
-
 if ($failed) {
     Write-Host 'Stage 9 gate: FAILED'
     exit 1

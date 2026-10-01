@@ -109,8 +109,8 @@ public partial class App : Application
                 }
                 await Task.CompletedTask;
 #if ANDROID
-            _ = RegisterCurrentPushTokenAsync();
-            MainActivity.TryNavigateToPendingConversation();
+                _ = RegisterCurrentPushTokenAsync();
+                MainActivity.TryNavigateToPendingConversation();
 #endif
             });
         }
@@ -288,13 +288,26 @@ public partial class App : Application
     {
         try
         {
-            if (e?.Notification?.Data is not null &&
-                e.Notification.Data.TryGetValue("conversation_id", out var conversationId) &&
-                !string.IsNullOrWhiteSpace(conversationId))
+            if (e?.Notification?.Data is not null)
             {
-                MainActivity.SetPendingConversation(conversationId);
-                MainActivity.TryNavigateToPendingConversation();
-                return;
+                if (e.Notification.Data.TryGetValue("call_type", out var callType) &&
+                    string.Equals(callType, "invite", StringComparison.OrdinalIgnoreCase) &&
+                    e.Notification.Data.TryGetValue("conversation_id", out var callConversationId) &&
+                    !string.IsNullOrWhiteSpace(callConversationId))
+                {
+                    e.Notification.Data.TryGetValue("call_mode", out var callMode);
+                    MainActivity.SetPendingCall(callConversationId, callMode ?? "audio");
+                    MainActivity.TryNavigateToPendingCall();
+                    return;
+                }
+
+                if (e.Notification.Data.TryGetValue("conversation_id", out var conversationId) &&
+                    !string.IsNullOrWhiteSpace(conversationId))
+                {
+                    MainActivity.SetPendingConversation(conversationId);
+                    MainActivity.TryNavigateToPendingConversation();
+                    return;
+                }
             }
 
             // Some Android/plugin versions deliver the tap event without the
@@ -340,6 +353,73 @@ public partial class App : Application
         try { await _notifications.ClearAllAsync(); } catch { }
     }
 
+    private async Task RestorePersistedSessionAsync(Window window)
+    {
+        try
+        {
+            await _api.TokenInitialization.ConfigureAwait(false);
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                if (!_account.IsSignedIn || !_api.HasToken)
+                {
+                    _sessionUnlocked = false;
+                    window.Page = new Views.LoginPage(_account, _api);
+                    return;
+                }
+
+                try
+                {
+                    if (_appLock.IsEnabled && !_sessionUnlocked)
+                    {
+                        window.Page = new Views.AppLockPage(_appLock, async () =>
+                        {
+                            _sessionUnlocked = true;
+                            try
+                            {
+                                window.Page = new AppShell();
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"AppShell recovery after session restore failed: {ex}");
+                                _sessionUnlocked = false;
+                                window.Page = new Views.LoginPage(_account, _api);
+                            }
+#if ANDROID
+                            _ = RegisterCurrentPushTokenAsync();
+                            MainActivity.TryNavigateToPendingConversation();
+#endif
+                            await Task.CompletedTask;
+                        });
+                    }
+                    else
+                    {
+                        _sessionUnlocked = true;
+                        window.Page = new AppShell();
+#if ANDROID
+                        _ = RegisterCurrentPushTokenAsync();
+#endif
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Persisted session restore failed: {ex}");
+                    _sessionUnlocked = false;
+                    window.Page = new Views.LoginPage(_account, _api);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Persisted token initialization failed: {ex}");
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                _sessionUnlocked = false;
+                window.Page = new Views.LoginPage(_account, _api);
+            });
+        }
+    }
+
     protected override Window CreateWindow(IActivationState? activationState)
     {
         // Startup is deliberately defensive: a stale/corrupt session or an
@@ -361,16 +441,26 @@ public partial class App : Application
                 tokenAvailable = false;
             }
 
-            if (accountSignedIn != tokenAvailable)
+            // SecureStorage is asynchronous. On a cold Android start the persisted
+            // AccountService state can be available a moment before the bearer token.
+            // Never treat that temporary mismatch as a logout. Wait for token
+            // initialization and then restore the existing session.
+            if (accountSignedIn && !_api.TokenInitialization.IsCompleted)
             {
-                try { _account.SignOut(); } catch { }
-                try { _chat.ClearAll(); } catch { }
-                try { _api.ClearToken(); } catch { }
-                Preferences.Default.Remove(PushTokenKey);
-                Preferences.Default.Remove(PendingPushTokenCleanupKey);
-                _ = ClearNotificationsSafelyAsync();
-                accountSignedIn = false;
-                tokenAvailable = false;
+                var restoringPage = new ContentPage
+                {
+                    BackgroundColor = Color.FromArgb("#F5F8FC"),
+                    Content = new ActivityIndicator
+                    {
+                        IsRunning = true,
+                        HorizontalOptions = LayoutOptions.Center,
+                        VerticalOptions = LayoutOptions.Center
+                    }
+                };
+
+                var restoringWindow = new Window(restoringPage);
+                _ = RestorePersistedSessionAsync(restoringWindow);
+                return restoringWindow;
             }
 
             Page page;

@@ -7,8 +7,6 @@ namespace Himo.Services;
 public sealed class ChatService
 {
     private const string StoreFileName = "himo_chat_store.json";
-    private const int MaxMessagesPerConversation = 1000;
-    private const int MaxCachedMessages = 10000;
     private readonly string _storePath;
     private readonly object _sync = new();
     private readonly Dictionary<int, ObservableCollection<ChatMessage>> _messages = new();
@@ -31,6 +29,30 @@ public sealed class ChatService
             messages = new ObservableCollection<ChatMessage>();
             _messages[conversationId] = messages;
             return messages;
+        }
+    }
+
+    public List<ChatMessage> GetRecentMessages(int conversationId, int count)
+    {
+        if (count <= 0)
+            return new List<ChatMessage>();
+
+        lock (_sync)
+        {
+            EnsureLoaded();
+
+            if (!_messages.TryGetValue(conversationId, out var messages) || messages.Count == 0)
+                return new List<ChatMessage>();
+
+            // ChatService keeps each conversation chronologically ordered.
+            // Take only the tail without sorting the full history.
+            var start = Math.Max(0, messages.Count - count);
+            var result = new List<ChatMessage>(messages.Count - start);
+
+            for (var i = start; i < messages.Count; i++)
+                result.Add(messages[i]);
+
+            return result;
         }
     }
 
@@ -116,7 +138,7 @@ public sealed class ChatService
                 IsMine = true
             };
 
-            messages.Add(message);
+            InsertMessageChronological(messages, message);
             conversation.LastMessage = clean;
             conversation.Time = message.SentAt.ToString("HH:mm");
             conversation.UpdatedAt = message.SentAt;
@@ -153,7 +175,7 @@ public sealed class ChatService
                 ReplyToText = replyToText
             };
 
-            messages.Add(message);
+            InsertMessageChronological(messages, message);
             conversation.LastMessage = clean;
             conversation.Time = now.ToString("HH:mm");
             conversation.UpdatedAt = now;
@@ -331,7 +353,8 @@ public sealed class ChatService
             }
 
             var next = messages.Count == 0 ? 1 : messages.Max(x => x.Id) + 1;
-            messages.Add(new ChatMessage { Id = next, RemoteId = remoteId, ConversationId = conversationId, Text = text, SentAt = localTime, IsMine = isMine, AttachmentFileName = attachmentFileName, AttachmentContentType = attachmentContentType, AttachmentSize = attachmentSize, DeliveryStatus = string.IsNullOrWhiteSpace(deliveryStatus) ? (isMine ? "sent" : "received") : deliveryStatus, ReplyToRemoteId = replyToRemoteId, ReplyToText = replyToText, IsEdited = isEdited, IsDeleted = isDeleted });
+            var remoteMessage = new ChatMessage { Id = next, RemoteId = remoteId, ConversationId = conversationId, Text = text, SentAt = localTime, IsMine = isMine, AttachmentFileName = attachmentFileName, AttachmentContentType = attachmentContentType, AttachmentSize = attachmentSize, DeliveryStatus = string.IsNullOrWhiteSpace(deliveryStatus) ? (isMine ? "sent" : "received") : deliveryStatus, ReplyToRemoteId = replyToRemoteId, ReplyToText = replyToText, IsEdited = isEdited, IsDeleted = isDeleted };
+            InsertMessageChronological(messages, remoteMessage);
             var c = Conversations.FirstOrDefault(x => x.Id == conversationId);
             if (c != null)
             {
@@ -343,6 +366,21 @@ public sealed class ChatService
             Save();
             return true;
         }
+    }
+
+    private static void InsertMessageChronological(ObservableCollection<ChatMessage> messages, ChatMessage message)
+    {
+        var index = messages.Count;
+        while (index > 0)
+        {
+            var previous = messages[index - 1];
+            if (message.SentAt > previous.SentAt ||
+                (message.SentAt == previous.SentAt && message.Id >= previous.Id))
+                break;
+            index--;
+        }
+
+        messages.Insert(index, message);
     }
 
     private void Load()
@@ -366,7 +404,7 @@ public sealed class ChatService
                             var list = new ObservableCollection<ChatMessage>();
                             var seenRemoteIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                            foreach (var message in group.OrderBy(x => x.SentAt))
+                            foreach (var message in group.OrderBy(x => x.SentAt).ThenBy(x => x.Id))
                             {
                                 // Pending messages are durable outbox entries. Keep them
                                 // across app restarts so an interrupted request can be
@@ -387,8 +425,7 @@ public sealed class ChatService
 
                         if (Conversations.Count > 0)
                         {
-                            TrimMessageCache();
-                            return;
+                                    return;
                         }
                     }
                 }
@@ -437,7 +474,6 @@ public sealed class ChatService
                 ChatStore snapshot;
                 lock (_sync)
                 {
-                    TrimMessageCache();
                     snapshot = new ChatStore
                     {
                         Conversations = Conversations.ToList(),
@@ -463,33 +499,6 @@ public sealed class ChatService
             if (Volatile.Read(ref _saveRequested) != 0 &&
                 Interlocked.Exchange(ref _saveWorkerRunning, 1) == 0)
                 _ = Task.Run(SaveWorkerAsync);
-        }
-    }
-
-    private void TrimMessageCache()
-    {
-        foreach (var pair in _messages)
-        {
-            while (pair.Value.Count > MaxMessagesPerConversation)
-                pair.Value.RemoveAt(0);
-        }
-
-        var allMessages = _messages.Values
-            .SelectMany(x => x)
-            .OrderBy(x => x.SentAt)
-            .ToList();
-
-        if (allMessages.Count <= MaxCachedMessages) return;
-
-        var removeCount = allMessages.Count - MaxCachedMessages;
-        var toRemove = allMessages.Take(removeCount).ToHashSet();
-        foreach (var pair in _messages)
-        {
-            for (var i = pair.Value.Count - 1; i >= 0; i--)
-            {
-                if (toRemove.Contains(pair.Value[i]))
-                    pair.Value.RemoveAt(i);
-            }
         }
     }
 

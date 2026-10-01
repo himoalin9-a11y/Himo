@@ -22,6 +22,18 @@ public sealed class NotificationService : INotificationService
 
             if (manager is not null)
             {
+                var callChannel = new global::Android.App.NotificationChannel(
+                    "himo_calls",
+                    "مكالمات Himo",
+                    global::Android.App.NotificationImportance.High)
+                {
+                    Description = "المكالمات الصوتية والمرئية الواردة"
+                };
+                callChannel.SetSound(
+                    global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone),
+                    null);
+                manager.CreateNotificationChannel(callChannel);
+
                 var channel = new global::Android.App.NotificationChannel(
                     ChannelId,
                     ChannelName,

@@ -198,4 +198,66 @@ sealed class FcmPushService
             _logger.LogError(ex, "FCM message send failed.");
         }
     }
+    public async Task SendCallInviteAsync(
+        IReadOnlyList<string> tokens,
+        string callerName,
+        Guid conversationId,
+        string mode,
+        CancellationToken cancellationToken = default)
+    {
+        if (_messaging is null || tokens.Count == 0) return;
+
+        var cleanTokens = tokens.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.Ordinal).ToList();
+        if (cleanTokens.Count == 0) return;
+
+        var data = new Dictionary<string, string>
+        {
+            ["call_type"] = "invite",
+            ["conversation_id"] = conversationId.ToString("D"),
+            ["call_mode"] = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio",
+            ["is_silent_in_foreground"] = "true"
+        };
+
+        foreach (var batch in cleanTokens.Chunk(500))
+        {
+            try
+            {
+                var message = new MulticastMessage
+                {
+#pragma warning disable CS0618
+                    Tokens = batch.ToList(),
+#pragma warning restore CS0618
+                    Notification = new Notification
+                    {
+                        Title = string.IsNullOrWhiteSpace(callerName) ? "مكالمة واردة" : callerName,
+                        Body = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "مكالمة فيديو واردة" : "مكالمة صوتية واردة"
+                    },
+                    Data = data,
+                    Android = new AndroidConfig
+                    {
+                        Priority = Priority.High,
+                        CollapseKey = $"himo-call-{conversationId:D}",
+                        Notification = new AndroidNotification
+                        {
+                            ChannelId = "himo_calls",
+                            Priority = NotificationPriority.HIGH,
+                            DefaultSound = true,
+                            DefaultVibrateTimings = true,
+                            Tag = $"himo-call-{conversationId:D}",
+                            Sticky = true
+                        }
+                    }
+                };
+
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeout.CancelAfter(TimeSpan.FromSeconds(10));
+                await _messaging.SendEachForMulticastAsync(message, timeout.Token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "FCM call invite delivery failed. ConversationId={ConversationId}", conversationId);
+            }
+        }
+    }
+
 }

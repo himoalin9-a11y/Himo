@@ -1,29 +1,47 @@
 using Microsoft.Maui.Graphics;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Net.Http;
 using Himo.Services;
 using Himo.Models;
 using MessageDto = Himo.Services.HimoApiClient.MessageDto;
+
+#if ANDROID
+using Android.Views;
+using AndroidX.RecyclerView.Widget;
+#endif
 
 namespace Himo.Views;
 
 [QueryProperty(nameof(ConversationId), "id")]
 public partial class ChatPage : ContentPage
 {
+    private const int MessagePageSize = 30;
+    private const int MessageSyncPageSize = 100;
     private readonly ChatService _chat;
     private readonly HimoApiClient _api;
     private readonly AccountService _account;
     private readonly INotificationService _notifications;
     private readonly HimoRealtimeService _realtime;
     private readonly ICallService _calls;
+    private readonly RangeObservableCollection<ChatMessage> _visibleMessages = new();
     private CancellationTokenSource? _pollCts;
     private readonly SemaphoreSlim _remoteLoadGate = new(1, 1);
     private int _conversationId;
+    private int _loadingOlder;
+    private bool _allowOlderPaging;
+    private bool _initialPositioningLatest;
+    private int _lastVisibleItemIndex = -1;
+    private bool _hasMoreOlderMessages = true;
+    private DateTime? _visibleOldestSentAt;
+    private string? _visibleOldestRemoteId;
     private string? _remoteConversationId;
     private int _sending;
     private bool _isRecordingAudio;
     private CancellationTokenSource? _typingCts;
     private bool _typingActive;
     private bool _remoteTyping;
+    private bool _initialRemoteSyncCompleted;
     private ChatMessage? _replyingTo;
     private readonly HashSet<int> _selectedMessageIds = new();
     private bool _selectionMode;
@@ -32,6 +50,7 @@ public partial class ChatPage : ContentPage
     private bool IsConversationBlocked => !string.IsNullOrWhiteSpace(_remoteConversationId) && Preferences.Default.Get("himo_blocked_conversations", string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Contains(_remoteConversationId, StringComparer.OrdinalIgnoreCase);
 #if ANDROID
     private global::Android.Media.MediaRecorder? _audioRecorder;
+    private global::Android.Media.Ringtone? _incomingCallRingtone;
 #endif
     private string? _audioRecordingPath;
 #if ANDROID
@@ -48,16 +67,25 @@ public partial class ChatPage : ContentPage
                 PrepareForConversationChange();
                 _conversationId = id;
                 _remoteConversationId = _chat.Conversations.FirstOrDefault(x => x.Id == id)?.RemoteId;
-                Load();
                 return;
             }
 
             if (Guid.TryParse(value, out var remoteId))
             {
                 PrepareForConversationChange();
-                _conversationId = 0;
+
                 _remoteConversationId = remoteId.ToString("D");
-                _ = ResolveRemoteConversationAsync();
+
+                // Fast local path: the conversation list is cached locally.
+                // Resolve the remote GUID to the local integer ID without any
+                // network call, so the last cached messages can render immediately.
+                var cachedConversation = _chat.Conversations.FirstOrDefault(x =>
+                    string.Equals(
+                        x.RemoteId,
+                        _remoteConversationId,
+                        StringComparison.OrdinalIgnoreCase));
+
+                _conversationId = cachedConversation?.Id ?? 0;
             }
         }
     }
@@ -69,6 +97,16 @@ public partial class ChatPage : ContentPage
         _selectionMode = false;
         _selectedMessageIds.Clear();
         _remoteTyping = false;
+        _hasMoreOlderMessages = true;
+        _allowOlderPaging = false;
+        _initialPositioningLatest = true;
+        Interlocked.Exchange(ref _initialScrollInProgress, 0);
+        _lastVisibleItemIndex = -1;
+        _initialRemoteSyncCompleted = false;
+        _localFirstRenderCompleted = false;
+        _visibleOldestSentAt = null;
+        _visibleOldestRemoteId = null;
+        _visibleMessages.Clear();
         if (MessageEntry is not null) MessageEntry.Text = string.Empty;
         if (ReplyPreview is not null) ReplyPreview.IsVisible = false;
         if (MessageSearchBar is not null) MessageSearchBar.IsVisible = false;
@@ -79,6 +117,7 @@ public partial class ChatPage : ContentPage
     public ChatPage(ChatService chat, HimoApiClient api, AccountService account, INotificationService notifications, HimoRealtimeService realtime, ICallService calls)
     {
         InitializeComponent();
+        Messages.ItemsSource = _visibleMessages;
         _chat = chat; _api = api; _account = account; _notifications = notifications; _realtime = realtime; _calls = calls;
         _realtime.MessageReceived += OnRealtimeMessageReceived;
         _realtime.UserPresenceChanged += OnUserPresenceChanged;
@@ -88,84 +127,277 @@ public partial class ChatPage : ContentPage
         _realtime.MessageDeleted += OnMessageDeleted;
         _realtime.Reconnected += OnRealtimeReconnected;
         _realtime.CallSignalReceived += OnRealtimeCallSignalReceived;
-        BindingContext = _chat.GetMessages(0);
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
+
         _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
         _realtime.CallSignalReceived += OnRealtimeCallSignalReceived;
         StartPollingFallback();
-        _ = InitializeChatAsync();
+
+        // Do not execute the first message bind while Shell is still performing
+        // the navigation transition. Let Android draw the ChatPage first, then
+        // populate the first message page on the next UI turn.
+        Dispatcher.Dispatch(() =>
+        {
+            _ = InitializeChatAsync();
+        });
     }
+
+    private int _initializationVersion;
+    private int _initializationRunning;
+    private bool _localFirstRenderCompleted;
+    private int _initialScrollInProgress;
 
     private async Task InitializeChatAsync()
     {
-        await Task.Yield();
+        if (Interlocked.Exchange(ref _initializationRunning, 1) != 0)
+            return;
+
+        var version = Interlocked.Increment(ref _initializationVersion);
+
         try
         {
-            Load();
+            if (version == Volatile.Read(ref _initializationVersion) &&
+                !_localFirstRenderCompleted)
+            {
+                // Let the current navigation/layout frame complete first.
+                // Then render the cached last page immediately; do not wait for network.
+                await Task.Yield();
+
+                if (version == Volatile.Read(ref _initializationVersion) &&
+                    !_localFirstRenderCompleted)
+                {
+                    Load();
+                }
+            }
+
             _ = _notifications.InitializeAsync();
-            _ = ResolveRemoteConversationAsync();
-            _ = ClearConversationNotificationAsync();
-            _ = LoadRemoteAsync();
-            _ = StartRealtimeAsync();
+
+            // Never make the first frame wait for authentication/server/SignalR.
+            // Cached messages are rendered first; network synchronization follows.
+            _ = InitializeRemoteSyncAsync(version);
             _ = FlushOutboxAsync();
+            _ = ClearConversationNotificationAsync();
         }
-        catch { }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Initialize failed: {ex}");
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _initializationRunning, 0);
+        }
+    }
+
+    private async Task InitializeRemoteSyncAsync(int version)
+    {
+        try
+        {
+            await _api.TokenInitialization.ConfigureAwait(false);
+            if (!_api.HasToken || version != Volatile.Read(ref _initializationVersion))
+                return;
+
+            await ResolveRemoteConversationAsync().ConfigureAwait(false);
+
+            if (version != Volatile.Read(ref _initializationVersion))
+                return;
+
+            if (!_localFirstRenderCompleted)
+                await MainThread.InvokeOnMainThreadAsync(Load);
+
+            if (version != Volatile.Read(ref _initializationVersion))
+                return;
+
+            _ = StartRealtimeSafelyAsync(version);
+            _ = LoadRemoteSafelyAsync(version);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Remote initialization failed: {ex}");
+        }
+    }
+
+    private async Task StartRealtimeSafelyAsync(int version)
+    {
+        try
+        {
+            await StartRealtimeAsync();
+            if (version == Volatile.Read(ref _initializationVersion) &&
+                Guid.TryParse(_remoteConversationId, out var remoteId))
+            {
+                var online = await _realtime.GetPresenceAsync(remoteId);
+                await MainThread.InvokeOnMainThreadAsync(() => SetPresenceText(online));
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Realtime startup failed: {ex}");
+        }
+    }
+
+    private async Task LoadRemoteSafelyAsync(int version)
+    {
+        try
+        {
+            await LoadRemoteAsync();
+
+            if (version != Volatile.Read(ref _initializationVersion))
+                return;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Remote history sync failed: {ex}");
+        }
     }
 
     private async Task ResolveRemoteConversationAsync()
     {
-        if (string.IsNullOrWhiteSpace(_remoteConversationId) || !Guid.TryParse(_remoteConversationId, out var remoteId))
-            return;
-
-        var existing = _chat.Conversations.FirstOrDefault(x =>
-            string.Equals(x.RemoteId, _remoteConversationId, StringComparison.OrdinalIgnoreCase));
-
-        if (existing is not null)
+        // Fast cache-only resolution. This must happen before any HTTP call.
+        if (_conversationId <= 0 &&
+            !string.IsNullOrWhiteSpace(_remoteConversationId))
         {
-            _conversationId = existing.Id;
-            Load();
+            var cached = _chat.Conversations.FirstOrDefault(x =>
+                string.Equals(
+                    x.RemoteId,
+                    _remoteConversationId,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (cached is not null)
+            {
+                _conversationId = cached.Id;
+            }
+        }
+
+        if (_conversationId > 0 &&
+            !string.IsNullOrWhiteSpace(_remoteConversationId))
+        {
             return;
         }
 
-        if (!_api.HasToken)
+        // Normal path: the navigation query already contains the remote GUID.
+        if (!string.IsNullOrWhiteSpace(_remoteConversationId) && Guid.TryParse(_remoteConversationId, out var remoteId))
+        {
+            var existing = _chat.Conversations.FirstOrDefault(x =>
+                string.Equals(x.RemoteId, _remoteConversationId, StringComparison.OrdinalIgnoreCase));
+
+            if (existing is not null)
+            {
+                _conversationId = existing.Id;
+                return;
+            }
+
+            try
+            {
+                var conversations = await _api.GetConversationsAsync();
+                var remote = conversations.FirstOrDefault(x => x.Id == remoteId);
+                if (remote is null) return;
+
+                var local = _chat.Conversations.FirstOrDefault(x =>
+                    string.Equals(x.RemoteId, remote.Id.ToString("D"), StringComparison.OrdinalIgnoreCase));
+
+                if (local is null)
+                {
+                    local = _chat.AddConversation(remote.Name);
+                    local.RemoteId = remote.Id.ToString("D");
+                }
+
+                local.LastMessage = remote.LastMessage;
+                local.Time = remote.UpdatedAt.LocalDateTime.ToString("HH:mm");
+                local.UpdatedAt = remote.UpdatedAt.LocalDateTime;
+                local.UnreadCount = remote.UnreadCount;
+
+                _conversationId = local.Id;
+                return;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Remote conversation resolve failed: {ex.Message}");
+            }
+        }
+
+        // Recovery path: older local stores can contain a conversation with only
+        // the local integer ID. Resolve that record against the server before the
+        // first history request; otherwise the page has no GUID and silently skips
+        // loading messages until another action refreshes the conversation list.
+        if (_conversationId <= 0 || !_api.HasToken)
             return;
 
         try
         {
-            var conversations = await _api.GetConversationsAsync();
-            var remote = conversations.FirstOrDefault(x => x.Id == remoteId);
-            if (remote is null) return;
-
-            var local = _chat.Conversations.FirstOrDefault(x =>
-                string.Equals(x.RemoteId, remote.Id.ToString("D"), StringComparison.OrdinalIgnoreCase));
-
-            if (local is null)
+            var local = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
+            if (local is null) return;
+            if (Guid.TryParse(local.RemoteId, out var alreadyBound))
             {
-                local = _chat.AddConversation(remote.Name);
-                local.RemoteId = remote.Id.ToString("D");
+                _remoteConversationId = alreadyBound.ToString("D");
+                return;
             }
 
-            local.LastMessage = remote.LastMessage;
-            local.Time = remote.UpdatedAt.LocalDateTime.ToString("HH:mm");
-            local.UpdatedAt = remote.UpdatedAt.LocalDateTime;
-            local.UnreadCount = remote.UnreadCount;
+            var remoteList = await _api.GetConversationsAsync();
+            var candidates = remoteList
+                .Where(x => string.Equals(x.Name?.Trim(), local.Name.Trim(), StringComparison.CurrentCultureIgnoreCase))
+                .ToList();
+
+            if (candidates.Count == 0) return;
+
+            HimoApiClient.ConversationDto? best = null;
+            var bestScore = int.MinValue;
+            var tied = false;
+            foreach (var candidate in candidates)
+            {
+                var score = 1; // exact display-name match
+                if (!string.IsNullOrWhiteSpace(local.LastMessage) &&
+                    !string.Equals(local.LastMessage, "محادثة جديدة", StringComparison.Ordinal) &&
+                    string.Equals(local.LastMessage.Trim(), candidate.LastMessage?.Trim(), StringComparison.Ordinal))
+                    score += 4;
+
+                var delta = Math.Abs((candidate.UpdatedAt.LocalDateTime - local.UpdatedAt).TotalMinutes);
+                if (delta <= 5) score += 2;
+                else if (delta <= 60) score += 1;
+
+                if (score > bestScore)
+                {
+                    best = candidate;
+                    bestScore = score;
+                    tied = false;
+                }
+                else if (score == bestScore)
+                {
+                    tied = true;
+                }
+            }
+
+            // Name-only matching is acceptable only when it is unique. When a
+            // stronger message/time match exists, accept that unique best match.
+            if (best is null || (tied && bestScore < 3))
+                return;
+
+            local.RemoteId = best.Id.ToString("D");
+            local.LastMessage = best.LastMessage;
+            local.Time = best.UpdatedAt.LocalDateTime.ToString("HH:mm");
+            local.UpdatedAt = best.UpdatedAt.LocalDateTime;
+            local.UnreadCount = best.UnreadCount;
+            _remoteConversationId = local.RemoteId;
 
             _conversationId = local.Id;
-            Load();
         }
-        catch
+        catch (Exception ex)
         {
-            // The normal home refresh can populate the conversation later.
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Local conversation hydration failed: {ex.Message}");
         }
     }
 
     private void Load()
     {
-        if (_conversationId == 0 || !IsLoaded)
+        if (_conversationId == 0)
             return;
 
         var conversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
@@ -173,26 +405,84 @@ public partial class ChatPage : ContentPage
             return;
 
         var displayName = string.IsNullOrWhiteSpace(conversation.Name) ? "محادثة" : conversation.Name.Trim();
-        NameLabel?.Text = displayName;
-        InitialLabel?.Text = string.IsNullOrWhiteSpace(conversation.Initial)
-            ? displayName[..1]
-            : conversation.Initial;
-        var messages = _chat.GetMessages(_conversationId);
-        var unreadCount = conversation.UnreadCount;
-        BindingContext = messages;
-        SetMessagesItemsSource(messages);
-        EmptyState?.SetValue(IsVisibleProperty, messages.Count == 0);
+        NameLabel?.SetValue(Label.TextProperty, displayName);
+        InitialLabel?.SetValue(Label.TextProperty, string.IsNullOrWhiteSpace(conversation.Initial) ? displayName[..1] : conversation.Initial);
+
+        var recent = _chat.GetRecentMessages(_conversationId, MessagePageSize);
+
+        SetMessagesItemsSource(recent);
+
+        // A local cache may contain more history than the first page.
+        // We do not sort/copy the whole history just to determine this.
+        var localCount = _chat.GetMessages(_conversationId).Count;
+        _hasMoreOlderMessages = localCount > recent.Count || _hasMoreOlderMessages;
+        UpdateVisiblePagingCursor();
+        EmptyState?.SetValue(IsVisibleProperty, recent.Count == 0);
+        _localFirstRenderCompleted = true;
+
+        if (recent.Count == 0)
+    
         if (UnreadDivider is not null)
-            UnreadDivider.IsVisible = unreadCount > 0 && messages.Count > 0;
+            UnreadDivider.IsVisible = conversation.UnreadCount > 0 && recent.Count > 0;
+
         _chat.MarkAsRead(_conversationId);
 
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            if (messages.Count > 0)
-                Messages?.ScrollTo(messages[^1], position: ScrollToPosition.End, animate: false);
-        });
+        if (recent.Count > 0)
+            ConfigureInitialChatPosition();
     }
 
+    private List<ChatMessage> GetOrderedLocalMessages()
+    {
+        return _chat.GetMessages(_conversationId)
+            .OrderBy(x => x.SentAt)
+            .ThenBy(x => x.Id)
+            .ToList();
+    }
+
+    private ChatMessage? GetVisibleOldestMessage()
+    {
+        return _visibleMessages.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.RemoteId))
+            ?? _visibleMessages.FirstOrDefault();
+    }
+
+    private void UpdateVisiblePagingCursor()
+    {
+        var oldest = GetVisibleOldestMessage();
+        _visibleOldestSentAt = oldest?.SentAt;
+        _visibleOldestRemoteId = oldest?.RemoteId;
+    }
+
+    private void AppendNewMessagesToVisible()
+    {
+        if (!MainThread.IsMainThread)
+        {
+            MainThread.BeginInvokeOnMainThread(AppendNewMessagesToVisible);
+            return;
+        }
+
+        if (_visibleMessages.Count == 0)
+        {
+            var recent = _chat.GetRecentMessages(_conversationId, MessagePageSize);
+            SetMessagesItemsSource(recent);
+            UpdateVisiblePagingCursor();
+            return;
+        }
+
+        var all = GetOrderedLocalMessages();
+
+        var currentKeys = _visibleMessages.Select(GetMessageUiKey).ToHashSet(StringComparer.Ordinal);
+        var newestVisible = _visibleMessages[^1];
+        var additions = all
+            .Where(x => CompareMessageOrder(x, newestVisible) > 0 && !currentKeys.Contains(GetMessageUiKey(x)))
+            .OrderBy(x => x.SentAt)
+            .ThenBy(x => x.Id)
+            .ToList();
+
+        if (additions.Count > 0)
+            _visibleMessages.InsertRange(_visibleMessages.Count, additions);
+
+        UpdateMessageDateSeparators(_visibleMessages.ToList());
+    }
 
 
 
@@ -314,11 +604,11 @@ public partial class ChatPage : ContentPage
 #if ANDROID
         if (_isRecordingAudio) CleanupAudioRecorder();
         StopAudioPlayback();
+        StopIncomingCallRingtone();
 #endif
         _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
         StopPolling();
         StopTyping();
-        _ = _realtime.StopAsync();
         base.OnDisappearing();
     }
 
@@ -352,16 +642,56 @@ public partial class ChatPage : ContentPage
             string.Equals(x.RemoteId, signal.ConversationId.ToString("D"), StringComparison.OrdinalIgnoreCase));
         var name = string.IsNullOrWhiteSpace(conversation?.Name) ? "جهة اتصال" : conversation!.Name.Trim();
         var title = mode == CallMode.Video ? $"مكالمة فيديو واردة من {name}" : $"مكالمة صوتية واردة من {name}";
-        var action = await DisplayActionSheetAsync(title, "رفض", null, "رد");
-        if (string.Equals(action, "رد", StringComparison.Ordinal))
+#if ANDROID
+        StartIncomingCallRingtone();
+#endif
+        try
         {
-            await Shell.Current.GoToAsync($"///CallPage?id={signal.ConversationId:D}&mode={(mode == CallMode.Video ? "video" : "audio")}&incoming=true");
+            var action = await DisplayActionSheetAsync(title, "رفض", null, "رد");
+            if (string.Equals(action, "رد", StringComparison.Ordinal))
+            {
+                await Shell.Current.GoToAsync($"///CallPage?id={signal.ConversationId:D}&mode={(mode == CallMode.Video ? "video" : "audio")}&incoming=true");
+            }
+            else
+            {
+                await _calls.RejectAsync();
+            }
         }
-        else
+        finally
         {
-            await _calls.RejectAsync();
+#if ANDROID
+            StopIncomingCallRingtone();
+#endif
         }
     }
+
+#if ANDROID
+    private void StartIncomingCallRingtone()
+    {
+        try
+        {
+            StopIncomingCallRingtone();
+            var context = global::Android.App.Application.Context;
+            var uri = global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone);
+            if (uri is null) return;
+
+            _incomingCallRingtone = global::Android.Media.RingtoneManager.GetRingtone(context, uri);
+            _incomingCallRingtone?.Play();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Incoming ringtone failed: {ex}");
+            StopIncomingCallRingtone();
+        }
+    }
+
+    private void StopIncomingCallRingtone()
+    {
+        try { _incomingCallRingtone?.Stop(); } catch { }
+        try { _incomingCallRingtone?.Dispose(); } catch { }
+        _incomingCallRingtone = null;
+    }
+#endif
 
     private async Task StartRealtimeAsync()
     {
@@ -388,34 +718,119 @@ public partial class ChatPage : ContentPage
 
     private async Task FlushOutboxAsync()
     {
-        if (!_api.HasToken || Interlocked.Exchange(ref _flushingOutbox, 1) != 0) return;
+        if (!_api.HasToken || Interlocked.Exchange(ref _flushingOutbox, 1) != 0)
+            return;
+
         try
         {
-            foreach (var pending in _chat.GetPendingMessages())
+            while (_api.HasToken)
             {
-                if (!Guid.TryParse(_chat.Conversations.FirstOrDefault(x => x.Id == pending.ConversationId)?.RemoteId, out var conversationId))
-                    continue;
-                if (string.IsNullOrWhiteSpace(pending.ClientMessageId)) continue;
+                // Take a fresh snapshot every pass. This is important when the user
+                // sends message B while message A is still uploading: B must not
+                // wait for the 30-second polling fallback.
+                var pendingBatch = _chat.GetPendingMessages()
+                    .OrderBy(x => x.SentAt)
+                    .ThenBy(x => x.Id)
+                    .ToList();
 
-                var clientMessageId = pending.ClientMessageId;
-                _chat.MarkPendingSending(clientMessageId);
-                try
+                if (pendingBatch.Count == 0)
+                    break;
+
+                var madeProgress = false;
+
+                foreach (var pending in pendingBatch)
                 {
-                    var replyId = Guid.TryParse(pending.ReplyToRemoteId, out var parsedReplyId) ? parsedReplyId : (Guid?)null;
-                    var remote = await _api.SendMessageAsync(conversationId, pending.Text, clientMessageId, replyId);
-                    _chat.CompletePendingMessage(pending.ConversationId, clientMessageId, remote.Id.ToString(), remote.SentAt.LocalDateTime);
+                    if (!_api.HasToken)
+                        break;
+
+                    var conversation = _chat.Conversations
+                        .FirstOrDefault(x => x.Id == pending.ConversationId);
+
+                    if (conversation?.RemoteId is not string remoteId ||
+                        !Guid.TryParse(remoteId, out var conversationId) ||
+                        string.IsNullOrWhiteSpace(pending.ClientMessageId))
+                    {
+                        // Keep the message pending. Conversation resolution/auth
+                        // recovery may make it sendable later.
+                        continue;
+                    }
+
+                    var clientMessageId = pending.ClientMessageId;
+
+                    _chat.MarkPendingSending(clientMessageId);
+
+                    try
+                    {
+                        var replyId =
+                            Guid.TryParse(
+                                pending.ReplyToRemoteId,
+                                out var parsedReplyId)
+                                ? parsedReplyId
+                                : (Guid?)null;
+
+                        var remote = await _api.SendMessageAsync(
+                            conversationId,
+                            pending.Text,
+                            clientMessageId,
+                            replyId);
+
+                        _chat.CompletePendingMessage(
+                            pending.ConversationId,
+                            clientMessageId,
+                            remote.Id.ToString("D"),
+                            remote.SentAt.LocalDateTime);
+
+                        madeProgress = true;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        _chat.FailPendingMessage(
+                            pending.ConversationId,
+                            clientMessageId);
+
+                        if (!_api.HasToken)
+                            break;
+                    }
+                    catch (Exception ex)
+                    {
+                        _chat.FailPendingMessage(
+                            pending.ConversationId,
+                            clientMessageId);
+
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[Himo ChatPage] Text send failed for {clientMessageId}: {ex.Message}");
+                    }
+
+                    // Let another queued message get a chance without waiting for
+                    // the UI event/polling loop.
+                    await Task.Yield();
                 }
-                catch
-                {
-                    _chat.FailPendingMessage(pending.ConversationId, clientMessageId);
-                }
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                    RefreshMessagesView(scrollToEnd: false));
+
+                // If none of the current pending messages could be processed, stop
+                // here. The normal reconnect/polling path will retry without a
+                // tight battery-draining loop.
+                if (!madeProgress)
+                    break;
             }
-            if (_conversationId != 0)
-                RefreshMessagesView(scrollToEnd: false);
         }
         finally
         {
             Interlocked.Exchange(ref _flushingOutbox, 0);
+
+            // A message can be queued in the tiny window between the final snapshot
+            // and releasing the gate. One short follow-up pass catches that race.
+            if (_api.HasToken &&
+                _chat.GetPendingMessages().Count > 0)
+            {
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(100);
+                    await FlushOutboxAsync();
+                });
+            }
         }
     }
 
@@ -467,10 +882,9 @@ public partial class ChatPage : ContentPage
         if (StatusLabel is not null) StatusLabel.Text = isOnline ? "متصل الآن" : "غير متصل";
         if (StatusDot is not null)
         {
-            StatusDot.Fill = new SolidColorBrush(
-                isOnline
-                    ? Color.FromArgb("#49D486")
-                    : Color.FromArgb("#A7A0B2"));
+            StatusDot.Fill = isOnline
+                ? new SolidColorBrush(Color.FromArgb("#49D486"))
+                : new SolidColorBrush(Color.FromArgb("#A7A0B2"));
         }
     }
 
@@ -596,10 +1010,15 @@ public partial class ChatPage : ContentPage
         if (conversation.Id == _conversationId)
         {
             _chat.MarkAsRead(conversation.Id);
-            var visibleMessages = _chat.GetMessages(conversation.Id);
-            SetMessagesItemsSource(visibleMessages);
-            if (visibleMessages.Count > 0)
-                Messages?.ScrollTo(visibleMessages[^1], position: ScrollToPosition.End, animate: false);
+            _ = MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                var wasNearBottom = _lastVisibleItemIndex < 0 ||
+                                     _lastVisibleItemIndex >= Math.Max(0, _visibleMessages.Count - 3);
+                AppendNewMessagesToVisible();
+                if (_visibleMessages.Count > 0 && wasNearBottom)
+                    ScrollToLatestMessage(animate: false);
+                return Task.CompletedTask;
+            });
             _ = ClearConversationNotificationAsync();
             _ = MarkRemoteConversationReadAsync(message.ConversationId);
         }
@@ -612,71 +1031,232 @@ public partial class ChatPage : ContentPage
 
     private async Task LoadRemoteAsync(CancellationToken cancellationToken = default)
     {
-        if (!await _remoteLoadGate.WaitAsync(0, cancellationToken)) return;
+        await _api.TokenInitialization.ConfigureAwait(false);
+        if (!_api.HasToken) return;
+        if (!await _remoteLoadGate.WaitAsync(0, cancellationToken).ConfigureAwait(false)) return;
 
         try
         {
             var conversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
-            if (conversation?.RemoteId is not string remoteId || !Guid.TryParse(remoteId, out var remoteIdGuid) || !_api.HasToken) return;
+            if (conversation?.RemoteId is not string remoteId || !Guid.TryParse(remoteId, out var remoteConversationId))
+                return;
 
-            try
+            var wasInitialSync = !_initialRemoteSyncCompleted;
+            var cacheBeforeSync = _chat.GetMessages(_conversationId);
+            var messageCountBeforeSync = cacheBeforeSync.Count;
+
+            IReadOnlyList<MessageDto> remoteMessages;
+            if (wasInitialSync)
             {
-                var messagesBeforeSync = _chat.GetMessages(_conversationId);
-                var messageCountBeforeSync = messagesBeforeSync.Count;
-                var lastSyncedAt = messagesBeforeSync
+                // Only the newest page is fetched when the chat opens.
+                remoteMessages = await _api.GetMessagesAsync(
+                    remoteConversationId,
+                    limit: MessagePageSize,
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                DateTimeOffset? lastSyncedAt = cacheBeforeSync
                     .Where(x => !string.IsNullOrWhiteSpace(x.RemoteId))
                     .Select(x => (DateTimeOffset?)new DateTimeOffset(x.SentAt))
+                    .DefaultIfEmpty()
                     .Max();
-                var remoteMessages = await _api.GetMessagesAsync(remoteIdGuid, lastSyncedAt, cancellationToken);
-                var myUserId = _account.CurrentAccount?.UserId ?? Guid.Empty;
-                foreach (var message in remoteMessages)
-                {
-                    var isMine = myUserId != Guid.Empty && message.SenderUserId == myUserId;
-                    // The conversation is currently visible, so do not raise a system
-                    // notification for a message the user can already see. The home
-                    // screen handles notifications for unread messages.
-                    if (!isMine) _ = _realtime.MarkMessageDeliveredAsync(message.Id);
-                    var added = _chat.AddRemoteMessage(_conversationId, message.Text, message.SentAt.LocalDateTime, isMine, message.Id.ToString(), message.AttachmentFileName, message.AttachmentContentType, message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"), message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted);
-                    if (added && message.AttachmentContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        var localMessage = _chat.GetMessages(_conversationId).LastOrDefault(x => string.Equals(x.RemoteId, message.Id.ToString(), StringComparison.OrdinalIgnoreCase));
-                        _ = PrepareImagePreviewAsync(localMessage);
-                    }
-                }
 
-                var messages = _chat.GetMessages(_conversationId);
-                var receivedNewMessages = messages.Count > messageCountBeforeSync;
-                if (receivedNewMessages)
-                {
-                    // Only notify the server that the conversation was read when this
-                    // sync actually brought new messages. Polling an unchanged chat
-                    // should not generate a write request every cycle.
-                    _chat.MarkAsRead(_conversationId);
-                    await _notifications.ClearConversationAsync(_conversationId.ToString());
-                    try
-                    {
-                        await _api.MarkConversationReadAsync(remoteIdGuid, cancellationToken);
-                    }
-                    catch { /* Local read state remains available if the server is temporarily offline. */ }
-                }
+                remoteMessages = await _api.GetMessagesAsync(
+                    remoteConversationId,
+                    since: lastSyncedAt,
+                    limit: MessageSyncPageSize,
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
 
-                // Do not replace the CollectionView ItemsSource when polling found
-                // nothing new. Rebinding the entire message list is expensive on Android
-                // and can cause visible freezes even though the data did not change.
-                if (receivedNewMessages)
+            _initialRemoteSyncCompleted = true;
+
+            var myUserId = _account.CurrentAccount?.UserId ?? Guid.Empty;
+            foreach (var message in remoteMessages)
+            {
+                var isMine = myUserId != Guid.Empty && message.SenderUserId == myUserId;
+                if (!isMine) _ = _realtime.MarkMessageDeliveredAsync(message.Id);
+
+                var added = _chat.AddRemoteMessage(
+                    _conversationId, message.Text, message.SentAt.LocalDateTime, isMine,
+                    message.Id.ToString(), message.AttachmentFileName, message.AttachmentContentType,
+                    message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"),
+                    message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted);
+
+                if (added && message.AttachmentContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true)
                 {
-                    SetMessagesItemsSource(messages);
-                    EmptyState?.SetValue(IsVisibleProperty, messages.Count == 0);
-                    if (messages.Count > 0)
-                        Messages?.ScrollTo(messages[^1], position: ScrollToPosition.End, animate: false);
+                    var localMessage = _chat.GetMessages(_conversationId)
+                        .FirstOrDefault(x => string.Equals(x.RemoteId, message.Id.ToString(), StringComparison.OrdinalIgnoreCase));
+                    _ = PrepareImagePreviewAsync(localMessage);
                 }
             }
-            catch { }
+
+            var allMessages = _chat.GetMessages(_conversationId);
+            var receivedNewMessages = allMessages.Count > messageCountBeforeSync;
+
+            if (receivedNewMessages)
+            {
+                _chat.MarkAsRead(_conversationId);
+                await _notifications.ClearConversationAsync(_conversationId.ToString()).ConfigureAwait(false);
+                try { await _api.MarkConversationReadAsync(remoteConversationId, cancellationToken).ConfigureAwait(false); } catch { }
+            }
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                if (wasInitialSync)
+                {
+                    var recent = allMessages
+                        .OrderBy(x => x.SentAt)
+                        .ThenBy(x => x.Id)
+                        .TakeLast(MessagePageSize)
+                        .ToList();
+                    SetMessagesItemsSource(recent);
+                    _hasMoreOlderMessages = allMessages.Count > recent.Count || remoteMessages.Count >= MessagePageSize;
+                    UpdateVisiblePagingCursor();
+                    EmptyState?.SetValue(IsVisibleProperty, recent.Count == 0);
+                    if (recent.Count > 0) ConfigureInitialChatPosition();
+                }
+                else if (receivedNewMessages)
+                {
+                    AppendNewMessagesToVisible();
+                }
+            }).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] LoadRemote failed: {ex}");
         }
         finally
         {
             _remoteLoadGate.Release();
         }
+    }
+
+    private async Task LoadOlderMessagesAsync()
+    {
+        if (_conversationId == 0 || !_api.HasToken || !_hasMoreOlderMessages)
+            return;
+        if (Interlocked.Exchange(ref _loadingOlder, 1) != 0)
+            return;
+
+        try
+        {
+            if (!_initialRemoteSyncCompleted)
+            {
+                await LoadRemoteAsync().ConfigureAwait(false);
+                if (!_initialRemoteSyncCompleted) return;
+            }
+
+            var anchor = GetVisibleOldestMessage();
+            if (anchor is null) return;
+
+            // First consume locally cached history. This is instant and mirrors the
+            // local-first behavior of mature chat apps. Only when local history is
+            // exhausted do we request the next page from the server.
+            var allLocal = GetOrderedLocalMessages();
+            var anchorKey = GetMessageUiKey(anchor);
+            var anchorIndex = allLocal.FindIndex(x => string.Equals(GetMessageUiKey(x), anchorKey, StringComparison.Ordinal));
+
+            if (anchorIndex > 0)
+            {
+                var startIndex = Math.Max(0, anchorIndex - MessagePageSize);
+                var cachedOlder = allLocal.Skip(startIndex).Take(anchorIndex - startIndex).ToList();
+                if (cachedOlder.Count > 0)
+                {
+                    await PrependOlderMessagesAsync(cachedOlder, anchor).ConfigureAwait(false);
+                    _hasMoreOlderMessages = startIndex > 0 || _hasMoreOlderMessages;
+                    return;
+                }
+            }
+
+            var conversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
+            if (conversation?.RemoteId is not string remoteId || !Guid.TryParse(remoteId, out var remoteConversationId))
+                return;
+
+            var before = _visibleOldestSentAt.HasValue
+                ? new DateTimeOffset(_visibleOldestSentAt.Value)
+                : new DateTimeOffset(anchor.SentAt);
+            Guid? beforeId = Guid.TryParse(_visibleOldestRemoteId, out var parsedBeforeId) ? parsedBeforeId : null;
+
+            var older = await _api.GetMessagesAsync(
+                remoteConversationId,
+                before: before,
+                beforeId: beforeId,
+                limit: MessagePageSize,
+                cancellationToken: default).ConfigureAwait(false);
+
+            if (older.Count == 0)
+            {
+                _hasMoreOlderMessages = false;
+                return;
+            }
+
+            var myUserId = _account.CurrentAccount?.UserId ?? Guid.Empty;
+            foreach (var message in older)
+            {
+                var isMine = myUserId != Guid.Empty && message.SenderUserId == myUserId;
+                _chat.AddRemoteMessage(
+                    _conversationId, message.Text, message.SentAt.LocalDateTime, isMine,
+                    message.Id.ToString("D"), message.AttachmentFileName, message.AttachmentContentType,
+                    message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"),
+                    message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted);
+            }
+
+            var currentCache = _chat.GetMessages(_conversationId);
+            var olderKeys = older.Select(x => x.Id.ToString()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var olderLocal = currentCache
+                .Where(x => !string.IsNullOrWhiteSpace(x.RemoteId) && olderKeys.Contains(x.RemoteId))
+                .OrderBy(x => x.SentAt)
+                .ThenBy(x => x.Id)
+                .ToList();
+
+            if (olderLocal.Count == 0)
+            {
+                _hasMoreOlderMessages = false;
+                return;
+            }
+
+            await PrependOlderMessagesAsync(olderLocal, anchor).ConfigureAwait(false);
+            _hasMoreOlderMessages = older.Count >= MessagePageSize;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Load older messages failed: {ex}");
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _loadingOlder, 0);
+        }
+    }
+
+    private async Task PrependOlderMessagesAsync(IReadOnlyList<ChatMessage> olderMessages, ChatMessage anchor)
+    {
+        if (olderMessages.Count == 0) return;
+
+        await MainThread.InvokeOnMainThreadAsync(async () =>
+        {
+            var existing = _visibleMessages.Select(GetMessageUiKey).ToHashSet(StringComparer.Ordinal);
+            var toInsert = olderMessages
+                .Where(x => existing.Add(GetMessageUiKey(x)))
+                .OrderBy(x => x.SentAt)
+                .ThenBy(x => x.Id)
+                .ToList();
+
+            if (toInsert.Count == 0) return;
+
+            _visibleMessages.InsertRange(0, toInsert);
+            UpdateMessageDateSeparators(_visibleMessages.ToList());
+            UpdateVisiblePagingCursor();
+
+            await Task.Delay(60);
+            await SafeScrollTo(anchor, ScrollToPosition.Start, animate: false);
+        });
     }
 
     private async void RecordAudioClicked(object? sender, EventArgs e)
@@ -718,7 +1298,7 @@ public partial class ChatPage : ContentPage
             _audioRecorder.Prepare();
             _audioRecorder.Start();
             _isRecordingAudio = true;
-            RecordButton.Source = "icon_stop.svg";
+            RecordButton.Source = "himo_icon_stop.png";
             RecordingBar.IsVisible = true;
             MessageEntry.IsEnabled = false;
             SendButton.IsEnabled = false;
@@ -744,7 +1324,7 @@ public partial class ChatPage : ContentPage
             _audioRecorder?.Release();
             _audioRecorder = null;
             _isRecordingAudio = false;
-            RecordButton.Source = "icon_mic.svg";
+            RecordButton.Source = "himo_icon_mic.png";
             RecordingBar.IsVisible = false;
             MessageEntry.IsEnabled = true;
             SendButton.IsEnabled = true;
@@ -793,17 +1373,47 @@ public partial class ChatPage : ContentPage
         try
         {
             var path = message.AttachmentLocalPath;
-            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path) || new FileInfo(path).Length == 0)
             {
-                path = await _api.DownloadAttachmentAsync(messageId, message.AttachmentFileName ?? "voice.m4a");
+                if (!string.IsNullOrWhiteSpace(path))
+                {
+                    try { File.Delete(path); } catch { }
+                }
+
+                path = await _api.DownloadAttachmentAsync(
+                    messageId,
+                    message.AttachmentFileName ?? "voice.m4a");
                 message.AttachmentLocalPath = path;
             }
+
+            var info = new FileInfo(path);
+            if (!info.Exists || info.Length == 0)
+                throw new InvalidOperationException("ملف التسجيل الذي تم تنزيله فارغ.");
+
             StopAudioPlayback();
-            _audioPlayer = new global::Android.Media.MediaPlayer();
-            _audioPlayer.SetDataSource(path);
-            _audioPlayer.Prepared += (_, _) => _audioPlayer?.Start();
-            _audioPlayer.Completion += (_, _) => StopAudioPlayback();
-            _audioPlayer.PrepareAsync();
+            var player = new global::Android.Media.MediaPlayer();
+            _audioPlayer = player;
+
+            player.Completion += (_, _) =>
+            {
+                MainThread.BeginInvokeOnMainThread(StopAudioPlayback);
+            };
+
+            player.Error += (_, args) =>
+            {
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    StopAudioPlayback();
+                    await DisplayAlertAsync(
+                        "الرسالة الصوتية",
+                        $"تعذر تشغيل ملف الصوت على الجهاز. الخطأ: {args.What}/{args.Extra}",
+                        "حسنًا");
+                });
+            };
+
+            player.SetDataSource(path);
+            player.Prepare();
+            player.Start();
         }
         catch (Exception ex)
         {
@@ -831,7 +1441,7 @@ public partial class ChatPage : ContentPage
         _isRecordingAudio = false;
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            if (RecordButton is not null) RecordButton.Source = "icon_mic.svg";
+            if (RecordButton is not null) RecordButton.Source = "himo_icon_mic.png";
             if (RecordingBar is not null) RecordingBar.IsVisible = false;
             if (MessageEntry is not null) MessageEntry.IsEnabled = true;
             if (SendButton is not null) SendButton.IsEnabled = true;
@@ -1138,7 +1748,7 @@ public partial class ChatPage : ContentPage
             if (SendButton is not null)
             {
                 SendButton.IsEnabled = false;
-                SendButton.Source = "icon_send.svg";
+                SendButton.Source = "himo_icon_send.png";
             }
 
             if (MessageEntry is not null)
@@ -1154,7 +1764,7 @@ public partial class ChatPage : ContentPage
             if (SendButton is not null)
             {
                 SendButton.IsEnabled = true;
-                SendButton.Source = "icon_send.svg";
+                SendButton.Source = "himo_icon_send.png";
             }
 
             Interlocked.Exchange(ref _sending, 0);
@@ -1174,57 +1784,105 @@ public partial class ChatPage : ContentPage
         }
 
         var conversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
-        if (_api.HasToken)
+        if (!_api.HasToken)
         {
-            if (conversation?.RemoteId is not string remoteId || !Guid.TryParse(remoteId, out _))
-            {
-                await DisplayAlertAsync("الإرسال", "هذه المحادثة غير مرتبطة بالخادم. حدّث قائمة المحادثات ثم حاول مرة أخرى.", "حسنًا");
-                return;
-            }
-
-            var clientMessageId = Guid.NewGuid().ToString("D");
-            var pending = _chat.AddPendingMessage(_conversationId, text, clientMessageId, _replyingTo?.RemoteId, _replyingTo?.Text);
-            if (pending is null) return;
-
-            // Durable outbox: the message is persisted before network I/O. The UI
-            // clears immediately and the request continues in the background.
-            MessageEntry?.Text = string.Empty;
-            ClearReply();
-            RefreshMessagesView(scrollToEnd: true);
-            _ = FlushOutboxAsync();
+            await DisplayAlertAsync(
+                "الإرسال",
+                "جلسة الدخول غير متاحة حاليًا. سجّل الدخول مرة أخرى ثم أعد الإرسال.",
+                "حسنًا");
             return;
         }
 
-        var message = _chat.Send(_conversationId, text);
-        if (message == null) return;
+        if (conversation?.RemoteId is not string remoteId ||
+            !Guid.TryParse(remoteId, out _))
+        {
+            await DisplayAlertAsync(
+                "الإرسال",
+                "هذه المحادثة غير مرتبطة بالخادم. حدّث قائمة المحادثات ثم حاول مرة أخرى.",
+                "حسنًا");
+            return;
+        }
+
+        var clientMessageId = Guid.NewGuid().ToString("D");
+
+        var pending = _chat.AddPendingMessage(
+            _conversationId,
+            text,
+            clientMessageId,
+            _replyingTo?.RemoteId,
+            _replyingTo?.Text);
+
+        if (pending is null)
+            return;
+
+        // Optimistic UI: the message appears immediately as "sending". The same
+        // ClientMessageId makes retries idempotent on the server.
         MessageEntry?.Text = string.Empty;
+        ClearReply();
         RefreshMessagesView(scrollToEnd: true);
+
+        _ = FlushOutboxAsync();
+    }
+
+    private static string GetMessageUiKey(ChatMessage message)
+    {
+        if (!string.IsNullOrWhiteSpace(message.RemoteId))
+            return "r:" + message.RemoteId;
+
+        return "l:" + message.ConversationId + ":" + message.Id;
+    }
+
+    private static int CompareMessageOrder(ChatMessage left, ChatMessage right)
+    {
+        var byTime = left.SentAt.CompareTo(right.SentAt);
+        if (byTime != 0) return byTime;
+        return left.Id.CompareTo(right.Id);
+    }
+
+    private void UpdateMessageDateSeparators(IReadOnlyList<ChatMessage> orderedMessages)
+    {
+        DateTime? previousDate = null;
+        foreach (var message in orderedMessages)
+        {
+            var date = message.SentAt.Date;
+            message.DateSeparatorText = previousDate != date
+                ? date == DateTime.Today
+                    ? "اليوم"
+                    : date == DateTime.Today.AddDays(-1)
+                        ? "أمس"
+                        : date.ToString("dd/MM/yyyy")
+                : string.Empty;
+
+            previousDate = date;
+        }
     }
 
     private void SetMessagesItemsSource(IReadOnlyList<ChatMessage> messages)
     {
-        DateTime? previousDate = null;
-        foreach (var message in messages)
+        if (!MainThread.IsMainThread)
         {
-            var date = message.SentAt.Date;
-            if (previousDate != date)
-            {
-                var today = DateTime.Today;
-                message.DateSeparatorText = date == today
-                    ? "اليوم"
-                    : date == today.AddDays(-1)
-                        ? "أمس"
-                        : date.ToString("dd/MM/yyyy");
-            }
-            else
-            {
-                message.DateSeparatorText = string.Empty;
-            }
-            previousDate = date;
+            var snapshot = messages.ToList();
+            MainThread.BeginInvokeOnMainThread(() => SetMessagesItemsSource(snapshot));
+            return;
         }
 
-        if (Messages is not null)
-            Messages.ItemsSource = messages;
+        var orderedMessages = messages
+            .OrderBy(x => x.SentAt)
+            .ThenBy(x => x.Id)
+            .ToList();
+
+        UpdateMessageDateSeparators(orderedMessages);
+
+        var currentKeys = _visibleMessages.Select(GetMessageUiKey).ToList();
+        var desiredKeys = orderedMessages.Select(GetMessageUiKey).ToList();
+
+        if (currentKeys.SequenceEqual(desiredKeys, StringComparer.Ordinal))
+            return;
+
+        // One Reset for the whole batch instead of one CollectionChanged event
+        // per message. This avoids long UI stalls when a chat contains history.
+        _visibleMessages.ReplaceRange(orderedMessages);
+        UpdateVisiblePagingCursor();
     }
 
     private void SearchMessagesClicked(object? sender, EventArgs e)
@@ -1238,7 +1896,10 @@ public partial class ChatPage : ContentPage
         if (MessageSearchEntry is not null)
             MessageSearchEntry.Text = string.Empty;
         MessageSearchBar?.SetValue(IsVisibleProperty, false);
-        RefreshMessagesView(false);
+        var recent = GetOrderedLocalMessages();
+        var visible = recent.Count > MessagePageSize ? recent.Skip(recent.Count - MessagePageSize).ToList() : recent;
+        SetMessagesItemsSource(visible);
+        UpdateVisiblePagingCursor();
     }
 
     private void MessageSearchChanged(object? sender, EventArgs e)
@@ -1266,20 +1927,286 @@ public partial class ChatPage : ContentPage
         EmptyState?.SetValue(IsVisibleProperty, filtered.Count == 0);
     }
 
+    private void ConfigureInitialChatPosition()
+    {
+        if (_visibleMessages.Count == 0)
+        {
+            _initialPositioningLatest = false;
+            _allowOlderPaging = true;
+            return;
+        }
+
+        _initialPositioningLatest = true;
+        _allowOlderPaging = false;
+
+#if ANDROID
+        try
+        {
+            if (Messages?.Handler?.PlatformView is RecyclerView recycler &&
+                recycler.GetLayoutManager() is LinearLayoutManager layoutManager)
+            {
+                // Telegram/WhatsApp-style timeline:
+                // normal chronological order, but the native list is anchored
+                // to its end. No delayed ScrollTo loop and no hidden CollectionView.
+                layoutManager.ReverseLayout = false;
+                layoutManager.StackFromEnd = true;
+
+                recycler.Post(() =>
+                {
+                    try
+                    {
+                        var count = recycler.GetAdapter()?.ItemCount ?? 0;
+                        if (count > 0)
+                            layoutManager.ScrollToPositionWithOffset(count - 1, 0);
+                    }
+                    catch (global::Java.Lang.IllegalArgumentException ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[Himo ChatPage] Initial native positioning ignored: {ex.Message}");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[Himo ChatPage] Initial native positioning failed: {ex}");
+                    }
+                    finally
+                    {
+                        _initialPositioningLatest = false;
+                        _allowOlderPaging = true;
+                        _lastVisibleItemIndex = Math.Max(-1, _visibleMessages.Count - 1);
+                        ScrollToBottomButton?.SetValue(IsVisibleProperty, false);
+                    }
+                });
+
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo ChatPage] Native layout setup failed: {ex}");
+        }
+#endif
+
+        // Portable MAUI fallback. One post only; no polling/delays.
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            try
+            {
+                if (Messages is not null && _visibleMessages.Count > 0)
+                {
+                    Messages.ScrollTo(
+                        _visibleMessages.Count - 1,
+                        group: null,
+                        position: ScrollToPosition.End,
+                        animate: false);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[Himo ChatPage] Initial MAUI positioning failed: {ex}");
+            }
+            finally
+            {
+                _initialPositioningLatest = false;
+                _allowOlderPaging = true;
+                _lastVisibleItemIndex = Math.Max(-1, _visibleMessages.Count - 1);
+                ScrollToBottomButton?.SetValue(IsVisibleProperty, false);
+            }
+        });
+    }
+
+    private void MessagesLoaded(object? sender, EventArgs e)
+    {
+        if (_visibleMessages.Count > 0)
+            ConfigureInitialChatPosition();
+        else
+        {
+            _initialPositioningLatest = false;
+            _allowOlderPaging = true;
+        }
+    }
+
     private void MessagesScrolled(object? sender, ItemsViewScrolledEventArgs e)
     {
-        var messages = _chat.GetMessages(_conversationId);
-        if (ScrollToBottomButton is null || messages.Count == 0) return;
+        var messages = _visibleMessages;
+        if (messages.Count == 0) return;
 
+        _lastVisibleItemIndex = e.LastVisibleItemIndex;
+
+        // The first CollectionView layout normally reports index 0 even though the
+        // page has just been opened. Do not interpret that initial layout as the
+        // user's request to load older messages. Older paging becomes legal only
+        // after the initial scroll-to-latest pass has completed.
+        if (!_initialPositioningLatest && _allowOlderPaging &&
+            _initialRemoteSyncCompleted &&
+            e.FirstVisibleItemIndex >= 0 &&
+            e.FirstVisibleItemIndex <= 2 &&
+            _hasMoreOlderMessages)
+        {
+            _ = LoadOlderMessagesAsync();
+        }
+
+        if (ScrollToBottomButton is null) return;
         var lastVisible = e.LastVisibleItemIndex;
         ScrollToBottomButton.IsVisible = lastVisible >= 0 && lastVisible < messages.Count - 2;
     }
 
+    private int FindVisibleMessageIndex(ChatMessage message)
+    {
+        if (message is null || _visibleMessages.Count == 0)
+            return -1;
+
+        // Prefer the actual object reference when available.
+        var index = _visibleMessages.IndexOf(message);
+        if (index >= 0)
+            return index;
+
+        // The collection may have been refreshed with new instances. Compare by
+        // the stable remote/local key instead of the object reference.
+        var key = GetMessageUiKey(message);
+        for (var i = 0; i < _visibleMessages.Count; i++)
+        {
+            if (string.Equals(GetMessageUiKey(_visibleMessages[i]), key, StringComparison.Ordinal))
+                return i;
+        }
+
+        return -1;
+    }
+
+    private async Task SafeScrollTo(
+        ChatMessage? message,
+        ScrollToPosition position = ScrollToPosition.End,
+        bool animate = false)
+    {
+        if (message is null)
+            return;
+
+        if (!MainThread.IsMainThread)
+        {
+            MainThread.BeginInvokeOnMainThread(async () =>
+                await SafeScrollTo(message, position, animate));
+            return;
+        }
+
+        var index = FindVisibleMessageIndex(message);
+        if (index < 0 || index >= _visibleMessages.Count)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                "[Himo ChatPage] SafeScrollTo skipped: message is not in ItemsSource.");
+            return;
+        }
+
+        await SafeScrollToIndex(index, position, animate);
+    }
+
+    private async Task SafeScrollToIndex(
+        int index,
+        ScrollToPosition position = ScrollToPosition.End,
+        bool animate = false)
+    {
+        if (!MainThread.IsMainThread)
+        {
+            MainThread.BeginInvokeOnMainThread(async () =>
+                await SafeScrollToIndex(index, position, animate));
+            return;
+        }
+
+        if (Messages is null || _visibleMessages.Count == 0)
+            return;
+
+        // Validate against the current MAUI ItemsSource before touching the native
+        // Android RecyclerView. The collection can change between async awaits.
+        if (index < 0 || index >= _visibleMessages.Count)
+            return;
+
+        try
+        {
+#if ANDROID
+            if (Messages.Handler?.PlatformView is RecyclerView recycler &&
+                recycler.IsAttachedToWindow)
+            {
+                var adapterCount = recycler.GetAdapter()?.ItemCount ?? 0;
+                if (index < 0 || index >= adapterCount)
+                    return;
+
+                recycler.Post(() =>
+                {
+                    try
+                    {
+                        var currentCount = recycler.GetAdapter()?.ItemCount ?? 0;
+                        if (index >= 0 && index < currentCount)
+                            recycler.ScrollToPosition(index);
+                    }
+                    catch (global::Java.Lang.IllegalArgumentException ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[Himo ChatPage] Android SafeScrollTo ignored invalid position: {ex.Message}");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[Himo ChatPage] Android SafeScrollTo failed: {ex}");
+                    }
+                });
+
+                return;
+            }
+#endif
+
+            // Portable MAUI fallback. Use the validated numeric index rather than
+            // passing an arbitrary object reference to CollectionView.ScrollTo.
+            var currentCount = _visibleMessages.Count;
+            if (index < 0 || index >= currentCount)
+                return;
+
+            Messages.ScrollTo(index, group: null, position: position, animate: animate);
+        }
+        catch (global::Java.Lang.IllegalArgumentException ex)
+        {
+            // MAUI can surface the Android RecyclerView failure as a Java exception.
+            // Treat it as a stale-scroll race instead of letting it crash the app.
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo ChatPage] SafeScrollTo ignored Android invalid target: {ex.Message}");
+        }
+        catch (ArgumentException ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo ChatPage] SafeScrollTo ignored invalid target: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo ChatPage] SafeScrollTo failed safely: {ex}");
+        }
+    }
+
+    private void ScrollToLatestMessage(bool animate)
+    {
+        if (!MainThread.IsMainThread)
+        {
+            MainThread.BeginInvokeOnMainThread(() => ScrollToLatestMessage(animate));
+            return;
+        }
+
+        if (Messages is null || _visibleMessages.Count == 0)
+            return;
+
+        _initialPositioningLatest = false;
+        _allowOlderPaging = true;
+
+        _ = SafeScrollToIndex(_visibleMessages.Count - 1, ScrollToPosition.End, animate);
+
+        ScrollToBottomButton?.SetValue(IsVisibleProperty, false);
+    }
+
+
     private void ScrollToBottomClicked(object? sender, EventArgs e)
     {
         var messages = _chat.GetMessages(_conversationId);
-        if (Messages is not null && messages.Count > 0)
-            Messages.ScrollTo(messages[^1], position: ScrollToPosition.End, animate: true);
+        if (messages.Count > 0)
+            ScrollToLatestMessage(animate: true);
 
         if (ScrollToBottomButton is not null)
             ScrollToBottomButton.IsVisible = false;
@@ -1287,14 +2214,48 @@ public partial class ChatPage : ContentPage
 
     private void RefreshMessagesView(bool scrollToEnd)
     {
-        var messages = _chat.GetMessages(_conversationId);
-        if (Messages is not null)
-            SetMessagesItemsSource(messages);
+        if (!MainThread.IsMainThread)
+        {
+            MainThread.BeginInvokeOnMainThread(() => RefreshMessagesView(scrollToEnd));
+            return;
+        }
 
-        EmptyState?.SetValue(IsVisibleProperty, messages.Count == 0);
+        AppendNewMessagesToVisible();
+        EmptyState?.SetValue(IsVisibleProperty, _visibleMessages.Count == 0);
 
-        if (scrollToEnd && Messages is not null && messages.Count > 0)
-            Messages.ScrollTo(messages[^1], position: ScrollToPosition.End, animate: true);
+        if (scrollToEnd && _visibleMessages.Count > 0)
+            ScrollToLatestMessage(animate: true);
+    }
+
+
+    private sealed class RangeObservableCollection<T> : ObservableCollection<T>
+    {
+        public void ReplaceRange(IEnumerable<T> items)
+        {
+            CheckReentrancy();
+
+            Items.Clear();
+            foreach (var item in items)
+                Items.Add(item);
+
+            OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(Count)));
+            OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs("Item[]"));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+        }
+
+        public void InsertRange(int index, IEnumerable<T> items)
+        {
+            CheckReentrancy();
+            var values = items.ToList();
+            if (values.Count == 0) return;
+
+            for (var i = 0; i < values.Count; i++)
+                Items.Insert(index + i, values[i]);
+
+            OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(Count)));
+            OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs("Item[]"));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, values, index));
+        }
     }
 
 }

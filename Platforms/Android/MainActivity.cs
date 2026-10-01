@@ -17,8 +17,13 @@ namespace Himo;
 public class MainActivity : MauiAppCompatActivity
 {
     private static string? _pendingConversationId;
+    private static string? _pendingCallConversationId;
+    private static string? _pendingCallMode;
     private static int _navigationInProgress;
+    private static int _callNavigationInProgress;
     private const string PendingConversationPreferenceKey = "himo_pending_conversation_id";
+    private const string PendingCallConversationPreferenceKey = "himo_pending_call_conversation_id";
+    private const string PendingCallModePreferenceKey = "himo_pending_call_mode";
 
     public static string? PendingConversationId => _pendingConversationId;
 
@@ -37,6 +42,23 @@ public class MainActivity : MauiAppCompatActivity
         }
     }
 
+    public static void SetPendingCall(string conversationId, string mode)
+    {
+        if (string.IsNullOrWhiteSpace(conversationId)) return;
+        _pendingCallConversationId = conversationId;
+        _pendingCallMode = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio";
+        Preferences.Default.Set(PendingCallConversationPreferenceKey, conversationId);
+        Preferences.Default.Set(PendingCallModePreferenceKey, _pendingCallMode);
+    }
+
+    public static void ClearPendingCall()
+    {
+        _pendingCallConversationId = null;
+        _pendingCallMode = null;
+        Preferences.Default.Remove(PendingCallConversationPreferenceKey);
+        Preferences.Default.Remove(PendingCallModePreferenceKey);
+    }
+
     protected override void OnCreate(global::Android.OS.Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
@@ -44,7 +66,10 @@ public class MainActivity : MauiAppCompatActivity
         CreateNotificationChannel();
         CaptureNotificationIntent(Intent);
         RestorePendingConversation();
+        RestorePendingCall();
+        TryNavigateToPendingCall();
         TryNavigateToPendingConversation();
+        SchedulePendingCallNavigation();
         SchedulePendingConversationNavigation();
     }
 
@@ -56,7 +81,40 @@ public class MainActivity : MauiAppCompatActivity
         try { FirebaseCloudMessagingImplementation.OnNewIntent(intent); } catch { }
         CaptureNotificationIntent(intent);
         RestorePendingConversation();
+        RestorePendingCall();
+        TryNavigateToPendingCall();
         TryNavigateToPendingConversation();
+    }
+
+    public static void TryNavigateToPendingCall()
+    {
+        RestorePendingCall();
+        var conversationId = _pendingCallConversationId;
+        var mode = _pendingCallMode ?? "audio";
+        if (string.IsNullOrWhiteSpace(conversationId)) return;
+
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            if (Interlocked.Exchange(ref _callNavigationInProgress, 1) != 0) return;
+            try
+            {
+                var shell = Shell.Current;
+                if (shell is null) return;
+                conversationId = _pendingCallConversationId;
+                mode = _pendingCallMode ?? "audio";
+                if (string.IsNullOrWhiteSpace(conversationId)) return;
+                await shell.GoToAsync($"///CallPage?id={Uri.EscapeDataString(conversationId)}&mode={Uri.EscapeDataString(mode)}&incoming=true");
+                ClearPendingCall();
+            }
+            catch
+            {
+                // Shell may still be initializing; startup retry handles it.
+            }
+            finally
+            {
+                Volatile.Write(ref _callNavigationInProgress, 0);
+            }
+        });
     }
 
     public static void TryNavigateToPendingConversation()
@@ -99,6 +157,28 @@ public class MainActivity : MauiAppCompatActivity
     }
 
 
+    private static void RestorePendingCall()
+    {
+        if (string.IsNullOrWhiteSpace(_pendingCallConversationId))
+            _pendingCallConversationId = Preferences.Default.Get(PendingCallConversationPreferenceKey, string.Empty);
+        if (string.IsNullOrWhiteSpace(_pendingCallMode))
+            _pendingCallMode = Preferences.Default.Get(PendingCallModePreferenceKey, "audio");
+    }
+
+    private static void SchedulePendingCallNavigation()
+    {
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            for (var attempt = 0; attempt < 20; attempt++)
+            {
+                RestorePendingCall();
+                if (string.IsNullOrWhiteSpace(_pendingCallConversationId)) break;
+                await Task.Delay(attempt == 0 ? 350 : 500);
+                TryNavigateToPendingCall();
+            }
+        });
+    }
+
     private static void RestorePendingConversation()
     {
         if (string.IsNullOrWhiteSpace(_pendingConversationId))
@@ -127,58 +207,54 @@ public class MainActivity : MauiAppCompatActivity
     {
         if (intent is null) return;
 
-        // Depending on the Android/FCM/plugin path, the conversation id can be
-        // placed directly in the intent or inside the plugin's FCM notification
-        // bundle. Handle both so notification taps work from foreground,
-        // background, and cold-start states.
         var conversationId = intent.GetStringExtra("conversation_id");
+        var callType = intent.GetStringExtra("call_type");
+        var callMode = intent.GetStringExtra("call_mode");
+        if (string.Equals(callType, "invite", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(conversationId))
+        {
+            SetPendingCall(conversationId, callMode ?? "audio");
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(conversationId))
         {
             SetPendingConversation(conversationId);
             return;
         }
 
-        var extras = intent.Extras;
-        conversationId = FindConversationId(extras);
-        if (!string.IsNullOrWhiteSpace(conversationId))
+        var found = FindNotificationData(intent.Extras);
+        if (found.CallConversationId is not null)
         {
-            _pendingConversationId = conversationId;
-            Preferences.Default.Set(PendingConversationPreferenceKey, conversationId);
+            SetPendingCall(found.CallConversationId, found.CallMode ?? "audio");
+            return;
         }
+        if (found.ConversationId is not null)
+            SetPendingConversation(found.ConversationId);
     }
 
-    private static string? FindConversationId(global::Android.OS.Bundle? bundle)
+    private static (string? ConversationId, string? CallConversationId, string? CallMode) FindNotificationData(global::Android.OS.Bundle? bundle)
     {
-        if (bundle is null) return null;
+        if (bundle is null) return (null, null, null);
+        var conversationId = bundle.GetString("conversation_id");
+        var callType = bundle.GetString("call_type");
+        var callMode = bundle.GetString("call_mode");
+        if (string.Equals(callType, "invite", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(conversationId))
+            return (conversationId, conversationId, callMode);
+        if (!string.IsNullOrWhiteSpace(conversationId)) return (conversationId, null, null);
 
-        if (bundle.ContainsKey("conversation_id"))
-        {
-            var direct = bundle.GetString("conversation_id");
-            if (!string.IsNullOrWhiteSpace(direct))
-                return direct;
-        }
-
-        // Plugin.Firebase may wrap the FCM payload in a Bundle under
-        // IntentKeyFCMNotification. Walk nested bundles as a fallback.
         foreach (var key in bundle.KeySet() ?? new global::System.Collections.Generic.HashSet<string>())
         {
             try
             {
-                var value = bundle.Get(key);
-                if (value is global::Android.OS.Bundle nested)
+                if (bundle.Get(key) is global::Android.OS.Bundle nested)
                 {
-                    var found = FindConversationId(nested);
-                    if (!string.IsNullOrWhiteSpace(found))
-                        return found;
+                    var found = FindNotificationData(nested);
+                    if (found.CallConversationId is not null || found.ConversationId is not null) return found;
                 }
             }
-            catch
-            {
-                // A malformed/foreign extra must not prevent app startup.
-            }
+            catch { }
         }
-
-        return null;
+        return (null, null, null);
     }
 
     public static void ConfigureFirebaseMessagingChannel()
@@ -204,6 +280,18 @@ public class MainActivity : MauiAppCompatActivity
             Description = "إشعارات الرسائل الجديدة في Himo"
         };
         manager.CreateNotificationChannel(channel);
+
+        var calls = new global::Android.App.NotificationChannel(
+            "himo_calls",
+            "مكالمات Himo",
+            global::Android.App.NotificationImportance.High)
+        {
+            Description = "المكالمات الصوتية والمرئية الواردة"
+        };
+        calls.SetSound(
+            global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone),
+            null);
+        manager.CreateNotificationChannel(calls);
         FirebaseCloudMessagingImplementation.ChannelId = channelId;
     }
 

@@ -166,7 +166,7 @@
                               ColumnSpacing="8"
                               FlowDirection="LeftToRight">
                             <Image Grid.Column="0"
-                                   Source="icon_mail.svg"
+                                   Source="himo_phase1_icon_mail.png"
                                    WidthRequest="26"
                                    HeightRequest="26"
                                    HorizontalOptions="Center"
@@ -199,7 +199,7 @@
                               ColumnSpacing="8"
                               FlowDirection="LeftToRight">
                             <Image Grid.Column="0"
-                                   Source="icon_user.svg"
+                                   Source="himo_phase1_icon_user.png"
                                    WidthRequest="26"
                                    HeightRequest="26"
                                    HorizontalOptions="Center"
@@ -231,7 +231,7 @@
                               ColumnSpacing="8"
                               FlowDirection="LeftToRight">
                             <Image Grid.Column="0"
-                                   Source="icon_shield.svg"
+                                   Source="himo_phase1_icon_shield.png"
                                    WidthRequest="25"
                                    HeightRequest="25"
                                    HorizontalOptions="Center"
@@ -266,7 +266,7 @@
                               ColumnSpacing="5"
                               FlowDirection="LeftToRight">
                             <Image Grid.Column="0"
-                                   Source="icon_lock.svg"
+                                   Source="himo_phase1_icon_lock.png"
                                    WidthRequest="25"
                                    HeightRequest="25"
                                    HorizontalOptions="Center"
@@ -303,7 +303,7 @@
                             TextColor="{StaticResource LoginTextColor}"
                             FontSize="20"
                             FontAttributes="Bold"
-                            ImageSource="icon_login.svg"
+                            ImageSource="himo_phase1_icon_login.png"
                             ContentLayout="Left,10"
                             Clicked="PrimaryClicked"
                             Margin="0,6,0,4">
@@ -346,7 +346,7 @@
                             Text="إنشاء حساب جديد"
                             Style="{StaticResource LoginSecondaryButtonStyle}"
                             Clicked="ModeClicked"
-                            ImageSource="icon_user.svg"
+                            ImageSource="himo_phase1_icon_user.png"
                             ContentLayout="Left,10"
                             Margin="0,0,0,6" />
 
@@ -367,7 +367,7 @@
 
                 <!-- The wave asset sits behind the final content area and scales with width. -->
                 <Image Grid.Row="2"
-                       Source="login_waves.svg"
+                       Source="himo_phase1_login_waves.png"
                        Aspect="Fill"
                        HorizontalOptions="Fill"
                        VerticalOptions="End"

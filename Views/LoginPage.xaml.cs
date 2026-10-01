@@ -58,6 +58,7 @@ public partial class LoginPage : ContentPage
 
         try
         {
+            System.Diagnostics.Debug.WriteLine($"[Himo Login] Starting login for {email}");
             SetBusy(true);
             if (_registerMode)
             {
@@ -76,11 +77,13 @@ public partial class LoginPage : ContentPage
             {
                 StatusLabel.Text = "جارٍ تسجيل الدخول...";
                 var account = await _api.LoginAsync(email, password);
+                System.Diagnostics.Debug.WriteLine($"[Himo Login] Login succeeded for {email}");
                 await CompleteSignInAsync(account);
             }
         }
         catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[Himo Login] Failed: {ex}");
             StatusLabel.Text = _registerMode ? "تعذر إرسال رمز التحقق." : "تعذر تسجيل الدخول.";
             await DisplayAlertAsync(_registerMode ? "تحقق البريد الإلكتروني" : "تسجيل الدخول", ex.Message, "حسنًا");
         }

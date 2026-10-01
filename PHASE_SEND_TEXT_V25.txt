@@ -1,0 +1,19 @@
+Himo Phase: Text Message Sending V25
+
+Scope of this phase:
+- Text messages only.
+- Images and audio are intentionally unchanged.
+
+Fixes:
+1. Queued text messages are optimistic and durable.
+2. Each message keeps a stable ClientMessageId for server idempotency.
+3. Outbox uses a fresh pending snapshot after every pass, so messages sent
+   while another message is uploading are not delayed until the 30s poll.
+4. A failed message does not block the other pending messages.
+5. Unauthenticated sessions no longer pretend that a local-only message was sent.
+6. The server remains responsible for the authoritative message ID and delivery.
+
+Build:
+- Clean Solution
+- Delete bin/obj
+- Rebuild Solution

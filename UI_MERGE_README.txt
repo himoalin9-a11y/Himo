@@ -1,0 +1,4 @@
+- Dark Himo1 palette: #08071A / #15132D / #1E1B3E / #7C3AED / #8B5CF6
+- Rounded cards, purple accents, dark glass-like surfaces, high-contrast Arabic text.
+- Existing login, chat, realtime, API and WebRTC logic retained.
+- This merge changes presentation resources/XAML only; code-behind was not intentionally changed.

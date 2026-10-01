@@ -256,7 +256,7 @@ public partial class HomePage : ContentPage
         await shell.GoToAsync("search", false);
     }
 
-    private void OverflowMenuClicked(object sender, TappedEventArgs e)
+    private void OverflowMenuClicked(object sender, EventArgs e)
     {
         if (OverflowMenu is not null)
             OverflowMenu.IsVisible = !OverflowMenu.IsVisible;

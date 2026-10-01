@@ -10,6 +10,9 @@ public sealed class HimoRealtimeService
     private HubConnection? _connection;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
+    private static readonly TimeSpan ConnectionTimeout =
+        TimeSpan.FromSeconds(12);
+
     public event EventHandler<MessageDto>? MessageReceived;
     public event EventHandler<(Guid UserId, bool IsOnline)>? UserPresenceChanged;
     public event EventHandler<(Guid UserId, Guid ConversationId, bool IsTyping)>? UserTypingChanged;
@@ -27,7 +30,8 @@ public sealed class HimoRealtimeService
         _api = api;
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken = default)
+    public async Task StartAsync(
+        CancellationToken cancellationToken = default)
     {
         if (!_api.HasToken)
             return;
@@ -38,7 +42,8 @@ public sealed class HimoRealtimeService
         {
             var existing = _connection;
 
-            // لا تعيد إنشاء الاتصال إذا كان يعمل أو في طور الاتصال/إعادة الاتصال.
+            // إذا كان الاتصال يعمل بالفعل أو في طور الاتصال/
+            // إعادة الاتصال فلا ننشئ اتصالًا ثانيًا.
             if (existing is not null)
             {
                 if (existing.State == HubConnectionState.Connected ||
@@ -48,7 +53,6 @@ public sealed class HimoRealtimeService
                     return;
                 }
 
-                // يوجد اتصال قديم لكنه متوقف.
                 _connection = null;
 
                 try
@@ -57,21 +61,45 @@ public sealed class HimoRealtimeService
                 }
                 catch
                 {
-                    // لا نسمح لاتصال قديم متوقف بمنع إنشاء الاتصال الجديد.
+                    // الاتصال القديم متوقف، لذلك لا نسمح لفشل تنظيفه
+                    // بمنع إنشاء اتصال جديد.
                 }
             }
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            var baseUri = new Uri(_api.BaseUrl);
-            var hubUri = new Uri(baseUri, "hubs/chat");
+            Uri hubUri;
+
+            try
+            {
+                var baseUri = new Uri(_api.BaseUrl);
+                hubUri = new Uri(baseUri, "hubs/chat");
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    $"عنوان خادم المحادثات غير صالح. BaseUrl = '{_api.BaseUrl}'",
+                    ex);
+            }
 
             var connection = new HubConnectionBuilder()
-                .WithUrl(hubUri, options =>
-                {
-                    options.AccessTokenProvider = () =>
-                        Task.FromResult(_api.GetAccessToken());
-                })
+                .WithUrl(
+                    hubUri,
+                    options =>
+                    {
+                        options.AccessTokenProvider = () =>
+                        {
+                            var token = _api.GetAccessToken();
+
+                            if (string.IsNullOrWhiteSpace(token))
+                            {
+                                throw new InvalidOperationException(
+                                    "رمز الدخول غير موجود أو منتهي الصلاحية.");
+                            }
+
+                            return Task.FromResult<string?>(token);
+                        };
+                    })
                 .WithAutomaticReconnect(
                     new[]
                     {
@@ -88,11 +116,24 @@ public sealed class HimoRealtimeService
 
             try
             {
-                await connection.StartAsync(cancellationToken);
+                using var timeoutCts =
+                    CancellationTokenSource.CreateLinkedTokenSource(
+                        cancellationToken);
+
+                timeoutCts.CancelAfter(ConnectionTimeout);
+
+                await connection.StartAsync(timeoutCts.Token);
+
+                // نتأكد من أن الاتصال وصل فعلًا إلى الحالة Connected.
+                if (connection.State != HubConnectionState.Connected)
+                {
+                    throw new InvalidOperationException(
+                        $"فشل اتصال SignalR. الحالة الحالية: {connection.State}");
+                }
             }
-            catch
+            catch (OperationCanceledException) when (
+                !cancellationToken.IsCancellationRequested)
             {
-                // إذا فشل الاتصال، ننظف هذا الاتصال فقط.
                 if (ReferenceEquals(_connection, connection))
                     _connection = null;
 
@@ -102,10 +143,30 @@ public sealed class HimoRealtimeService
                 }
                 catch
                 {
-                    // تجاهل فشل تنظيف الاتصال.
+                    // تجاهل فشل التنظيف.
                 }
 
-                // HTTP incremental sync يبقى مسار الاحتياط.
+                throw new TimeoutException(
+                    $"انتهت مهلة الاتصال بخادم المكالمات بعد {ConnectionTimeout.TotalSeconds:0} ثانية.");
+            }
+            catch (Exception ex)
+            {
+                if (ReferenceEquals(_connection, connection))
+                    _connection = null;
+
+                try
+                {
+                    await connection.DisposeAsync();
+                }
+                catch
+                {
+                    // تجاهل فشل التنظيف.
+                }
+
+                System.Diagnostics.Debug.WriteLine(
+                    $"[HimoRealtimeService] SignalR StartAsync failed: {ex}");
+
+                throw;
             }
         }
         finally
@@ -122,7 +183,15 @@ public sealed class HimoRealtimeService
             {
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    MessageReceived?.Invoke(this, message);
+                    try
+                    {
+                        MessageReceived?.Invoke(this, message);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[HimoRealtimeService] MessageReceived handler failed: {ex}");
+                    }
                 });
             });
 
@@ -132,9 +201,17 @@ public sealed class HimoRealtimeService
             {
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    UserPresenceChanged?.Invoke(
-                        this,
-                        (userId, isOnline));
+                    try
+                    {
+                        UserPresenceChanged?.Invoke(
+                            this,
+                            (userId, isOnline));
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[HimoRealtimeService] UserPresenceChanged handler failed: {ex}");
+                    }
                 });
             });
 
@@ -144,9 +221,17 @@ public sealed class HimoRealtimeService
             {
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    UserTypingChanged?.Invoke(
-                        this,
-                        (userId, conversationId, isTyping));
+                    try
+                    {
+                        UserTypingChanged?.Invoke(
+                            this,
+                            (userId, conversationId, isTyping));
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[HimoRealtimeService] UserTypingChanged handler failed: {ex}");
+                    }
                 });
             });
 
@@ -156,7 +241,15 @@ public sealed class HimoRealtimeService
             {
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    MessageEdited?.Invoke(this, message);
+                    try
+                    {
+                        MessageEdited?.Invoke(this, message);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[HimoRealtimeService] MessageEdited handler failed: {ex}");
+                    }
                 });
             });
 
@@ -166,7 +259,15 @@ public sealed class HimoRealtimeService
             {
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    MessageDeleted?.Invoke(this, message);
+                    try
+                    {
+                        MessageDeleted?.Invoke(this, message);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[HimoRealtimeService] MessageDeleted handler failed: {ex}");
+                    }
                 });
             });
 
@@ -176,7 +277,15 @@ public sealed class HimoRealtimeService
             {
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    CallSignalReceived?.Invoke(this, signal);
+                    try
+                    {
+                        CallSignalReceived?.Invoke(this, signal);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[HimoRealtimeService] CallSignalReceived handler failed: {ex}");
+                    }
                 });
             });
 
@@ -186,59 +295,122 @@ public sealed class HimoRealtimeService
             {
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    MessageDeliveryChanged?.Invoke(
-                        this,
-                        (messageId, userId, status));
+                    try
+                    {
+                        MessageDeliveryChanged?.Invoke(
+                            this,
+                            (messageId, userId, status));
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[HimoRealtimeService] MessageDeliveryChanged handler failed: {ex}");
+                    }
                 });
             });
 
-        connection.Reconnecting += _ =>
+        connection.Reconnecting += error =>
         {
+            System.Diagnostics.Debug.WriteLine(
+                $"[HimoRealtimeService] SignalR reconnecting. " +
+                $"Error: {error?.ToString() ?? "none"}");
+
             return Task.CompletedTask;
         };
 
-        connection.Reconnected += _ =>
+        connection.Reconnected += connectionId =>
         {
+            System.Diagnostics.Debug.WriteLine(
+                $"[HimoRealtimeService] SignalR reconnected. " +
+                $"ConnectionId: {connectionId ?? "null"}");
+
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                Reconnected?.Invoke(this, EventArgs.Empty);
+                try
+                {
+                    Reconnected?.Invoke(
+                        this,
+                        EventArgs.Empty);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[HimoRealtimeService] Reconnected handler failed: {ex}");
+                }
             });
 
             return Task.CompletedTask;
         };
 
-        connection.Closed += _ =>
+        connection.Closed += error =>
         {
-            // لا ننشئ اتصالاً جديداً من هنا.
-            // AutomaticReconnect يتولى حالات انقطاع الشبكة المؤقتة.
-            // إذا أصبح الاتصال Closed نهائياً، StartAsync في الصفحة التالية
-            // يستطيع إنشاء اتصال جديد.
+            System.Diagnostics.Debug.WriteLine(
+                $"[HimoRealtimeService] SignalR connection closed. " +
+                $"Error: {error?.ToString() ?? "none"}");
+
             return Task.CompletedTask;
         };
     }
 
-
-    public async Task EnsureConnectedAsync(CancellationToken cancellationToken = default)
+    public async Task EnsureConnectedAsync(
+        CancellationToken cancellationToken = default)
     {
         if (!_api.HasToken)
-            throw new InvalidOperationException("لم يتم تسجيل الدخول إلى الخادم.");
-
-        await StartAsync(cancellationToken);
-
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(12);
-        while (DateTime.UtcNow < deadline)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (_connection?.State == HubConnectionState.Connected)
-                return;
-
-            if (_connection is null || _connection.State == HubConnectionState.Disconnected)
-                await StartAsync(cancellationToken);
-
-            await Task.Delay(150, cancellationToken);
+            throw new InvalidOperationException(
+                "لم يتم تسجيل الدخول إلى الخادم.");
         }
 
-        throw new InvalidOperationException("تعذر الاتصال بخادم المكالمات. تحقق من اتصال الإنترنت ثم حاول مرة أخرى.");
+        // إذا كان الاتصال يعمل فلا داعي لأي عملية إضافية.
+        if (_connection?.State == HubConnectionState.Connected)
+            return;
+
+        try
+        {
+            // محاولة اتصال واحدة فقط.
+            // AutomaticReconnect سيتولى الانقطاعات بعد نجاح الاتصال.
+            await StartAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[HimoRealtimeService] EnsureConnectedAsync failed: {ex}");
+
+            throw new InvalidOperationException(
+                BuildConnectionErrorMessage(ex),
+                ex);
+        }
+
+        if (_connection?.State == HubConnectionState.Connected)
+            return;
+
+        throw new InvalidOperationException(
+            $"تعذر الاتصال بخادم المكالمات. حالة الاتصال الحالية: " +
+            $"{_connection?.State.ToString() ?? "غير موجود"}.");
+    }
+
+    private static string BuildConnectionErrorMessage(Exception exception)
+    {
+        var root = exception;
+
+        while (root.InnerException is not null)
+            root = root.InnerException;
+
+        var message = root.Message?.Trim();
+
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return "تعذر الاتصال بخادم المكالمات. " +
+                   "تحقق من اتصال الإنترنت وإعدادات الخادم.";
+        }
+
+        return
+            $"تعذر الاتصال بخادم المكالمات.\n\n" +
+            $"السبب: {message}";
     }
 
     public async Task SendCallSignalAsync(
@@ -248,12 +420,20 @@ public sealed class HimoRealtimeService
         CancellationToken cancellationToken = default)
     {
         if (!_api.HasToken)
-            throw new InvalidOperationException("لم يتم تسجيل الدخول إلى الخادم.");
+        {
+            throw new InvalidOperationException(
+                "لم يتم تسجيل الدخول إلى الخادم.");
+        }
 
         await EnsureConnectedAsync(cancellationToken);
+
         var connection = _connection;
+
         if (connection?.State != HubConnectionState.Connected)
-            throw new InvalidOperationException("تعذر الاتصال بخادم المكالمات.");
+        {
+            throw new InvalidOperationException(
+                "اتصال خادم المكالمات غير متاح حاليًا.");
+        }
 
         await connection.SendAsync(
             "SendCallSignal",
@@ -279,8 +459,11 @@ public sealed class HimoRealtimeService
                 conversationId,
                 cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine(
+                $"[HimoRealtimeService] GetPresenceAsync failed: {ex}");
+
             return false;
         }
     }
@@ -301,9 +484,10 @@ public sealed class HimoRealtimeService
                 messageId,
                 cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
-            // HTTP synchronization remains the fallback.
+            System.Diagnostics.Debug.WriteLine(
+                $"[HimoRealtimeService] MarkMessageDeliveredAsync failed: {ex}");
         }
     }
 
@@ -324,9 +508,10 @@ public sealed class HimoRealtimeService
                 conversationId,
                 cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
-            // Typing state is best-effort.
+            System.Diagnostics.Debug.WriteLine(
+                $"[HimoRealtimeService] SetTypingAsync failed: {ex}");
         }
     }
 
@@ -341,27 +526,36 @@ public sealed class HimoRealtimeService
             if (connection is null)
                 return;
 
-            // إزالة المرجع أولاً حتى لا تبدأ صفحة أخرى باستخدام الاتصال
-            // أثناء عملية الإغلاق.
+            // إزالة المرجع أولًا حتى لا تبدأ عملية أخرى باستخدام
+            // الاتصال أثناء الإغلاق.
             _connection = null;
 
             try
             {
                 if (connection.State != HubConnectionState.Disconnected)
-                    await connection.StopAsync();
+                {
+                    using var timeoutCts =
+                        new CancellationTokenSource(
+                            TimeSpan.FromSeconds(5));
+
+                    await connection.StopAsync(
+                        timeoutCts.Token);
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                // لا نسمح لفشل إغلاق WebSocket بتعطيل الصفحة.
+                System.Diagnostics.Debug.WriteLine(
+                    $"[HimoRealtimeService] StopAsync failed: {ex}");
             }
 
             try
             {
                 await connection.DisposeAsync();
             }
-            catch
+            catch (Exception ex)
             {
-                // تجاهل أخطاء التنظيف.
+                System.Diagnostics.Debug.WriteLine(
+                    $"[HimoRealtimeService] DisposeAsync failed: {ex}");
             }
         }
         finally
@@ -371,4 +565,8 @@ public sealed class HimoRealtimeService
     }
 }
 
-public sealed record CallSignalMessage(Guid ConversationId, Guid SenderUserId, string Type, string? Payload);
+public sealed record CallSignalMessage(
+    Guid ConversationId,
+    Guid SenderUserId,
+    string Type,
+    string? Payload);

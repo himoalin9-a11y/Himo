@@ -22,6 +22,9 @@ public partial class CallPage : ContentPage
     private long _callUiStateVersion;
     private bool _incoming;
     private bool _navigationStarted;
+#if ANDROID
+    private global::Android.Media.MediaPlayer? _outgoingRingback;
+#endif
 
     public string ConversationId
     {
@@ -60,19 +63,24 @@ public partial class CallPage : ContentPage
                 return;
             if (state.IsConnected && _connectedAt is null)
             {
+#if ANDROID
+                StopOutgoingRingback();
+#endif
                 _connectedAt = DateTimeOffset.UtcNow;
                 StartTimer();
             }
             StatusLabel.Text = state.IsConnected ? FormatDuration() : "بانتظار الطرف الآخر";
             VideoSurface.IsVisible = _mode == CallMode.Video;
         _cameraEnabled = _mode == CallMode.Video;
+        CameraButton.IsEnabled = true;
+        CameraButton.Opacity = _mode == CallMode.Video ? 1.0 : 0.55;
 #if ANDROID
         if (_mode == CallMode.Video) _ = AttachVideoAsync();
 #endif
-            RemoteAudioButton.Source = state.IsRemoteAudioEnabled ? "icon_volume.svg" : "icon_volume_off.svg";
+            RemoteAudioButton.Source = state.IsRemoteAudioEnabled ? "himo_phase1_icon_volume.png" : "himo_phase1_icon_volume_off.png";
             RemoteAudioButton.IsEnabled = state.IsConnected && !_remoteAudioToggleInProgress;
-            MuteButton.Source = state.IsMuted ? "icon_mic_off.svg" : "icon_mic.svg";
-            SpeakerButton.Source = state.IsSpeakerOn ? "icon_volume.svg" : "icon_volume_off.svg";
+            MuteButton.Source = state.IsMuted ? "himo_phase1_icon_mic_off.png" : "himo_phase1_icon_mic.png";
+            SpeakerButton.Source = state.IsSpeakerOn ? "himo_phase1_icon_volume.png" : "himo_phase1_icon_volume_off.png";
         });
     }
 
@@ -82,6 +90,9 @@ public partial class CallPage : ContentPage
         _calls.StateChanged -= CallsStateChanged;
         _calls.CallEnded -= CallsEnded;
         StopTimer();
+#if ANDROID
+        StopOutgoingRingback();
+#endif
         base.OnDisappearing();
     }
 
@@ -92,6 +103,8 @@ public partial class CallPage : ContentPage
         _navigationStarted = false;
         VideoSurface.IsVisible = _mode == CallMode.Video;
         _cameraEnabled = _mode == CallMode.Video;
+        CameraButton.IsEnabled = true;
+        CameraButton.Opacity = _mode == CallMode.Video ? 1.0 : 0.55;
 #if ANDROID
         if (_mode == CallMode.Video) _ = AttachVideoAsync();
 #endif
@@ -122,12 +135,18 @@ public partial class CallPage : ContentPage
             else
             {
                 await _calls.StartAsync(new CallRequest(_conversationId, _mode));
+#if ANDROID
+                StartOutgoingRingback();
+#endif
                 StatusLabel.Text = "بانتظار قبول المكالمة...";
             }
         }
         catch (Exception ex)
         {
-            StatusLabel.Text = $"تعذر تجهيز الاتصال: {ex.Message}";
+#if ANDROID
+            StopOutgoingRingback();
+#endif
+            StatusLabel.Text = "تعذر تجهيز المكالمة الصوتية. حاول مرة أخرى.";
             System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Start failed: {ex}");
         }
     }
@@ -137,11 +156,14 @@ public partial class CallPage : ContentPage
         Interlocked.Increment(ref _callUiStateVersion);
         _remoteAudioToggleInProgress = false;
         StopTimer();
+#if ANDROID
+        StopOutgoingRingback();
+#endif
         MainThread.BeginInvokeOnMainThread(() =>
         {
             StatusLabel.Text = "انتهت المكالمة";
             RemoteAudioButton.IsEnabled = false;
-            RemoteAudioButton.Source = "icon_volume_off.svg";
+            RemoteAudioButton.Source = "himo_phase1_icon_volume_off.png";
         });
 
         if (_navigationStarted) return;
@@ -184,6 +206,59 @@ public partial class CallPage : ContentPage
     }
 
 #if ANDROID
+    private void StartOutgoingRingback()
+    {
+        if (_incoming) return;
+
+        try
+        {
+            StopOutgoingRingback();
+            var context = global::Android.App.Application.Context;
+            var uri = global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone);
+            if (uri is null) return;
+
+            _outgoingRingback = global::Android.Media.MediaPlayer.Create(context, uri);
+            if (_outgoingRingback is null) return;
+
+            var audioAttributesBuilder = new global::Android.Media.AudioAttributes.Builder();
+            if (audioAttributesBuilder is null) return;
+
+            audioAttributesBuilder.SetUsage(global::Android.Media.AudioUsageKind.NotificationRingtone);
+            audioAttributesBuilder.SetContentType(global::Android.Media.AudioContentType.Sonification);
+
+            var audioAttributes = audioAttributesBuilder.Build();
+            if (audioAttributes is null) return;
+
+            _outgoingRingback.SetAudioAttributes(audioAttributes);
+            _outgoingRingback.Looping = true;
+            _outgoingRingback.Start();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Outgoing ringback failed: {ex}");
+            StopOutgoingRingback();
+        }
+    }
+
+    private void StopOutgoingRingback()
+    {
+        try
+        {
+            if (_outgoingRingback is not null)
+            {
+                if (_outgoingRingback.IsPlaying) _outgoingRingback.Stop();
+                _outgoingRingback.Reset();
+                _outgoingRingback.Release();
+            }
+        }
+        catch { }
+        finally
+        {
+            _outgoingRingback?.Dispose();
+            _outgoingRingback = null;
+        }
+    }
+
     private async Task AttachVideoAsync()
     {
         try
@@ -208,11 +283,12 @@ public partial class CallPage : ContentPage
     private async void ToggleCameraClicked(object? sender, EventArgs e)
     {
 #if ANDROID
+        if (_mode != CallMode.Video) return;
         var engine = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services.GetService<IWebRtcMediaEngine>() as AndroidWebRtcMediaEngine;
         if (engine is null) return;
         _cameraEnabled = !_cameraEnabled;
         await engine.SetCameraEnabledAsync(_cameraEnabled);
-        CameraButton.Source = _cameraEnabled ? "icon_camera.svg" : "icon_camera_off.svg";
+        CameraButton.Source = _cameraEnabled ? "himo_phase1_icon_camera.png" : "himo_phase1_icon_camera_off.png";
         StatusLabel.Text = _cameraEnabled ? "الكاميرا مفعّلة" : "الكاميرا متوقفة";
 #else
         await Task.CompletedTask;
@@ -235,11 +311,10 @@ public partial class CallPage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo CallPage] End failed: {ex}");
-            if (!_navigationStarted)
-            {
-                _navigationStarted = true;
-                await Shell.Current.GoToAsync("..");
-            }
+        }
+        finally
+        {
+            await NavigateBackFromCallAsync();
         }
     }
 
@@ -250,20 +325,29 @@ public partial class CallPage : ContentPage
         {
             if (_calls.Current is not null)
                 await _calls.EndAsync();
-            else
-            {
-                _navigationStarted = true;
-                await Shell.Current.GoToAsync("..");
-            }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Back failed: {ex}");
-            if (!_navigationStarted)
-            {
-                _navigationStarted = true;
-                await Shell.Current.GoToAsync("..");
-            }
+        }
+        finally
+        {
+            await NavigateBackFromCallAsync();
+        }
+    }
+
+    private async Task NavigateBackFromCallAsync()
+    {
+        if (_navigationStarted) return;
+        _navigationStarted = true;
+        try
+        {
+            await MainThread.InvokeOnMainThreadAsync(async () => await Shell.Current.GoToAsync(".."));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Navigation failed: {ex}");
+            _navigationStarted = false;
         }
     }
     private async void ToggleMuteClicked(object? sender, EventArgs e)
@@ -284,7 +368,7 @@ public partial class CallPage : ContentPage
         {
             var enabled = !_calls.IsRemoteAudioEnabled;
             await _calls.SetRemoteAudioEnabledAsync(enabled);
-            RemoteAudioButton.Source = enabled ? "icon_volume.svg" : "icon_volume_off.svg";
+            RemoteAudioButton.Source = enabled ? "himo_phase1_icon_volume.png" : "himo_phase1_icon_volume_off.png";
             StatusLabel.Text = enabled ? "الصوت الوارد مفعّل" : "الصوت الوارد مكتوم";
         }
         finally
@@ -298,7 +382,7 @@ public partial class CallPage : ContentPage
     {
         var enabled = !(_calls.Current?.IsSpeakerOn ?? false);
         await _calls.SetSpeakerAsync(enabled);
-        SpeakerButton.Source = enabled ? "icon_volume.svg" : "icon_volume_off.svg";
+        SpeakerButton.Source = enabled ? "himo_phase1_icon_volume.png" : "himo_phase1_icon_volume_off.png";
         StatusLabel.Text = enabled ? "مكبر الصوت مفعّل" : "مكبر الصوت متوقف";
     }
 }

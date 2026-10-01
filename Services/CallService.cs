@@ -20,6 +20,15 @@ public enum CallSignalType
 }
 
 public sealed record CallRequest(Guid ConversationId, CallMode Mode);
+public enum CallLifecycleState
+{
+    Idle,
+    Calling,
+    Connected,
+    Disconnecting,
+    Ended
+}
+
 public sealed record CallState(Guid ConversationId, CallMode Mode, bool IsConnected, bool IsMuted, bool IsSpeakerOn, bool IsRemoteAudioEnabled);
 
 public interface ICallService
@@ -49,6 +58,8 @@ public sealed class CallService : ICallService, IDisposable
     private readonly IWebRtcMediaEngine _webRtc;
     private CallState? _current;
     private readonly SemaphoreSlim _remoteAudioGate = new(1, 1);
+    private int _ending;
+    private CallLifecycleState _lifecycle = CallLifecycleState.Idle;
 
     public event EventHandler<CallState>? StateChanged;
     public event EventHandler<CallSignalMessage>? IncomingSignal;
@@ -83,8 +94,15 @@ public sealed class CallService : ICallService, IDisposable
         try
         {
             await _media.StartAsync(request.Mode, cancellationToken);
-            _current = new CallState(request.ConversationId, request.Mode, false, false,
-                _media.IsSpeakerEnabled, _webRtc.IsRemoteAudioEnabled);
+            Volatile.Write(ref _ending, 0);
+            _lifecycle = CallLifecycleState.Calling;
+            _current = new CallState(
+                request.ConversationId,
+                request.Mode,
+                false,
+                false,
+                _media.IsSpeakerEnabled,
+                _webRtc.IsRemoteAudioEnabled);
 
             try
             {
@@ -98,7 +116,7 @@ public sealed class CallService : ICallService, IDisposable
             }
             catch
             {
-                await StopCallResourcesAsync(CancellationToken.None);
+                await StopCallResourcesQuietlyAsync();
                 _current = null;
                 throw;
             }
@@ -114,8 +132,9 @@ public sealed class CallService : ICallService, IDisposable
         await _remoteAudioGate.WaitAsync(cancellationToken);
         try
         {
-            if (_current is null) return;
+            if (_current is null || Volatile.Read(ref _ending) != 0) return;
 
+            _lifecycle = CallLifecycleState.Calling;
             await _media.StartAsync(_current.Mode, cancellationToken);
             _current = _current with { IsSpeakerOn = _media.IsSpeakerEnabled };
 
@@ -130,7 +149,7 @@ public sealed class CallService : ICallService, IDisposable
             }
             catch
             {
-                await StopCallResourcesAsync(CancellationToken.None);
+                await StopCallResourcesQuietlyAsync();
                 _current = null;
                 throw;
             }
@@ -143,34 +162,33 @@ public sealed class CallService : ICallService, IDisposable
 
     public async Task RejectAsync(CancellationToken cancellationToken = default)
     {
-        await _remoteAudioGate.WaitAsync(cancellationToken);
-        try
-        {
-            if (_current is null) return;
-            await _realtime.SendCallSignalAsync(_current.ConversationId, CallSignalType.Reject.ToString(), null, cancellationToken);
-            await StopCallResourcesAsync(cancellationToken);
-            Clear();
-        }
-        finally
-        {
-            _remoteAudioGate.Release();
-        }
+        if (Interlocked.Exchange(ref _ending, 1) != 0) return;
+        var state = _current;
+        if (state is null) return;
+
+        _lifecycle = CallLifecycleState.Disconnecting;
+        // The local media path is closed FIRST. Signaling is only a best-effort
+        // notification after teardown, so a broken hub can never block the UI.
+        await StopCallResourcesQuietlyAsync();
+        Clear();
+        _lifecycle = CallLifecycleState.Ended;
+        await SendCallSignalBestEffortAsync(state.ConversationId, CallSignalType.Reject, cancellationToken);
     }
 
     public async Task EndAsync(CancellationToken cancellationToken = default)
     {
-        await _remoteAudioGate.WaitAsync(cancellationToken);
-        try
-        {
-            if (_current is not null)
-                await _realtime.SendCallSignalAsync(_current.ConversationId, CallSignalType.End.ToString(), null, cancellationToken);
-            await StopCallResourcesAsync(cancellationToken);
-            Clear();
-        }
-        finally
-        {
-            _remoteAudioGate.Release();
-        }
+        if (Interlocked.Exchange(ref _ending, 1) != 0) return;
+        var state = _current;
+
+        _lifecycle = CallLifecycleState.Disconnecting;
+        // Exact teardown order: stop local media -> stop WebRTC -> clear UI state ->
+        // best-effort End signal. The signal is never allowed to hold navigation.
+        await StopCallResourcesQuietlyAsync();
+        Clear();
+        _lifecycle = CallLifecycleState.Ended;
+
+        if (state is not null)
+            await SendCallSignalBestEffortAsync(state.ConversationId, CallSignalType.End, cancellationToken);
     }
 
     public async Task SetMutedAsync(bool muted, CancellationToken cancellationToken = default)
@@ -244,7 +262,8 @@ public sealed class CallService : ICallService, IDisposable
         {
             if (string.Equals(signal.Type, CallSignalType.Accept.ToString(), StringComparison.OrdinalIgnoreCase))
             {
-                // Accept confirms signaling only; WebRTC establishes the connected state.
+                // Accept is handled by WebRtcNegotiationCoordinator. Keeping SDP
+                // creation in one place prevents duplicate Offer messages.
             }
             else if (string.Equals(signal.Type, CallSignalType.End.ToString(), StringComparison.OrdinalIgnoreCase) ||
                      string.Equals(signal.Type, CallSignalType.Reject.ToString(), StringComparison.OrdinalIgnoreCase)) await ClearAsync();
@@ -266,6 +285,7 @@ public sealed class CallService : ICallService, IDisposable
         if (_current.IsConnected == value) return;
 
         _current = _current with { IsConnected = value };
+        _lifecycle = value ? CallLifecycleState.Connected : CallLifecycleState.Calling;
         RaiseState();
     }
 
@@ -276,37 +296,41 @@ public sealed class CallService : ICallService, IDisposable
         CallEnded?.Invoke(this, EventArgs.Empty);
     }
 
-    private async Task StopCallResourcesAsync(CancellationToken cancellationToken)
-    {
-        Exception? firstError = null;
-
-        try
-        {
-            await _media.StopAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            firstError = ex;
-        }
-
-        try
-        {
-            await _webRtc.StopAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            firstError ??= ex;
-        }
-
-        if (firstError is not null)
-            throw firstError;
-    }
-
     private async Task ClearAsync(CancellationToken cancellationToken = default)
     {
         if (_current is null) return;
-        await StopCallResourcesAsync(cancellationToken);
+        await StopCallResourcesQuietlyAsync();
         Clear();
+    }
+
+    private async Task StopCallResourcesQuietlyAsync()
+    {
+        try { await _media.StopAsync(CancellationToken.None); } catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo CallService] Media cleanup failed: {ex}");
+        }
+
+        try { await _webRtc.StopAsync(CancellationToken.None); } catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo CallService] WebRTC cleanup failed: {ex}");
+        }
+    }
+
+    private async Task SendCallSignalBestEffortAsync(
+        Guid conversationId,
+        CallSignalType type,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(2));
+            await _realtime.SendCallSignalAsync(conversationId, type.ToString(), null, timeout.Token);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo CallService] {type} signal failed: {ex.Message}");
+        }
     }
 
     private void RaiseState()

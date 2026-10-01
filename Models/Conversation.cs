@@ -67,7 +67,18 @@ public sealed class ChatMessage : INotifyPropertyChanged
     }
     public DateTime SentAt { get; init; }
     public bool IsMine { get; init; }
-    public bool IsPending { get; set; }
+    private bool _isPending;
+    public bool IsPending
+    {
+        get => _isPending;
+        set
+        {
+            if (_isPending == value) return;
+            _isPending = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPending)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DeliveryStatusText)));
+        }
+    }
     private string _deliveryStatus = "sent";
     public string DeliveryStatus
     {
@@ -125,7 +136,7 @@ public sealed class ChatMessage : INotifyPropertyChanged
     }
     public bool IsAttachment => !string.IsNullOrWhiteSpace(AttachmentFileName);
     public bool IsImageAttachment => AttachmentContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
-    public bool HasLocalImagePreview => IsImageAttachment && !string.IsNullOrWhiteSpace(AttachmentLocalPath) && File.Exists(AttachmentLocalPath);
+    public bool HasLocalImagePreview => IsImageAttachment && !string.IsNullOrWhiteSpace(AttachmentLocalPath);
     public bool IsAudioAttachment => AttachmentContentType?.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) == true;
     public string AttachmentLabel => string.IsNullOrWhiteSpace(AttachmentFileName)
         ? string.Empty

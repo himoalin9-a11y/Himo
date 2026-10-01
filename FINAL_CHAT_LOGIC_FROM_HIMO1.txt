@@ -1,0 +1,11 @@
+FINAL CHAT OPENING LOGIC
+
+The chat opening flow was aligned with Himo1's ChatPage/dataService behavior:
+- Page size is 20.
+- On a fresh chat opening, request the newest 20 messages from the server.
+- The server query is newest-first; the API returns the page in chronological order.
+- Local cache is used only for immediate first paint and does not determine which server page is opened.
+- After the newest page arrives, the visible window is the latest 20 and the chat scrolls to the newest message.
+- Older messages are requested with the oldest visible message as the `before` cursor when scrolling upward.
+- Existing messages are never deleted merely because only 20 are visible.
+- Realtime/polling continue in the background after the initial page.

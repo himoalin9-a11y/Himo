@@ -385,6 +385,10 @@ webApp.MapGet("/api/conversations/{id:guid}/messages", (Guid id, HttpRequest htt
     if (!store.ExistsConversation(id, session.UserId)) return Results.NotFound();
 
     DateTimeOffset? since = null;
+    DateTimeOffset? before = null;
+    Guid? beforeId = null;
+    var limit = 30;
+
     if (http.Query.TryGetValue("since", out var sinceValue) && !string.IsNullOrWhiteSpace(sinceValue))
     {
         if (!DateTimeOffset.TryParse(sinceValue.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsedSince))
@@ -392,7 +396,24 @@ webApp.MapGet("/api/conversations/{id:guid}/messages", (Guid id, HttpRequest htt
         since = parsedSince;
     }
 
-    return Results.Ok(store.GetMessages(id, since, session.UserId));
+    if (http.Query.TryGetValue("before", out var beforeValue) && !string.IsNullOrWhiteSpace(beforeValue))
+    {
+        if (!DateTimeOffset.TryParse(beforeValue.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsedBefore))
+            return Results.BadRequest(new { message = "وقت الرسائل الأقدم غير صحيح." });
+        before = parsedBefore;
+    }
+
+    if (http.Query.TryGetValue("beforeId", out var beforeIdValue) && !string.IsNullOrWhiteSpace(beforeIdValue))
+    {
+        if (!Guid.TryParse(beforeIdValue.ToString(), out var parsedBeforeId))
+            return Results.BadRequest(new { message = "معرّف مؤشر الرسائل الأقدم غير صحيح." });
+        beforeId = parsedBeforeId;
+    }
+
+    if (http.Query.TryGetValue("limit", out var limitValue) && int.TryParse(limitValue.ToString(), out var requestedLimit))
+        limit = Math.Clamp(requestedLimit, 1, 100);
+
+    return Results.Ok(store.GetMessages(id, since, before, session.UserId, beforeId, limit));
 });
 
 webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequest http, [Microsoft.AspNetCore.Mvc.FromBody] SendMessageRequest request, PostgresStore store, IHubContext<HimoChatHub> hub) =>
@@ -928,6 +949,7 @@ CREATE INDEX IF NOT EXISTS IX_Conversations_Owner_Updated ON Conversations(Owner
 CREATE INDEX IF NOT EXISTS IX_Sessions_Expires ON Sessions(ExpiresAt);
 CREATE INDEX IF NOT EXISTS IX_Participants_User ON ConversationParticipants(UserId, JoinedAt);
 CREATE UNIQUE INDEX IF NOT EXISTS IX_Messages_ClientId ON Messages(ConversationId, SenderUserId, ClientMessageId) WHERE ClientMessageId IS NOT NULL;
+CREATE INDEX IF NOT EXISTS IX_Messages_Conversation_SentAt ON Messages(ConversationId, SentAt DESC, Id DESC);
 CREATE TABLE IF NOT EXISTS ConversationReports (
     ConversationId TEXT NOT NULL,
     ReporterUserId TEXT NOT NULL,
@@ -1914,22 +1936,41 @@ ON CONFLICT(ConversationId,ReporterUserId) DO UPDATE SET Reason=excluded.Reason,
         }
     }
 
-    public IReadOnlyList<MessageDto> GetMessages(Guid id, DateTimeOffset? since = null, Guid? currentUserId = null)
+    public IReadOnlyList<MessageDto> GetMessages(Guid id, DateTimeOffset? since = null, DateTimeOffset? before = null, Guid? currentUserId = null, Guid? beforeId = null, int limit = 1000)
     {
         lock (_sync)
         {
             using var connection = Open();
         using var command = connection.CreateCommand();
-            // The initial load returns the most recent 500 messages. Incremental
-            // syncs return only messages at or after the supplied timestamp; the
-            // client deduplicates the boundary message using its stable server ID.
+            // Normal syncs are returned chronologically. The optional "before"
+            // cursor is used by the Android client to page older messages without
+            // replacing the visible conversation or losing the current scroll anchor.
             var statusSql = currentUserId.HasValue ? @", COALESCE((SELECT CASE WHEN COUNT(*) = 0 THEN 'sent' WHEN SUM(CASE WHEN mr.ReadAt IS NOT NULL THEN 1 ELSE 0 END) = COUNT(*) THEN 'read' WHEN SUM(CASE WHEN mr.DeliveredAt IS NOT NULL THEN 1 ELSE 0 END) = COUNT(*) THEN 'delivered' ELSE 'sent' END FROM MessageReceipts mr WHERE mr.MessageId=m.Id AND mr.RecipientUserId<>m.SenderUserId), 'sent')" : ", 'sent'";
-            command.CommandText = since.HasValue
-                ? $"SELECT m.Id,m.ConversationId,m.SenderUserId,m.SenderPhoneNumber,m.Text,m.SentAt,m.AttachmentFileName,m.AttachmentContentType,m.AttachmentSize{statusSql},m.ReplyToMessageId,rm.Text AS ReplyToText,m.EditedAt,m.DeletedAt FROM Messages m LEFT JOIN Messages rm ON rm.Id=m.ReplyToMessageId WHERE m.ConversationId=@id AND m.SentAt >= @since ORDER BY m.SentAt ASC, m.Id ASC LIMIT 500;"
-                : $"SELECT m.Id,m.ConversationId,m.SenderUserId,m.SenderPhoneNumber,m.Text,m.SentAt,m.AttachmentFileName,m.AttachmentContentType,m.AttachmentSize{statusSql},m.ReplyToMessageId,rm.Text AS ReplyToText,m.EditedAt,m.DeletedAt FROM Messages m LEFT JOIN Messages rm ON rm.Id=m.ReplyToMessageId WHERE m.ConversationId=@id ORDER BY m.SentAt DESC, m.Id DESC LIMIT 500;";
+            var where = "m.ConversationId=@id";
+            if (since.HasValue)
+                where += " AND m.SentAt >= @since";
+            if (before.HasValue)
+            {
+                if (beforeId.HasValue)
+                    where += " AND (m.SentAt < @before OR (m.SentAt = @before AND m.Id < @beforeId))";
+                else
+                    where += " AND m.SentAt < @before";
+            }
+
+            limit = Math.Clamp(limit, 1, 1000);
+
+            // Chat pages are cursor based. The client asks for the newest page or
+            // a page before its current oldest message; the DB never returns the
+            // whole conversation for a chat screen.
+            command.CommandText = $"SELECT m.Id,m.ConversationId,m.SenderUserId,m.SenderPhoneNumber,m.Text,m.SentAt,m.AttachmentFileName,m.AttachmentContentType,m.AttachmentSize{statusSql},m.ReplyToMessageId,rm.Text AS ReplyToText,m.EditedAt,m.DeletedAt FROM Messages m LEFT JOIN Messages rm ON rm.Id=m.ReplyToMessageId WHERE {where} ORDER BY m.SentAt DESC, m.Id DESC LIMIT @limit;";
             command.Parameters.AddWithValue("@id", id.ToString());
             if (since.HasValue)
                 command.Parameters.AddWithValue("@since", since.Value.ToString("O"));
+            if (before.HasValue)
+                command.Parameters.AddWithValue("@before", before.Value.ToString("O"));
+            if (beforeId.HasValue)
+                command.Parameters.AddWithValue("@beforeId", beforeId.Value.ToString());
+            command.Parameters.AddWithValue("@limit", limit);
             using var reader = command.ExecuteReader();
             var result = new List<MessageDto>();
             while (reader.Read())
@@ -1942,8 +1983,11 @@ ON CONFLICT(ConversationId,ReporterUserId) DO UPDATE SET Reason=excluded.Reason,
                     continue;
                 result.Add(new MessageDto(messageId, conversationId, senderId, reader.GetString(3), reader.GetString(4), sentAt, reader.IsDBNull(6) ? null : reader.GetString(6), reader.IsDBNull(7) ? null : reader.GetString(7), reader.IsDBNull(8) ? null : reader.GetInt64(8), reader.IsDBNull(9) ? "sent" : reader.GetString(9), reader.IsDBNull(10) || !Guid.TryParse(reader.GetString(10), out var replyToId) ? null : replyToId, reader.IsDBNull(11) ? null : reader.GetString(11), !reader.IsDBNull(12), reader.IsDBNull(12) ? null : reader.GetString(12), !reader.IsDBNull(13)) );
             }
-            if (!since.HasValue)
-                result.Reverse();
+            result.Sort((a, b) =>
+            {
+                var byTime = a.SentAt.CompareTo(b.SentAt);
+                return byTime != 0 ? byTime : a.Id.CompareTo(b.Id);
+            });
             return result;
         }
     }
@@ -2112,7 +2156,7 @@ WHERE cp1.UserId=@user AND cp2.UserId<>@user;";
             }
             transaction.Commit();
 
-            var messages = GetMessages(conversationId, null, userId);
+            var messages = GetMessages(conversationId, null, null, userId);
             var message = messages.FirstOrDefault(x => x.Id == messageId);
             return (message, message is not null);
         }
@@ -2149,7 +2193,7 @@ WHERE cp1.UserId=@user AND cp2.UserId<>@user;";
                 if (update.ExecuteNonQuery() == 0) return null;
             }
             transaction.Commit();
-            return GetMessages(conversationId, null, userId).FirstOrDefault(x => x.Id == messageId);
+            return GetMessages(conversationId, null, null, userId).FirstOrDefault(x => x.Id == messageId);
         }
     }
 
@@ -2204,9 +2248,17 @@ WHERE cp1.UserId=@user AND cp2.UserId<>@user;";
         {
             using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = @"SELECT m.AttachmentFileName,m.AttachmentContentType,c.Id
-FROM Messages m JOIN ConversationParticipants c ON c.ConversationId=m.ConversationId
-WHERE m.Id=@id AND c.UserId=@user AND m.AttachmentFileName IS NOT NULL LIMIT 1;";
+        command.CommandText = @"SELECT m.AttachmentFileName,m.AttachmentContentType
+FROM Messages m
+WHERE m.Id=@id
+  AND m.AttachmentFileName IS NOT NULL
+  AND EXISTS (
+      SELECT 1
+      FROM ConversationParticipants cp
+      WHERE cp.ConversationId=m.ConversationId
+        AND cp.UserId=@user
+  )
+LIMIT 1;";
             command.Parameters.AddWithValue("@id", messageId.ToString());
             command.Parameters.AddWithValue("@user", userId.ToString());
             using var reader = command.ExecuteReader();
@@ -2252,9 +2304,14 @@ WHERE m.Id=@id AND c.UserId=@user AND m.AttachmentFileName IS NOT NULL LIMIT 1;"
 sealed class HimoChatHub : Hub
 {
     private readonly PostgresStore _store;
+    private readonly FcmPushService _push;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, int> OnlineUsers = new();
 
-    public HimoChatHub(PostgresStore store) => _store = store;
+    public HimoChatHub(PostgresStore store, FcmPushService push)
+    {
+        _store = store;
+        _push = push;
+    }
 
     public static string UserGroup(Guid userId) => $"user:{userId:D}";
 
@@ -2309,9 +2366,42 @@ sealed class HimoChatHub : Hub
         if (!_store.ExistsConversation(conversationId, session.UserId))
             return;
 
-        var message = new CallSignalMessage(conversationId, session.UserId, type.Trim(), payload);
-        foreach (var recipientId in _store.GetOtherParticipantUserIds(conversationId, session.UserId))
+        var normalizedType = type.Trim();
+        var message = new CallSignalMessage(conversationId, session.UserId, normalizedType, payload);
+        var recipientIds = _store.GetOtherParticipantUserIds(conversationId, session.UserId);
+        foreach (var recipientId in recipientIds)
             await Clients.Group(UserGroup(recipientId)).SendAsync("CallSignalReceived", message);
+
+        // SignalR handles foreground/realtime delivery. FCM is the wake-up path
+        // for background/killed devices; only INVITE generates a push.
+        if (string.Equals(normalizedType, "Invite", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var tokens = _store.GetPushTokens(recipientIds);
+                if (tokens.Count > 0)
+                {
+                    var mode = "audio";
+                    if (!string.IsNullOrWhiteSpace(payload))
+                    {
+                        try
+                        {
+                            using var doc = System.Text.Json.JsonDocument.Parse(payload);
+                            if (doc.RootElement.TryGetProperty("mode", out var modeValue) &&
+                                string.Equals(modeValue.GetString(), "video", StringComparison.OrdinalIgnoreCase))
+                                mode = "video";
+                        }
+                        catch { }
+                    }
+                    await _push.SendCallInviteAsync(tokens, session.Name, conversationId, mode, Context.ConnectionAborted);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Push is best-effort. Never break the live SignalR call path.
+                Console.Error.WriteLine($"Call invite push failed: {ex.Message}");
+            }
+        }
     }
 
     public async Task StartTyping(Guid conversationId)
