@@ -19,7 +19,8 @@ public static class MauiProgram
 
         builder
             .UseMauiApp<App>()
-            .UseMauiCommunityToolkit();
+            .UseMauiCommunityToolkit()
+            .UseMauiCommunityToolkitMediaElement();
 
 #if ANDROID
         builder.ConfigureLifecycleEvents(events =>

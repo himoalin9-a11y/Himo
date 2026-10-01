@@ -1031,6 +1031,19 @@ public sealed class HimoApiClient
                 "استجابة المرفق غير صالحة.");
     }
 
+    public string? GetAttachmentStreamingUrl(Guid messageId)
+    {
+        var token = GetAccessToken();
+        if (string.IsNullOrWhiteSpace(token) || _http.BaseAddress is null)
+            return null;
+
+        var endpoint = new Uri(
+            _http.BaseAddress,
+            $"api/messages/{messageId:D}/attachment");
+
+        return $"{endpoint}?access_token={Uri.EscapeDataString(token)}";
+    }
+
     public async Task<string> DownloadAttachmentAsync(
         Guid messageId,
         string fileName,

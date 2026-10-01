@@ -7,7 +7,8 @@ namespace Himo;
 [global::Android.App.Activity(
     Theme = "@style/Maui.SplashTheme",
     MainLauncher = true,
-    LaunchMode = global::Android.Content.PM.LaunchMode.SingleTop,
+    ResizeableActivity = true,
+    LaunchMode = global::Android.Content.PM.LaunchMode.SingleTask,
     ConfigurationChanges = global::Android.Content.PM.ConfigChanges.ScreenSize
         | global::Android.Content.PM.ConfigChanges.Orientation
         | global::Android.Content.PM.ConfigChanges.UiMode

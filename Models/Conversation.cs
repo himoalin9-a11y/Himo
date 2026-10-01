@@ -131,12 +131,73 @@ public sealed class ChatMessage : INotifyPropertyChanged
             if (string.Equals(_attachmentLocalPath, value, StringComparison.Ordinal)) return;
             _attachmentLocalPath = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AttachmentLocalPath)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasLocalAttachmentPreview)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasLocalImagePreview)));
         }
     }
+
+    private string? _attachmentPreviewLocalPath;
+    public string? AttachmentPreviewLocalPath
+    {
+        get => _attachmentPreviewLocalPath;
+        set
+        {
+            if (string.Equals(_attachmentPreviewLocalPath, value, StringComparison.Ordinal)) return;
+            _attachmentPreviewLocalPath = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AttachmentPreviewLocalPath)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasLocalAttachmentPreview)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasLocalImagePreview)));
+        }
+    }
+
     public bool IsAttachment => !string.IsNullOrWhiteSpace(AttachmentFileName);
-    public bool IsImageAttachment => AttachmentContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
-    public bool HasLocalImagePreview => IsImageAttachment && !string.IsNullOrWhiteSpace(AttachmentLocalPath);
+    public bool IsImageAttachment
+    {
+        get
+        {
+            if (AttachmentContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true)
+                return true;
+
+            var extension = Path.GetExtension(AttachmentFileName ?? string.Empty);
+            return extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".png", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".webp", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".gif", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".heic", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".heif", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    public bool IsVideoAttachment
+    {
+        get
+        {
+            if (AttachmentContentType?.StartsWith("video/", StringComparison.OrdinalIgnoreCase) == true)
+                return true;
+
+            var extension = Path.GetExtension(AttachmentFileName ?? string.Empty);
+            return extension.Equals(".mp4", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".m4v", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".webm", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".mov", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".3gp", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".3g2", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".mkv", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".avi", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".mpeg", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".mpg", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".ogv", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    public bool HasLocalAttachmentPreview =>
+        (IsImageAttachment || IsVideoAttachment) &&
+        !string.IsNullOrWhiteSpace(AttachmentPreviewLocalPath) &&
+        File.Exists(AttachmentPreviewLocalPath);
+
+    public bool HasLocalImagePreview => IsImageAttachment && HasLocalAttachmentPreview;
     public bool IsAudioAttachment => AttachmentContentType?.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) == true;
     public string AttachmentLabel => string.IsNullOrWhiteSpace(AttachmentFileName)
         ? string.Empty
