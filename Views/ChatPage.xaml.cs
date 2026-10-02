@@ -58,8 +58,7 @@ public partial class ChatPage : ContentPage
 #endif
     private string? _audioRecordingPath;
 #if ANDROID
-    private MediaElement? _audioElement;
-    private string? _audioPlayingPath;
+    private global::Android.Media.MediaPlayer? _audioPlayer;
     private MediaElement? _inlineVideoElement;
     private CancellationTokenSource? _inlineVideoProgressCts;
     private bool _inlineVideoSliderUpdating;
@@ -271,13 +270,16 @@ public partial class ChatPage : ContentPage
     private async Task ResolveRemoteConversationAsync()
     {
         // Fast cache-only resolution. This must happen before any HTTP call.
+        var remoteConversationId = _remoteConversationId;
+
         if (_conversationId <= 0 &&
-            !string.IsNullOrWhiteSpace(_remoteConversationId))
+            !string.IsNullOrWhiteSpace(remoteConversationId))
         {
+            var cachedRemoteConversationId = remoteConversationId!;
             var cached = _chat.Conversations.FirstOrDefault(x =>
                 string.Equals(
                     x.RemoteId,
-                    _remoteConversationId,
+                    cachedRemoteConversationId,
                     StringComparison.OrdinalIgnoreCase));
 
             if (cached is not null)
@@ -351,8 +353,9 @@ public partial class ChatPage : ContentPage
             }
 
             var remoteList = await _api.GetConversationsAsync();
+            var localName = local.Name?.Trim() ?? string.Empty;
             var candidates = remoteList
-                .Where(x => string.Equals(x.Name?.Trim(), local.Name.Trim(), StringComparison.CurrentCultureIgnoreCase))
+                .Where(x => string.Equals(x.Name?.Trim(), localName, StringComparison.CurrentCultureIgnoreCase))
                 .ToList();
 
             if (candidates.Count == 0) return;
@@ -390,7 +393,7 @@ public partial class ChatPage : ContentPage
                 return;
 
             local.RemoteId = best.Id.ToString("D");
-            local.LastMessage = best.LastMessage;
+            local.LastMessage = best.LastMessage ?? string.Empty;
             local.Time = best.UpdatedAt.LocalDateTime.ToString("HH:mm");
             local.UpdatedAt = best.UpdatedAt.LocalDateTime;
             local.UnreadCount = best.UnreadCount;
@@ -1363,10 +1366,31 @@ public partial class ChatPage : ContentPage
             if (conversation?.RemoteId is not string remoteId || !Guid.TryParse(remoteId, out var remoteIdGuid)) return;
 
             SendButton.IsEnabled = false;
-            await using var stream = File.OpenRead(path);
-            var message = await _api.UploadAttachmentAsync(remoteIdGuid, stream, Path.GetFileName(path), "audio/mp4");
-            _chat.AddRemoteMessage(_conversationId, message.Text, message.SentAt.LocalDateTime, true, message.Id.ToString(), message.AttachmentFileName, message.AttachmentContentType, message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"), message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted);
+            var fileName = Path.GetFileName(path);
+            var localMessage = _chat.AddPendingAttachmentMessage(
+                _conversationId,
+                fileName,
+                "audio/mp4",
+                info.Length,
+                path);
+            if (localMessage is null)
+                return;
+
+            // Optimistic UI: show the voice card immediately while the upload runs.
             RefreshMessagesView(scrollToEnd: true);
+
+            try
+            {
+                await using var stream = File.OpenRead(path);
+                var message = await _api.UploadAttachmentAsync(remoteIdGuid, stream, fileName, "audio/mp4");
+                _chat.CompletePendingAttachmentMessage(localMessage, message.Id.ToString(), message.SentAt.LocalDateTime);
+                RefreshMessagesView(scrollToEnd: true);
+            }
+            catch
+            {
+                localMessage.DeliveryStatus = "failed";
+                throw;
+            }
         }
         catch (Exception ex)
         {
@@ -1391,9 +1415,7 @@ public partial class ChatPage : ContentPage
     private async void AudioClicked(object? sender, EventArgs e)
     {
 #if ANDROID
-        if (sender is not Button button || button.BindingContext is not ChatMessage message ||
-            !message.IsAudioAttachment || !Guid.TryParse(message.RemoteId, out var messageId)) return;
-
+        if (sender is not Button button || button.BindingContext is not ChatMessage message || !message.IsAudioAttachment || !Guid.TryParse(message.RemoteId, out var messageId)) return;
         try
         {
             var path = message.AttachmentLocalPath;
@@ -1403,54 +1425,44 @@ public partial class ChatPage : ContentPage
                 message.AttachmentLocalPath = path;
             }
 
-            if (!File.Exists(path) || new FileInfo(path).Length <= 0)
-                throw new IOException("لم يتم تنزيل الملف الصوتي من الخادم.");
-
-            if (_audioElement is not null &&
-                string.Equals(_audioPlayingPath, path, StringComparison.Ordinal) )
-            {
-                _audioElement.Pause();
-                _audioPlayingPath = null;
-                return;
-            }
+            var playablePath = path ?? throw new IOException("لم يتم تنزيل ملف التسجيل من الخادم.");
+            if (string.IsNullOrWhiteSpace(playablePath) || !File.Exists(playablePath) || new FileInfo(playablePath).Length <= 0)
+                throw new IOException("لم يتم تنزيل ملف التسجيل من الخادم.");
 
             StopAudioPlayback();
-
-            if (HiddenAudioPlayerHost is null)
-                throw new InvalidOperationException("تعذر إنشاء مشغل الصوت داخل المحادثة.");
-
-            var media = new MediaElement
+            var player = new global::Android.Media.MediaPlayer();
+            _audioPlayer = player;
+            var audioAttributes = new global::Android.Media.AudioAttributes.Builder()
+                .SetUsage(global::Android.Media.AudioUsageKind.Media)
+                .SetContentType(global::Android.Media.AudioContentType.Music)
+                .Build()!;
+            player.SetAudioAttributes(audioAttributes);
+            player.SetVolume(1f, 1f);
+            player.SetDataSource(playablePath);
+            player.Prepared += (_, _) =>
             {
-                Aspect = Aspect.AspectFit,
-                ShouldAutoPlay = true,
-                ShouldShowPlaybackControls = false,
-                ShouldKeepScreenOn = false,
-                Volume = 1.0,
-                WidthRequest = 1,
-                HeightRequest = 1
-            };
-
-            media.MediaFailed += (_, args) =>
-            {
-                MainThread.BeginInvokeOnMainThread(async () =>
+                try
                 {
-                    var details = string.IsNullOrWhiteSpace(args?.ErrorMessage)
-                        ? "صيغة الصوت غير مدعومة على الجهاز."
-                        : $"تعذر تشغيل الصوت: {args.ErrorMessage}";
+                    if (ReferenceEquals(_audioPlayer, player))
+                        player.Start();
+                }
+                catch (Exception startEx)
+                {
+                    MainThread.BeginInvokeOnMainThread(async () =>
+                        await DisplayAlertAsync("الرسالة الصوتية", $"تم تنزيل التسجيل لكن الهاتف لم يستطع تشغيله: {startEx.Message}", "حسنًا"));
                     StopAudioPlayback();
-                    await DisplayAlertAsync("الرسالة الصوتية", details, "حسنًا");
-                });
+                }
             };
-
-            media.MediaEnded += (_, _) =>
+            player.Error += (_, args) =>
             {
-                MainThread.BeginInvokeOnMainThread(StopAudioPlayback);
+                StopAudioPlayback();
+                var what = args?.What;
+                var extra = args?.Extra;
+                MainThread.BeginInvokeOnMainThread(async () =>
+                    await DisplayAlertAsync("الرسالة الصوتية", $"تم تنزيل التسجيل، لكن صيغة الصوت غير مدعومة على الجهاز. MediaPlayer: {what}/{extra}", "حسنًا"));
             };
-
-            HiddenAudioPlayerHost.Content = media;
-            _audioElement = media;
-            _audioPlayingPath = path;
-            media.Source = MediaSource.FromFile(path);
+            player.Completion += (_, _) => StopAudioPlayback();
+            player.PrepareAsync();
         }
         catch (Exception ex)
         {
@@ -1465,11 +1477,9 @@ public partial class ChatPage : ContentPage
 #if ANDROID
     private void StopAudioPlayback()
     {
-        try { _audioElement?.Stop(); } catch { }
-        _audioElement = null;
-        _audioPlayingPath = null;
-        if (HiddenAudioPlayerHost is not null)
-            HiddenAudioPlayerHost.Content = null;
+        try { _audioPlayer?.Stop(); } catch { }
+        try { _audioPlayer?.Release(); } catch { }
+        _audioPlayer = null;
     }
 
     private void CleanupAudioRecorder()
@@ -1564,10 +1574,12 @@ public partial class ChatPage : ContentPage
             if (_conversationId == 0 || !_api.HasToken) return;
             var files = await MediaPicker.Default.PickPhotosAsync(new MediaPickerOptions
             {
-                SelectionLimit = 1,
-                Title = "اختر صورة"
+                Title = "اختر صورة",
+                SelectionLimit = 1
             });
-            await UploadPickedAttachmentAsync(files.FirstOrDefault());
+            var file = files.FirstOrDefault();
+            if (file is not null)
+                await UploadPickedAttachmentAsync(file);
         }
         catch (FeatureNotSupportedException)
         {
@@ -1591,10 +1603,12 @@ public partial class ChatPage : ContentPage
             if (_conversationId == 0 || !_api.HasToken) return;
             var files = await MediaPicker.Default.PickVideosAsync(new MediaPickerOptions
             {
-                SelectionLimit = 1,
-                Title = "اختر فيديو"
+                Title = "اختر فيديو",
+                SelectionLimit = 1
             });
-            await UploadPickedAttachmentAsync(files.FirstOrDefault());
+            var file = files.FirstOrDefault();
+            if (file is not null)
+                await UploadPickedAttachmentAsync(file);
         }
         catch (FeatureNotSupportedException)
         {
@@ -1657,31 +1671,47 @@ public partial class ChatPage : ContentPage
                 }
             }
 
-            SendButton.IsEnabled = false;
-            var message = await _api.UploadAttachmentAsync(remoteIdGuid, file);
-            _chat.AddRemoteMessage(
+            var contentType = file.ContentType;
+            if (string.IsNullOrWhiteSpace(contentType))
+                contentType = GuessAttachmentContentType(file.FileName);
+
+            long? attachmentSize = null;
+            try
+            {
+                await using var sizeStream = await file.OpenReadAsync();
+                if (sizeStream.CanSeek) attachmentSize = sizeStream.Length;
+            }
+            catch { }
+
+            // Put the attachment card into the conversation immediately. This removes
+            // the visible wait for the network/database upload to finish.
+            var localMessage = _chat.AddPendingAttachmentMessage(
                 _conversationId,
-                message.Text,
-                message.SentAt.LocalDateTime,
-                true,
-                message.Id.ToString(),
-                message.AttachmentFileName,
-                message.AttachmentContentType,
-                message.AttachmentSize,
-                message.Status,
-                message.ReplyToMessageId?.ToString("D"),
-                message.ReplyToText,
-                message.IsEdited,
-                message.EditedAt,
-                message.IsDeleted);
+                file.FileName,
+                contentType,
+                attachmentSize);
+            if (localMessage is null) return;
 
             RefreshMessagesView(scrollToEnd: true);
 
-            var localMessage = _chat.GetMessages(_conversationId)
-                .LastOrDefault(x => string.Equals(x.RemoteId, message.Id.ToString(), StringComparison.OrdinalIgnoreCase));
+            // For images, try to stage a local preview in parallel without delaying
+            // the first appearance of the message.
+            var previewTask = localMessage.IsImageAttachment
+                ? TryStagePickedAttachmentAsync(file, localMessage)
+                : Task.CompletedTask;
 
-            if (localMessage?.IsImageAttachment == true)
-                await PrepareImagePreviewAsync(localMessage);
+            try
+            {
+                var message = await _api.UploadAttachmentAsync(remoteIdGuid, file);
+                _chat.CompletePendingAttachmentMessage(localMessage, message.Id.ToString(), message.SentAt.LocalDateTime);
+                RefreshMessagesView(scrollToEnd: true);
+                await previewTask;
+            }
+            catch
+            {
+                localMessage.DeliveryStatus = "failed";
+                throw;
+            }
         }
         catch (HttpRequestException ex)
         {
@@ -1702,6 +1732,44 @@ public partial class ChatPage : ContentPage
         finally
         {
             if (SendButton is not null) SendButton.IsEnabled = true;
+        }
+    }
+
+    private static string GuessAttachmentContentType(string fileName)
+    {
+        var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
+        return ext switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            ".gif" => "image/gif",
+            ".mp4" => "video/mp4",
+            ".m4v" => "video/mp4",
+            ".mov" => "video/quicktime",
+            ".webm" => "video/webm",
+            ".m4a" or ".aac" or ".mp3" or ".wav" or ".ogg" => "audio/mpeg",
+            _ => "application/octet-stream"
+        };
+    }
+
+    private async Task TryStagePickedAttachmentAsync(FileResult file, ChatMessage message)
+    {
+        if (!message.IsImageAttachment) return;
+        try
+        {
+            var ext = Path.GetExtension(file.FileName);
+            if (string.IsNullOrWhiteSpace(ext)) ext = ".img";
+            var path = Path.Combine(FileSystem.Current.CacheDirectory, $"himo_preview_{Guid.NewGuid():N}{ext}");
+            await using var source = await file.OpenReadAsync();
+            await using var destination = File.Create(path);
+            await source.CopyToAsync(destination);
+            await destination.FlushAsync();
+            message.AttachmentLocalPath = path;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Local attachment staging failed: {ex.Message}");
         }
     }
 
@@ -1737,10 +1805,29 @@ public partial class ChatPage : ContentPage
 
     private async void ImagePreviewClicked(object? sender, TappedEventArgs e)
     {
-        if (sender is not BindableObject bindable || bindable.BindingContext is not ChatMessage message ||
-            !message.IsImageAttachment || !Guid.TryParse(message.RemoteId, out var messageId))
+        if (sender is not Image image || image.BindingContext is not ChatMessage message)
             return;
 
+        await OpenImagePreviewAsync(message);
+    }
+
+    // Kept for XAML variants that place the tap gesture on the image card/border
+    // instead of the Image itself.
+    private async void ImagePreviewCardTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not Element element || element.BindingContext is not ChatMessage message)
+            return;
+
+        await OpenImagePreviewAsync(message);
+    }
+
+    private async Task OpenImagePreviewAsync(ChatMessage message)
+    {
+        if (!message.IsImageAttachment || !Guid.TryParse(message.RemoteId, out var messageId))
+            return;
+
+        // When message selection mode is active, tapping the image/card selects or
+        // deselects the message instead of opening the image.
         if (_selectionMode)
         {
             ToggleMessageSelection(message);
@@ -1756,20 +1843,18 @@ public partial class ChatPage : ContentPage
                 message.AttachmentLocalPath = path;
             }
 
-            if (!File.Exists(path) || new FileInfo(path).Length <= 0)
+            var imagePath = path ?? throw new IOException("لم يتم تنزيل الصورة بشكل صحيح.");
+            if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath) || new FileInfo(imagePath).Length <= 0)
                 throw new IOException("لم يتم تنزيل الصورة بشكل صحيح.");
 
-            await Launcher.Default.OpenAsync(new OpenFileRequest(message.AttachmentFileName ?? "image", new ReadOnlyFile(path)));
+            await Launcher.Default.OpenAsync(new OpenFileRequest(
+                message.AttachmentFileName ?? "image",
+                new ReadOnlyFile(imagePath)));
         }
         catch (Exception ex)
         {
             await DisplayAlertAsync("الصورة", $"تعذر فتح الصورة: {ex.Message}", "حسنًا");
         }
-    }
-
-    private void ImagePreviewCardTapped(object? sender, TappedEventArgs e)
-    {
-        ImagePreviewClicked(sender, e);
     }
 
     private async void AttachmentClicked(object? sender, EventArgs e)
@@ -2119,9 +2204,18 @@ public partial class ChatPage : ContentPage
 
     private async void DeleteClicked(object? sender, EventArgs e)
     {
-        if (sender is not Button button || button.BindingContext is not ChatMessage message || !message.IsMine || message.IsDeleted || !Guid.TryParse(message.RemoteId, out var messageId)) return;
-        var confirm = await DisplayAlertAsync("حذف الرسالة", "هل تريد حذف هذه الرسالة؟", "حذف", "إلغاء");
+        if (sender is not Button button || button.BindingContext is not ChatMessage message || message.IsDeleted)
+            return;
+
+        if (!Guid.TryParse(message.RemoteId, out var messageId))
+        {
+            await DisplayAlertAsync("حذف الرسالة", "هذه الرسالة لم تحصل بعد على رقم من الخادم، لذلك لا يمكن حذفها الآن.", "حسنًا");
+            return;
+        }
+
+        var confirm = await DisplayAlertAsync("حذف الرسالة", "هل تريد حذف الرسالة؟", "حذف", "إلغاء");
         if (!confirm) return;
+
         try
         {
             var deleted = await _api.DeleteMessageAsync(messageId);
@@ -2415,33 +2509,50 @@ public partial class ChatPage : ContentPage
     private async void DeleteSelectedClicked(object? sender, EventArgs e)
     {
         var selected = _chat.GetMessages(_conversationId)
-            .Where(x => _selectedMessageIds.Contains(x.Id) && x.IsMine && !x.IsDeleted)
+            .Where(x => _selectedMessageIds.Contains(x.Id) && !x.IsDeleted)
             .ToList();
+
         if (selected.Count == 0)
         {
             ExitSelectionMode();
             return;
         }
 
-        var confirm = await DisplayAlertAsync("حذف الرسائل", $"حذف {selected.Count} رسالة؟", "حذف", "إلغاء");
+        var deletable = selected.Where(x => Guid.TryParse(x.RemoteId, out _)).ToList();
+        if (deletable.Count == 0)
+        {
+            await DisplayAlertAsync("حذف الرسائل", "الرسائل المحددة لم تحصل بعد على أرقام من الخادم، أرسلها وانتظر اكتمال الإرسال ثم حاول الحذف.", "حسنًا");
+            return;
+        }
+
+        var confirm = await DisplayAlertAsync("حذف الرسائل", $"حذف {deletable.Count} رسالة؟", "حذف", "إلغاء");
         if (!confirm) return;
 
-        foreach (var message in selected)
+        var failures = new List<string>();
+        foreach (var message in deletable)
         {
-            if (!Guid.TryParse(message.RemoteId, out var messageId)) continue;
+            if (!Guid.TryParse(message.RemoteId, out var messageId))
+                continue;
+
             try
             {
                 var deleted = await _api.DeleteMessageAsync(messageId);
                 _chat.UpdateMessageDeleted(deleted.Id.ToString("D"));
             }
-            catch
+            catch (Exception ex)
             {
-                // Keep processing the remaining selected messages.
+                failures.Add(string.IsNullOrWhiteSpace(ex.Message) ? "تعذر حذف إحدى الرسائل." : ex.Message);
             }
         }
 
         ExitSelectionMode();
         RefreshMessagesView(scrollToEnd: false);
+
+        if (failures.Count > 0)
+        {
+            var details = string.Join(Environment.NewLine, failures.Distinct().Take(3));
+            await DisplayAlertAsync("حذف الرسائل", details, "حسنًا");
+        }
     }
 
     private void ClearReply()

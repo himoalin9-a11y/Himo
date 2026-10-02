@@ -147,6 +147,69 @@ public sealed class ChatService
         }
     }
 
+    public ChatMessage? AddPendingAttachmentMessage(
+        int conversationId,
+        string fileName,
+        string contentType,
+        long? attachmentSize,
+        string? localPath = null)
+    {
+        if (conversationId <= 0 || string.IsNullOrWhiteSpace(fileName) || string.IsNullOrWhiteSpace(contentType))
+            return null;
+
+        lock (_sync)
+        {
+            EnsureLoaded();
+            var conversation = Conversations.FirstOrDefault(x => x.Id == conversationId);
+            if (conversation is null) return null;
+
+            var messages = GetMessages(conversationId);
+            var next = messages.Count == 0 ? 1 : messages.Max(x => x.Id) + 1;
+            var now = DateTime.Now;
+            var message = new ChatMessage
+            {
+                Id = next,
+                ConversationId = conversationId,
+                Text = string.Empty,
+                SentAt = now,
+                IsMine = true,
+                IsPending = true,
+                DeliveryStatus = "sending",
+                AttachmentFileName = fileName,
+                AttachmentContentType = contentType,
+                AttachmentSize = attachmentSize,
+                AttachmentLocalPath = localPath
+            };
+
+            InsertMessageChronological(messages, message);
+            conversation.LastMessage = message.IsAudioAttachment
+                ? "رسالة صوتية"
+                : message.IsImageAttachment
+                    ? "صورة"
+                    : contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)
+                        ? "فيديو"
+                        : fileName;
+            conversation.Time = now.ToString("HH:mm");
+            conversation.UpdatedAt = now;
+            Save();
+            return message;
+        }
+    }
+
+    public void CompletePendingAttachmentMessage(ChatMessage pending, string remoteId, DateTime sentAt)
+    {
+        if (pending is null || string.IsNullOrWhiteSpace(remoteId)) return;
+
+        lock (_sync)
+        {
+            EnsureLoaded();
+            pending.RemoteId = remoteId;
+            pending.IsPending = false;
+            pending.DeliveryStatus = "sent";
+            Save();
+        }
+    }
+
     public ChatMessage? AddPendingMessage(int conversationId, string text, string clientMessageId, string? replyToRemoteId = null, string? replyToText = null, bool isEdited = false, string? editedAt = null)
     {
         var clean = text.Trim();
@@ -327,13 +390,21 @@ public sealed class ChatService
                     var pending = messages.FirstOrDefault(x =>
                         x.IsPending &&
                         x.IsMine &&
-                        string.Equals(x.Text, text, StringComparison.Ordinal) &&
-                        Math.Abs((x.SentAt - localTime).TotalSeconds) <= 10);
+                        ((x.IsAttachment && string.Equals(x.AttachmentFileName, attachmentFileName, StringComparison.OrdinalIgnoreCase) &&
+                          string.Equals(x.AttachmentContentType, attachmentContentType, StringComparison.OrdinalIgnoreCase)) ||
+                         (!x.IsAttachment && string.Equals(x.Text, text, StringComparison.Ordinal))) &&
+                        Math.Abs((x.SentAt - localTime).TotalSeconds) <= 60);
                     if (pending is not null)
                     {
                         pending.RemoteId = remoteId;
                         pending.IsPending = false;
+                        pending.DeliveryStatus = string.IsNullOrWhiteSpace(deliveryStatus) ? "sent" : deliveryStatus;
                         pending.ClientMessageId = null;
+                        if (pending.IsAttachment && attachmentSize.HasValue)
+                        {
+                            // Preserve the local preview/download cache but update the authoritative size.
+                            // AttachmentSize is init-only, so no assignment is required here.
+                        }
                         Save();
                         return false;
                     }
