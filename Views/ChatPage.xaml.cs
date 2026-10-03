@@ -8,7 +8,6 @@ using CommunityToolkit.Maui.Views;
 using MessageDto = Himo.Services.HimoApiClient.MessageDto;
 
 #if ANDROID
-using Android.Views;
 using AndroidX.RecyclerView.Widget;
 #endif
 
@@ -59,6 +58,8 @@ public partial class ChatPage : ContentPage
     private string? _audioRecordingPath;
 #if ANDROID
     private global::Android.Media.MediaPlayer? _audioPlayer;
+    private Guid? _audioPlayingMessageId;
+    private ImageButton? _audioPlayingButton;
     private MediaElement? _inlineVideoElement;
     private CancellationTokenSource? _inlineVideoProgressCts;
     private bool _inlineVideoSliderUpdating;
@@ -366,9 +367,10 @@ public partial class ChatPage : ContentPage
             foreach (var candidate in candidates)
             {
                 var score = 1; // exact display-name match
-                if (!string.IsNullOrWhiteSpace(local.LastMessage) &&
-                    !string.Equals(local.LastMessage, "محادثة جديدة", StringComparison.Ordinal) &&
-                    string.Equals(local.LastMessage.Trim(), candidate.LastMessage?.Trim(), StringComparison.Ordinal))
+                var localLastMessage = local.LastMessage?.Trim();
+                if (!string.IsNullOrWhiteSpace(localLastMessage) &&
+                    !string.Equals(localLastMessage, "محادثة جديدة", StringComparison.Ordinal) &&
+                    string.Equals(localLastMessage, candidate.LastMessage?.Trim(), StringComparison.Ordinal))
                     score += 4;
 
                 var delta = Math.Abs((candidate.UpdatedAt.LocalDateTime - local.UpdatedAt).TotalMinutes);
@@ -501,22 +503,119 @@ public partial class ChatPage : ContentPage
 
     private async void ConversationOptionsClicked(object? sender, EventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(_remoteConversationId)) return;
+        var selected = await DisplayActionSheetAsync(
+            "خيارات المحادثة",
+            "إلغاء",
+            null,
+            "البحث في المحادثة",
+            IsConversationMuted ? "إلغاء كتم الإشعارات" : "كتم الإشعارات",
+            "الرسائل ذاتية الاختفاء",
+            "خلفية الدردشة",
+            "الإبلاغ عن المحادثة",
+            IsConversationBlocked ? "إلغاء حظر المحادثة" : "حظر المحادثة",
+            IsConversationArchived ? "إلغاء أرشفة المحادثة" : "أرشفة المحادثة");
 
-        var mute = IsConversationMuted ? "إلغاء كتم الإشعارات" : "كتم الإشعارات";
-        var archive = IsConversationArchived ? "إلغاء الأرشفة" : "أرشفة المحادثة";
-        var block = IsConversationBlocked ? "إلغاء الحظر" : "حظر المحادثة";
-        var selected = await DisplayActionSheetAsync("خيارات المحادثة", "إلغاء", null,
-            mute, archive, block, "الإبلاغ عن المحادثة");
+        if (string.IsNullOrWhiteSpace(selected) || selected == "إلغاء")
+            return;
 
-        if (string.Equals(selected, mute, StringComparison.Ordinal))
-            MuteConversationClicked(null, EventArgs.Empty);
-        else if (string.Equals(selected, archive, StringComparison.Ordinal))
-            ArchiveConversationClicked(null, EventArgs.Empty);
-        else if (string.Equals(selected, block, StringComparison.Ordinal))
-            BlockConversationClicked(null, EventArgs.Empty);
-        else if (string.Equals(selected, "الإبلاغ عن المحادثة", StringComparison.Ordinal))
-            ReportConversationClicked(null, EventArgs.Empty);
+        if (selected == "البحث في المحادثة")
+            SearchMessagesClicked(sender, e);
+        else if (selected == "كتم الإشعارات" || selected == "إلغاء كتم الإشعارات")
+            MuteConversationClicked(sender, e);
+        else if (selected == "الرسائل ذاتية الاختفاء")
+            DisappearingMessagesMenuClicked(sender, e);
+        else if (selected == "خلفية الدردشة")
+            ChatBackgroundMenuClicked(sender, e);
+        else if (selected == "الإبلاغ عن المحادثة")
+            ReportConversationClicked(sender, e);
+        else if (selected == "حظر المحادثة" || selected == "إلغاء حظر المحادثة")
+            BlockConversationClicked(sender, e);
+        else if (selected == "أرشفة المحادثة" || selected == "إلغاء أرشفة المحادثة")
+            ArchiveConversationClicked(sender, e);
+    }
+
+
+    private void ConversationMenuBackdropTapped(object? sender, TappedEventArgs e)
+    {
+        // القائمة أصبحت DisplayActionSheet ولا تحتاج إلى طبقة Overlay.
+    }
+
+    private void CloseConversationMenu()
+    {
+        // لا توجد طبقة Overlay لإغلاقها.
+    }
+
+    private void UpdateConversationMenuLabels()
+    {
+        // يتم إنشاء نص خيار الكتم مباشرة عند فتح القائمة.
+    }
+
+    private async void CreateGroupMenuClicked(object? sender, EventArgs e)
+    {
+        CloseConversationMenu();
+        await DisplayAlertAsync("إنشاء مجموعة", "سيتم إنشاء المجموعة من شاشة المجموعات.", "حسنًا");
+    }
+
+    private void SearchMenuClicked(object? sender, EventArgs e)
+    {
+        CloseConversationMenu();
+        SearchMessagesClicked(sender, e);
+    }
+
+    private void MuteMenuClicked(object? sender, EventArgs e)
+    {
+        CloseConversationMenu();
+        MuteConversationClicked(sender, e);
+    }
+
+    private async void DisappearingMessagesMenuClicked(object? sender, EventArgs e)
+    {
+        CloseConversationMenu();
+        var selected = await DisplayActionSheetAsync(
+            "الرسائل ذاتية الاختفاء",
+            "إلغاء",
+            null,
+            "إيقاف",
+            "بعد ساعة",
+            "بعد 24 ساعة",
+            "بعد 7 أيام");
+
+        if (!string.IsNullOrWhiteSpace(selected) && selected != "إلغاء")
+        {
+            var key = !string.IsNullOrWhiteSpace(_remoteConversationId)
+                ? $"himo_disappearing_{_remoteConversationId}"
+                : $"himo_disappearing_local_{_conversationId}";
+
+            Preferences.Default.Set(key, selected);
+            await DisplayAlertAsync("الرسائل ذاتية الاختفاء", $"تم اختيار: {selected}", "حسنًا");
+        }
+    }
+
+    private async void ChatBackgroundMenuClicked(object? sender, EventArgs e)
+    {
+        CloseConversationMenu();
+        var selected = await DisplayActionSheetAsync(
+            "خلفية الدردشة",
+            "إلغاء",
+            null,
+            "فاتحة",
+            "لافندر",
+            "رمادي فاتح");
+
+        if (selected == "فاتحة")
+            BackgroundColor = Color.FromArgb("#F7F3FB");
+        else if (selected == "لافندر")
+            BackgroundColor = Color.FromArgb("#F1EBFB");
+        else if (selected == "رمادي فاتح")
+            BackgroundColor = Color.FromArgb("#F2F4F7");
+
+        if (!string.Equals(selected, "إلغاء", StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(selected))
+        {
+            var key = !string.IsNullOrWhiteSpace(_remoteConversationId)
+                ? $"himo_chat_background_{_remoteConversationId}"
+                : $"himo_chat_background_local_{_conversationId}";
+            Preferences.Default.Set(key, selected);
+        }
     }
 
     private async void ReportConversationClicked(object? sender, EventArgs e)
@@ -654,7 +753,9 @@ public partial class ChatPage : ContentPage
 
         var conversation = _chat.Conversations.FirstOrDefault(x =>
             string.Equals(x.RemoteId, signal.ConversationId.ToString("D"), StringComparison.OrdinalIgnoreCase));
-        var name = string.IsNullOrWhiteSpace(conversation?.Name) ? "جهة اتصال" : conversation!.Name.Trim();
+        var name = conversation?.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            name = "جهة اتصال";
         var title = mode == CallMode.Video ? $"مكالمة فيديو واردة من {name}" : $"مكالمة صوتية واردة من {name}";
 #if ANDROID
         StartIncomingCallRingtone();
@@ -760,13 +861,34 @@ public partial class ChatPage : ContentPage
                     var conversation = _chat.Conversations
                         .FirstOrDefault(x => x.Id == pending.ConversationId);
 
-                    if (conversation?.RemoteId is not string remoteId ||
-                        !Guid.TryParse(remoteId, out var conversationId) ||
-                        string.IsNullOrWhiteSpace(pending.ClientMessageId))
-                    {
-                        // Keep the message pending. Conversation resolution/auth
-                        // recovery may make it sendable later.
+                    if (conversation is null || string.IsNullOrWhiteSpace(pending.ClientMessageId))
                         continue;
+
+                    // A message can be queued before the remote GUID is hydrated.
+                    // Resolve it here as well so the outbox does not get stuck until
+                    // another navigation/reconnect happens.
+                    if (!Guid.TryParse(conversation.RemoteId, out var conversationId))
+                    {
+                        try
+                        {
+                            await ResolveRemoteConversationAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine(
+                                $"[Himo ChatPage] Pending message conversation resolve failed: {ex.Message}");
+                        }
+
+                        conversation = _chat.Conversations
+                            .FirstOrDefault(x => x.Id == pending.ConversationId);
+
+                        if (conversation is null ||
+                            !Guid.TryParse(conversation.RemoteId, out conversationId))
+                        {
+                            // Keep the message pending. Conversation resolution/auth
+                            // recovery may make it sendable later.
+                            continue;
+                        }
                     }
 
                     var clientMessageId = pending.ClientMessageId;
@@ -1415,9 +1537,28 @@ public partial class ChatPage : ContentPage
     private async void AudioClicked(object? sender, EventArgs e)
     {
 #if ANDROID
-        if (sender is not Button button || button.BindingContext is not ChatMessage message || !message.IsAudioAttachment || !Guid.TryParse(message.RemoteId, out var messageId)) return;
+        if (sender is not ImageButton button || button.BindingContext is not ChatMessage message || !message.IsAudioAttachment || !Guid.TryParse(message.RemoteId, out var messageId)) return;
+
         try
         {
+            // Tapping the same voice message toggles pause/resume.
+            if (_audioPlayer is not null && _audioPlayingMessageId == messageId)
+            {
+                if (_audioPlayer.IsPlaying)
+                {
+                    _audioPlayer.Pause();
+                    SetAudioButtonIcon(button, playing: false);
+                }
+                else
+                {
+                    _audioPlayer.Start();
+                    SetAudioButtonIcon(button, playing: true);
+                }
+                return;
+            }
+
+            StopAudioPlayback();
+
             var path = message.AttachmentLocalPath;
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path) || new FileInfo(path).Length <= 0)
             {
@@ -1425,44 +1566,38 @@ public partial class ChatPage : ContentPage
                 message.AttachmentLocalPath = path;
             }
 
-            var playablePath = path ?? throw new IOException("لم يتم تنزيل ملف التسجيل من الخادم.");
-            if (string.IsNullOrWhiteSpace(playablePath) || !File.Exists(playablePath) || new FileInfo(playablePath).Length <= 0)
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path) || new FileInfo(path).Length <= 0)
                 throw new IOException("لم يتم تنزيل ملف التسجيل من الخادم.");
 
-            StopAudioPlayback();
-            var player = new global::Android.Media.MediaPlayer();
+            var file = new Java.IO.File(path);
+            var uri = global::Android.Net.Uri.FromFile(file);
+            var player = global::Android.Media.MediaPlayer.Create(
+                global::Android.App.Application.Context, uri);
+
+            if (player is null)
+                throw new InvalidOperationException("تعذر إنشاء مشغل الصوت لهذا الملف.");
+
             _audioPlayer = player;
-            var audioAttributes = new global::Android.Media.AudioAttributes.Builder()
-                .SetUsage(global::Android.Media.AudioUsageKind.Media)
-                .SetContentType(global::Android.Media.AudioContentType.Music)
-                .Build()!;
-            player.SetAudioAttributes(audioAttributes);
+            _audioPlayingMessageId = messageId;
+            _audioPlayingButton = button;
             player.SetVolume(1f, 1f);
-            player.SetDataSource(playablePath);
-            player.Prepared += (_, _) =>
-            {
-                try
-                {
-                    if (ReferenceEquals(_audioPlayer, player))
-                        player.Start();
-                }
-                catch (Exception startEx)
-                {
-                    MainThread.BeginInvokeOnMainThread(async () =>
-                        await DisplayAlertAsync("الرسالة الصوتية", $"تم تنزيل التسجيل لكن الهاتف لم يستطع تشغيله: {startEx.Message}", "حسنًا"));
-                    StopAudioPlayback();
-                }
-            };
+            SetAudioButtonIcon(button, playing: true);
+            player.Completion += (_, _) => MainThread.BeginInvokeOnMainThread(StopAudioPlayback);
             player.Error += (_, args) =>
             {
-                StopAudioPlayback();
                 var what = args?.What;
                 var extra = args?.Extra;
                 MainThread.BeginInvokeOnMainThread(async () =>
-                    await DisplayAlertAsync("الرسالة الصوتية", $"تم تنزيل التسجيل، لكن صيغة الصوت غير مدعومة على الجهاز. MediaPlayer: {what}/{extra}", "حسنًا"));
+                {
+                    StopAudioPlayback();
+                    await DisplayAlertAsync(
+                        "الرسالة الصوتية",
+                        $"تعذر تشغيل التسجيل الصوتي. MediaPlayer: {what}/{extra}",
+                        "حسنًا");
+                });
             };
-            player.Completion += (_, _) => StopAudioPlayback();
-            player.PrepareAsync();
+
+            player.Start();
         }
         catch (Exception ex)
         {
@@ -1475,11 +1610,25 @@ public partial class ChatPage : ContentPage
     }
 
 #if ANDROID
+    private static void SetAudioButtonIcon(ImageButton button, bool playing)
+    {
+        var isMine = (button.BindingContext as ChatMessage)?.IsMine == true;
+        if (playing)
+            button.Source = isMine ? "himo_ui_pause_purple.svg" : "himo_ui_pause_white.svg";
+        else
+            button.Source = isMine ? "himo_ui_play_purple.png" : "himo_ui_play_white.png";
+    }
+
     private void StopAudioPlayback()
     {
         try { _audioPlayer?.Stop(); } catch { }
         try { _audioPlayer?.Release(); } catch { }
         _audioPlayer = null;
+        _audioPlayingMessageId = null;
+        var button = _audioPlayingButton;
+        _audioPlayingButton = null;
+        if (button is not null)
+            MainThread.BeginInvokeOnMainThread(() => button.Source = "himo_ui_play_white.png");
     }
 
     private void CleanupAudioRecorder()
@@ -1662,18 +1811,37 @@ public partial class ChatPage : ContentPage
                 return;
             }
 
-            await using (var selectedStream = await file.OpenReadAsync())
-            {
-                if (selectedStream.CanSeek && selectedStream.Length > 25L * 1024 * 1024)
-                {
-                    await DisplayAlertAsync("المرفقات", "الحد الأقصى لحجم الملف 25 ميجابايت.", "حسنًا");
-                    return;
-                }
-            }
-
             var contentType = file.ContentType;
             if (string.IsNullOrWhiteSpace(contentType))
                 contentType = GuessAttachmentContentType(file.FileName);
+
+            var extension = Path.GetExtension(file.FileName);
+            var isVideo = contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".mp4", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".m4v", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".mov", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".webm", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".3gp", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".3g2", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".mkv", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".avi", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".mpeg", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".mpg", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".ogv", StringComparison.OrdinalIgnoreCase);
+
+            const long maxRegularAttachmentBytes = 25L * 1024 * 1024;
+            const long maxVideoAttachmentBytes = 100L * 1024 * 1024;
+            var maxBytes = isVideo ? maxVideoAttachmentBytes : maxRegularAttachmentBytes;
+
+            await using (var selectedStream = await file.OpenReadAsync())
+            {
+                if (selectedStream.CanSeek && selectedStream.Length > maxBytes)
+                {
+                    var limitText = isVideo ? "100 ميجابايت" : "25 ميجابايت";
+                    await DisplayAlertAsync("المرفقات", $"الحد الأقصى لحجم {(isVideo ? "الفيديو" : "الملف")} {limitText}.", "حسنًا");
+                    return;
+                }
+            }
 
             long? attachmentSize = null;
             try
@@ -1885,8 +2053,15 @@ public partial class ChatPage : ContentPage
 
     private async void VideoPreviewClicked(object? sender, EventArgs e)
     {
-        if (sender is not Button button || button.BindingContext is not ChatMessage message ||
-            !message.IsAttachment || !IsVideoAttachment(message) ||
+        if (sender is not BindableObject bindable || bindable.BindingContext is not ChatMessage message)
+            return;
+
+        await PlayVideoAttachmentAsync(message);
+    }
+
+    private async Task PlayVideoAttachmentAsync(ChatMessage message)
+    {
+        if (!message.IsAttachment || !IsVideoAttachment(message) ||
             !Guid.TryParse(message.RemoteId, out var messageId))
             return;
 
@@ -2180,7 +2355,7 @@ public partial class ChatPage : ContentPage
             return;
         }
 
-        VideoPreviewClicked(border, EventArgs.Empty);
+        await PlayVideoAttachmentAsync(message);
     }
 
     private async void EditClicked(object? sender, EventArgs e)
@@ -2595,6 +2770,71 @@ public partial class ChatPage : ContentPage
         }
     }
 
+    private async void ResendFailedMessageClicked(object? sender, EventArgs e)
+    {
+        if (sender is not Button button || button.BindingContext is not ChatMessage message)
+            return;
+
+        if (!message.IsMine || !string.Equals(message.DeliveryStatus, "failed", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        try
+        {
+            // Text messages already have a durable ClientMessageId and are retried by the outbox.
+            if (!message.IsAttachment && !string.IsNullOrWhiteSpace(message.ClientMessageId))
+            {
+                if (_chat.MarkPendingSending(message.ClientMessageId))
+                {
+                    RefreshMessagesView(scrollToEnd: false);
+                    await FlushOutboxAsync();
+                    return;
+                }
+            }
+
+            // Audio recordings keep their local cache path, so they can be uploaded again.
+            if (message.IsAttachment && !string.IsNullOrWhiteSpace(message.AttachmentLocalPath) && File.Exists(message.AttachmentLocalPath))
+            {
+                var conversation = _chat.Conversations.FirstOrDefault(x => x.Id == message.ConversationId);
+                if (conversation is null || !Guid.TryParse(conversation.RemoteId, out var conversationId))
+                {
+                    await ResolveRemoteConversationAsync();
+                    conversation = _chat.Conversations.FirstOrDefault(x => x.Id == message.ConversationId);
+                }
+
+                if (conversation is null || !Guid.TryParse(conversation.RemoteId, out conversationId))
+                    throw new InvalidOperationException("تعذر ربط المحادثة بالخادم حاليًا.");
+
+                message.IsPending = true;
+                message.DeliveryStatus = "sending";
+                RefreshMessagesView(scrollToEnd: false);
+
+                await using var stream = File.OpenRead(message.AttachmentLocalPath);
+                var remote = await _api.UploadAttachmentAsync(
+                    conversationId,
+                    stream,
+                    message.AttachmentFileName ?? Path.GetFileName(message.AttachmentLocalPath),
+                    message.AttachmentContentType ?? "application/octet-stream");
+
+                _chat.CompletePendingAttachmentMessage(message, remote.Id.ToString(), remote.SentAt.LocalDateTime);
+                RefreshMessagesView(scrollToEnd: false);
+                return;
+            }
+
+            await DisplayAlertAsync("إعادة الإرسال", "لا توجد نسخة محلية من هذا الملف لإعادة رفعه. أعد اختيار الملف من المرفقات.", "حسنًا");
+        }
+        catch (Exception ex)
+        {
+            message.IsPending = true;
+            message.DeliveryStatus = "failed";
+            RefreshMessagesView(scrollToEnd: false);
+            await DisplayAlertAsync("إعادة الإرسال", $"تعذرت إعادة الإرسال: {ex.Message}", "حسنًا");
+        }
+        finally
+        {
+            button.IsEnabled = true;
+        }
+    }
+
     private async Task SendMessageAsync()
     {
         StopTyping();
@@ -2617,12 +2857,22 @@ public partial class ChatPage : ContentPage
             return;
         }
 
-        if (conversation?.RemoteId is not string remoteId ||
-            !Guid.TryParse(remoteId, out _))
+        if (conversation is null)
+            return;
+
+        if (!Guid.TryParse(conversation.RemoteId, out _))
+        {
+            // The user can press Send before the background conversation resolution
+            // has completed. Resolve it now instead of rejecting a valid message.
+            await ResolveRemoteConversationAsync();
+            conversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
+        }
+
+        if (conversation is null || !Guid.TryParse(conversation.RemoteId, out _))
         {
             await DisplayAlertAsync(
                 "الإرسال",
-                "هذه المحادثة غير مرتبطة بالخادم. حدّث قائمة المحادثات ثم حاول مرة أخرى.",
+                "تعذر ربط المحادثة بالخادم حاليًا. انتظر لحظة ثم أرسل الرسالة مرة أخرى.",
                 "حسنًا");
             return;
         }

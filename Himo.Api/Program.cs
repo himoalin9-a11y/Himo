@@ -50,8 +50,8 @@ builder.Services.AddRateLimiter(options =>
 
 builder.WebHost.ConfigureKestrel(options =>
 {
-    // 25 MiB attachment limit plus multipart/request overhead.
-    options.Limits.MaxRequestBodySize = 30L * 1024 * 1024;
+    // 100 MiB video attachment limit plus multipart/request overhead.
+    options.Limits.MaxRequestBodySize = 110L * 1024 * 1024;
 });
 
 var webApp = builder.Build();
@@ -515,8 +515,8 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
     var form = await http.ReadFormAsync(http.HttpContext.RequestAborted);
     var file = form.Files.GetFile("file");
     if (file is null || file.Length <= 0) return Results.BadRequest(new { message = "لم يتم اختيار ملف." });
-    const long maxBytes = 25L * 1024 * 1024;
-    if (file.Length > maxBytes) return Results.BadRequest(new { message = "حجم الملف يتجاوز 25 ميجابايت." });
+    const long maxBytes = 100L * 1024 * 1024;
+    if (file.Length > maxBytes) return Results.BadRequest(new { message = "حجم المرفق يتجاوز 100 ميجابايت." });
 
     var originalName = Path.GetFileName(file.FileName);
     if (string.IsNullOrWhiteSpace(originalName) || originalName.Length > 180) return Results.BadRequest(new { message = "اسم الملف غير صالح." });
@@ -562,21 +562,19 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
     var storedName = messageId.ToString("D") + "_" + safeName;
     var fullPath = Path.Combine(uploads, storedName);
 
-    // Audio is persisted in PostgreSQL as bytes because Render's local disk can
-    // disappear after a restart. Images/video keep the existing file-only path
-    // for this audio-first repair phase.
-    byte[]? audioData = null;
-    if (contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase))
+    await using var input = file.OpenReadStream();
+    await using var memory = new MemoryStream();
+    await input.CopyToAsync(memory, http.HttpContext.RequestAborted);
+    var attachmentData = memory.ToArray();
+
+    // Keep a local copy as a best-effort cache for the current server process.
+    try
     {
-        await using var memory = new MemoryStream();
-        await file.CopyToAsync(memory, http.HttpContext.RequestAborted);
-        audioData = memory.ToArray();
-        await File.WriteAllBytesAsync(fullPath, audioData, http.HttpContext.RequestAborted);
+        await File.WriteAllBytesAsync(fullPath, attachmentData, http.HttpContext.RequestAborted);
     }
-    else
+    catch
     {
-        await using var stream = File.Create(fullPath);
-        await file.CopyToAsync(stream, http.HttpContext.RequestAborted);
+        // The PostgreSQL copy below is the durable source of truth.
     }
 
     try
@@ -588,7 +586,7 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
                 : contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)
                     ? $"🎬 {originalName}"
                     : $"📎 {originalName}";
-        var message = store.AddAttachmentMessage(messageId, id, session.UserId, session.PhoneNumber, displayText, originalName, contentType, file.Length, audioData);
+        var message = store.AddAttachmentMessage(messageId, id, session.UserId, session.PhoneNumber, displayText, originalName, contentType, attachmentData.LongLength, attachmentData);
         var recipientIds = store.GetOtherParticipantUserIds(id, session.UserId);
         await hub.Clients.Groups(recipientIds.Select(userId => HimoChatHub.UserGroup(userId)))
             .SendAsync("MessageReceived", message, http.HttpContext.RequestAborted);
@@ -610,34 +608,28 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
 webApp.MapGet("/api/messages/{messageId:guid}/attachment", (Guid messageId, HttpRequest http, PostgresStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
-
     var attachment = store.GetAttachment(messageId, session.UserId);
     if (attachment is null) return Results.NotFound();
 
-    // Audio is now served from PostgreSQL first. This makes voice messages
-    // survive Render restarts and removes the 404 caused by missing local files.
-    if (attachment.ContentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)
-        && attachment.AudioData is { Length: > 0 } audioBytes)
-    {
-        return Results.File(audioBytes, attachment.ContentType, attachment.FileName, enableRangeProcessing: false);
-    }
+    if (attachment.Data is { Length: > 0 } data)
+        return Results.File(data, attachment.ContentType, attachment.FileName, enableRangeProcessing: false);
 
-    if (string.IsNullOrWhiteSpace(attachment.RelativePath)) return Results.NotFound();
+    if (string.IsNullOrWhiteSpace(attachment.RelativePath))
+        return Results.NotFound();
+
     var root = Path.Combine(AppContext.BaseDirectory, "App_Data");
     var uploadRoot = Path.GetFullPath(Path.Combine(root, "uploads"));
     var full = Path.GetFullPath(Path.Combine(root, attachment.RelativePath));
-    if (!full.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase) || !File.Exists(full)) return Results.NotFound();
+    if (!full.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase) || !File.Exists(full))
+        return Results.NotFound();
 
-    // Backfill an existing legacy audio file into PostgreSQL when possible.
-    if (attachment.ContentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase))
+    // Import legacy files into PostgreSQL so a future Render restart does not break them.
+    try
     {
-        try
-        {
-            var bytes = File.ReadAllBytes(full);
-            if (bytes.Length > 0) store.SaveAudioData(messageId, session.UserId, bytes);
-        }
-        catch { }
+        var bytes = File.ReadAllBytes(full);
+        if (bytes.Length > 0) store.SaveAttachmentData(messageId, session.UserId, bytes);
     }
+    catch { }
 
     return Results.File(full, attachment.ContentType, attachment.FileName, enableRangeProcessing: true);
 });
@@ -1002,6 +994,7 @@ CREATE TABLE IF NOT EXISTS Messages (
     AttachmentFileName TEXT NULL,
     AttachmentContentType TEXT NULL,
     AttachmentSize BIGINT NULL,
+    AttachmentData BYTEA NULL,
     AudioData BYTEA NULL,
     ReplyToMessageId TEXT NULL,
     EditedAt TEXT NULL,
@@ -1046,6 +1039,7 @@ CREATE INDEX IF NOT EXISTS IX_Messages_Conversation_Sent_Id ON Messages(Conversa
 ALTER TABLE Messages ADD COLUMN IF NOT EXISTS ReplyToMessageId TEXT NULL;
 ALTER TABLE Messages ADD COLUMN IF NOT EXISTS EditedAt TEXT NULL;
 ALTER TABLE Messages ADD COLUMN IF NOT EXISTS DeletedAt TEXT NULL;
+ALTER TABLE Messages ADD COLUMN IF NOT EXISTS AttachmentData BYTEA NULL;
 ALTER TABLE Messages ADD COLUMN IF NOT EXISTS AudioData BYTEA NULL;
 CREATE INDEX IF NOT EXISTS IX_Messages_ReplyTo ON Messages(ReplyToMessageId);
 ";
@@ -2270,7 +2264,7 @@ WHERE cp1.UserId=@user AND cp2.UserId<>@user;";
         }
     }
 
-    public MessageDto AddAttachmentMessage(Guid messageId, Guid conversationId, Guid userId, string senderPhone, string displayText, string fileName, string contentType, long size, byte[]? audioData = null)
+    public MessageDto AddAttachmentMessage(Guid messageId, Guid conversationId, Guid userId, string senderPhone, string displayText, string fileName, string contentType, long size, byte[] attachmentData)
     {
         lock (_sync)
         {
@@ -2279,7 +2273,7 @@ WHERE cp1.UserId=@user AND cp2.UserId<>@user;";
             using var transaction = connection.BeginTransaction();
             using var insert = connection.CreateCommand();
             insert.Transaction = transaction;
-            insert.CommandText = "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,ClientMessageId,AttachmentFileName,AttachmentContentType,AttachmentSize,AudioData) VALUES(@id,@conversation,@user,@phone,@text,@sent,NULL,@file,@type,@size,@audio);";
+            insert.CommandText = "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,ClientMessageId,AttachmentFileName,AttachmentContentType,AttachmentSize,AttachmentData,AudioData) VALUES(@id,@conversation,@user,@phone,@text,@sent,NULL,@file,@type,@size,@data,@audio);";
             insert.Parameters.AddWithValue("@id", message.Id.ToString());
             insert.Parameters.AddWithValue("@conversation", conversationId.ToString());
             insert.Parameters.AddWithValue("@user", userId.ToString());
@@ -2289,7 +2283,8 @@ WHERE cp1.UserId=@user AND cp2.UserId<>@user;";
             insert.Parameters.AddWithValue("@file", fileName);
             insert.Parameters.AddWithValue("@type", contentType);
             insert.Parameters.AddWithValue("@size", size);
-            insert.Parameters.Add("@audio", NpgsqlTypes.NpgsqlDbType.Bytea).Value = (object?)audioData ?? DBNull.Value;
+            insert.Parameters.Add("@data", NpgsqlTypes.NpgsqlDbType.Bytea).Value = attachmentData;
+            insert.Parameters.Add("@audio", NpgsqlTypes.NpgsqlDbType.Bytea).Value = contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) ? attachmentData : DBNull.Value;
             insert.ExecuteNonQuery();
 
             using (var receipt = connection.CreateCommand())
@@ -2314,13 +2309,13 @@ WHERE cp1.UserId=@user AND cp2.UserId<>@user;";
         }
     }
 
-    public AudioAttachmentRecord? GetAttachment(Guid messageId, Guid userId)
+    public AttachmentRecord? GetAttachment(Guid messageId, Guid userId)
     {
         lock (_sync)
         {
             using var connection = Open();
             using var command = connection.CreateCommand();
-            command.CommandText = @"SELECT m.AttachmentFileName,m.AttachmentContentType,m.AudioData
+            command.CommandText = @"SELECT m.AttachmentFileName,m.AttachmentContentType,m.AttachmentData,m.AudioData
 FROM Messages m
 WHERE m.Id=@id
   AND m.AttachmentFileName IS NOT NULL
@@ -2335,66 +2330,31 @@ LIMIT 1;";
             command.Parameters.AddWithValue("@user", userId.ToString());
             using var reader = command.ExecuteReader();
             if (!reader.Read()) return null;
-
             var fileName = reader.GetString(0);
             var contentType = reader.IsDBNull(1) ? "application/octet-stream" : reader.GetString(1);
-            byte[]? audioData = reader.IsDBNull(2) ? null : (byte[])reader[2];
-            return new AudioAttachmentRecord(
+            byte[]? data = !reader.IsDBNull(2) ? (byte[])reader.GetValue(2) : (!reader.IsDBNull(3) ? (byte[])reader.GetValue(3) : null);
+            return new AttachmentRecord(
                 fileName,
                 contentType,
-                audioData,
+                data,
                 Path.Combine("uploads", messageId.ToString("D") + "_" + SanitizeFileName(fileName)));
         }
     }
 
-    public void SaveAudioData(Guid messageId, Guid userId, byte[] data)
+    public void SaveAttachmentData(Guid messageId, Guid userId, byte[] data)
     {
         if (data.Length == 0) return;
         lock (_sync)
         {
             using var connection = Open();
             using var command = connection.CreateCommand();
-            command.CommandText = @"UPDATE Messages
-SET AudioData=@data
-WHERE Id=@id
-  AND AttachmentContentType LIKE 'audio/%'
-  AND EXISTS (
-      SELECT 1 FROM ConversationParticipants cp
-      WHERE cp.ConversationId=Messages.ConversationId AND cp.UserId=@user
-  );";
-            command.Parameters.AddWithValue("@id", messageId.ToString());
-            command.Parameters.AddWithValue("@user", userId.ToString());
+            command.CommandText = @"UPDATE Messages SET AttachmentData=@data
+WHERE Id=@id AND AttachmentFileName IS NOT NULL
+  AND EXISTS (SELECT 1 FROM ConversationParticipants cp WHERE cp.ConversationId=Messages.ConversationId AND cp.UserId=@user);";
             command.Parameters.Add("@data", NpgsqlTypes.NpgsqlDbType.Bytea).Value = data;
-            command.ExecuteNonQuery();
-        }
-    }
-
-    public string? GetAttachmentPath(Guid messageId, Guid userId, out string fileName, out string contentType)
-    {
-        fileName = string.Empty;
-        contentType = "application/octet-stream";
-        lock (_sync)
-        {
-            using var connection = Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = @"SELECT m.AttachmentFileName,m.AttachmentContentType
-FROM Messages m
-WHERE m.Id=@id
-  AND m.AttachmentFileName IS NOT NULL
-  AND EXISTS (
-      SELECT 1
-      FROM ConversationParticipants cp
-      WHERE cp.ConversationId=m.ConversationId
-        AND cp.UserId=@user
-  )
-LIMIT 1;";
             command.Parameters.AddWithValue("@id", messageId.ToString());
             command.Parameters.AddWithValue("@user", userId.ToString());
-            using var reader = command.ExecuteReader();
-            if (!reader.Read()) return null;
-            fileName = reader.GetString(0);
-            if (!reader.IsDBNull(1)) contentType = reader.GetString(1);
-            return Path.Combine("uploads", messageId.ToString("D") + "_" + SanitizeFileName(fileName));
+            command.ExecuteNonQuery();
         }
     }
 
@@ -2645,8 +2605,7 @@ sealed class ConversationDto
         UnreadCount = unreadCount;
     }
 }
-record AudioAttachmentRecord(string FileName, string ContentType, byte[]? AudioData, string RelativePath);
-
 record MessageDto(Guid Id, Guid ConversationId, Guid SenderUserId, string SenderPhoneNumber, string Text, DateTimeOffset SentAt, string? AttachmentFileName = null, string? AttachmentContentType = null, long? AttachmentSize = null, string Status = "sent", Guid? ReplyToMessageId = null, string? ReplyToText = null, bool IsEdited = false, string? EditedAt = null, bool IsDeleted = false);
+record AttachmentRecord(string FileName, string ContentType, byte[]? Data, string RelativePath);
 record EditMessageRequest(string Text);
 record UserSearchDto(Guid Id, string Email, string Name);
