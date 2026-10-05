@@ -64,7 +64,9 @@ public partial class ChatPage : ContentPage
     private CancellationTokenSource? _inlineVideoProgressCts;
     private bool _inlineVideoSliderUpdating;
     private bool _inlineVideoIsPlaying;
+    private bool _inlineVideoIsMuted;
 #endif
+    private readonly HashSet<string> _videoPreviewInFlight = new(StringComparer.OrdinalIgnoreCase);
 
     public string ConversationId
     {
@@ -426,6 +428,7 @@ public partial class ChatPage : ContentPage
 
         SetMessagesItemsSource(recent);
         _ = PrepareVisibleImagePreviewsAsync(recent);
+        _ = PrepareVisibleVideoPreviewsAsync(recent);
 
         // A local cache may contain more history than the first page.
         // We do not sort/copy the whole history just to determine this.
@@ -1268,6 +1271,7 @@ public partial class ChatPage : ContentPage
             }).ConfigureAwait(false);
 
             _ = PrepareVisibleImagePreviewsAsync(recentImageMessages.TakeLast(3));
+            _ = PrepareVisibleVideoPreviewsAsync(allMessages.Where(x => x.IsVideoAttachment).TakeLast(3));
         }
         catch (OperationCanceledException)
         {
@@ -1610,13 +1614,25 @@ public partial class ChatPage : ContentPage
     }
 
 #if ANDROID
+    private void AudioButtonLoaded(object? sender, EventArgs e)
+    {
+#if ANDROID
+        if (sender is ImageButton button)
+            SetAudioButtonIcon(button, playing: false);
+#endif
+    }
+
     private static void SetAudioButtonIcon(ImageButton button, bool playing)
     {
         var isMine = (button.BindingContext as ChatMessage)?.IsMine == true;
-        if (playing)
-            button.Source = isMine ? "himo_ui_pause_purple.svg" : "himo_ui_pause_white.svg";
-        else
-            button.Source = isMine ? "himo_ui_play_purple.png" : "himo_ui_play_white.png";
+        var icon = playing
+            ? (isMine ? "himo_ui_pause_purple.png" : "himo_ui_pause_white.png")
+            : (isMine ? "himo_ui_play_purple.png" : "himo_ui_play_white.png");
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            button.Source = icon;
+        });
     }
 
     private void StopAudioPlayback()
@@ -1628,7 +1644,11 @@ public partial class ChatPage : ContentPage
         var button = _audioPlayingButton;
         _audioPlayingButton = null;
         if (button is not null)
-            MainThread.BeginInvokeOnMainThread(() => button.Source = "himo_ui_play_white.png");
+        {
+            var isMine = (button.BindingContext as ChatMessage)?.IsMine == true;
+            var playIcon = isMine ? "himo_ui_play_purple.png" : "himo_ui_play_white.png";
+            MainThread.BeginInvokeOnMainThread(() => button.Source = playIcon);
+        }
     }
 
     private void CleanupAudioRecorder()
@@ -1664,54 +1684,40 @@ public partial class ChatPage : ContentPage
         await CaptureMediaAsync();
     }
 
+    private bool _lastAttachmentUploadSucceeded;
+
     private async Task CaptureMediaAsync()
     {
+        if (_conversationId == 0 || !_api.HasToken)
+            return;
+
         try
         {
-            if (_conversationId == 0 || !_api.HasToken) return;
-            var choice = await DisplayActionSheetAsync(
-                "الكاميرا",
-                "إلغاء",
-                null,
-                "التقاط صورة",
-                "تصوير فيديو");
+            if (AttachmentPanel is not null)
+                AttachmentPanel.IsVisible = false;
 
-            if (string.IsNullOrWhiteSpace(choice) || string.Equals(choice, "إلغاء", StringComparison.Ordinal))
+            // The capture screen is part of Himo itself. It no longer launches
+            // the device Camera application or a MediaPicker capture activity.
+            // CameraPage now owns the complete photo flow:
+            // capture -> editor -> explicit Send -> return here.
+            // Nothing is uploaded while the camera or editor is still open.
+            var edited = await CameraPageHelpers.OpenAsync(CameraCaptureMode.Photo);
+            if (edited is null)
                 return;
 
-            FileResult? file = null;
-            if (string.Equals(choice, "التقاط صورة", StringComparison.Ordinal))
-            {
-                if (!MediaPicker.Default.IsCaptureSupported)
-                {
-                    await DisplayAlertAsync("الكاميرا", "التقاط الصور غير متاح على هذا الجهاز.", "حسنًا");
-                    return;
-                }
-                file = await MediaPicker.Default.CapturePhotoAsync(new MediaPickerOptions { Title = "التقاط صورة" });
-            }
-            else
-            {
-                if (!MediaPicker.Default.IsCaptureSupported)
-                {
-                    await DisplayAlertAsync("الكاميرا", "تصوير الفيديو غير متاح على هذا الجهاز.", "حسنًا");
-                    return;
-                }
-                file = await MediaPicker.Default.CaptureVideoAsync(new MediaPickerOptions { Title = "تصوير فيديو" });
-            }
+            await UploadPickedAttachmentAsync(
+                new FileResult(edited.Capture.FilePath, edited.Capture.ContentType));
 
-            await UploadPickedAttachmentAsync(file);
-        }
-        catch (FeatureNotSupportedException)
-        {
-            await DisplayAlertAsync("الكاميرا", "هذه الميزة غير مدعومة على الجهاز الحالي.", "حسنًا");
+            if (_lastAttachmentUploadSucceeded && !string.IsNullOrWhiteSpace(edited.Caption))
+                await SendCaptionAsMessageAsync(edited.Caption);
         }
         catch (PermissionException)
         {
-            await DisplayAlertAsync("صلاحية الكاميرا", "اسمح للتطبيق باستخدام الكاميرا ثم حاول مرة أخرى.", "حسنًا");
+            await DisplayAlertAsync("صلاحية الكاميرا", "اسمح لـ Himo باستخدام الكاميرا والميكروفون ثم حاول مرة أخرى.", "حسنًا");
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الكاميرا", $"تعذر فتح الكاميرا: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync("الكاميرا", $"تعذر فتح كاميرا Himo: {ex.Message}", "حسنًا");
         }
     }
 
@@ -1728,7 +1734,11 @@ public partial class ChatPage : ContentPage
             });
             var file = files.FirstOrDefault();
             if (file is not null)
-                await UploadPickedAttachmentAsync(file);
+            {
+                var edited = await EditPickedMediaAsync(file);
+                if (edited is not null)
+                    await UploadPickedAttachmentAsync(edited);
+            }
         }
         catch (FeatureNotSupportedException)
         {
@@ -1757,7 +1767,11 @@ public partial class ChatPage : ContentPage
             });
             var file = files.FirstOrDefault();
             if (file is not null)
-                await UploadPickedAttachmentAsync(file);
+            {
+                var edited = await EditPickedMediaAsync(file);
+                if (edited is not null)
+                    await UploadPickedAttachmentAsync(edited);
+            }
         }
         catch (FeatureNotSupportedException)
         {
@@ -1770,6 +1784,42 @@ public partial class ChatPage : ContentPage
         catch (Exception ex)
         {
             await DisplayAlertAsync("الفيديو", $"تعذر اختيار الفيديو: {ex.Message}", "حسنًا");
+        }
+    }
+
+    private async Task<FileResult?> EditPickedMediaAsync(FileResult file)
+    {
+        try
+        {
+            var sourcePath = file.FullPath;
+            if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
+            {
+                sourcePath = Path.Combine(
+                    FileSystem.CacheDirectory,
+                    $"Himo_edit_source_{Guid.NewGuid():N}{Path.GetExtension(file.FileName)}");
+
+                await using var source = await file.OpenReadAsync();
+                await using var destination = File.Create(sourcePath);
+                await source.CopyToAsync(destination);
+            }
+
+            var edited = await MediaEditorPage.EditAsync(
+                sourcePath,
+                file.FileName,
+                file.ContentType);
+
+            if (edited is null)
+                return null;
+
+            return new FileResult(edited.FilePath, edited.ContentType);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync(
+                "تحرير الوسائط",
+                $"تعذر فتح محرر الوسائط: {ex.Message}",
+                "حسنًا");
+            return null;
         }
     }
 
@@ -1793,6 +1843,8 @@ public partial class ChatPage : ContentPage
 
     private async Task UploadPickedAttachmentAsync(FileResult? file)
     {
+        _lastAttachmentUploadSucceeded = false;
+
         try
         {
             if (file is null) return;
@@ -1874,6 +1926,7 @@ public partial class ChatPage : ContentPage
                 _chat.CompletePendingAttachmentMessage(localMessage, message.Id.ToString(), message.SentAt.LocalDateTime);
                 RefreshMessagesView(scrollToEnd: true);
                 await previewTask;
+                _lastAttachmentUploadSucceeded = true;
             }
             catch
             {
@@ -1900,6 +1953,27 @@ public partial class ChatPage : ContentPage
         finally
         {
             if (SendButton is not null) SendButton.IsEnabled = true;
+        }
+    }
+
+    private async Task SendCaptionAsMessageAsync(string caption)
+    {
+        var text = caption?.Trim();
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        var previousText = MessageEntry?.Text ?? string.Empty;
+        try
+        {
+            if (MessageEntry is not null)
+                MessageEntry.Text = text;
+
+            await SendMessageAsync();
+        }
+        finally
+        {
+            if (MessageEntry is not null && !string.Equals(MessageEntry.Text, previousText, StringComparison.Ordinal))
+                MessageEntry.Text = previousText;
         }
     }
 
@@ -2015,9 +2089,8 @@ public partial class ChatPage : ContentPage
             if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath) || new FileInfo(imagePath).Length <= 0)
                 throw new IOException("لم يتم تنزيل الصورة بشكل صحيح.");
 
-            await Launcher.Default.OpenAsync(new OpenFileRequest(
-                message.AttachmentFileName ?? "image",
-                new ReadOnlyFile(imagePath)));
+            await Navigation.PushModalAsync(
+                new ImagePreviewPage(imagePath, message.AttachmentFileName ?? "الصورة"));
         }
         catch (Exception ex)
         {
@@ -2039,11 +2112,190 @@ public partial class ChatPage : ContentPage
         }
     }
 
-    private void VideoAttachmentLoaded(object? sender, EventArgs e)
+    private async void VideoAttachmentLoaded(object? sender, EventArgs e)
     {
-        if (sender is Border border && border.BindingContext is ChatMessage message)
-            border.IsVisible = IsVideoAttachment(message);
+        if (sender is not Border border || border.BindingContext is not ChatMessage message)
+            return;
+
+        border.IsVisible = IsVideoAttachment(message);
+        if (message.IsVideoAttachment)
+            await PrepareVideoPreviewAsync(message);
     }
+
+    private async Task PrepareVisibleVideoPreviewsAsync(IEnumerable<ChatMessage> messages)
+    {
+        if (messages is null) return;
+
+        var videoMessages = messages
+            .Where(x => x is not null && x.IsVideoAttachment)
+            .TakeLast(6)
+            .ToList();
+
+        if (videoMessages.Count == 0) return;
+
+        var tasks = videoMessages.Select(PrepareVideoPreviewAsync);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+    }
+
+    private async Task PrepareVideoPreviewAsync(ChatMessage message)
+    {
+        if (message is null || !message.IsVideoAttachment) return;
+        if (!string.IsNullOrWhiteSpace(message.VideoThumbnailPath) && File.Exists(message.VideoThumbnailPath)) return;
+
+        var key = !string.IsNullOrWhiteSpace(message.RemoteId)
+            ? message.RemoteId!
+            : !string.IsNullOrWhiteSpace(message.ClientMessageId)
+                ? message.ClientMessageId!
+                : $"{_conversationId}_{message.Id}";
+
+        lock (_videoPreviewInFlight)
+        {
+            if (!_videoPreviewInFlight.Add(key)) return;
+        }
+
+        try
+        {
+            var path = message.AttachmentLocalPath;
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path) || new FileInfo(path).Length <= 0)
+            {
+                if (!Guid.TryParse(message.RemoteId, out var messageId)) return;
+                path = await _api.DownloadAttachmentAsync(messageId, message.AttachmentFileName ?? "video.mp4").ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(path) || !File.Exists(path) || new FileInfo(path).Length <= 0) return;
+                message.AttachmentLocalPath = path;
+            }
+
+#if ANDROID
+            var result = await Task.Run(() => BuildVideoThumbnail(path!, key)).ConfigureAwait(false);
+            if (result is null) return;
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                message.VideoThumbnailPath = result.Value.ThumbnailPath;
+                message.VideoDisplayWidth = result.Value.DisplayWidth;
+                message.VideoDisplayHeight = result.Value.DisplayHeight;
+                message.VideoDurationText = FormatVideoTime(result.Value.DurationMilliseconds);
+            }).ConfigureAwait(false);
+#endif
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Video preview failed: {ex.Message}");
+        }
+        finally
+        {
+            lock (_videoPreviewInFlight)
+                _videoPreviewInFlight.Remove(key);
+        }
+    }
+
+#if ANDROID
+    private static VideoThumbnailResult? BuildVideoThumbnail(string path, string key)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return null;
+
+        using var retriever = new global::Android.Media.MediaMetadataRetriever();
+        retriever.SetDataSource(path);
+
+        var width = ParseMetadataInt(retriever.ExtractMetadata(global::Android.Media.MetadataKey.VideoWidth));
+        var height = ParseMetadataInt(retriever.ExtractMetadata(global::Android.Media.MetadataKey.VideoHeight));
+        var rotation = ParseMetadataInt(retriever.ExtractMetadata(global::Android.Media.MetadataKey.VideoRotation));
+        var duration = ParseMetadataLong(retriever.ExtractMetadata(global::Android.Media.MetadataKey.Duration));
+
+        if (rotation is 90 or 270)
+            (width, height) = (height, width);
+
+        if (width <= 0 || height <= 0)
+        {
+            width = 720;
+            height = 1280;
+        }
+
+        using var rawFrame = retriever.GetFrameAtTime(0, global::Android.Media.Option.ClosestSync);
+        if (rawFrame is null) return null;
+
+        global::Android.Graphics.Bitmap? prepared = rawFrame;
+        global::Android.Graphics.Bitmap? scaledThumb = null;
+        try
+        {
+            if (rotation is 90 or 180 or 270)
+            {
+                using var matrix = new global::Android.Graphics.Matrix();
+                matrix.PostRotate(rotation);
+                prepared = global::Android.Graphics.Bitmap.CreateBitmap(
+                    rawFrame, 0, 0, rawFrame.Width, rawFrame.Height, matrix, true);
+            }
+
+            if (prepared is null || prepared.IsRecycled) return null;
+
+            var cacheName = $"himo_video_thumb_{SanitizeCacheKey(key)}.jpg";
+            var thumbPath = Path.Combine(FileSystem.Current.CacheDirectory, cacheName);
+
+            const int maxThumbnailPixels = 720;
+            var scale = Math.Min(1d, Math.Min((double)maxThumbnailPixels / Math.Max(1, prepared.Width), (double)maxThumbnailPixels / Math.Max(1, prepared.Height)));
+            var thumb = prepared;
+            if (scale < 0.999d)
+            {
+                var tw = Math.Max(1, (int)Math.Round(prepared.Width * scale));
+                var th = Math.Max(1, (int)Math.Round(prepared.Height * scale));
+                scaledThumb = global::Android.Graphics.Bitmap.CreateScaledBitmap(prepared, tw, th, true);
+                thumb = scaledThumb;
+            }
+
+            using (var stream = File.Create(thumbPath))
+            {
+                if (!thumb.Compress(global::Android.Graphics.Bitmap.CompressFormat.Jpeg!, 86, stream))
+                    return null;
+            }
+
+            const double maxWidth = 300;
+            const double maxHeight = 420;
+            var aspect = width / (double)Math.Max(1, height);
+            var displayWidth = maxWidth;
+            var displayHeight = displayWidth / aspect;
+            if (displayHeight > maxHeight)
+            {
+                displayHeight = maxHeight;
+                displayWidth = displayHeight * aspect;
+            }
+
+            if (displayWidth < 150)
+            {
+                displayWidth = 150;
+                displayHeight = Math.Min(maxHeight, displayWidth / aspect);
+            }
+
+            return new VideoThumbnailResult(
+                thumbPath,
+                Math.Round(displayWidth, 1),
+                Math.Round(displayHeight, 1),
+                Math.Max(0, Math.Min(duration, int.MaxValue)));
+        }
+        finally
+        {
+            if (scaledThumb is not null)
+                scaledThumb.Dispose();
+            if (prepared is not null && !ReferenceEquals(prepared, rawFrame))
+                prepared.Dispose();
+        }
+    }
+
+    private static int ParseMetadataInt(string? value) => int.TryParse(value, out var result) ? Math.Max(0, result) : 0;
+    private static long ParseMetadataLong(string? value) => long.TryParse(value, out var result) ? Math.Max(0, result) : 0;
+
+    private static string SanitizeCacheKey(string value)
+    {
+        var chars = value.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray();
+        var cleaned = new string(chars);
+        if (cleaned.Length > 50) cleaned = cleaned[^50..];
+        return string.IsNullOrWhiteSpace(cleaned) ? Guid.NewGuid().ToString("N") : cleaned;
+    }
+
+    private readonly record struct VideoThumbnailResult(
+        string ThumbnailPath,
+        double DisplayWidth,
+        double DisplayHeight,
+        long DurationMilliseconds);
+#endif
 
     private void FileAttachmentLoaded(object? sender, EventArgs e)
     {
@@ -2129,13 +2381,15 @@ public partial class ChatPage : ContentPage
             CloseInlineVideoCore();
 
             InlineVideoTitleLabel?.SetValue(Label.TextProperty, string.IsNullOrWhiteSpace(fileName) ? "الفيديو" : fileName);
-            InlineVideoPlayButton?.SetValue(Button.TextProperty, "⏸");
             InlineVideoCurrentTimeLabel?.SetValue(Label.TextProperty, "00:00");
             InlineVideoDurationLabel?.SetValue(Label.TextProperty, "00:00");
             InlineVideoSlider?.SetValue(Slider.ValueProperty, 0d);
             InlineVideoLoading?.SetValue(IsVisibleProperty, true);
             InlineVideoOverlay.IsVisible = true;
             _inlineVideoIsPlaying = false;
+            _inlineVideoIsMuted = false;
+            SetInlineVideoPlaybackVisual(false);
+            InlineVideoMuteButton?.SetValue(Button.TextProperty, "🔊");
 
             var media = new MediaElement
             {
@@ -2143,6 +2397,7 @@ public partial class ChatPage : ContentPage
                 ShouldAutoPlay = true,
                 ShouldShowPlaybackControls = false,
                 ShouldKeepScreenOn = true,
+                ShouldMute = false,
                 Volume = 1.0
             };
 
@@ -2164,7 +2419,7 @@ public partial class ChatPage : ContentPage
                         _inlineVideoSliderUpdating = false;
                     }
                     _inlineVideoIsPlaying = true;
-                    InlineVideoPlayButton?.SetValue(Button.TextProperty, "❚❚");
+                    SetInlineVideoPlaybackVisual(true);
                 });
                 StartInlineVideoProgressLoop();
             };
@@ -2194,7 +2449,7 @@ public partial class ChatPage : ContentPage
                     if (InlineVideoSlider is not null) InlineVideoSlider.Value = Math.Max(0, milliseconds);
                     _inlineVideoSliderUpdating = false;
                     InlineVideoCurrentTimeLabel?.SetValue(Label.TextProperty, FormatVideoTime(milliseconds));
-                    InlineVideoPlayButton?.SetValue(Button.TextProperty, "▶");
+                    SetInlineVideoPlaybackVisual(false);
                 });
             };
 
@@ -2222,6 +2477,69 @@ public partial class ChatPage : ContentPage
     }
 
 #if ANDROID
+    private void SetInlineVideoPlaybackVisual(bool isPlaying)
+    {
+        var text = isPlaying ? "❚❚" : "▶";
+        InlineVideoPlayButton?.SetValue(Button.TextProperty, text);
+        InlineVideoCenterPlayButton?.SetValue(Button.TextProperty, text);
+    }
+
+    private async void InlineVideoRewindClicked(object? sender, EventArgs e)
+        => await SeekInlineVideoByAsync(TimeSpan.FromSeconds(-10));
+
+    private async void InlineVideoForwardClicked(object? sender, EventArgs e)
+        => await SeekInlineVideoByAsync(TimeSpan.FromSeconds(10));
+
+    private async Task SeekInlineVideoByAsync(TimeSpan delta)
+    {
+        var media = _inlineVideoElement;
+        if (media is null) return;
+
+        try
+        {
+            var duration = media.Duration;
+            var current = media.Position;
+            var target = current + delta;
+            if (target < TimeSpan.Zero) target = TimeSpan.Zero;
+            if (duration > TimeSpan.Zero && target > duration) target = duration;
+
+            await media.SeekTo(target);
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                var milliseconds = Math.Max(0, (long)Math.Min(target.TotalMilliseconds, int.MaxValue));
+                if (InlineVideoSlider is not null)
+                {
+                    _inlineVideoSliderUpdating = true;
+                    InlineVideoSlider.Value = Math.Min(milliseconds, InlineVideoSlider.Maximum);
+                    _inlineVideoSliderUpdating = false;
+                }
+                InlineVideoCurrentTimeLabel?.SetValue(Label.TextProperty, FormatVideoTime(milliseconds));
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Video seek failed: {ex.Message}");
+        }
+    }
+
+    private void InlineVideoMuteClicked(object? sender, EventArgs e)
+    {
+        var media = _inlineVideoElement;
+        if (media is null) return;
+
+        try
+        {
+            _inlineVideoIsMuted = !_inlineVideoIsMuted;
+            media.ShouldMute = _inlineVideoIsMuted;
+            InlineVideoMuteButton?.SetValue(Button.TextProperty, _inlineVideoIsMuted ? "🔇" : "🔊");
+        }
+        catch (Exception ex)
+        {
+            _inlineVideoIsMuted = false;
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Video mute failed: {ex.Message}");
+        }
+    }
+
     private void InlineVideoPlayClicked(object? sender, EventArgs e)
     {
         var media = _inlineVideoElement;
@@ -2233,14 +2551,14 @@ public partial class ChatPage : ContentPage
             {
                 media.Pause();
                 _inlineVideoIsPlaying = false;
-                InlineVideoPlayButton?.SetValue(Button.TextProperty, "▶");
+                SetInlineVideoPlaybackVisual(false);
                 StopInlineVideoProgressLoop();
             }
             else
             {
                 media.Play();
                 _inlineVideoIsPlaying = true;
-                InlineVideoPlayButton?.SetValue(Button.TextProperty, "❚❚");
+                SetInlineVideoPlaybackVisual(true);
                 StartInlineVideoProgressLoop();
             }
         }
@@ -2308,7 +2626,7 @@ public partial class ChatPage : ContentPage
         _inlineVideoProgressCts = null;
     }
 
-    private static string FormatVideoTime(int milliseconds)
+    private static string FormatVideoTime(long milliseconds)
     {
         if (milliseconds < 0) milliseconds = 0;
         var totalSeconds = milliseconds / 1000;
@@ -2336,6 +2654,7 @@ public partial class ChatPage : ContentPage
         try { _inlineVideoElement?.Stop(); } catch { }
         _inlineVideoElement = null;
         _inlineVideoIsPlaying = false;
+        _inlineVideoIsMuted = false;
 #endif
         if (InlineVideoHost is not null)
             InlineVideoHost.Content = null;

@@ -1,0 +1,418 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="Himo.Views.CameraPage"
+    BackgroundColor="Black"
+    Shell.NavBarIsVisible="False">
+
+    <Grid BackgroundColor="Black" RowDefinitions="Auto,*,Auto">
+        <!-- Top controls -->
+        <Grid Grid.Row="0"
+              Padding="14,14,14,8"
+              ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto"
+              ColumnSpacing="6"
+              BackgroundColor="#B3000000"
+              ZIndex="10">
+            <Button Grid.Column="0"
+                    Text="✕"
+                    FontSize="23"
+                    TextColor="White"
+                    BackgroundColor="#33000000"
+                    WidthRequest="44"
+                    HeightRequest="44"
+                    CornerRadius="22"
+                    Padding="0"
+                    Clicked="CloseClicked" />
+
+            <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center" Padding="8,0">
+                <Label Text="كاميرا Himo"
+                       TextColor="White"
+                       FontSize="18"
+                       FontAttributes="Bold" />
+                <Label x:Name="CameraHintLabel"
+                       Text="صورة عالية الجودة"
+                       TextColor="#CCFFFFFF"
+                       FontSize="11" />
+            </VerticalStackLayout>
+
+            <Button x:Name="FlashButton"
+                    Grid.Column="2"
+                    Text="فلاش"
+                    FontSize="11"
+                    TextColor="White"
+                    BackgroundColor="#33000000"
+                    WidthRequest="52"
+                    HeightRequest="44"
+                    CornerRadius="18"
+                    Padding="0"
+                    Clicked="FlashClicked" />
+
+            <Button x:Name="GridButton"
+                    Grid.Column="3"
+                    Text="شبكة"
+                    FontSize="11"
+                    TextColor="White"
+                    BackgroundColor="#33000000"
+                    WidthRequest="52"
+                    HeightRequest="44"
+                    CornerRadius="18"
+                    Padding="0"
+                    Clicked="GridClicked" />
+
+            <Button x:Name="FocusButton"
+                    Grid.Column="4"
+                    Text="تركيز"
+                    FontSize="11"
+                    TextColor="White"
+                    BackgroundColor="#33000000"
+                    WidthRequest="52"
+                    HeightRequest="44"
+                    CornerRadius="18"
+                    Padding="0"
+                    Clicked="FocusClicked" />
+
+            <Button x:Name="FilterToggleButton"
+                    Grid.Column="5"
+                    Text="فلاتر"
+                    FontSize="11"
+                    TextColor="White"
+                    BackgroundColor="#33000000"
+                    WidthRequest="52"
+                    HeightRequest="44"
+                    CornerRadius="18"
+                    Padding="0"
+                    Clicked="FilterToggleClicked"
+                    ZIndex="20" />
+
+            <Button Grid.Column="6"
+                    Text="↻"
+                    FontSize="23"
+                    TextColor="White"
+                    BackgroundColor="#33000000"
+                    WidthRequest="44"
+                    HeightRequest="44"
+                    CornerRadius="22"
+                    Padding="0"
+                    Clicked="SwitchCameraClicked" />
+        </Grid>
+
+        <!-- Preview -->
+        <Grid Grid.Row="1" BackgroundColor="Black">
+            <views:CameraPreview
+                xmlns:views="clr-namespace:Himo.Views"
+                x:Name="Camera"
+                HorizontalOptions="Fill"
+                VerticalOptions="Fill" />
+
+            <!-- Reliable cross-device live filter fallback.
+                 The native Android camera effect is attempted too, but this overlay
+                 makes the selected look visibly change even when the device does not
+                 expose the requested legacy Camera.Parameters effect. -->
+            <BoxView x:Name="FilterPreviewOverlay"
+                     IsVisible="False"
+                     InputTransparent="True"
+                     BackgroundColor="Transparent"
+                     Opacity="0" />
+
+            <BoxView x:Name="BeautyPreviewOverlay"
+                     IsVisible="False"
+                     InputTransparent="True"
+                     BackgroundColor="#FFE6D2"
+                     Opacity="0" />
+
+            <!-- Rule of thirds overlay -->
+            <Grid x:Name="GridOverlay"
+                  IsVisible="False"
+                  InputTransparent="True"
+                  Margin="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <BoxView Grid.Column="1" Grid.RowSpan="3" WidthRequest="1" HorizontalOptions="Center" BackgroundColor="#99FFFFFF" />
+                <BoxView Grid.Column="2" Grid.RowSpan="3" WidthRequest="1" HorizontalOptions="Center" BackgroundColor="#99FFFFFF" />
+                <BoxView Grid.Row="1" Grid.ColumnSpan="3" HeightRequest="1" VerticalOptions="Center" BackgroundColor="#99FFFFFF" />
+                <BoxView Grid.Row="2" Grid.ColumnSpan="3" HeightRequest="1" VerticalOptions="Center" BackgroundColor="#99FFFFFF" />
+            </Grid>
+
+            <!-- Photo filters: live preview uses Android camera parameters when supported; beauty is also applied to the captured photo. -->
+            <Border x:Name="FilterPanel"
+                    IsVisible="False"
+                    ZIndex="19"
+                    HorizontalOptions="Fill"
+                    VerticalOptions="End"
+                    Margin="12,0,12,108"
+                    BackgroundColor="#EE111111"
+                    StrokeThickness="0"
+                    Padding="8">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="18" />
+                </Border.StrokeShape>
+                <ScrollView Orientation="Horizontal"
+                            HorizontalScrollBarVisibility="Never">
+                    <HorizontalStackLayout Spacing="8">
+                        <Button x:Name="FilterNaturalButton"
+                                Text="طبيعي"
+                                FontSize="12"
+                                TextColor="White"
+                                BackgroundColor="#6C2BD9"
+                                CornerRadius="15"
+                                HeightRequest="32"
+                                Padding="14,0"
+                                CommandParameter="Natural"
+                                Clicked="FilterSelectedClicked" />
+                        <Button x:Name="FilterVividButton"
+                                Text="حيوي"
+                                FontSize="12"
+                                TextColor="White"
+                                BackgroundColor="#333333"
+                                CornerRadius="15"
+                                HeightRequest="32"
+                                Padding="14,0"
+                                CommandParameter="Vivid"
+                                Clicked="FilterSelectedClicked" />
+                        <Button x:Name="FilterWarmButton"
+                                Text="دافئ"
+                                FontSize="12"
+                                TextColor="White"
+                                BackgroundColor="#333333"
+                                CornerRadius="15"
+                                HeightRequest="32"
+                                Padding="14,0"
+                                CommandParameter="Warm"
+                                Clicked="FilterSelectedClicked" />
+                        <Button x:Name="FilterCoolButton"
+                                Text="بارد"
+                                FontSize="12"
+                                TextColor="White"
+                                BackgroundColor="#333333"
+                                CornerRadius="15"
+                                HeightRequest="32"
+                                Padding="14,0"
+                                CommandParameter="Cool"
+                                Clicked="FilterSelectedClicked" />
+                        <Button x:Name="FilterMonoButton"
+                                Text="أبيض وأسود"
+                                FontSize="12"
+                                TextColor="White"
+                                BackgroundColor="#333333"
+                                CornerRadius="15"
+                                HeightRequest="32"
+                                Padding="14,0"
+                                CommandParameter="Mono"
+                                Clicked="FilterSelectedClicked" />
+                        <Button x:Name="FilterSepiaButton"
+                                Text="سيبيا"
+                                FontSize="12"
+                                TextColor="White"
+                                BackgroundColor="#333333"
+                                CornerRadius="15"
+                                HeightRequest="32"
+                                Padding="14,0"
+                                CommandParameter="Sepia"
+                                Clicked="FilterSelectedClicked" />
+                        <Button x:Name="FilterBeautyNaturalButton"
+                                Text="إشراقة طبيعية"
+                                FontSize="12"
+                                TextColor="White"
+                                BackgroundColor="#333333"
+                                CornerRadius="15"
+                                HeightRequest="32"
+                                Padding="14,0"
+                                CommandParameter="BeautyNatural"
+                                Clicked="FilterSelectedClicked" />
+                        <Button x:Name="FilterBeautySoftButton"
+                                Text="بشرة مخملية"
+                                FontSize="12"
+                                TextColor="White"
+                                BackgroundColor="#333333"
+                                CornerRadius="15"
+                                HeightRequest="32"
+                                Padding="14,0"
+                                CommandParameter="BeautySoft"
+                                Clicked="FilterSelectedClicked" />
+                        <Button x:Name="FilterBeautyGlowButton"
+                                Text="توهج حريري"
+                                FontSize="12"
+                                TextColor="White"
+                                BackgroundColor="#333333"
+                                CornerRadius="15"
+                                HeightRequest="32"
+                                Padding="14,0"
+                                CommandParameter="BeautyGlow"
+                                Clicked="FilterSelectedClicked" />
+                        <Button x:Name="FilterBeautyMakeupSoftButton"
+                                Text="مكياج ناعم"
+                                FontSize="12"
+                                TextColor="White"
+                                BackgroundColor="#333333"
+                                CornerRadius="15"
+                                HeightRequest="32"
+                                Padding="14,0"
+                                CommandParameter="BeautyMakeupSoft"
+                                Clicked="FilterSelectedClicked" />
+                        <Button x:Name="FilterBeautyMakeupButton"
+                                Text="مكياج متكامل"
+                                FontSize="12"
+                                TextColor="White"
+                                BackgroundColor="#333333"
+                                CornerRadius="15"
+                                HeightRequest="32"
+                                Padding="14,0"
+                                CommandParameter="BeautyMakeup"
+                                Clicked="FilterSelectedClicked" />
+                        <Button x:Name="FilterClearSkinButton"
+                                Text="بشرة صافية"
+                                FontSize="12"
+                                TextColor="White"
+                                BackgroundColor="#333333"
+                                CornerRadius="15"
+                                HeightRequest="32"
+                                Padding="14,0"
+                                CommandParameter="ClearSkin"
+                                Clicked="FilterSelectedClicked" />
+                    </HorizontalStackLayout>
+                </ScrollView>
+            </Border>
+
+            <!-- Zoom controls -->
+            <HorizontalStackLayout HorizontalOptions="Center"
+                                   VerticalOptions="End"
+                                   Margin="0,0,0,18"
+                                   Spacing="6">
+                <Button x:Name="Zoom1Button" Text="1x" FontSize="12" Clicked="ZoomClicked"
+                        CommandParameter="1" WidthRequest="48" HeightRequest="34" CornerRadius="17"
+                        Padding="0" TextColor="White" BackgroundColor="#99000000" />
+                <Button x:Name="Zoom2Button" Text="2x" FontSize="12" Clicked="ZoomClicked"
+                        CommandParameter="2" WidthRequest="48" HeightRequest="34" CornerRadius="17"
+                        Padding="0" TextColor="White" BackgroundColor="#66000000" />
+                <Button x:Name="Zoom4Button" Text="4x" FontSize="12" Clicked="ZoomClicked"
+                        CommandParameter="4" WidthRequest="48" HeightRequest="34" CornerRadius="17"
+                        Padding="0" TextColor="White" BackgroundColor="#66000000" />
+            </HorizontalStackLayout>
+
+            <Border x:Name="StatusBorder"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Start"
+                    Margin="0,18,0,0"
+                    BackgroundColor="#99000000"
+                    StrokeThickness="0"
+                    Padding="14,7"
+                    IsVisible="False">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="18" />
+                </Border.StrokeShape>
+                <Label x:Name="StatusLabel"
+                       TextColor="White"
+                       FontSize="14"
+                       HorizontalTextAlignment="Center" />
+            </Border>
+        </Grid>
+
+        <!-- Bottom camera controls -->
+        <Grid Grid.Row="2"
+              Padding="18,12,18,22"
+              BackgroundColor="#B3000000"
+              RowDefinitions="Auto,Auto"
+              RowSpacing="12">
+
+            <Grid Grid.Row="0" ColumnDefinitions="*,*,Auto,*,*" HorizontalOptions="Center" WidthRequest="330">
+                <Button x:Name="TimerButton"
+                        Grid.Column="0"
+                        Text="مؤقت 0s"
+                        FontSize="12"
+                        TextColor="White"
+                        BackgroundColor="#33000000"
+                        CornerRadius="16"
+                        HeightRequest="34"
+                        Padding="10,0"
+                        Clicked="TimerClicked" />
+
+                <Button x:Name="PhotoModeButton"
+                        Grid.Column="1"
+                        Text="صورة"
+                        FontSize="14"
+                        TextColor="White"
+                        BackgroundColor="#6C2BD9"
+                        CornerRadius="18"
+                        HeightRequest="38"
+                        Padding="16,0"
+                        Clicked="PhotoModeClicked" />
+
+                <BoxView Grid.Column="2" WidthRequest="6" Opacity="0" />
+
+                <Button x:Name="VideoModeButton"
+                        Grid.Column="3"
+                        Text="فيديو"
+                        FontSize="14"
+                        TextColor="White"
+                        BackgroundColor="#333333"
+                        CornerRadius="18"
+                        HeightRequest="38"
+                        Padding="16,0"
+                        Clicked="VideoModeClicked" />
+
+                <Button x:Name="GalleryHintButton"
+                        Grid.Column="4"
+                        Text="HD"
+                        FontSize="12"
+                        TextColor="White"
+                        BackgroundColor="#33000000"
+                        CornerRadius="16"
+                        HeightRequest="34"
+                        Padding="10,0"
+                        IsEnabled="False" />
+            </Grid>
+
+            <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,*" HeightRequest="88" ColumnSpacing="14">
+                <Label Grid.Column="0" Text="" />
+
+                <Button x:Name="PauseResumeButton"
+                        Grid.Column="1"
+                        Text="Ⅱ"
+                        FontSize="24"
+                        TextColor="White"
+                        BackgroundColor="#333333"
+                        WidthRequest="58"
+                        HeightRequest="58"
+                        CornerRadius="29"
+                        Padding="0"
+                        IsVisible="False"
+                        Clicked="PauseResumeClicked" />
+
+                <Border Grid.Column="2"
+                        WidthRequest="88"
+                        HeightRequest="88"
+                        BackgroundColor="Transparent"
+                        Stroke="White"
+                        StrokeThickness="3">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="44" />
+                    </Border.StrokeShape>
+                    <Button x:Name="CaptureButton"
+                            Text="●"
+                            FontSize="38"
+                            TextColor="White"
+                            BackgroundColor="#6C2BD9"
+                            WidthRequest="70"
+                            HeightRequest="70"
+                            CornerRadius="35"
+                            Padding="0"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center"
+                            Clicked="CaptureClicked" />
+                </Border>
+
+                <Label Grid.Column="3" Text="" />
+            </Grid>
+        </Grid>
+    </Grid>
+</ContentPage>

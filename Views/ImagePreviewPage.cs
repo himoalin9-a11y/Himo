@@ -3,38 +3,43 @@ using Microsoft.Maui.Controls;
 namespace Himo.Views;
 
 /// <summary>
-/// In-app image viewer used by ChatPage. Keeps the user inside Himo instead of
-/// handing the attachment to an external gallery/file application.
+/// Full-screen in-app image viewer. Supports pinch zoom and pan without leaving Himo.
 /// </summary>
 public sealed class ImagePreviewPage : ContentPage
 {
     private readonly Image _image;
-    private double _currentScale = 1d;
-    private double _startScale = 1d;
+    private readonly Grid _root;
+    private readonly Label _title;
+    private double _startScale = 1;
+    private double _startX;
+    private double _startY;
 
-    public ImagePreviewPage(string imagePath, string title)
+    public ImagePreviewPage(string filePath, string title)
     {
         BackgroundColor = Colors.Black;
         NavigationPage.SetHasNavigationBar(this, false);
-        Shell.SetNavBarIsVisible(this, false);
 
         _image = new Image
         {
-            Source = ImageSource.FromFile(imagePath),
+            Source = ImageSource.FromFile(filePath),
             Aspect = Aspect.AspectFit,
-            HorizontalOptions = LayoutOptions.Fill,
-            VerticalOptions = LayoutOptions.Fill,
-            Margin = new Thickness(8, 60, 8, 42)
+            HorizontalOptions = LayoutOptions.Center,
+            VerticalOptions = LayoutOptions.Center,
+            Scale = 1,
         };
 
         var pinch = new PinchGestureRecognizer();
         pinch.PinchUpdated += OnPinchUpdated;
         _image.GestureRecognizers.Add(pinch);
 
+        var pan = new PanGestureRecognizer();
+        pan.PanUpdated += OnPanUpdated;
+        _image.GestureRecognizers.Add(pan);
+
         var closeButton = new Button
         {
-            Text = "✕",
-            FontSize = 24,
+            Text = "×",
+            FontSize = 30,
             TextColor = Colors.White,
             BackgroundColor = Color.FromArgb("66000000"),
             WidthRequest = 48,
@@ -43,36 +48,46 @@ public sealed class ImagePreviewPage : ContentPage
             Padding = 0,
             HorizontalOptions = LayoutOptions.End,
             VerticalOptions = LayoutOptions.Start,
-            Margin = new Thickness(0, 18, 14, 0),
-            ZIndex = 10
+            Margin = new Thickness(0, 14, 14, 0),
         };
         closeButton.Clicked += async (_, _) => await CloseAsync();
 
-        var titleLabel = new Label
+        _title = new Label
         {
             Text = title,
-            TextColor = Colors.White,
             FontSize = 13,
+            TextColor = Colors.White,
             HorizontalTextAlignment = TextAlignment.Center,
-            LineBreakMode = LineBreakMode.TailTruncation,
-            Margin = new Thickness(20, 0, 20, 14),
-            HorizontalOptions = LayoutOptions.Fill,
+            VerticalTextAlignment = TextAlignment.Center,
+            BackgroundColor = Color.FromArgb("66000000"),
+            Padding = new Thickness(14, 7),
+            HorizontalOptions = LayoutOptions.Center,
             VerticalOptions = LayoutOptions.End,
-            ZIndex = 10
+            Margin = new Thickness(20, 0, 20, 18),
+            LineBreakMode = LineBreakMode.TailTruncation,
+            MaxLines = 1,
         };
 
-        var layout = new Grid
+        _root = new Grid
         {
             RowDefinitions = new RowDefinitionCollection
             {
                 new RowDefinition(GridLength.Star)
             }
         };
-        layout.Children.Add(_image);
-        layout.Children.Add(closeButton);
-        layout.Children.Add(titleLabel);
+        _root.Children.Add(_image);
+        _root.Children.Add(closeButton);
+        _root.Children.Add(_title);
 
-        Content = layout;
+        Content = _root;
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        _image.Scale = 1;
+        _image.TranslationX = 0;
+        _image.TranslationY = 0;
     }
 
     private void OnPinchUpdated(object? sender, PinchGestureUpdatedEventArgs e)
@@ -80,29 +95,56 @@ public sealed class ImagePreviewPage : ContentPage
         switch (e.Status)
         {
             case GestureStatus.Started:
-                _startScale = _currentScale;
+                _startScale = _image.Scale;
                 break;
-
             case GestureStatus.Running:
-                _currentScale = Math.Clamp(_startScale * e.Scale, 1d, 4d);
-                _image.Scale = _currentScale;
+                var next = _startScale * e.Scale;
+                _image.Scale = Math.Clamp(next, 1, 4);
                 break;
-
             case GestureStatus.Completed:
-                _currentScale = Math.Clamp(_currentScale, 1d, 4d);
+                if (_image.Scale <= 1.01)
+                {
+                    _image.Scale = 1;
+                    _image.TranslationX = 0;
+                    _image.TranslationY = 0;
+                }
+                break;
+        }
+    }
+
+    private void OnPanUpdated(object? sender, PanUpdatedEventArgs e)
+    {
+        if (_image.Scale <= 1.01)
+            return;
+
+        switch (e.StatusType)
+        {
+            case GestureStatus.Started:
+                _startX = _image.TranslationX;
+                _startY = _image.TranslationY;
+                break;
+            case GestureStatus.Running:
+                _image.TranslationX = _startX + e.TotalX;
+                _image.TranslationY = _startY + e.TotalY;
                 break;
         }
     }
 
     protected override bool OnBackButtonPressed()
     {
-        _ = CloseAsync();
+        MainThread.BeginInvokeOnMainThread(async () => await CloseAsync());
         return true;
     }
 
     private async Task CloseAsync()
     {
-        if (Navigation.ModalStack.Count > 0)
-            await Navigation.PopModalAsync(true);
+        try
+        {
+            await Navigation.PopModalAsync();
+        }
+        catch
+        {
+            // Modal may already have been closed by the system back gesture.
+        }
     }
 }

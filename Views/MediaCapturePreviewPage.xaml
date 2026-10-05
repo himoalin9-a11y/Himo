@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Himo.Views.MediaCapturePreviewPage"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="Black">
+    <Grid BackgroundColor="Black">
+        <Image x:Name="PreviewImage"
+               Aspect="AspectFit"
+               HorizontalOptions="Fill"
+               VerticalOptions="Fill"
+               BackgroundColor="Black" />
+
+        <Grid VerticalOptions="Start" HorizontalOptions="Fill" Padding="14,18">
+            <ImageButton Source="himo_ui_close_white.png"
+                         WidthRequest="46" HeightRequest="46" Padding="11"
+                         BackgroundColor="#55000000" CornerRadius="23"
+                         HorizontalOptions="Start" Clicked="CancelClicked" />
+        </Grid>
+
+        <Grid VerticalOptions="End" HorizontalOptions="Fill" Padding="18,14,18,28">
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                <Button Grid.Column="0"
+                        Text="تعديل"
+                        ImageSource="icon_edit.png"
+                        ContentLayout="Left,8"
+                        HeightRequest="54"
+                        BackgroundColor="#3A3544"
+                        TextColor="White"
+                        FontAttributes="Bold"
+                        FontSize="16"
+                        CornerRadius="20"
+                        Clicked="EditClicked" />
+
+                <Button Grid.Column="1"
+                        Text="إرسال"
+                        ImageSource="himo_ui_send.png"
+                        ContentLayout="Left,8"
+                        HeightRequest="54"
+                        BackgroundColor="#6C3FD1"
+                        TextColor="White"
+                        FontAttributes="Bold"
+                        FontSize="16"
+                        CornerRadius="20"
+                        Clicked="SendClicked" />
+            </Grid>
+        </Grid>
+    </Grid>
+</ContentPage>

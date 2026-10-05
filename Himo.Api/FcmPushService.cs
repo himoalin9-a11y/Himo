@@ -115,7 +115,10 @@ sealed class FcmPushService
                             Priority = Priority.High,
                             Notification = new AndroidNotification
                             {
-                                ChannelId = "himo_messages"
+                                ChannelId = "himo_messages",
+                                Priority = NotificationPriority.HIGH,
+                                DefaultSound = true,
+                                DefaultVibrateTimings = true
                             }
                         }
                     };

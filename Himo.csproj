@@ -5,6 +5,8 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Himo</RootNamespace>
     <UseMaui>true</UseMaui>
+    <!-- Pin MAUI to SR4 (10.0.40). This includes the Android window-scope fix for disposed IServiceProvider crashes. -->
+    <MauiVersion>10.0.40</MauiVersion>
     <SingleProject>true</SingleProject>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>

@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="Himo.Views.MediaEditorPage"
+    BackgroundColor="Black"
+    Shell.NavBarIsVisible="False"
+    Padding="0">
+
+    <Grid BackgroundColor="Black">
+        <Grid x:Name="PreviewHost" BackgroundColor="Black">
+            <Image x:Name="PreviewImage"
+                   Aspect="AspectFit"
+                   HorizontalOptions="Fill"
+                   VerticalOptions="Fill"
+                   Rotation="0" />
+
+            <!-- Professional crop overlay: the image remains fixed while the crop model moves independently. -->
+            <Grid x:Name="CropOverlay"
+                  IsVisible="False"
+                  ZIndex="400"
+                  InputTransparent="False"
+                  BackgroundColor="Transparent"
+                  HorizontalOptions="Fill"
+                  VerticalOptions="Fill">
+                <GraphicsView x:Name="CropVisual"
+                              InputTransparent="False"
+                              IsEnabled="True"
+                              ZIndex="0"
+                              HorizontalOptions="Fill"
+                              VerticalOptions="Fill" />
+            </Grid>
+
+            <Border x:Name="VideoPreviewBadge"
+                    IsVisible="False"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    BackgroundColor="#99000000"
+                    StrokeThickness="0"
+                    Padding="18,12">
+                <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="▶" TextColor="White" FontSize="34" HorizontalTextAlignment="Center" />
+                    <Label Text="فيديو جاهز للتحرير" TextColor="White" FontSize="13" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Grid x:Name="AnnotationLayer"
+                  IsVisible="False"
+                  ZIndex="200"
+                  BackgroundColor="Transparent"
+                  HorizontalOptions="Fill"
+                  VerticalOptions="Fill"
+                  InputTransparent="False">
+                <GraphicsView x:Name="DrawingView"
+                              BackgroundColor="Transparent"
+                              HorizontalOptions="Fill"
+                              VerticalOptions="Fill"
+                              InputTransparent="False"
+                              IsEnabled="True"
+                              ZIndex="220" />
+                <Grid x:Name="TextOverlay"
+                      BackgroundColor="Transparent"
+                      InputTransparent="True"
+                      HorizontalOptions="Fill"
+                      VerticalOptions="Fill" />
+                <GraphicsView x:Name="TextTouchView"
+                              BackgroundColor="Transparent"
+                              HorizontalOptions="Fill"
+                              VerticalOptions="Fill"
+                              InputTransparent="False"
+                              IsVisible="False" />
+            </Grid>
+
+            <!-- Professional photo toolbar: native buttons avoid missing SVG glyphs and keep touch targets reliable. -->
+            <Grid x:Name="PhotoControls"
+                  IsVisible="False"
+                  ZIndex="500"
+                  VerticalOptions="Start"
+                  HorizontalOptions="Fill"
+                  Padding="10,16,10,10"
+                  BackgroundColor="#55000000"
+                  ColumnDefinitions="Auto,*,Auto">
+                <Button Grid.Column="0"
+                        Text="×"
+                        Clicked="CancelClicked"
+                        WidthRequest="48"
+                        HeightRequest="48"
+                        CornerRadius="24"
+                        BackgroundColor="#1C1E25"
+                        TextColor="White"
+                        FontSize="30"
+                        FontAttributes="Bold"
+                        Padding="0"
+                        BorderWidth="0"
+                        SemanticProperties.Description="إغلاق" />
+
+                <HorizontalStackLayout Grid.Column="2"
+                                       Spacing="6"
+                                       HorizontalOptions="End"
+                                       VerticalOptions="Center">
+                    <Button x:Name="GalleryButton"
+                            Text="⇩"
+                            Clicked="SaveToGalleryClicked"
+                            WidthRequest="44"
+                            HeightRequest="44"
+                            CornerRadius="22"
+                            BackgroundColor="#1C1E25"
+                            TextColor="White"
+                            FontSize="23"
+                            FontAttributes="Bold"
+                            Padding="0"
+                            BorderWidth="0"
+                            SemanticProperties.Description="حفظ الصورة في مكتبة الصور" />
+                    <Button x:Name="RotateButton"
+                            Text="↻"
+                            Clicked="RotateClicked"
+                            WidthRequest="44"
+                            HeightRequest="44"
+                            CornerRadius="22"
+                            BackgroundColor="#1C1E25"
+                            TextColor="White"
+                            FontSize="25"
+                            FontAttributes="Bold"
+                            Padding="0"
+                            BorderWidth="0"
+                            SemanticProperties.Description="تدوير الصورة 90 درجة" />
+                    <Button x:Name="TextButton"
+                            Text="Aa"
+                            Clicked="TextModeClicked"
+                            WidthRequest="44"
+                            HeightRequest="44"
+                            CornerRadius="22"
+                            BackgroundColor="#1C1E25"
+                            TextColor="White"
+                            FontSize="17"
+                            FontAttributes="Bold"
+                            Padding="0"
+                            BorderWidth="0"
+                            SemanticProperties.Description="إضافة نص بالعربية أو الإنجليزية" />
+                    <Button x:Name="CropButton"
+                            Text="⌗"
+                            Clicked="CropModeClicked"
+                            WidthRequest="44"
+                            HeightRequest="44"
+                            CornerRadius="22"
+                            BackgroundColor="#1C1E25"
+                            TextColor="White"
+                            FontSize="24"
+                            FontAttributes="Bold"
+                            Padding="0"
+                            BorderWidth="0"
+                            SemanticProperties.Description="قص الصورة" />
+                    <Button x:Name="PenButton"
+                            Text="✎"
+                            Clicked="PenModeClicked"
+                            WidthRequest="44"
+                            HeightRequest="44"
+                            CornerRadius="22"
+                            BackgroundColor="#1C1E25"
+                            TextColor="White"
+                            FontSize="24"
+                            FontAttributes="Bold"
+                            Padding="0"
+                            BorderWidth="0"
+                            SemanticProperties.Description="قلم حر للرسم" />
+                </HorizontalStackLayout>
+            </Grid>
+
+            <!-- Pen palette appears vertically on the side only when the pen is active. -->
+            <VerticalStackLayout x:Name="AnnotationPalette"
+                                 IsVisible="False"
+                                 ZIndex="520"
+                                 HorizontalOptions="End"
+                                 VerticalOptions="Center"
+                                 Margin="0,0,10,0"
+                                 Spacing="9">
+                <Button WidthRequest="38" HeightRequest="38" CornerRadius="19"
+                        BackgroundColor="#FFFFFFFF"
+                        CommandParameter="#FFFFFFFF"
+                        Clicked="AnnotationColorClicked"
+                        Text="" />
+                <Button WidthRequest="38" HeightRequest="38" CornerRadius="19"
+                        BackgroundColor="#FFFF3B30"
+                        CommandParameter="#FFFF3B30"
+                        Clicked="AnnotationColorClicked"
+                        Text="" />
+                <Button WidthRequest="38" HeightRequest="38" CornerRadius="19"
+                        BackgroundColor="#FFFFFFCC"
+                        CommandParameter="#FFFFFFCC"
+                        Clicked="AnnotationColorClicked"
+                        Text="" />
+                <Button WidthRequest="38" HeightRequest="38" CornerRadius="19"
+                        BackgroundColor="#FF34C759"
+                        CommandParameter="#FF34C759"
+                        Clicked="AnnotationColorClicked"
+                        Text="" />
+                <Button WidthRequest="38" HeightRequest="38" CornerRadius="19"
+                        BackgroundColor="#FF0A84FF"
+                        CommandParameter="#FF0A84FF"
+                        Clicked="AnnotationColorClicked"
+                        Text="" />
+                <Button WidthRequest="38" HeightRequest="38" CornerRadius="19"
+                        BackgroundColor="#FFFF2D55"
+                        CommandParameter="#FFFF2D55"
+                        Clicked="AnnotationColorClicked"
+                        Text="" />
+            </VerticalStackLayout>
+
+            <VerticalStackLayout x:Name="AnnotationToolsPanel"
+                                 IsVisible="False"
+                                 ZIndex="520"
+                                 HorizontalOptions="Start"
+                                 VerticalOptions="Center"
+                                 Margin="10,0,0,0"
+                                 Spacing="8">
+                <Button Text="↶"
+                        WidthRequest="44" HeightRequest="44" CornerRadius="22"
+                        BackgroundColor="#66111116"
+                        TextColor="White" FontSize="24"
+                        Clicked="UndoDrawingClicked"
+                        SemanticProperties.Description="التراجع عن آخر رسم" />
+                <Button x:Name="FreehandToolButton"
+                        Text="✎"
+                        Clicked="FreehandToolClicked"
+                        BackgroundColor="#6C2BD9"
+                        TextColor="White"
+                        FontSize="22"
+                        FontAttributes="Bold"
+                        Padding="0"
+                        HeightRequest="44"
+                        WidthRequest="44"
+                        CornerRadius="22"
+                        BorderWidth="0"
+                        SemanticProperties.Description="قلم حر" />
+                <Button Text="−"
+                        WidthRequest="44" HeightRequest="44" CornerRadius="22"
+                        BackgroundColor="#66111116"
+                        TextColor="White" FontSize="26"
+                        Clicked="DecreaseBrushSizeClicked"
+                        SemanticProperties.Description="تصغير حجم القلم" />
+                <Label x:Name="BrushSizeLabel"
+                       Text="33%"
+                       WidthRequest="44"
+                       HeightRequest="34"
+                       TextColor="White"
+                       FontSize="11"
+                       FontAttributes="Bold"
+                       HorizontalTextAlignment="Center"
+                       VerticalTextAlignment="Center"
+                       BackgroundColor="#66111116" />
+                <Button Text="+"
+                        WidthRequest="44" HeightRequest="44" CornerRadius="22"
+                        BackgroundColor="#66111116"
+                        TextColor="White" FontSize="24"
+                        Clicked="IncreaseBrushSizeClicked"
+                        SemanticProperties.Description="تكبير حجم القلم" />
+                <HorizontalStackLayout x:Name="BrushSizePanel"
+                                       IsVisible="False"
+                                       Spacing="4" />
+            </VerticalStackLayout>
+
+            <!-- Caption + send bar -->
+            <Border x:Name="CaptionBar"
+                    ZIndex="500"
+                    HorizontalOptions="Fill"
+                    VerticalOptions="End"
+                    Margin="10,0,10,14"
+                    Padding="10,8"
+                    BackgroundColor="#F21D1D22"
+                    StrokeThickness="0">
+                <Border.StrokeShape><RoundRectangle CornerRadius="28" /></Border.StrokeShape>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Entry x:Name="CaptionEntry"
+                           Grid.Column="0"
+                           Placeholder="أضف وصفًا للصورة…"
+                           PlaceholderColor="#A9A9AF"
+                           TextColor="White"
+                           FontSize="15"
+                           BackgroundColor="Transparent"
+                           HorizontalOptions="Fill"
+                           ClearButtonVisibility="WhileEditing" />
+                    <Button x:Name="SendButton"
+                            Grid.Column="1"
+                            Text="➤"
+                            Clicked="SaveClicked"
+                            WidthRequest="54"
+                            HeightRequest="54"
+                            CornerRadius="27"
+                            BackgroundColor="#25D366"
+                            TextColor="Black"
+                            FontSize="26"
+                            FontAttributes="Bold"
+                            Padding="0"
+                            BorderWidth="0"
+                            SemanticProperties.Description="إرسال الصورة" />
+                </Grid>
+            </Border>
+
+            <Border x:Name="BusyOverlay"
+                    ZIndex="1000"
+                    IsVisible="False"
+                    BackgroundColor="#B8000000"
+                    StrokeThickness="0">
+                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="10">
+                    <ActivityIndicator IsRunning="True" Color="White" WidthRequest="42" HeightRequest="42" />
+                    <Label x:Name="BusyLabel"
+                           Text="جارٍ تجهيز الملف…"
+                           TextColor="White"
+                           FontSize="13"
+                           HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border x:Name="VideoEditorPanel"
+                    IsVisible="False"
+                    HorizontalOptions="Fill"
+                    VerticalOptions="End"
+                    BackgroundColor="#EE111116"
+                    StrokeThickness="0"
+                    Padding="14,12,14,18">
+                <Border.StrokeShape><RoundRectangle CornerRadius="24,24,0,0" /></Border.StrokeShape>
+                <VerticalStackLayout Spacing="8">
+                    <Label x:Name="SubtitleLabel"
+                           Text="قص الفيديو وكتم الصوت"
+                           TextColor="White"
+                           FontSize="12"
+                           HorizontalTextAlignment="Center" />
+                    <Grid RowDefinitions="Auto,Auto"
+                          ColumnDefinitions="Auto,*,Auto"
+                          ColumnSpacing="8">
+                        <Label Text="البداية" TextColor="#EEEEF2" FontSize="12" VerticalTextAlignment="Center" />
+                        <Slider x:Name="StartSlider" Grid.Column="1" Minimum="0" Maximum="1" Value="0" />
+                        <Label x:Name="StartValueLabel" Grid.Column="2" Text="00:00" TextColor="#AAAAAF" WidthRequest="48" HorizontalTextAlignment="End" />
+                        <Label Grid.Row="1" Text="النهاية" TextColor="#EEEEF2" FontSize="12" VerticalTextAlignment="Center" />
+                        <Slider x:Name="EndSlider" Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="1" Value="1" />
+                        <Label x:Name="EndValueLabel" Grid.Row="1" Grid.Column="2" Text="00:00" TextColor="#AAAAAF" WidthRequest="48" HorizontalTextAlignment="End" />
+                    </Grid>
+                    <HorizontalStackLayout Spacing="10">
+                        <Switch x:Name="MuteVideoSwitch" />
+                        <Label Text="كتم صوت الفيديو" TextColor="White" FontSize="13" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+                    <Button Text="حفظ وإرسال"
+                            Clicked="SaveClicked"
+                            TextColor="White"
+                            BackgroundColor="#6C2BD9"
+                            CornerRadius="21"
+                            HeightRequest="44" />
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+    </Grid>
+</ContentPage>

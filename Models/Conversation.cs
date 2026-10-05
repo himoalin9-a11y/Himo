@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
 namespace Himo.Models;
 
@@ -134,10 +135,65 @@ public sealed class ChatMessage : INotifyPropertyChanged
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasLocalImagePreview)));
         }
     }
+    private string? _videoThumbnailPath;
+    [JsonIgnore]
+    public string? VideoThumbnailPath
+    {
+        get => _videoThumbnailPath;
+        set
+        {
+            if (string.Equals(_videoThumbnailPath, value, StringComparison.Ordinal)) return;
+            _videoThumbnailPath = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VideoThumbnailPath)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasVideoPreview)));
+        }
+    }
+
+    private double _videoDisplayWidth = 300;
+    [JsonIgnore]
+    public double VideoDisplayWidth
+    {
+        get => _videoDisplayWidth;
+        set
+        {
+            if (Math.Abs(_videoDisplayWidth - value) < 0.01) return;
+            _videoDisplayWidth = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VideoDisplayWidth)));
+        }
+    }
+
+    private double _videoDisplayHeight = 420;
+    [JsonIgnore]
+    public double VideoDisplayHeight
+    {
+        get => _videoDisplayHeight;
+        set
+        {
+            if (Math.Abs(_videoDisplayHeight - value) < 0.01) return;
+            _videoDisplayHeight = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VideoDisplayHeight)));
+        }
+    }
+
+    private string _videoDurationText = string.Empty;
+    [JsonIgnore]
+    public string VideoDurationText
+    {
+        get => _videoDurationText;
+        set
+        {
+            if (string.Equals(_videoDurationText, value, StringComparison.Ordinal)) return;
+            _videoDurationText = value ?? string.Empty;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VideoDurationText)));
+        }
+    }
+
     public bool IsAttachment => !string.IsNullOrWhiteSpace(AttachmentFileName);
     public bool IsImageAttachment => AttachmentContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
     public bool HasLocalImagePreview => IsImageAttachment && !string.IsNullOrWhiteSpace(AttachmentLocalPath);
     public bool IsAudioAttachment => AttachmentContentType?.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) == true;
+    public bool IsVideoAttachment => AttachmentContentType?.StartsWith("video/", StringComparison.OrdinalIgnoreCase) == true;
+    public bool HasVideoPreview => IsVideoAttachment && !string.IsNullOrWhiteSpace(VideoThumbnailPath);
     public string AttachmentLabel => string.IsNullOrWhiteSpace(AttachmentFileName)
         ? string.Empty
         : IsImageAttachment

@@ -23,6 +23,11 @@ public static class MauiProgram
             .UseMauiCommunityToolkitMediaElement();
 
 #if ANDROID
+        builder.ConfigureMauiHandlers(handlers =>
+        {
+            handlers.AddHandler<Views.CameraPreview, Platforms.Android.CameraPreviewHandler>();
+        });
+
         builder.ConfigureLifecycleEvents(events =>
         {
             events.AddAndroid(android => android.OnCreate((activity, _) =>
@@ -60,7 +65,7 @@ public static class MauiProgram
         builder.Services.AddTransient<HomeViewModel>();
         builder.Services.AddTransient<Views.HomePage>();
         builder.Services.AddTransient<Views.LoginPage>();
-        builder.Services.AddSingleton<Views.ChatPage>();
+        builder.Services.AddTransient<Views.ChatPage>();
         builder.Services.AddSingleton<Views.SettingsPage>();
         builder.Services.AddSingleton<Views.ProfilePage>();
         builder.Services.AddTransient<Views.SearchPage>();

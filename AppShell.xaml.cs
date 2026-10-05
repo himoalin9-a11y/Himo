@@ -8,11 +8,10 @@ public partial class AppShell : Shell
 {
     static AppShell()
     {
-        // The pages are registered as singletons in MauiProgram. Registering the
-        // route by Type alone lets Shell create a fresh page for every navigation,
-        // which defeats that singleton registration and forces InitializeComponent
-        // to rebuild the entire visual tree each time.
-        Routing.RegisterRoute("chat", new SingletonRouteFactory<ChatPage>());
+        // ChatPage is transient, so let Shell resolve a fresh page through the
+        // MAUI DI container for every navigation. This avoids reusing a page whose
+        // Handler/MauiContext may already have been disposed.
+        Routing.RegisterRoute("chat", typeof(ChatPage));
         Routing.RegisterRoute("settings", new SingletonRouteFactory<SettingsPage>());
         Routing.RegisterRoute("profile", new SingletonRouteFactory<ProfilePage>());
         Routing.RegisterRoute("search", typeof(SearchPage));
