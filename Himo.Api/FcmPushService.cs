@@ -1,6 +1,7 @@
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
 using Google.Apis.Auth.OAuth2;
+using System.Text.Json;
 
 sealed class FcmPushService
 {
@@ -25,22 +26,59 @@ sealed class FcmPushService
         var serviceAccountPath = Environment.GetEnvironmentVariable("HIMO_FIREBASE_SERVICE_ACCOUNT");
         if (string.IsNullOrWhiteSpace(serviceAccountPath))
             serviceAccountPath = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
+        if (string.IsNullOrWhiteSpace(serviceAccountPath) &&
+            File.Exists("/etc/secrets/firebase.json"))
+        {
+            serviceAccountPath = "/etc/secrets/firebase.json";
+        }
+
         if (string.IsNullOrWhiteSpace(serviceAccountPath))
             serviceAccountPath = Path.Combine(environment.ContentRootPath, "App_Data", "firebase-service-account.json");
 
         try
         {
             GoogleCredential credential;
+            string? projectId = null;
+
             if (!string.IsNullOrWhiteSpace(json))
             {
-                credential = CredentialFactory.FromJson<ServiceAccountCredential>(json).ToGoogleCredential();
-                _logger.LogInformation("Firebase Cloud Messaging credentials loaded from environment JSON.");
+                credential = GoogleCredential.FromJson(json);
+
+                try
+                {
+                    using var jsonDocument = JsonDocument.Parse(json);
+                    if (jsonDocument.RootElement.TryGetProperty("project_id", out var projectIdElement))
+                        projectId = projectIdElement.GetString();
+                }
+                catch (JsonException)
+                {
+                    // Credential parsing above is the authoritative validation.
+                }
+
+                _logger.LogInformation(
+                    "[Himo FCM] Firebase credentials loaded from HIMO_FIREBASE_SERVICE_ACCOUNT_JSON. ProjectId={ProjectId}",
+                    projectId ?? "(from credential)");
             }
             else if (File.Exists(serviceAccountPath))
             {
-                using var credentialStream = File.OpenRead(serviceAccountPath);
-                credential = CredentialFactory.FromStream<ServiceAccountCredential>(credentialStream).ToGoogleCredential();
-                _logger.LogInformation("Firebase Cloud Messaging credentials loaded from {Path}.", serviceAccountPath);
+                var fileJson = File.ReadAllText(serviceAccountPath);
+                credential = GoogleCredential.FromJson(fileJson);
+
+                try
+                {
+                    using var jsonDocument = JsonDocument.Parse(fileJson);
+                    if (jsonDocument.RootElement.TryGetProperty("project_id", out var projectIdElement))
+                        projectId = projectIdElement.GetString();
+                }
+                catch (JsonException)
+                {
+                    // Credential parsing above is the authoritative validation.
+                }
+
+                _logger.LogInformation(
+                    "[Himo FCM] Firebase credentials loaded from {Path}. ProjectId={ProjectId}",
+                    serviceAccountPath,
+                    projectId ?? "(from credential)");
             }
             else
             {
@@ -48,19 +86,29 @@ sealed class FcmPushService
                 return;
             }
 
-            FirebaseApp firebaseApp;
-            try
-            {
-                firebaseApp = FirebaseApp.DefaultInstance;
-            }
-            catch (InvalidOperationException)
-            {
-                firebaseApp = FirebaseApp.Create(new AppOptions { Credential = credential });
-            }
+            // DefaultInstance is null when no default Firebase app exists.
+            // The previous code only handled an exception, so initialization could
+            // continue with a null app and end up disabled.
+            var firebaseApp = FirebaseApp.DefaultInstance
+                ?? FirebaseApp.Create(new AppOptions
+                {
+                    Credential = credential,
+                    ProjectId = projectId
+                });
 
             _messaging = FirebaseMessaging.GetMessaging(firebaseApp);
-            ProjectId = firebaseApp.Options.ProjectId;
-            _logger.LogInformation("[Himo FCM] Firebase Cloud Messaging is enabled. ProjectId={ProjectId}", ProjectId);
+            ProjectId = firebaseApp.Options.ProjectId ?? projectId;
+
+            if (string.IsNullOrWhiteSpace(ProjectId))
+            {
+                _logger.LogWarning(
+                    "[Himo FCM] Firebase initialized but ProjectId is empty. Push notifications remain disabled.");
+                return;
+            }
+
+            _logger.LogInformation(
+                "[Himo FCM] Firebase Cloud Messaging is enabled. ProjectId={ProjectId}",
+                ProjectId);
         }
         catch (Exception ex)
         {
