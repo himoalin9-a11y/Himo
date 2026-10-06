@@ -9,6 +9,7 @@ sealed class FcmPushService
     private readonly FirebaseMessaging? _messaging;
 
     public bool IsEnabled => _messaging is not null;
+    public string? ProjectId { get; private set; }
 
     public FcmPushService(ILogger<FcmPushService> logger, IHostEnvironment environment, PostgresStore store)
     {
@@ -58,7 +59,8 @@ sealed class FcmPushService
             }
 
             _messaging = FirebaseMessaging.GetMessaging(firebaseApp);
-            _logger.LogInformation("Firebase Cloud Messaging is enabled.");
+            ProjectId = firebaseApp.Options.ProjectId;
+            _logger.LogInformation("[Himo FCM] Firebase Cloud Messaging is enabled. ProjectId={ProjectId}", ProjectId);
         }
         catch (Exception ex)
         {
@@ -71,10 +73,22 @@ sealed class FcmPushService
         string senderName,
         string message,
         Guid conversationId,
+        Guid messageId,
         CancellationToken cancellationToken = default)
     {
-        if (_messaging is null || tokens.Count == 0)
+        if (_messaging is null)
+        {
+            _logger.LogError("[Himo FCM] Message push skipped: Firebase Messaging is not initialized.");
             return;
+        }
+
+        if (tokens.Count == 0)
+        {
+            _logger.LogWarning("[Himo FCM] Message push skipped: recipient has no registered FCM token.");
+            return;
+        }
+
+        _logger.LogInformation("[Himo FCM] Preparing message push. Tokens={TokenCount}, ConversationId={ConversationId}, MessageId={MessageId}", tokens.Count, conversationId, messageId);
 
         var cleanTokens = tokens
             .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -86,7 +100,10 @@ sealed class FcmPushService
 
         var data = new Dictionary<string, string>
         {
-            ["conversation_id"] = conversationId.ToString("D")
+            ["conversation_id"] = conversationId.ToString("D"),
+            ["message_id"] = messageId.ToString("D"),
+            ["notification_type"] = "chat_message",
+            ["is_silent_in_foreground"] = "true"
         };
 
         try
@@ -112,13 +129,26 @@ sealed class FcmPushService
                         Data = data,
                         Android = new AndroidConfig
                         {
+                            // Force timely delivery while the app is backgrounded or terminated.
                             Priority = Priority.High,
+                            // Allow delivery before the first unlock after boot as well.
+                            DirectBootOk = true,
+                            // A message should remain deliverable for up to one day if the
+                            // device is temporarily offline.
+                            TimeToLive = TimeSpan.FromDays(1),
+                            // Make sure a token from another Firebase Android app cannot be
+                            // accepted accidentally.
+                            RestrictedPackageName = "com.companyname.himo",
                             Notification = new AndroidNotification
                             {
-                                ChannelId = "himo_messages",
+                                ChannelId = "himo_messages_v4",
                                 Priority = NotificationPriority.HIGH,
+                                Sound = "default",
                                 DefaultSound = true,
-                                DefaultVibrateTimings = true
+                                DefaultVibrateTimings = true,
+                                Icon = "himo_notification"
+                                // Do not set Tag: Android would use the same tag to replace
+                                // previous notifications instead of showing each new message.
                             }
                         }
                     };
@@ -134,7 +164,14 @@ sealed class FcmPushService
                     for (var i = 0; i < response.Responses.Count && i < batch.Length; i++)
                     {
                         var sendResponse = response.Responses[i];
-                        if (sendResponse.IsSuccess) continue;
+                        if (sendResponse.IsSuccess)
+                        {
+                            _logger.LogDebug("[Himo FCM] Token delivery accepted. BatchIndex={BatchIndex}", i);
+                            continue;
+                        }
+
+                        _logger.LogWarning(sendResponse.Exception,
+                            "[Himo FCM] Token delivery failed. BatchIndex={BatchIndex}", i);
 
                         if (sendResponse.Exception is FirebaseMessagingException { MessagingErrorCode: MessagingErrorCode.Unregistered })
                         {

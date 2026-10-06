@@ -3,7 +3,19 @@
   <uses-permission android:name="android.permission.CAMERA" />
   <uses-permission android:name="android.permission.RECORD_AUDIO" />
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-  <application android:icon="@drawable/himo_launcher" android:roundIcon="@drawable/himo_launcher" android:label="Himo">
+
+  <application
+    android:icon="@drawable/himo_launcher"
+    android:roundIcon="@drawable/himo_launcher"
+    android:label="Himo">
+
+    <meta-data
+      android:name="com.google.firebase.messaging.default_notification_channel_id"
+      android:value="himo_messages_v4" />
+    <meta-data
+      android:name="com.google.firebase.messaging.default_notification_icon"
+      android:resource="@drawable/himo_notification" />
+
     <provider
       android:name="androidx.core.content.FileProvider"
       android:authorities="${applicationId}.fileprovider"

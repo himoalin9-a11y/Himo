@@ -7,16 +7,13 @@ namespace Himo.Views;
 public partial class HomePage : ContentPage
 {
     private readonly HomeViewModel _vm;
-    private readonly INotificationService _notifications;
     private readonly HimoApiClient _api;
     private CancellationTokenSource? _pollCts;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
-    private bool _hasNotificationBaseline;
-    public HomePage(HomeViewModel vm, INotificationService notifications, HimoApiClient api)
+    public HomePage(HomeViewModel vm, HimoApiClient api)
     {
         InitializeComponent();
         _vm = vm;
-        _notifications = notifications;
         _api = api;
         BindingContext = vm;
     }
@@ -64,13 +61,12 @@ public partial class HomePage : ContentPage
         await Task.Yield();
         try
         {
-            await _notifications.InitializeAsync();
-#if ANDROID
-            Himo.MainActivity.RequestNotificationPermissionIfNeeded();
-#endif
-            await RefreshAsync(showNotifications: true);
+            await RefreshAsync();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo Home] Initial refresh failed: {ex}");
+        }
     }
 
     protected override void OnDisappearing()
@@ -79,7 +75,7 @@ public partial class HomePage : ContentPage
         base.OnDisappearing();
     }
 
-    private async Task RefreshAsync(bool showNotifications)
+    private async Task RefreshAsync()
     {
         if (!await _refreshGate.WaitAsync(0)) return;
 
@@ -91,60 +87,13 @@ public partial class HomePage : ContentPage
                 RefreshIndicator.IsRunning = true;
             }
 
-            var before = _vm.Conversations
-                .GroupBy(x => x.RemoteId ?? $"local:{x.Id}", StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.Max(x => x.UnreadCount), StringComparer.OrdinalIgnoreCase);
-
             var connected = await _vm.RefreshFromServerAsync();
             UpdateEmptyState();
             ConnectionLabel?.Text = connected ? "متصل بالخادم" : "غير متصل بالخادم";
             RetryButton?.SetValue(IsVisibleProperty, !connected);
 
             if (!connected)
-            {
-                // Do not compare unread counts across an offline period; after
-                // reconnecting the current state becomes the new baseline.
-                _hasNotificationBaseline = false;
                 return;
-            }
-
-            if (!showNotifications || !_notifications.IsEnabled) return;
-
-            if (!_hasNotificationBaseline)
-            {
-                _hasNotificationBaseline = true;
-                return;
-            }
-
-            foreach (var conversation in _vm.Conversations)
-            {
-                if (!string.IsNullOrWhiteSpace(conversation.RemoteId) &&
-                    Preferences.Default.Get("himo_blocked_conversations", string.Empty)
-                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .Contains(conversation.RemoteId, StringComparer.OrdinalIgnoreCase))
-                    continue;
-
-                var key = conversation.RemoteId ?? $"local:{conversation.Id}";
-                var previousUnread = before.TryGetValue(key, out var unread) ? unread : 0;
-
-                if (conversation.UnreadCount > previousUnread && conversation.UnreadCount > 0)
-                {
-                    var muted = !string.IsNullOrWhiteSpace(conversation.RemoteId) &&
-                        Preferences.Default.Get("himo_muted_conversations", string.Empty)
-                            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                            .Contains(conversation.RemoteId, StringComparer.OrdinalIgnoreCase);
-                    if (!muted)
-                    {
-                        var notificationText = Preferences.Default.Get("himo_notification_preview", true)
-                            ? conversation.LastMessage
-                            : "لديك رسالة جديدة";
-                        await _notifications.ShowMessageAsync(
-                            conversation.Name,
-                            notificationText,
-                            conversation.Id.ToString());
-                    }
-                }
-            }
         }
         finally
         {
@@ -194,7 +143,7 @@ public partial class HomePage : ContentPage
             try
             {
                 await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
-                await RefreshAsync(showNotifications: true);
+                await RefreshAsync();
             }
             catch (OperationCanceledException)
             {
@@ -212,7 +161,7 @@ public partial class HomePage : ContentPage
     {
         try
         {
-            await RefreshAsync(showNotifications: false);
+            await RefreshAsync();
         }
         finally
         {
@@ -232,7 +181,7 @@ public partial class HomePage : ContentPage
 
         try
         {
-            await RefreshAsync(showNotifications: false);
+            await RefreshAsync();
         }
         finally
         {

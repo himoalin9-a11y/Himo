@@ -315,6 +315,17 @@ webApp.MapGet("/api/users/search", (HttpRequest http, string? email, PostgresSto
     return Results.Ok(users);
 });
 
+webApp.MapGet("/health/push", (FcmPushService push, PostgresStore store) =>
+{
+    return Results.Ok(new
+    {
+        status = push.IsEnabled ? "ok" : "disabled",
+        firebaseMessaging = push.IsEnabled,
+        projectId = push.ProjectId,
+        registeredTokens = store.GetPushTokenCount()
+    });
+});
+
 webApp.MapPost("/api/push-token", (HttpRequest http, [Microsoft.AspNetCore.Mvc.FromBody] PushTokenRequest request, PostgresStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
@@ -323,6 +334,7 @@ webApp.MapPost("/api/push-token", (HttpRequest http, [Microsoft.AspNetCore.Mvc.F
         return Results.BadRequest(new { message = "رمز إشعارات الجهاز غير صحيح." });
 
     store.SavePushToken(session.UserId, token);
+    Console.WriteLine($"[Himo Push] FCM token registered. UserId={session.UserId}, TokenLength={token.Length}");
     return Results.NoContent();
 });
 
@@ -437,39 +449,36 @@ webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequ
     var message = store.AddMessage(id, session.UserId, session.PhoneNumber, text, clientMessageId, request.ReplyToMessageId);
     var recipientIds = store.GetOtherParticipantUserIds(id, session.UserId);
 
-    // The message is already persisted. Do not make the sender wait for
-    // SignalR or Firebase; either notification path can be slow or unavailable.
-    // The recipient can still receive the message through normal sync/polling.
-    _ = Task.Run(async () =>
+    // Deliver realtime first, then push. The message is already persisted, so
+    // a notification failure can never roll back the saved message.
+    try
     {
-        try
-        {
-            await hub.Clients.Groups(recipientIds.Select(userId => HimoChatHub.UserGroup(userId)))
-                .SendAsync("MessageReceived", message, CancellationToken.None);
-        }
-        catch
-        {
-            // Realtime delivery is best-effort.
-        }
+        await hub.Clients.Groups(recipientIds.Select(userId => HimoChatHub.UserGroup(userId)))
+            .SendAsync("MessageReceived", message, CancellationToken.None);
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[Himo.SignalR] Message delivery failed for {message.Id}: {ex}");
+    }
 
-        try
-        {
-            var tokens = store.GetPushTokens(recipientIds);
-            if (tokens.Count > 0)
-            {
-                var senderName = session.Name;
-                var push = webApp.Services.GetRequiredService<FcmPushService>();
-                await push.SendMessageAsync(tokens, senderName, message.Text, message.ConversationId, CancellationToken.None);
-            }
-        }
-        catch
-        {
-            // Push delivery is best-effort.
-        }
-    });
+    try
+    {
+        var tokens = store.GetPushTokens(recipientIds);
+        Console.WriteLine($"[Himo FCM] MessageId={message.Id} Recipients={recipientIds.Count} Tokens={tokens.Count} FirebaseEnabled={webApp.Services.GetRequiredService<FcmPushService>().IsEnabled}");
+        var push = webApp.Services.GetRequiredService<FcmPushService>();
+        await push.SendMessageAsync(
+            tokens,
+            session.Name,
+            message.Text,
+            message.ConversationId,
+            message.Id,
+            CancellationToken.None);
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[Himo.FCM] Message notification failed for {message.Id}: {ex}");
+    }
 
-    // Return the saved message immediately. Notification delivery must never
-    // delay or fail the HTTP request used to send the message.
     return Results.Created($"/api/conversations/{id}/messages/{message.Id}", message);
 });
 
@@ -594,7 +603,7 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
         if (tokens.Count > 0)
         {
             var push = webApp.Services.GetRequiredService<FcmPushService>();
-            await push.SendMessageAsync(tokens, session.Name, message.Text, message.ConversationId, http.HttpContext.RequestAborted);
+            await push.SendMessageAsync(tokens, session.Name, message.Text, message.ConversationId, message.Id, CancellationToken.None);
         }
         return Results.Created($"/api/conversations/{id}/messages/{message.Id}", message);
     }
@@ -1660,7 +1669,7 @@ ON CONFLICT(Email) DO UPDATE SET Code=@code,ExpiresAt=@expires,FailedAttempts=0,
             command.CommandText = @"
 INSERT INTO PushTokens(UserId,Token,UpdatedAt)
 VALUES(@user,@token,@updated)
-ON CONFLICT(UserId,Token) DO UPDATE SET UpdatedAt=@updated;";
+ON CONFLICT(Token) DO UPDATE SET UserId=@user, UpdatedAt=@updated;";
             command.Parameters.AddWithValue("@user", userId.ToString());
             command.Parameters.AddWithValue("@token", token);
             command.Parameters.AddWithValue("@updated", DateTimeOffset.UtcNow.ToString("O"));
@@ -1691,6 +1700,17 @@ ON CONFLICT(UserId,Token) DO UPDATE SET UpdatedAt=@updated;";
             command.CommandText = "DELETE FROM PushTokens WHERE Token=@token;";
             command.Parameters.AddWithValue("@token", token);
             command.ExecuteNonQuery();
+        }
+    }
+
+    public int GetPushTokenCount()
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM PushTokens;";
+            return Convert.ToInt32(command.ExecuteScalar());
         }
     }
 

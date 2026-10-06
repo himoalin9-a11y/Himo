@@ -1086,8 +1086,14 @@ public partial class ChatPage : ContentPage
     {
         try
         {
-            if (_conversationId == 0) return;
-            await _notifications.ClearConversationAsync(_conversationId.ToString());
+            var notificationConversationId = !string.IsNullOrWhiteSpace(_remoteConversationId)
+                ? _remoteConversationId
+                : (_conversationId == 0 ? string.Empty : _conversationId.ToString());
+
+            if (string.IsNullOrWhiteSpace(notificationConversationId))
+                return;
+
+            await _notifications.ClearConversationAsync(notificationConversationId);
         }
         catch
         {

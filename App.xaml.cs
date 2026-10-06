@@ -1,9 +1,5 @@
 using Himo.Services;
 using Microsoft.Maui.Controls;
-#if ANDROID
-using Plugin.Firebase.CloudMessaging;
-using Plugin.Firebase.CloudMessaging.EventArgs;
-#endif
 namespace Himo;
 
 public partial class App : Application
@@ -13,15 +9,13 @@ public partial class App : Application
     private readonly ChatService _chat;
     private readonly INotificationService _notifications;
     private const string ThemeKey = "himo_dark_mode";
-    private const string PushTokenKey = "himo_registered_fcm_token";
-    private const string PendingPushTokenCleanupKey = "himo_pending_fcm_token_cleanup";
     private int _handlingSessionExpiry;
-    private int _pushRegistrationInProgress;
     private bool _sessionUnlocked;
     private DateTime _backgroundedAtUtc;
     private readonly AppLockService _appLock;
+    private readonly PushNotificationManager _pushNotifications;
 
-    public App(AccountService account, HimoApiClient api, ChatService chat, INotificationService notifications, AppLockService appLock)
+    public App(AccountService account, HimoApiClient api, ChatService chat, INotificationService notifications, AppLockService appLock, PushNotificationManager pushNotifications)
     {
         InitializeComponent();
         UserAppTheme = Preferences.Default.Get(ThemeKey, false) ? AppTheme.Dark : AppTheme.Light;
@@ -30,25 +24,12 @@ public partial class App : Application
         _chat = chat;
         _notifications = notifications;
         _appLock = appLock;
+        _pushNotifications = pushNotifications;
         _sessionUnlocked = !_appLock.IsEnabled;
         _api.SessionExpired += OnSessionExpired;
         RequestedThemeChanged += (_, _) => ApplyThemeResources();
         ApplyThemeResources();
         _ = SynchronizeAccountIdentityAsync();
-#if ANDROID
-        // Firebase event registration must never be allowed to prevent the MAUI
-        // window from being created. Some Android/plugin states can initialize
-        // the messaging service later than the application.
-        try
-        {
-            CrossFirebaseCloudMessaging.Current.TokenChanged += OnFcmTokenChanged;
-            CrossFirebaseCloudMessaging.Current.NotificationTapped += OnFcmNotificationTapped;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Firebase event registration skipped during startup: {ex}");
-        }
-#endif
     }
 
 
@@ -68,15 +49,31 @@ public partial class App : Application
 
     public void MarkSessionUnlocked() => _sessionUnlocked = true;
 
+    protected override void OnStart()
+    {
+        base.OnStart();
+#if ANDROID
+        _pushNotifications.SetAppForeground(true);
+        _ = RegisterCurrentPushTokenAsync();
+#endif
+    }
+
     protected override void OnSleep()
     {
         base.OnSleep();
         _backgroundedAtUtc = DateTime.UtcNow;
+#if ANDROID
+        _pushNotifications.SetAppForeground(false);
+#endif
     }
 
     protected override void OnResume()
     {
         base.OnResume();
+#if ANDROID
+        _pushNotifications.SetAppForeground(true);
+        _ = RegisterCurrentPushTokenAsync();
+#endif
         if (!_appLock.IsEnabled || !_account.IsSignedIn || !_api.HasToken) return;
 
         if (_backgroundedAtUtc != default && DateTime.UtcNow - _backgroundedAtUtc >= TimeSpan.FromSeconds(30))
@@ -162,165 +159,11 @@ public partial class App : Application
     }
 
 #if ANDROID
-    public async Task RegisterCurrentPushTokenAsync()
-    {
-        if (!_api.HasToken) return;
-        if (Interlocked.Exchange(ref _pushRegistrationInProgress, 1) != 0) return;
+    public Task RegisterCurrentPushTokenAsync()
+        => _pushNotifications.InitializeAsync();
 
-        try
-        {
-            await CrossFirebaseCloudMessaging.Current.CheckIfValidAsync();
-            var token = await CrossFirebaseCloudMessaging.Current.GetTokenAsync();
-            if (!string.IsNullOrWhiteSpace(token))
-                await RegisterPushTokenWithRetryAsync(token);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"FCM token retrieval failed: {ex}");
-        }
-        finally
-        {
-            Volatile.Write(ref _pushRegistrationInProgress, 0);
-        }
-    }
-
-    private async Task RegisterPushTokenWithRetryAsync(string token)
-    {
-        if (!_api.HasToken || string.IsNullOrWhiteSpace(token)) return;
-
-        var registeredToken = Preferences.Default.Get(PushTokenKey, string.Empty);
-        var pendingCleanupToken = Preferences.Default.Get(PendingPushTokenCleanupKey, string.Empty);
-        if (string.Equals(registeredToken, token, StringComparison.Ordinal) &&
-            string.IsNullOrWhiteSpace(pendingCleanupToken))
-            return;
-
-        // Register the current token before removing the previous one. This
-        // ordering avoids a gap where a temporary API failure could leave the
-        // account with no usable push token at all.
-        var registrationSucceeded = false;
-
-        // A device may start the app before the LAN/API is reachable. Retry a
-        // few times so the current FCM token is eventually registered without
-        // requiring the user to sign out, sign in, or restart the app.
-        for (var attempt = 1; attempt <= 3 && _api.HasToken; attempt++)
-        {
-            try
-            {
-                await _api.RegisterPushTokenAsync(token);
-                registrationSucceeded = true;
-                break;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"FCM token registration attempt {attempt} failed: {ex}");
-                if (attempt < 3)
-                    await Task.Delay(TimeSpan.FromSeconds(attempt * 2));
-            }
-        }
-
-        if (!registrationSucceeded)
-            return;
-
-        // Only remove old tokens after the current token has been accepted by the API.
-        // Keep a failed cleanup as a pending item so a later successful registration
-        // can retry it instead of permanently leaving a stale token in the database.
-        var tokensToCleanup = new List<string>(2);
-        if (!string.IsNullOrWhiteSpace(registeredToken) &&
-            !string.Equals(registeredToken, token, StringComparison.Ordinal))
-            tokensToCleanup.Add(registeredToken);
-        if (!string.IsNullOrWhiteSpace(pendingCleanupToken) &&
-            !string.Equals(pendingCleanupToken, token, StringComparison.Ordinal) &&
-            !tokensToCleanup.Contains(pendingCleanupToken, StringComparer.Ordinal))
-            tokensToCleanup.Add(pendingCleanupToken);
-
-        var pendingCleanupFailed = false;
-        foreach (var tokenToCleanup in tokensToCleanup)
-        {
-            try
-            {
-                await _api.RemovePushTokenAsync(tokenToCleanup);
-            }
-            catch (Exception ex)
-            {
-                pendingCleanupFailed = true;
-                System.Diagnostics.Debug.WriteLine($"Previous FCM token cleanup failed: {ex}");
-            }
-        }
-
-        if (pendingCleanupFailed)
-        {
-            // Keep the most recent old token. A later registration attempt will retry it.
-            var latestOldToken = tokensToCleanup.LastOrDefault();
-            if (!string.IsNullOrWhiteSpace(latestOldToken))
-                Preferences.Default.Set(PendingPushTokenCleanupKey, latestOldToken);
-        }
-        else
-        {
-            Preferences.Default.Remove(PendingPushTokenCleanupKey);
-        }
-
-        Preferences.Default.Set(PushTokenKey, token);
-    }
-
-    private async void OnFcmTokenChanged(object? sender, FCMTokenChangedEventArgs e)
-    {
-        if (!_api.HasToken || string.IsNullOrWhiteSpace(e.Token)) return;
-        if (Interlocked.Exchange(ref _pushRegistrationInProgress, 1) != 0) return;
-
-        try
-        {
-            // FCM can rotate the token while the app is backgrounded or while the
-            // API is temporarily unreachable. Serialize this with startup
-            // registration and retry the new token registration.
-            await RegisterPushTokenWithRetryAsync(e.Token);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"FCM token update failed: {ex}");
-        }
-        finally
-        {
-            Volatile.Write(ref _pushRegistrationInProgress, 0);
-        }
-    }
-
-    private void OnFcmNotificationTapped(object? sender, FCMNotificationTappedEventArgs e)
-    {
-        try
-        {
-            if (e?.Notification?.Data is not null)
-            {
-                if (e.Notification.Data.TryGetValue("call_type", out var callType) &&
-                    string.Equals(callType, "invite", StringComparison.OrdinalIgnoreCase) &&
-                    e.Notification.Data.TryGetValue("conversation_id", out var callConversationId) &&
-                    !string.IsNullOrWhiteSpace(callConversationId))
-                {
-                    e.Notification.Data.TryGetValue("call_mode", out var callMode);
-                    MainActivity.SetPendingCall(callConversationId, callMode ?? "audio");
-                    MainActivity.TryNavigateToPendingCall();
-                    return;
-                }
-
-                if (e.Notification.Data.TryGetValue("conversation_id", out var conversationId) &&
-                    !string.IsNullOrWhiteSpace(conversationId))
-                {
-                    MainActivity.SetPendingConversation(conversationId);
-                    MainActivity.TryNavigateToPendingConversation();
-                    return;
-                }
-            }
-
-            // Some Android/plugin versions deliver the tap event without the
-            // expected Data dictionary (especially after a cold start). The
-            // MainActivity intent handler is the fallback and has already
-            // captured any conversation_id embedded in the Android Intent.
-            MainActivity.TryNavigateToPendingConversation();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"FCM notification tap handling failed: {ex}");
-        }
-    }
+    public Task UnregisterCurrentPushTokenAsync()
+        => _pushNotifications.UnregisterCurrentTokenAsync();
 #endif
 
     private void OnSessionExpired(object? sender, EventArgs e)
@@ -331,10 +174,11 @@ public partial class App : Application
         {
             try
             {
+#if ANDROID
+                try { await UnregisterCurrentPushTokenAsync(); } catch { }
+#endif
                 _account.SignOut();
                 _chat.ClearAll();
-                Preferences.Default.Remove(PushTokenKey);
-                Preferences.Default.Remove(PendingPushTokenCleanupKey);
                 try { await _notifications.ClearAllAsync(); } catch { }
 
                 var window = Windows.FirstOrDefault();
@@ -348,10 +192,6 @@ public partial class App : Application
         });
     }
 
-    private async Task ClearNotificationsSafelyAsync()
-    {
-        try { await _notifications.ClearAllAsync(); } catch { }
-    }
 
     private async Task RestorePersistedSessionAsync(Window window)
     {

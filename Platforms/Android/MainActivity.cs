@@ -272,14 +272,16 @@ public class MainActivity : MauiAppCompatActivity
             as global::Android.App.NotificationManager;
         if (manager is null) return;
 
-        const string channelId = "himo_messages";
         var channel = new global::Android.App.NotificationChannel(
-            channelId,
+            Platforms.Android.Services.NotificationService.MessageChannelId,
             "رسائل Himo",
-            global::Android.App.NotificationImportance.Default)
+            global::Android.App.NotificationImportance.High)
         {
             Description = "إشعارات الرسائل الجديدة في Himo"
         };
+        channel.SetSound(
+            global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Notification),
+            null);
         manager.CreateNotificationChannel(channel);
 
         var calls = new global::Android.App.NotificationChannel(
@@ -293,7 +295,7 @@ public class MainActivity : MauiAppCompatActivity
             global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone),
             null);
         manager.CreateNotificationChannel(calls);
-        FirebaseCloudMessagingImplementation.ChannelId = channelId;
+        FirebaseCloudMessagingImplementation.ChannelId = Platforms.Android.Services.NotificationService.MessageChannelId;
     }
 
     public static bool IsNotificationPermissionGranted()

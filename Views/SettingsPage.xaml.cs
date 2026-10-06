@@ -161,7 +161,16 @@ public partial class SettingsPage : ContentPage
             await _notifications.SetEnabledAsync(e.Value);
 #if ANDROID
             if (e.Value)
+            {
                 Himo.MainActivity.RequestNotificationPermissionIfNeeded();
+                if (Application.Current is App app)
+                    await app.RegisterCurrentPushTokenAsync();
+            }
+            else
+            {
+                if (Application.Current is App app)
+                    await app.UnregisterCurrentPushTokenAsync();
+            }
             UpdateNotificationPermissionStatus();
 #endif
         }
@@ -260,24 +269,8 @@ public partial class SettingsPage : ContentPage
             try
             {
 #if ANDROID
-                var tokensToRemove = new HashSet<string>(StringComparer.Ordinal);
-                var registeredToken = Preferences.Default.Get(PushTokenKey, string.Empty);
-                if (!string.IsNullOrWhiteSpace(registeredToken))
-                    tokensToRemove.Add(registeredToken);
-
-                try
-                {
-                    await Plugin.Firebase.CloudMessaging.CrossFirebaseCloudMessaging.Current.CheckIfValidAsync();
-                    var currentToken = await Plugin.Firebase.CloudMessaging.CrossFirebaseCloudMessaging.Current.GetTokenAsync();
-                    if (!string.IsNullOrWhiteSpace(currentToken))
-                        tokensToRemove.Add(currentToken);
-                }
-                catch { }
-
-                foreach (var token in tokensToRemove)
-                {
-                    try { await _api.RemovePushTokenAsync(token); } catch { }
-                }
+                if (Application.Current is App app)
+                    await app.UnregisterCurrentPushTokenAsync();
 #endif
                 await _api.LogoutAsync();
             }

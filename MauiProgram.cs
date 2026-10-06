@@ -32,14 +32,14 @@ public static class MauiProgram
         {
             events.AddAndroid(android => android.OnCreate((activity, _) =>
             {
-                FirebaseCloudMessagingImplementation.ChannelId = "himo_messages";
+                FirebaseCloudMessagingImplementation.ChannelId = Platforms.Android.Services.NotificationService.MessageChannelId;
                 CrossFirebase.Initialize(activity, () => activity);
                 MainActivity.ConfigureFirebaseMessagingChannel();
             }));
         });
 #endif
 
-                builder.Services.AddSingleton<ChatService>();
+        builder.Services.AddSingleton<ChatService>();
         builder.Services.AddSingleton<AppLockService>();
         builder.Services.AddSingleton<AccountService>();
         builder.Services.AddSingleton<ProfileService>();
@@ -59,13 +59,14 @@ public static class MauiProgram
 #endif
 #if ANDROID
         builder.Services.AddSingleton<INotificationService, Platforms.Android.Services.NotificationService>();
+        builder.Services.AddSingleton<PushNotificationManager>();
 #else
         builder.Services.AddSingleton<INotificationService, NoOpNotificationService>();
 #endif
         builder.Services.AddTransient<HomeViewModel>();
         builder.Services.AddTransient<Views.HomePage>();
         builder.Services.AddTransient<Views.LoginPage>();
-        builder.Services.AddTransient<Views.ChatPage>();
+        builder.Services.AddSingleton<Views.ChatPage>();
         builder.Services.AddSingleton<Views.SettingsPage>();
         builder.Services.AddSingleton<Views.ProfilePage>();
         builder.Services.AddTransient<Views.SearchPage>();
