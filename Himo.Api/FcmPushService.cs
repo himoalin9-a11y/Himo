@@ -74,6 +74,7 @@ sealed class FcmPushService
         string message,
         Guid conversationId,
         Guid messageId,
+        DateTimeOffset sentAt,
         CancellationToken cancellationToken = default)
     {
         if (_messaging is null)
@@ -103,7 +104,13 @@ sealed class FcmPushService
             ["conversation_id"] = conversationId.ToString("D"),
             ["message_id"] = messageId.ToString("D"),
             ["notification_type"] = "chat_message",
-            ["is_silent_in_foreground"] = "true"
+            ["is_silent_in_foreground"] = "true",
+            ["sender_name"] = string.IsNullOrWhiteSpace(senderName) ? "رسالة جديدة" : senderName,
+            // Keep the data payload comfortably below FCM's 4096-byte limit.
+            ["message_text"] = (message ?? string.Empty).Length > 1200
+                ? (message ?? string.Empty)[..1200]
+                : (message ?? string.Empty),
+            ["sent_at"] = sentAt.ToString("O")
         };
 
         try

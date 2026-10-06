@@ -222,6 +222,14 @@ public partial class ChatPage : ContentPage
             if (!_localFirstRenderCompleted)
                 await MainThread.InvokeOnMainThreadAsync(Load);
 
+#if ANDROID
+            // If this chat was opened by tapping an FCM notification while the
+            // app was cold, render that exact message from the notification payload
+            // immediately. The server sync below remains authoritative and
+            // de-duplicates it by message_id.
+            TrySeedPendingNotificationMessage();
+#endif
+
             if (version != Volatile.Read(ref _initializationVersion))
                 return;
 
@@ -1173,6 +1181,49 @@ public partial class ChatPage : ContentPage
     {
         try { await _api.MarkConversationReadAsync(conversationId); } catch { }
     }
+
+#if ANDROID
+    private void TrySeedPendingNotificationMessage()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_remoteConversationId) || _conversationId <= 0)
+                return;
+
+            if (!MainActivity.TryConsumePendingMessage(out var messageId, out var messageText, out _, out var sentAt))
+                return;
+
+            if (!Guid.TryParse(messageId, out var remoteMessageId))
+                return;
+
+            var isMine = false;
+            var added = _chat.AddRemoteMessage(
+                _conversationId,
+                messageText ?? string.Empty,
+                sentAt.LocalDateTime,
+                isMine,
+                remoteMessageId.ToString("D"),
+                null,
+                null,
+                null,
+                "received");
+
+            if (!added)
+                return;
+
+            var recent = _chat.GetRecentMessages(_conversationId, MessagePageSize);
+            SetMessagesItemsSource(recent);
+            EmptyState?.SetValue(IsVisibleProperty, recent.Count == 0);
+            if (recent.Count > 0)
+                ConfigureInitialChatPosition();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Notification message seed failed: {ex}");
+        }
+    }
+
+#endif
 
     private async Task LoadRemoteAsync(CancellationToken cancellationToken = default)
     {

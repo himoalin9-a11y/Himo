@@ -472,6 +472,7 @@ webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequ
             message.Text,
             message.ConversationId,
             message.Id,
+            message.SentAt,
             CancellationToken.None);
     }
     catch (Exception ex)
@@ -603,7 +604,7 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
         if (tokens.Count > 0)
         {
             var push = webApp.Services.GetRequiredService<FcmPushService>();
-            await push.SendMessageAsync(tokens, session.Name, message.Text, message.ConversationId, message.Id, CancellationToken.None);
+            await push.SendMessageAsync(tokens, session.Name, message.Text, message.ConversationId, message.Id, message.SentAt, CancellationToken.None);
         }
         return Results.Created($"/api/conversations/{id}/messages/{message.Id}", message);
     }
