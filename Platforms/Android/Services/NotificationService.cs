@@ -4,7 +4,7 @@ namespace Himo.Platforms.Android.Services;
 
 public sealed class NotificationService : INotificationService
 {
-    public const string MessageChannelId = "himo_messages_v4";
+    public const string MessageChannelId = "himo_messages_v5";
     private const string ChannelName = "رسائل Himo";
     private const string ChannelDescription = "إشعارات الرسائل الجديدة في Himo";
     private const int NotificationIdBase = 12000;
@@ -138,7 +138,7 @@ public sealed class NotificationService : INotificationService
             manager.CreateNotificationChannel(channel);
 
             var calls = new global::Android.App.NotificationChannel(
-                "himo_calls",
+                "himo_calls_v2",
                 "مكالمات Himo",
                 global::Android.App.NotificationImportance.High)
             {

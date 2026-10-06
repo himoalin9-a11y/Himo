@@ -9,8 +9,13 @@
     android:roundIcon="@drawable/himo_launcher"
     android:label="Himo">
 
-    <!-- Firebase Cloud Messaging Android receivers. These are required by
-         Plugin.Firebase.CloudMessaging for reliable background delivery. -->
+    <meta-data
+      android:name="com.google.firebase.messaging.default_notification_channel_id"
+      android:value="himo_messages_v5" />
+    <meta-data
+      android:name="com.google.firebase.messaging.default_notification_icon"
+      android:resource="@drawable/himo_notification" />
+
     <receiver
       android:name="com.google.firebase.iid.FirebaseInstanceIdInternalReceiver"
       android:exported="false" />
@@ -24,13 +29,6 @@
         <category android:name="${applicationId}" />
       </intent-filter>
     </receiver>
-
-    <meta-data
-      android:name="com.google.firebase.messaging.default_notification_channel_id"
-      android:value="himo_messages_v4" />
-    <meta-data
-      android:name="com.google.firebase.messaging.default_notification_icon"
-      android:resource="@drawable/himo_notification" />
 
     <provider
       android:name="androidx.core.content.FileProvider"

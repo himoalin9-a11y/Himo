@@ -74,7 +74,6 @@ sealed class FcmPushService
         string message,
         Guid conversationId,
         Guid messageId,
-        DateTimeOffset sentAt,
         CancellationToken cancellationToken = default)
     {
         if (_messaging is null)
@@ -89,8 +88,6 @@ sealed class FcmPushService
             return;
         }
 
-        _logger.LogInformation("[Himo FCM] Preparing message push. Tokens={TokenCount}, ConversationId={ConversationId}, MessageId={MessageId}", tokens.Count, conversationId, messageId);
-
         var cleanTokens = tokens
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.Ordinal)
@@ -104,13 +101,7 @@ sealed class FcmPushService
             ["conversation_id"] = conversationId.ToString("D"),
             ["message_id"] = messageId.ToString("D"),
             ["notification_type"] = "chat_message",
-            ["is_silent_in_foreground"] = "true",
-            ["sender_name"] = string.IsNullOrWhiteSpace(senderName) ? "رسالة جديدة" : senderName,
-            // Keep the data payload comfortably below FCM's 4096-byte limit.
-            ["message_text"] = (message ?? string.Empty).Length > 1200
-                ? (message ?? string.Empty)[..1200]
-                : (message ?? string.Empty),
-            ["sent_at"] = sentAt.ToString("O")
+            ["is_silent_in_foreground"] = "true"
         };
 
         try
@@ -136,26 +127,13 @@ sealed class FcmPushService
                         Data = data,
                         Android = new AndroidConfig
                         {
-                            // Force timely delivery while the app is backgrounded or terminated.
                             Priority = Priority.High,
-                            // Allow delivery before the first unlock after boot as well.
-                            DirectBootOk = true,
-                            // A message should remain deliverable for up to one day if the
-                            // device is temporarily offline.
-                            TimeToLive = TimeSpan.FromDays(1),
-                            // Make sure a token from another Firebase Android app cannot be
-                            // accepted accidentally.
-                            RestrictedPackageName = "com.companyname.himo",
                             Notification = new AndroidNotification
                             {
-                                ChannelId = "himo_messages_v4",
+                                ChannelId = "himo_messages_v5",
                                 Priority = NotificationPriority.HIGH,
-                                Sound = "default",
                                 DefaultSound = true,
                                 DefaultVibrateTimings = true,
-                                Icon = "himo_notification"
-                                // Do not set Tag: Android would use the same tag to replace
-                                // previous notifications instead of showing each new message.
                             }
                         }
                     };
@@ -171,14 +149,7 @@ sealed class FcmPushService
                     for (var i = 0; i < response.Responses.Count && i < batch.Length; i++)
                     {
                         var sendResponse = response.Responses[i];
-                        if (sendResponse.IsSuccess)
-                        {
-                            _logger.LogDebug("[Himo FCM] Token delivery accepted. BatchIndex={BatchIndex}", i);
-                            continue;
-                        }
-
-                        _logger.LogWarning(sendResponse.Exception,
-                            "[Himo FCM] Token delivery failed. BatchIndex={BatchIndex}", i);
+                        if (sendResponse.IsSuccess) continue;
 
                         if (sendResponse.Exception is FirebaseMessagingException { MessagingErrorCode: MessagingErrorCode.Unregistered })
                         {
@@ -286,7 +257,7 @@ sealed class FcmPushService
                         CollapseKey = $"himo-call-{conversationId:D}",
                         Notification = new AndroidNotification
                         {
-                            ChannelId = "himo_calls",
+                            ChannelId = "himo_calls_v2",
                             Priority = NotificationPriority.HIGH,
                             DefaultSound = true,
                             DefaultVibrateTimings = true,

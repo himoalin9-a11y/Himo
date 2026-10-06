@@ -208,11 +208,8 @@ public sealed class PushNotificationManager
         {
             await CrossFirebaseCloudMessaging.Current.CheckIfValidAsync();
             var token = await CrossFirebaseCloudMessaging.Current.GetTokenAsync();
-            System.Diagnostics.Debug.WriteLine($"[Himo Push] FCM token acquired. Length={token?.Length ?? 0}");
             if (!string.IsNullOrWhiteSpace(token))
                 await RegisterTokenCoreAsync(token);
-            else
-                System.Diagnostics.Debug.WriteLine("[Himo Push] FCM returned an empty token.");
         }
         catch (Exception ex)
         {
@@ -281,7 +278,6 @@ public sealed class PushNotificationManager
                 try
                 {
                     await _api.RegisterPushTokenAsync(token);
-                    System.Diagnostics.Debug.WriteLine($"[Himo Push] FCM token registered successfully. Length={token.Length}");
                     registered = true;
                     break;
                 }

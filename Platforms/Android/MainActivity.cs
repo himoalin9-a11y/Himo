@@ -18,19 +18,11 @@ namespace Himo;
 public class MainActivity : MauiAppCompatActivity
 {
     private static string? _pendingConversationId;
-    private static string? _pendingMessageId;
-    private static string? _pendingMessageText;
-    private static string? _pendingMessageSender;
-    private static string? _pendingMessageSentAt;
     private static string? _pendingCallConversationId;
     private static string? _pendingCallMode;
     private static int _navigationInProgress;
     private static int _callNavigationInProgress;
     private const string PendingConversationPreferenceKey = "himo_pending_conversation_id";
-    private const string PendingMessageIdPreferenceKey = "himo_pending_message_id";
-    private const string PendingMessageTextPreferenceKey = "himo_pending_message_text";
-    private const string PendingMessageSenderPreferenceKey = "himo_pending_message_sender";
-    private const string PendingMessageSentAtPreferenceKey = "himo_pending_message_sent_at";
     private const string PendingCallConversationPreferenceKey = "himo_pending_call_conversation_id";
     private const string PendingCallModePreferenceKey = "himo_pending_call_mode";
 
@@ -43,54 +35,12 @@ public class MainActivity : MauiAppCompatActivity
     }
 
     public static void SetPendingConversation(string? conversationId)
-        => SetPendingConversation(conversationId, null, null, null, null);
-
-    public static void SetPendingConversation(string? conversationId, string? messageId, string? messageText, string? senderName, string? sentAt)
     {
-        if (string.IsNullOrWhiteSpace(conversationId))
-            return;
-
-        _pendingConversationId = conversationId;
-        Preferences.Default.Set(PendingConversationPreferenceKey, conversationId);
-
-        if (!string.IsNullOrWhiteSpace(messageId))
+        if (!string.IsNullOrWhiteSpace(conversationId))
         {
-            _pendingMessageId = messageId;
-            _pendingMessageText = messageText ?? string.Empty;
-            _pendingMessageSender = senderName ?? string.Empty;
-            _pendingMessageSentAt = sentAt ?? string.Empty;
-            Preferences.Default.Set(PendingMessageIdPreferenceKey, _pendingMessageId);
-            Preferences.Default.Set(PendingMessageTextPreferenceKey, _pendingMessageText);
-            Preferences.Default.Set(PendingMessageSenderPreferenceKey, _pendingMessageSender);
-            Preferences.Default.Set(PendingMessageSentAtPreferenceKey, _pendingMessageSentAt);
+            _pendingConversationId = conversationId;
+            Preferences.Default.Set(PendingConversationPreferenceKey, conversationId);
         }
-    }
-
-    public static bool TryConsumePendingMessage(out string? messageId, out string? messageText, out string? senderName, out DateTimeOffset sentAt)
-    {
-        messageId = _pendingMessageId ?? Preferences.Default.Get(PendingMessageIdPreferenceKey, string.Empty);
-        messageText = _pendingMessageText ?? Preferences.Default.Get(PendingMessageTextPreferenceKey, string.Empty);
-        senderName = _pendingMessageSender ?? Preferences.Default.Get(PendingMessageSenderPreferenceKey, string.Empty);
-        var sentAtText = _pendingMessageSentAt ?? Preferences.Default.Get(PendingMessageSentAtPreferenceKey, string.Empty);
-
-        if (string.IsNullOrWhiteSpace(messageId) || !Guid.TryParse(messageId, out _))
-        {
-            sentAt = DateTimeOffset.UtcNow;
-            return false;
-        }
-
-        if (!DateTimeOffset.TryParse(sentAtText, out sentAt))
-            sentAt = DateTimeOffset.UtcNow;
-
-        _pendingMessageId = null;
-        _pendingMessageText = null;
-        _pendingMessageSender = null;
-        _pendingMessageSentAt = null;
-        Preferences.Default.Remove(PendingMessageIdPreferenceKey);
-        Preferences.Default.Remove(PendingMessageTextPreferenceKey);
-        Preferences.Default.Remove(PendingMessageSenderPreferenceKey);
-        Preferences.Default.Remove(PendingMessageSentAtPreferenceKey);
-        return true;
     }
 
     public static void SetPendingCall(string conversationId, string mode)
@@ -238,11 +188,6 @@ public class MainActivity : MauiAppCompatActivity
             if (!string.IsNullOrWhiteSpace(saved))
                 _pendingConversationId = saved;
         }
-
-        _pendingMessageId ??= Preferences.Default.Get(PendingMessageIdPreferenceKey, string.Empty);
-        _pendingMessageText ??= Preferences.Default.Get(PendingMessageTextPreferenceKey, string.Empty);
-        _pendingMessageSender ??= Preferences.Default.Get(PendingMessageSenderPreferenceKey, string.Empty);
-        _pendingMessageSentAt ??= Preferences.Default.Get(PendingMessageSentAtPreferenceKey, string.Empty);
     }
 
     private static void SchedulePendingConversationNavigation()
@@ -264,10 +209,6 @@ public class MainActivity : MauiAppCompatActivity
         if (intent is null) return;
 
         var conversationId = intent.GetStringExtra("conversation_id");
-        var messageId = intent.GetStringExtra("message_id");
-        var messageText = intent.GetStringExtra("message_text");
-        var senderName = intent.GetStringExtra("sender_name");
-        var sentAt = intent.GetStringExtra("sent_at");
         var callType = intent.GetStringExtra("call_type");
         var callMode = intent.GetStringExtra("call_mode");
         if (string.Equals(callType, "invite", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(conversationId))
@@ -278,7 +219,7 @@ public class MainActivity : MauiAppCompatActivity
 
         if (!string.IsNullOrWhiteSpace(conversationId))
         {
-            SetPendingConversation(conversationId, messageId, messageText, senderName, sentAt);
+            SetPendingConversation(conversationId);
             return;
         }
 
@@ -331,6 +272,7 @@ public class MainActivity : MauiAppCompatActivity
             as global::Android.App.NotificationManager;
         if (manager is null) return;
 
+
         var channel = new global::Android.App.NotificationChannel(
             Platforms.Android.Services.NotificationService.MessageChannelId,
             "رسائل Himo",
@@ -344,7 +286,7 @@ public class MainActivity : MauiAppCompatActivity
         manager.CreateNotificationChannel(channel);
 
         var calls = new global::Android.App.NotificationChannel(
-            "himo_calls",
+            "himo_calls_v2",
             "مكالمات Himo",
             global::Android.App.NotificationImportance.High)
         {

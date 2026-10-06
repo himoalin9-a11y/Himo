@@ -46,7 +46,7 @@ public class MainApplication : MauiApplication
             manager.CreateNotificationChannel(messageChannel);
 
             var callChannel = new global::Android.App.NotificationChannel(
-                "himo_calls",
+                "himo_calls_v2",
                 "مكالمات Himo",
                 global::Android.App.NotificationImportance.High)
             {

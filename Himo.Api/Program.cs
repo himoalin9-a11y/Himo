@@ -56,6 +56,17 @@ builder.WebHost.ConfigureKestrel(options =>
 
 var webApp = builder.Build();
 
+webApp.MapGet("/health/push", (FcmPushService push, PostgresStore store) =>
+{
+    return Results.Ok(new
+    {
+        status = push.IsEnabled ? "ok" : "disabled",
+        firebaseMessaging = push.IsEnabled,
+        projectId = push.ProjectId,
+        registeredTokens = store.GetPushTokenCount()
+    });
+});
+
 if (!webApp.Environment.IsDevelopment())
 {
     // Production must be served over HTTPS by Kestrel/reverse proxy.
@@ -315,17 +326,6 @@ webApp.MapGet("/api/users/search", (HttpRequest http, string? email, PostgresSto
     return Results.Ok(users);
 });
 
-webApp.MapGet("/health/push", (FcmPushService push, PostgresStore store) =>
-{
-    return Results.Ok(new
-    {
-        status = push.IsEnabled ? "ok" : "disabled",
-        firebaseMessaging = push.IsEnabled,
-        projectId = push.ProjectId,
-        registeredTokens = store.GetPushTokenCount()
-    });
-});
-
 webApp.MapPost("/api/push-token", (HttpRequest http, [Microsoft.AspNetCore.Mvc.FromBody] PushTokenRequest request, PostgresStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
@@ -334,7 +334,6 @@ webApp.MapPost("/api/push-token", (HttpRequest http, [Microsoft.AspNetCore.Mvc.F
         return Results.BadRequest(new { message = "رمز إشعارات الجهاز غير صحيح." });
 
     store.SavePushToken(session.UserId, token);
-    Console.WriteLine($"[Himo Push] FCM token registered. UserId={session.UserId}, TokenLength={token.Length}");
     return Results.NoContent();
 });
 
@@ -464,7 +463,6 @@ webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequ
     try
     {
         var tokens = store.GetPushTokens(recipientIds);
-        Console.WriteLine($"[Himo FCM] MessageId={message.Id} Recipients={recipientIds.Count} Tokens={tokens.Count} FirebaseEnabled={webApp.Services.GetRequiredService<FcmPushService>().IsEnabled}");
         var push = webApp.Services.GetRequiredService<FcmPushService>();
         await push.SendMessageAsync(
             tokens,
@@ -472,7 +470,6 @@ webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequ
             message.Text,
             message.ConversationId,
             message.Id,
-            message.SentAt,
             CancellationToken.None);
     }
     catch (Exception ex)
@@ -604,7 +601,7 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
         if (tokens.Count > 0)
         {
             var push = webApp.Services.GetRequiredService<FcmPushService>();
-            await push.SendMessageAsync(tokens, session.Name, message.Text, message.ConversationId, message.Id, message.SentAt, CancellationToken.None);
+            await push.SendMessageAsync(tokens, session.Name, message.Text, message.ConversationId, message.Id, CancellationToken.None);
         }
         return Results.Created($"/api/conversations/{id}/messages/{message.Id}", message);
     }
@@ -1691,6 +1688,17 @@ ON CONFLICT(Token) DO UPDATE SET UserId=@user, UpdatedAt=@updated;";
         }
     }
 
+    public int GetPushTokenCount()
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM PushTokens;";
+            return Convert.ToInt32(command.ExecuteScalar());
+        }
+    }
+
     public void RemovePushToken(string token)
     {
         if (string.IsNullOrWhiteSpace(token)) return;
@@ -1701,17 +1709,6 @@ ON CONFLICT(Token) DO UPDATE SET UserId=@user, UpdatedAt=@updated;";
             command.CommandText = "DELETE FROM PushTokens WHERE Token=@token;";
             command.Parameters.AddWithValue("@token", token);
             command.ExecuteNonQuery();
-        }
-    }
-
-    public int GetPushTokenCount()
-    {
-        lock (_sync)
-        {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT COUNT(*) FROM PushTokens;";
-            return Convert.ToInt32(command.ExecuteScalar());
         }
     }
 
