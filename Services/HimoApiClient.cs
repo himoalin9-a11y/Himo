@@ -703,6 +703,29 @@ public sealed class HimoApiClient
             cancellationToken);
     }
 
+    public Task MarkMessageDeliveredAsync(
+        Guid messageId,
+        CancellationToken cancellationToken = default)
+        => MarkMessageDeliveredAsync(messageId.ToString("D"), cancellationToken);
+
+    public async Task MarkMessageDeliveredAsync(
+        string? messageId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(messageId) || !Guid.TryParse(messageId, out var parsedMessageId) || parsedMessageId == Guid.Empty)
+            return;
+
+        using var response =
+            await _http.PostAsync(
+                $"api/messages/{parsedMessageId:D}/delivered",
+                content: null,
+                cancellationToken);
+
+        await EnsureSuccessAsync(
+            response,
+            cancellationToken);
+    }
+
     public Task<ConversationDto> CreateConversationAsync(
         string name,
         CancellationToken cancellationToken = default)

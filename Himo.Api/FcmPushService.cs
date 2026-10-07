@@ -1,7 +1,6 @@
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
 using Google.Apis.Auth.OAuth2;
-using System.Text.Json;
 
 sealed class FcmPushService
 {
@@ -26,59 +25,22 @@ sealed class FcmPushService
         var serviceAccountPath = Environment.GetEnvironmentVariable("HIMO_FIREBASE_SERVICE_ACCOUNT");
         if (string.IsNullOrWhiteSpace(serviceAccountPath))
             serviceAccountPath = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
-        if (string.IsNullOrWhiteSpace(serviceAccountPath) &&
-            File.Exists("/etc/secrets/firebase.json"))
-        {
-            serviceAccountPath = "/etc/secrets/firebase.json";
-        }
-
         if (string.IsNullOrWhiteSpace(serviceAccountPath))
             serviceAccountPath = Path.Combine(environment.ContentRootPath, "App_Data", "firebase-service-account.json");
 
         try
         {
             GoogleCredential credential;
-            string? projectId = null;
-
             if (!string.IsNullOrWhiteSpace(json))
             {
-                credential = GoogleCredential.FromJson(json);
-
-                try
-                {
-                    using var jsonDocument = JsonDocument.Parse(json);
-                    if (jsonDocument.RootElement.TryGetProperty("project_id", out var projectIdElement))
-                        projectId = projectIdElement.GetString();
-                }
-                catch (JsonException)
-                {
-                    // Credential parsing above is the authoritative validation.
-                }
-
-                _logger.LogInformation(
-                    "[Himo FCM] Firebase credentials loaded from HIMO_FIREBASE_SERVICE_ACCOUNT_JSON. ProjectId={ProjectId}",
-                    projectId ?? "(from credential)");
+                credential = CredentialFactory.FromJson<ServiceAccountCredential>(json).ToGoogleCredential();
+                _logger.LogInformation("Firebase Cloud Messaging credentials loaded from environment JSON.");
             }
             else if (File.Exists(serviceAccountPath))
             {
-                var fileJson = File.ReadAllText(serviceAccountPath);
-                credential = GoogleCredential.FromJson(fileJson);
-
-                try
-                {
-                    using var jsonDocument = JsonDocument.Parse(fileJson);
-                    if (jsonDocument.RootElement.TryGetProperty("project_id", out var projectIdElement))
-                        projectId = projectIdElement.GetString();
-                }
-                catch (JsonException)
-                {
-                    // Credential parsing above is the authoritative validation.
-                }
-
-                _logger.LogInformation(
-                    "[Himo FCM] Firebase credentials loaded from {Path}. ProjectId={ProjectId}",
-                    serviceAccountPath,
-                    projectId ?? "(from credential)");
+                using var credentialStream = File.OpenRead(serviceAccountPath);
+                credential = CredentialFactory.FromStream<ServiceAccountCredential>(credentialStream).ToGoogleCredential();
+                _logger.LogInformation("Firebase Cloud Messaging credentials loaded from {Path}.", serviceAccountPath);
             }
             else
             {
@@ -86,29 +48,22 @@ sealed class FcmPushService
                 return;
             }
 
-            // DefaultInstance is null when no default Firebase app exists.
-            // The previous code only handled an exception, so initialization could
-            // continue with a null app and end up disabled.
-            var firebaseApp = FirebaseApp.DefaultInstance
-                ?? FirebaseApp.Create(new AppOptions
-                {
-                    Credential = credential,
-                    ProjectId = projectId
-                });
-
-            _messaging = FirebaseMessaging.GetMessaging(firebaseApp);
-            ProjectId = firebaseApp.Options.ProjectId ?? projectId;
-
-            if (string.IsNullOrWhiteSpace(ProjectId))
+            FirebaseApp? firebaseApp = null;
+            try
             {
-                _logger.LogWarning(
-                    "[Himo FCM] Firebase initialized but ProjectId is empty. Push notifications remain disabled.");
-                return;
+                firebaseApp = FirebaseApp.DefaultInstance;
+            }
+            catch (InvalidOperationException)
+            {
+                // No default Firebase app exists yet; create the Himo app from
+                // the service-account credential loaded above.
             }
 
-            _logger.LogInformation(
-                "[Himo FCM] Firebase Cloud Messaging is enabled. ProjectId={ProjectId}",
-                ProjectId);
+            firebaseApp ??= FirebaseApp.Create(new AppOptions { Credential = credential });
+
+            _messaging = FirebaseMessaging.GetMessaging(firebaseApp);
+            ProjectId = firebaseApp.Options?.ProjectId;
+            _logger.LogInformation("[Himo FCM] Firebase Cloud Messaging is enabled. ProjectId={ProjectId}", ProjectId);
         }
         catch (Exception ex)
         {
@@ -116,7 +71,7 @@ sealed class FcmPushService
         }
     }
 
-    public async Task SendMessageAsync(
+    public async Task<IReadOnlyList<string>> SendMessageAsync(
         IReadOnlyList<string> tokens,
         string senderName,
         string message,
@@ -124,16 +79,17 @@ sealed class FcmPushService
         Guid messageId,
         CancellationToken cancellationToken = default)
     {
-        if (_messaging is null)
+        var messaging = _messaging;
+        if (messaging is null)
         {
             _logger.LogError("[Himo FCM] Message push skipped: Firebase Messaging is not initialized.");
-            return;
+            return Array.Empty<string>();
         }
 
         if (tokens.Count == 0)
         {
             _logger.LogWarning("[Himo FCM] Message push skipped: recipient has no registered FCM token.");
-            return;
+            return Array.Empty<string>();
         }
 
         var cleanTokens = tokens
@@ -142,7 +98,7 @@ sealed class FcmPushService
             .ToList();
 
         if (cleanTokens.Count == 0)
-            return;
+            return Array.Empty<string>();
 
         var data = new Dictionary<string, string>
         {
@@ -151,6 +107,8 @@ sealed class FcmPushService
             ["notification_type"] = "chat_message",
             ["is_silent_in_foreground"] = "true"
         };
+
+        var acceptedTokens = new List<string>();
 
         try
         {
@@ -190,14 +148,18 @@ sealed class FcmPushService
                     // The caller cancellation is still honored immediately.
                     using var batchCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     batchCts.CancelAfter(TimeSpan.FromSeconds(15));
-                    var response = await _messaging.SendEachForMulticastAsync(multicast, batchCts.Token);
+                    var response = await messaging.SendEachForMulticastAsync(multicast, batchCts.Token);
                     totalSuccess += response.SuccessCount;
                     totalFailure += response.FailureCount;
 
                     for (var i = 0; i < response.Responses.Count && i < batch.Length; i++)
                     {
                         var sendResponse = response.Responses[i];
-                        if (sendResponse.IsSuccess) continue;
+                        if (sendResponse.IsSuccess)
+                        {
+                            acceptedTokens.Add(batch[i]);
+                            continue;
+                        }
 
                         if (sendResponse.Exception is FirebaseMessagingException { MessagingErrorCode: MessagingErrorCode.Unregistered })
                         {
@@ -263,6 +225,8 @@ sealed class FcmPushService
         {
             _logger.LogError(ex, "FCM message send failed.");
         }
+
+        return acceptedTokens.Distinct(StringComparer.Ordinal).ToArray();
     }
     public async Task SendCallInviteAsync(
         IReadOnlyList<string> tokens,
@@ -271,7 +235,8 @@ sealed class FcmPushService
         string mode,
         CancellationToken cancellationToken = default)
     {
-        if (_messaging is null || tokens.Count == 0) return;
+        var messaging = _messaging;
+        if (messaging is null || tokens.Count == 0) return;
 
         var cleanTokens = tokens.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.Ordinal).ToList();
         if (cleanTokens.Count == 0) return;
@@ -317,7 +282,7 @@ sealed class FcmPushService
 
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeout.CancelAfter(TimeSpan.FromSeconds(10));
-                await _messaging.SendEachForMulticastAsync(message, timeout.Token);
+                await messaging.SendEachForMulticastAsync(message, timeout.Token);
             }
             catch (Exception ex)
             {

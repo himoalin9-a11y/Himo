@@ -51,6 +51,9 @@ public sealed class NotificationService : INotificationService
         var title = string.IsNullOrWhiteSpace(senderName) ? "رسالة جديدة" : senderName.Trim();
         var text = string.IsNullOrWhiteSpace(message) ? "لديك رسالة جديدة" : message.Trim();
         var notificationManager = global::AndroidX.Core.App.NotificationManagerCompat.From(context);
+        if (notificationManager is null)
+            return Task.CompletedTask;
+
         if (!notificationManager.AreNotificationsEnabled())
         {
             System.Diagnostics.Debug.WriteLine("[Himo Push] Android notifications are disabled for Himo.");
@@ -77,19 +80,23 @@ public sealed class NotificationService : INotificationService
         if (pendingIntent is null)
             return Task.CompletedTask;
 
-        var builder = new global::AndroidX.Core.App.NotificationCompat.Builder(context, MessageChannelId)
-            .SetSmallIcon(Resource.Drawable.himo_notification)
-            .SetContentTitle(title)
-            .SetContentText(text)
-            .SetStyle(new global::AndroidX.Core.App.NotificationCompat.BigTextStyle().BigText(text))
-            .SetPriority(global::AndroidX.Core.App.NotificationCompat.PriorityHigh)
-            .SetCategory(global::AndroidX.Core.App.NotificationCompat.CategoryMessage)
-            .SetAutoCancel(true)
-            .SetOnlyAlertOnce(false)
-            .SetContentIntent(pendingIntent)
-            .SetVisibility(global::AndroidX.Core.App.NotificationCompat.VisibilityPrivate);
+        var builder = new global::AndroidX.Core.App.NotificationCompat.Builder(context, MessageChannelId);
+        builder.SetSmallIcon(Resource.Drawable.himo_notification);
+        builder.SetContentTitle(title);
+        builder.SetContentText(text);
+        builder.SetStyle(new global::AndroidX.Core.App.NotificationCompat.BigTextStyle().BigText(text));
+        builder.SetPriority(global::AndroidX.Core.App.NotificationCompat.PriorityHigh);
+        builder.SetCategory(global::AndroidX.Core.App.NotificationCompat.CategoryMessage);
+        builder.SetAutoCancel(true);
+        builder.SetOnlyAlertOnce(false);
+        builder.SetContentIntent(pendingIntent);
+        builder.SetVisibility(global::AndroidX.Core.App.NotificationCompat.VisibilityPrivate);
 
-        notificationManager.Notify(notificationId, builder.Build());
+        var notification = builder.Build();
+        if (notification is null)
+            return Task.CompletedTask;
+
+        notificationManager.Notify(notificationId, notification);
 
         return Task.CompletedTask;
     }
@@ -100,15 +107,28 @@ public sealed class NotificationService : INotificationService
             return Task.CompletedTask;
 
         var context = global::Android.App.Application.Context;
-        global::AndroidX.Core.App.NotificationManagerCompat.From(context)
-            .Cancel(GetNotificationId(conversationId));
+        if (context is null)
+            return Task.CompletedTask;
+
+        var notificationManager = global::AndroidX.Core.App.NotificationManagerCompat.From(context);
+        if (notificationManager is null)
+            return Task.CompletedTask;
+
+        notificationManager.Cancel(GetNotificationId(conversationId));
         return Task.CompletedTask;
     }
 
     public Task ClearAllAsync()
     {
         var context = global::Android.App.Application.Context;
-        global::AndroidX.Core.App.NotificationManagerCompat.From(context).CancelAll();
+        if (context is null)
+            return Task.CompletedTask;
+
+        var notificationManager = global::AndroidX.Core.App.NotificationManagerCompat.From(context);
+        if (notificationManager is null)
+            return Task.CompletedTask;
+
+        notificationManager.CancelAll();
         return Task.CompletedTask;
     }
 

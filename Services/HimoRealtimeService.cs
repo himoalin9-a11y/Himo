@@ -181,6 +181,11 @@ public sealed class HimoRealtimeService
             "MessageReceived",
             message =>
             {
+                // Delivery is a connection-level concern, not a ChatPage concern.
+                // Receiving MessageReceived proves this device/process received the
+                // persisted message, even when the user is still on the home/list page.
+                _ = MarkMessageDeliveredAsync(message.Id);
+
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     try

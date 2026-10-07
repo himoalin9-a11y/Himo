@@ -515,7 +515,7 @@
                                                 </DataTrigger>
                                                 <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered">
                                                     <Setter Property="Text" Value="✓✓" />
-                                                    <Setter Property="TextColor" Value="#E9DCFF" />
+                                                    <Setter Property="TextColor" Value="#B8BDC7" />
                                                 </DataTrigger>
                                                 <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read">
                                                     <Setter Property="Text" Value="✓✓" />

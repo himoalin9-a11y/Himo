@@ -363,6 +363,20 @@ webApp.MapPost("/api/conversations/{id:guid}/read", async (Guid id, HttpRequest 
     return Results.NoContent();
 });
 
+webApp.MapPost("/api/messages/{id:guid}/delivered", async (Guid id, HttpRequest http, PostgresStore store, IHubContext<HimoChatHub> hub) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+
+    var receipt = store.MarkMessageDelivered(id, session.UserId);
+    if (receipt.Changed && receipt.SenderUserId.HasValue)
+    {
+        await hub.Clients.Group(HimoChatHub.UserGroup(receipt.SenderUserId.Value))
+            .SendAsync("MessageDeliveryChanged", id, session.UserId, "delivered");
+    }
+
+    return Results.NoContent();
+});
+
 webApp.MapPost("/api/conversations/{id:guid}/report", async (Guid id, HttpRequest http, [Microsoft.AspNetCore.Mvc.FromBody] ReportConversationRequest request, PostgresStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
@@ -448,34 +462,56 @@ webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequ
     var message = store.AddMessage(id, session.UserId, session.PhoneNumber, text, clientMessageId, request.ReplyToMessageId);
     var recipientIds = store.GetOtherParticipantUserIds(id, session.UserId);
 
-    // Deliver realtime first, then push. The message is already persisted, so
-    // a notification failure can never roll back the saved message.
-    try
+    // The message is already persisted. Return 201 immediately so the sender
+    // can show its checkmark without waiting for realtime delivery or FCM.
+    // OnCompleted starts both delivery paths only after ASP.NET Core has
+    // completed the HTTP response, preventing a slow FCM request from delaying
+    // the sender's acknowledgement.
+    http.HttpContext.Response.OnCompleted(async () =>
     {
-        await hub.Clients.Groups(recipientIds.Select(userId => HimoChatHub.UserGroup(userId)))
-            .SendAsync("MessageReceived", message, CancellationToken.None);
-    }
-    catch (Exception ex)
-    {
-        Console.Error.WriteLine($"[Himo.SignalR] Message delivery failed for {message.Id}: {ex}");
-    }
+        try
+        {
+            await hub.Clients.Groups(recipientIds.Select(userId => HimoChatHub.UserGroup(userId)))
+                .SendAsync("MessageReceived", message, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Himo.SignalR] Message delivery failed for {message.Id}: {ex}");
+        }
 
-    try
-    {
-        var tokens = store.GetPushTokens(recipientIds);
-        var push = webApp.Services.GetRequiredService<FcmPushService>();
-        await push.SendMessageAsync(
-            tokens,
-            session.Name,
-            message.Text,
-            message.ConversationId,
-            message.Id,
-            CancellationToken.None);
-    }
-    catch (Exception ex)
-    {
-        Console.Error.WriteLine($"[Himo.FCM] Message notification failed for {message.Id}: {ex}");
-    }
+        try
+        {
+            var tokens = store.GetPushTokens(recipientIds);
+            var push = webApp.Services.GetRequiredService<FcmPushService>();
+            var acceptedTokens = await push.SendMessageAsync(
+                tokens,
+                session.Name,
+                message.Text,
+                message.ConversationId,
+                message.Id,
+                CancellationToken.None);
+
+            // FCM accepted the message for these registered device tokens.
+            // Treat that as the delivered state for the message receipt so the
+            // sender can see the two grey checks even when the recipient app is
+            // fully closed. Opening the conversation still changes the state
+            // to blue via the existing read-receipt path.
+            var deliveredUserIds = store.GetPushTokenOwners(acceptedTokens);
+            foreach (var deliveredUserId in deliveredUserIds)
+            {
+                var receipt = store.MarkMessageDelivered(message.Id, deliveredUserId);
+                if (receipt.Changed && receipt.SenderUserId.HasValue)
+                {
+                    await hub.Clients.Group(HimoChatHub.UserGroup(receipt.SenderUserId.Value))
+                        .SendAsync("MessageDeliveryChanged", message.Id, deliveredUserId, "delivered");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Himo.FCM] Message notification failed for {message.Id}: {ex}");
+        }
+    });
 
     return Results.Created($"/api/conversations/{id}/messages/{message.Id}", message);
 });
@@ -601,7 +637,24 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
         if (tokens.Count > 0)
         {
             var push = webApp.Services.GetRequiredService<FcmPushService>();
-            await push.SendMessageAsync(tokens, session.Name, message.Text, message.ConversationId, message.Id, CancellationToken.None);
+            var acceptedTokens = await push.SendMessageAsync(
+                tokens,
+                session.Name,
+                message.Text,
+                message.ConversationId,
+                message.Id,
+                CancellationToken.None);
+
+            var deliveredUserIds = store.GetPushTokenOwners(acceptedTokens);
+            foreach (var deliveredUserId in deliveredUserIds)
+            {
+                var receipt = store.MarkMessageDelivered(message.Id, deliveredUserId);
+                if (receipt.Changed && receipt.SenderUserId.HasValue)
+                {
+                    await hub.Clients.Group(HimoChatHub.UserGroup(receipt.SenderUserId.Value))
+                        .SendAsync("MessageDeliveryChanged", message.Id, deliveredUserId, "delivered");
+                }
+            }
         }
         return Results.Created($"/api/conversations/{id}/messages/{message.Id}", message);
     }
@@ -1739,6 +1792,32 @@ ON CONFLICT(Token) DO UPDATE SET UserId=@user, UpdatedAt=@updated;";
                     if (!string.IsNullOrWhiteSpace(token)) result.Add(token);
                 }
             }
+            return result;
+        }
+    }
+
+    public IReadOnlyList<Guid> GetPushTokenOwners(IReadOnlyList<string> tokens)
+    {
+        if (tokens.Count == 0) return Array.Empty<Guid>();
+
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            var parameterNames = new List<string>(tokens.Count);
+            for (var i = 0; i < tokens.Count; i++)
+            {
+                var name = "@t" + i;
+                parameterNames.Add(name);
+                command.Parameters.AddWithValue(name, tokens[i]);
+            }
+
+            command.CommandText = $"SELECT DISTINCT UserId FROM PushTokens WHERE Token IN ({string.Join(',', parameterNames)});";
+            using var reader = command.ExecuteReader();
+            var result = new List<Guid>();
+            while (reader.Read() && !reader.IsDBNull(0) && Guid.TryParse(reader.GetString(0), out var userId))
+                result.Add(userId);
+
             return result;
         }
     }

@@ -119,13 +119,33 @@ public sealed class PushNotificationManager
     {
         try
         {
+            var notification = e?.Notification;
+            var data = notification?.Data;
+
+            // Delivery must not depend on ChatPage being open. When the plugin raises
+            // the FCM event, acknowledge the message at application level first.
+            if (data is not null &&
+                data.TryGetValue("message_id", out var messageIdText) &&
+                Guid.TryParse(messageIdText, out var deliveredMessageId) &&
+                _account.IsSignedIn &&
+                _api.HasToken)
+            {
+                try
+                {
+                    await _api.MarkMessageDeliveredAsync(deliveredMessageId);
+                }
+                catch (Exception ackEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Himo Push] FCM delivery acknowledgement failed: {ackEx}");
+                }
+            }
+
             // Background/killed notifications are displayed by the FCM plugin itself.
             // We only create a local notification while the app is visible.
             if (!_appInForeground)
                 return;
 
-            var notification = e?.Notification;
-            if (notification is null || notification.Data is null)
+            if (notification is null || data is null)
                 return;
 
             if (notification.Data.TryGetValue("call_type", out var callType) &&

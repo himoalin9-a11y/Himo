@@ -143,6 +143,7 @@ public partial class ChatPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        Volatile.Write(ref _conversationVisible, 1);
 
         _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
         _realtime.CallSignalReceived += OnRealtimeCallSignalReceived;
@@ -161,6 +162,12 @@ public partial class ChatPage : ContentPage
     private int _initializationRunning;
     private bool _localFirstRenderCompleted;
     private int _initialScrollInProgress;
+    // Read receipts are allowed only while this ChatPage is actually visible.
+    // Merely having a ChatPage instance alive in the Shell must never mark a
+    // conversation as read.
+    private int _conversationVisible;
+
+    private bool IsConversationVisible => Volatile.Read(ref _conversationVisible) == 1;
 
     private async Task InitializeChatAsync()
     {
@@ -443,7 +450,9 @@ public partial class ChatPage : ContentPage
         if (UnreadDivider is not null)
             UnreadDivider.IsVisible = conversation.UnreadCount > 0 && recent.Count > 0;
 
-        _chat.MarkAsRead(_conversationId);
+        // Do not mark the conversation as read here. Load() can run while the
+        // page is being prepared or while the page is kept alive off-screen.
+        // The server-side read receipt is applied only from the visible-page path.
 
         if (recent.Count > 0)
             ConfigureInitialChatPosition();
@@ -716,6 +725,7 @@ public partial class ChatPage : ContentPage
 
     protected override void OnDisappearing()
     {
+        Volatile.Write(ref _conversationVisible, 0);
 #if ANDROID
         if (_isRecordingAudio) CleanupAudioRecorder();
         StopAudioPlayback();
@@ -1132,10 +1142,8 @@ public partial class ChatPage : ContentPage
 
     private void OnRealtimeMessageReceived(object? sender, MessageDto message)
     {
-        // MessageReceived is sent only to recipients, so acknowledge delivery as soon as
-        // the device receives the persisted message. Read state is handled separately
-        // when the conversation is visible.
-        _ = _realtime.MarkMessageDeliveredAsync(message.Id);
+        // Delivery is acknowledged globally by HimoRealtimeService. ChatPage only
+        // handles the visible conversation/read state here.
 
         var conversation = _chat.Conversations.FirstOrDefault(x =>
             string.Equals(x.RemoteId, message.ConversationId.ToString("D"), StringComparison.OrdinalIgnoreCase));
@@ -1154,18 +1162,31 @@ public partial class ChatPage : ContentPage
 
         if (conversation.Id == _conversationId)
         {
-            _chat.MarkAsRead(conversation.Id);
+            var isVisible = IsConversationVisible;
+
+            // Keep the cached message list current even when the Shell keeps this
+            // page instance alive off-screen, but never emit a READ receipt unless
+            // the user is actually looking at this conversation.
+            if (isVisible)
+            {
+                _chat.MarkAsRead(conversation.Id);
+            }
+
             _ = MainThread.InvokeOnMainThreadAsync(() =>
             {
                 var wasNearBottom = _lastVisibleItemIndex < 0 ||
                                      _lastVisibleItemIndex >= Math.Max(0, _visibleMessages.Count - 3);
                 AppendNewMessagesToVisible();
-                if (_visibleMessages.Count > 0 && wasNearBottom)
+                if (isVisible && _visibleMessages.Count > 0 && wasNearBottom)
                     ScrollToLatestMessage(animate: false);
                 return Task.CompletedTask;
             });
-            _ = ClearConversationNotificationAsync();
-            _ = MarkRemoteConversationReadAsync(message.ConversationId);
+
+            if (isVisible)
+            {
+                _ = ClearConversationNotificationAsync();
+                _ = MarkRemoteConversationReadAsync(message.ConversationId);
+            }
         }
     }
 
@@ -1220,7 +1241,8 @@ public partial class ChatPage : ContentPage
             foreach (var message in remoteMessages)
             {
                 var isMine = myUserId != Guid.Empty && message.SenderUserId == myUserId;
-                if (!isMine) _ = _realtime.MarkMessageDeliveredAsync(message.Id);
+                // Delivery is acknowledged at the realtime/FCM application level,
+                // not only while this conversation page is open.
 
                 var added = _chat.AddRemoteMessage(
                     _conversationId, message.Text, message.SentAt.LocalDateTime, isMine,
@@ -1247,8 +1269,9 @@ public partial class ChatPage : ContentPage
                 .ToList();
 
             var receivedNewMessages = allMessages.Count > messageCountBeforeSync;
+            var shouldMarkRead = IsConversationVisible && (wasInitialSync || receivedNewMessages);
 
-            if (receivedNewMessages)
+            if (shouldMarkRead)
             {
                 _chat.MarkAsRead(_conversationId);
                 await _notifications.ClearConversationAsync(_conversationId.ToString()).ConfigureAwait(false);
