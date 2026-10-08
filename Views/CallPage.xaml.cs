@@ -154,7 +154,9 @@ public partial class CallPage : ContentPage
 #if ANDROID
             StopOutgoingRingback();
 #endif
-            StatusLabel.Text = "تعذر تجهيز المكالمة الصوتية. حاول مرة أخرى.";
+            StatusLabel.Text = _mode == CallMode.Video
+                ? "تعذر تجهيز مكالمة الفيديو. حاول مرة أخرى."
+                : "تعذر تجهيز المكالمة الصوتية. حاول مرة أخرى.";
             System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Start failed: {ex}");
         }
     }

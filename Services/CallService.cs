@@ -125,8 +125,13 @@ public sealed class CallService : ICallService, IDisposable
             }
             catch
             {
+                // Startup failure is not a call-end event. Keep the CallPage alive so
+                // it can show the real initialization error instead of immediately
+                // navigating back to ChatPage. The next call attempt can replace the
+                // stale state safely through StartAsync/PrepareIncomingAsync.
                 await StopCallResourcesQuietlyAsync();
-                Clear();
+                _current = null;
+                _lifecycle = CallLifecycleState.Ended;
                 throw;
             }
         }

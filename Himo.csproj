@@ -27,14 +27,6 @@
     <AndroidIncludeDebugSymbols>true</AndroidIncludeDebugSymbols>
     <AndroidFastDeployment>false</AndroidFastDeployment>
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
-    <!-- WebRTC is reflection-heavy and its Java binding is resolved dynamically.
-         Keep the managed binding intact so Release trimming cannot remove the
-         Java peers that PeerConnectionFactory and PeerConnection need. -->
-    <AndroidLinkMode>None</AndroidLinkMode>
-    <PublishTrimmed>false</PublishTrimmed>
-    <RunAOTCompilation>false</RunAOTCompilation>
-    <EnableProguard>false</EnableProguard>
-    <AndroidLinkTool></AndroidLinkTool>
   </PropertyGroup>
 
   <!-- Explicit Debug configuration: Visual Studio can attach the Android debugger. -->
@@ -109,7 +101,15 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android36.0'">
     <GoogleServicesJson Include="Platforms\Android\google-services.json" />
-    <ProguardConfiguration Include="Platforms\Android\proguard-webrtc.cfg" />
+
+    <!--
+      WebRTC is a Java/AAR binding. The managed binding assembly can be present
+      while the Java runtime classes are omitted from the final APK. That exact
+      failure appears on-device as ClassNotFoundException: org.webrtc.PeerConnectionFactory.
+      Include the restored AAR explicitly, without generating a second managed
+      binding, so the Java classes and jni/*.so are unconditionally packaged.
+    -->
+    <AndroidLibrary Include="$(NuGetPackageRoot)fswebrtc.bindings.maui.android\0.9.3.15\lib\net10.0-android36.0\libwebrtc.aar" Bind="false" />
   </ItemGroup>
 
 </Project>
