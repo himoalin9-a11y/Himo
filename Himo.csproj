@@ -27,6 +27,11 @@
     <AndroidIncludeDebugSymbols>true</AndroidIncludeDebugSymbols>
     <AndroidFastDeployment>false</AndroidFastDeployment>
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
+    <!-- Keep WebRTC Java classes intact; the call engine resolves some types through reflection. -->
+    <AndroidLinkMode>None</AndroidLinkMode>
+    <PublishTrimmed>false</PublishTrimmed>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <EnableProguard>false</EnableProguard>
   </PropertyGroup>
 
   <!-- Explicit Debug configuration: Visual Studio can attach the Android debugger. -->
@@ -109,7 +114,18 @@
       Include the restored AAR explicitly, without generating a second managed
       binding, so the Java classes and jni/*.so are unconditionally packaged.
     -->
-    <AndroidLibrary Include="$(NuGetPackageRoot)fswebrtc.bindings.maui.android\0.9.3.15\lib\net10.0-android36.0\libwebrtc.aar" Bind="false" />
+    <!-- The patched AAR is staged inside the project by Tools\Install-WebRTC16KB.ps1.
+         This removes dependency on whether NuGet's transitive AndroidLibrary item
+         is propagated into the final APK. Bind=false keeps the existing generated
+         FsWebRTC managed bindings while packaging the Java classes/native .so files. -->
+    <AndroidLibrary Include="Platforms\Android\Jars\libwebrtc.aar" Bind="false"
+                    Condition="Exists('Platforms\Android\Jars\libwebrtc.aar')" />
   </ItemGroup>
+
+  <Target Name="ValidateHimoWebRtcAar" BeforeTargets="ResolveAndroidLibraryInputs"
+          Condition="'$(TargetFramework)' == 'net10.0-android36.0'">
+    <Error Condition="!Exists('Platforms\Android\Jars\libwebrtc.aar')"
+           Text="Himo WebRTC AAR is missing. Run Tools\Install-WebRTC16KB.ps1 before building the Android project." />
+  </Target>
 
 </Project>

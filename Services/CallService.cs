@@ -19,7 +19,7 @@ public enum CallSignalType
     IceCandidate
 }
 
-public sealed record CallRequest(Guid ConversationId, CallMode Mode);
+public sealed record CallRequest(Guid ConversationId, CallMode Mode, Guid CallId = default);
 public enum CallLifecycleState
 {
     Idle,
@@ -29,7 +29,53 @@ public enum CallLifecycleState
     Ended
 }
 
-public sealed record CallState(Guid ConversationId, CallMode Mode, bool IsConnected, bool IsMuted, bool IsSpeakerOn, bool IsRemoteAudioEnabled);
+public sealed record CallState(Guid ConversationId, Guid CallId, CallMode Mode, bool IsConnected, bool IsMuted, bool IsSpeakerOn, bool IsRemoteAudioEnabled);
+
+public sealed record CallSignalEnvelope(Guid CallId, CallMode? Mode, string? Data)
+{
+    public static string Serialize(Guid callId, CallMode? mode = null, string? data = null)
+        => JsonSerializer.Serialize(new
+        {
+            callId,
+            mode = mode?.ToString().ToLowerInvariant(),
+            data
+        });
+
+    public static bool TryParse(string? payload, out CallSignalEnvelope envelope)
+    {
+        envelope = new CallSignalEnvelope(Guid.Empty, null, payload);
+        if (string.IsNullOrWhiteSpace(payload)) return false;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(payload);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("callId", out var idElement) ||
+                !Guid.TryParse(idElement.GetString(), out var callId) ||
+                callId == Guid.Empty)
+                return false;
+
+            CallMode? mode = null;
+            if (root.TryGetProperty("mode", out var modeElement) &&
+                string.Equals(modeElement.GetString(), "video", StringComparison.OrdinalIgnoreCase))
+                mode = CallMode.Video;
+            else if (root.TryGetProperty("mode", out modeElement) &&
+                     string.Equals(modeElement.GetString(), "audio", StringComparison.OrdinalIgnoreCase))
+                mode = CallMode.Audio;
+
+            string? data = null;
+            if (root.TryGetProperty("data", out var dataElement) && dataElement.ValueKind != JsonValueKind.Null)
+                data = dataElement.GetString();
+
+            envelope = new CallSignalEnvelope(callId, mode, data);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
 
 public interface ICallService
 {
@@ -62,6 +108,9 @@ public sealed class CallService : ICallService, IDisposable
     private int _ending;
     private long _operationVersion;
     private CallLifecycleState _lifecycle = CallLifecycleState.Idle;
+    private Guid _pendingIncomingCallId;
+    private CancellationTokenSource? _callTimeoutCts;
+    private static readonly TimeSpan OutgoingTimeout = TimeSpan.FromSeconds(45);
 
     public event EventHandler<CallState>? StateChanged;
     public event EventHandler<CallSignalMessage>? IncomingSignal;
@@ -93,6 +142,9 @@ public sealed class CallService : ICallService, IDisposable
     public async Task StartAsync(CallRequest request, CancellationToken cancellationToken = default)
     {
         var operationVersion = Interlocked.Increment(ref _operationVersion);
+        var callId = request.CallId == Guid.Empty ? Guid.NewGuid() : request.CallId;
+        request = request with { CallId = callId };
+        CancelCallTimeout();
         await _remoteAudioGate.WaitAsync(cancellationToken);
         try
         {
@@ -101,6 +153,7 @@ public sealed class CallService : ICallService, IDisposable
             _lifecycle = CallLifecycleState.Calling;
             _current = new CallState(
                 request.ConversationId,
+                request.CallId,
                 request.Mode,
                 false,
                 false,
@@ -120,8 +173,9 @@ public sealed class CallService : ICallService, IDisposable
                 await _realtime.SendCallSignalAsync(
                     request.ConversationId,
                     CallSignalType.Invite.ToString(),
-                    JsonSerializer.Serialize(new { mode = request.Mode.ToString().ToLowerInvariant() }),
+                    CallSignalEnvelope.Serialize(callId, request.Mode),
                     cancellationToken);
+                StartOutgoingTimeout(callId);
             }
             catch
             {
@@ -146,10 +200,15 @@ public sealed class CallService : ICallService, IDisposable
         cancellationToken.ThrowIfCancellationRequested();
         Interlocked.Increment(ref _operationVersion);
 
+        var incomingCallId = request.CallId != Guid.Empty ? request.CallId : _pendingIncomingCallId;
+        if (incomingCallId == Guid.Empty) incomingCallId = Guid.NewGuid();
+        request = request with { CallId = incomingCallId };
+        CancelCallTimeout();
         var current = _current;
         if (current is not null)
         {
-            if (current.ConversationId == request.ConversationId && current.Mode == request.Mode)
+            if (current.ConversationId == request.ConversationId && current.Mode == request.Mode &&
+                (request.CallId == Guid.Empty || current.CallId == request.CallId))
                 return;
 
             if (current.IsConnected || _lifecycle == CallLifecycleState.Calling)
@@ -162,6 +221,7 @@ public sealed class CallService : ICallService, IDisposable
         _lifecycle = CallLifecycleState.Calling;
         _current = new CallState(
             request.ConversationId,
+            request.CallId,
             request.Mode,
             false,
             false,
@@ -195,7 +255,7 @@ public sealed class CallService : ICallService, IDisposable
                 await _realtime.SendCallSignalAsync(
                     current.ConversationId,
                     CallSignalType.Accept.ToString(),
-                    null,
+                    CallSignalEnvelope.Serialize(current.CallId, current.Mode),
                     cancellationToken);
             }
             catch
@@ -219,12 +279,13 @@ public sealed class CallService : ICallService, IDisposable
         if (state is null) return;
 
         _lifecycle = CallLifecycleState.Disconnecting;
+        CancelCallTimeout();
         // The local media path is closed FIRST. Signaling is only a best-effort
         // notification after teardown, so a broken hub can never block the UI.
         await StopCallResourcesQuietlyAsync();
         Clear();
         _lifecycle = CallLifecycleState.Ended;
-        await SendCallSignalBestEffortAsync(state.ConversationId, CallSignalType.Reject, cancellationToken);
+        await SendCallSignalBestEffortAsync(state, CallSignalType.Reject, cancellationToken);
     }
 
     public async Task EndAsync(CancellationToken cancellationToken = default)
@@ -234,6 +295,7 @@ public sealed class CallService : ICallService, IDisposable
         var state = _current;
 
         _lifecycle = CallLifecycleState.Disconnecting;
+        CancelCallTimeout();
         // Exact teardown order: stop local media -> stop WebRTC -> clear UI state ->
         // best-effort End signal. The signal is never allowed to hold navigation.
         await StopCallResourcesQuietlyAsync();
@@ -241,7 +303,7 @@ public sealed class CallService : ICallService, IDisposable
         _lifecycle = CallLifecycleState.Ended;
 
         if (state is not null)
-            await SendCallSignalBestEffortAsync(state.ConversationId, CallSignalType.End, cancellationToken);
+            await SendCallSignalBestEffortAsync(state, CallSignalType.End, cancellationToken);
     }
 
     public async Task SetMutedAsync(bool muted, CancellationToken cancellationToken = default)
@@ -290,7 +352,7 @@ public sealed class CallService : ICallService, IDisposable
     private Task SendMediaSignal(CallSignalType type, string payload, CancellationToken cancellationToken)
     {
         if (_current is null || string.IsNullOrWhiteSpace(payload)) return Task.CompletedTask;
-        return _realtime.SendCallSignalAsync(_current.ConversationId, type.ToString(), payload, cancellationToken);
+        return _realtime.SendCallSignalAsync(_current.ConversationId, type.ToString(), CallSignalEnvelope.Serialize(_current.CallId, _current.Mode, payload), cancellationToken);
     }
 
     private async void OnSignalReceived(object? sender, CallSignalMessage signal)
@@ -298,21 +360,34 @@ public sealed class CallService : ICallService, IDisposable
         if (string.Equals(signal.Type, CallSignalType.Invite.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             var mode = CallMode.Audio;
-            if (!string.IsNullOrWhiteSpace(signal.Payload))
+            var callId = Guid.NewGuid();
+            if (CallSignalEnvelope.TryParse(signal.Payload, out var inviteEnvelope))
+            {
+                callId = inviteEnvelope.CallId;
+                if (inviteEnvelope.Mode.HasValue) mode = inviteEnvelope.Mode.Value;
+            }
+            else if (!string.IsNullOrWhiteSpace(signal.Payload))
             {
                 try
                 {
                     using var doc = JsonDocument.Parse(signal.Payload);
                     if (doc.RootElement.TryGetProperty("mode", out var m) && string.Equals(m.GetString(), "video", StringComparison.OrdinalIgnoreCase))
                         mode = CallMode.Video;
-                }
-                catch { }
+                } catch { }
             }
-            if (_current is not null && _current.ConversationId != signal.ConversationId)
+            _pendingIncomingCallId = callId;
+            if (_current is not null)
             {
+                if (_current.ConversationId == signal.ConversationId &&
+                    _current.CallId == callId)
+                    return;
+
                 if (_current.IsConnected || _lifecycle == CallLifecycleState.Calling)
                 {
-                    _ = SendCallSignalBestEffortAsync(signal.ConversationId, CallSignalType.Reject, CancellationToken.None);
+                    _ = SendCallSignalBestEffortAsync(
+                        new CallState(signal.ConversationId, callId, mode, false, false, _media.IsSpeakerEnabled, _webRtc.IsRemoteAudioEnabled),
+                        CallSignalType.Reject,
+                        CancellationToken.None);
                     return;
                 }
 
@@ -321,11 +396,15 @@ public sealed class CallService : ICallService, IDisposable
 
             Volatile.Write(ref _ending, 0);
             _lifecycle = CallLifecycleState.Calling;
-            _current = new CallState(signal.ConversationId, mode, false, false, _media.IsSpeakerEnabled, _webRtc.IsRemoteAudioEnabled);
+            _current = new CallState(signal.ConversationId, callId, mode, false, false, _media.IsSpeakerEnabled, _webRtc.IsRemoteAudioEnabled);
             RaiseState();
         }
         else if (_current is not null && _current.ConversationId == signal.ConversationId)
         {
+            if (CallSignalEnvelope.TryParse(signal.Payload, out var envelope) &&
+                envelope.CallId != Guid.Empty &&
+                envelope.CallId != _current.CallId)
+                return;
             if (string.Equals(signal.Type, CallSignalType.Accept.ToString(), StringComparison.OrdinalIgnoreCase))
             {
                 // Accept is handled by WebRtcNegotiationCoordinator. Keeping SDP
@@ -357,6 +436,8 @@ public sealed class CallService : ICallService, IDisposable
 
     private void Clear()
     {
+        CancelCallTimeout();
+        _pendingIncomingCallId = Guid.Empty;
         if (_current is null) return;
         _current = null;
         CallEnded?.Invoke(this, EventArgs.Empty);
@@ -383,7 +464,7 @@ public sealed class CallService : ICallService, IDisposable
     }
 
     private async Task SendCallSignalBestEffortAsync(
-        Guid conversationId,
+        CallState state,
         CallSignalType type,
         CancellationToken cancellationToken)
     {
@@ -391,12 +472,41 @@ public sealed class CallService : ICallService, IDisposable
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(TimeSpan.FromSeconds(2));
-            await _realtime.SendCallSignalAsync(conversationId, type.ToString(), null, timeout.Token);
+            await _realtime.SendCallSignalAsync(state.ConversationId, type.ToString(), CallSignalEnvelope.Serialize(state.CallId, state.Mode), timeout.Token);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo CallService] {type} signal failed: {ex.Message}");
         }
+    }
+
+    private void StartOutgoingTimeout(Guid callId)
+    {
+        CancelCallTimeout();
+        var cts = new CancellationTokenSource();
+        _callTimeoutCts = cts;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(OutgoingTimeout, cts.Token).ConfigureAwait(false);
+                if (cts.IsCancellationRequested || _current?.CallId != callId || _current.IsConnected) return;
+                await EndAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo CallService] Call timeout cleanup failed: {ex}");
+            }
+        });
+    }
+
+    private void CancelCallTimeout()
+    {
+        var cts = Interlocked.Exchange(ref _callTimeoutCts, null);
+        if (cts is null) return;
+        try { cts.Cancel(); } catch { }
+        cts.Dispose();
     }
 
     private void RaiseState()
@@ -406,6 +516,7 @@ public sealed class CallService : ICallService, IDisposable
 
     public void Dispose()
     {
+        CancelCallTimeout();
         _realtime.CallSignalReceived -= OnSignalReceived;
         _webRtc.ConnectionEstablishedChanged -= OnConnectionEstablishedChanged;
     }

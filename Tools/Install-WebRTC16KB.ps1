@@ -127,6 +127,9 @@ try {
         if (-not $checkZip.GetEntry('org/webrtc/PeerConnection.class')) {
             throw "Patched classes.jar does not contain org/webrtc/PeerConnection.class; refusing to install malformed AAR."
         }
+        if (-not $checkZip.GetEntry('org/webrtc/PeerConnectionFactory.class')) {
+            throw "Patched classes.jar does not contain org/webrtc/PeerConnectionFactory.class; refusing to install malformed AAR."
+        }
         if (-not $checkZip.GetEntry('org/jni_zero/JniInit.class')) {
             throw "Patched classes.jar does not contain org/jni_zero/JniInit.class; refusing to install malformed AAR."
         }
@@ -141,10 +144,19 @@ try {
     Move-Item $patchedAarZip $patchedAar -Force
     Copy-Item $patchedAar $packageAar -Force
 
+    # Stage the exact patched AAR inside the Himo project. The Android build then
+    # consumes this concrete file instead of relying on NuGet transitive Android
+    # asset propagation.
+    $projectJars = Join-Path $PSScriptRoot '..\Platforms\Android\Jars'
+    New-Item -ItemType Directory -Force -Path $projectJars | Out-Null
+    $projectAar = Join-Path $projectJars 'libwebrtc.aar'
+    Copy-Item $patchedAar $projectAar -Force
+
     Write-Host "Patched 16 KB native WebRTC libraries while preserving original FsWebRTC Java bindings."
     Write-Host "Added org.jni_zero.JniInit.class from WebRTC $Version."
-    Write-Host "Verified org.webrtc.PeerConnection.class remains present."
-    Write-Host "Installed: $packageAar"
+    Write-Host "Verified org.webrtc.PeerConnection.class and org.webrtc.PeerConnectionFactory.class remain present."
+    Write-Host "Installed NuGet AAR: $packageAar"
+    Write-Host "Staged project AAR: $projectAar"
 } finally {
     Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue
 }
