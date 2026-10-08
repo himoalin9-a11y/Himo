@@ -79,17 +79,18 @@ sealed class FcmPushService
         Guid messageId,
         CancellationToken cancellationToken = default)
     {
-        var messaging = _messaging;
-        if (messaging is null)
+        var acceptedTokens = new List<string>();
+
+        if (_messaging is null)
         {
             _logger.LogError("[Himo FCM] Message push skipped: Firebase Messaging is not initialized.");
-            return Array.Empty<string>();
+            return acceptedTokens;
         }
 
         if (tokens.Count == 0)
         {
             _logger.LogWarning("[Himo FCM] Message push skipped: recipient has no registered FCM token.");
-            return Array.Empty<string>();
+            return acceptedTokens;
         }
 
         var cleanTokens = tokens
@@ -98,7 +99,7 @@ sealed class FcmPushService
             .ToList();
 
         if (cleanTokens.Count == 0)
-            return Array.Empty<string>();
+            return acceptedTokens;
 
         var data = new Dictionary<string, string>
         {
@@ -107,8 +108,6 @@ sealed class FcmPushService
             ["notification_type"] = "chat_message",
             ["is_silent_in_foreground"] = "true"
         };
-
-        var acceptedTokens = new List<string>();
 
         try
         {
@@ -148,7 +147,7 @@ sealed class FcmPushService
                     // The caller cancellation is still honored immediately.
                     using var batchCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     batchCts.CancelAfter(TimeSpan.FromSeconds(15));
-                    var response = await messaging.SendEachForMulticastAsync(multicast, batchCts.Token);
+                    var response = await _messaging.SendEachForMulticastAsync(multicast, batchCts.Token);
                     totalSuccess += response.SuccessCount;
                     totalFailure += response.FailureCount;
 
@@ -226,7 +225,7 @@ sealed class FcmPushService
             _logger.LogError(ex, "FCM message send failed.");
         }
 
-        return acceptedTokens.Distinct(StringComparer.Ordinal).ToArray();
+        return acceptedTokens;
     }
     public async Task SendCallInviteAsync(
         IReadOnlyList<string> tokens,
@@ -235,8 +234,7 @@ sealed class FcmPushService
         string mode,
         CancellationToken cancellationToken = default)
     {
-        var messaging = _messaging;
-        if (messaging is null || tokens.Count == 0) return;
+        if (_messaging is null || tokens.Count == 0) return;
 
         var cleanTokens = tokens.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.Ordinal).ToList();
         if (cleanTokens.Count == 0) return;
@@ -282,7 +280,7 @@ sealed class FcmPushService
 
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeout.CancelAfter(TimeSpan.FromSeconds(10));
-                await messaging.SendEachForMulticastAsync(message, timeout.Token);
+                await _messaging.SendEachForMulticastAsync(message, timeout.Token);
             }
             catch (Exception ex)
             {

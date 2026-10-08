@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#160022"/>
+      <stop offset="0.34" stop-color="#2A1248"/>
+      <stop offset="0.56" stop-color="#4A2A69"/>
+      <stop offset="0.72" stop-color="#1D0D31"/>
+      <stop offset="1" stop-color="#08000F"/>
+    </linearGradient>
+    <linearGradient id="horizon" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6A3D8E" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#D89AD8" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#6A3D8E" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3C2457" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#0B0016"/>
+    </linearGradient>
+    <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#F2C9F1" stop-opacity="0.75"/>
+      <stop offset="0.42" stop-color="#C97FDF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#A34FC8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="mountain" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2B1640"/>
+      <stop offset="1" stop-color="#12061C"/>
+    </linearGradient>
+    <linearGradient id="petal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E7B6FF" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#8B4FB9" stop-opacity="0.55"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1080" height="1920" fill="url(#sky)"/>
+
+  <!-- soft twilight light -->
+  <ellipse cx="570" cy="690" rx="310" ry="245" fill="url(#moonGlow)"/>
+  <rect x="105" y="720" width="870" height="34" rx="17" fill="url(#horizon)" opacity="0.5"/>
+
+  <!-- distant mountains -->
+  <path d="M0 820 C150 700 245 725 350 790 C455 610 545 660 650 760 C760 640 860 710 1080 820 L1080 1060 L0 1060 Z" fill="url(#mountain)" opacity="0.96"/>
+  <path d="M0 900 C160 820 280 850 405 910 C520 790 625 820 735 895 C860 815 965 850 1080 920 L1080 1085 L0 1085 Z" fill="#170A25" opacity="0.72"/>
+
+  <!-- lake -->
+  <path d="M0 980 Q270 930 540 970 T1080 960 L1080 1920 L0 1920 Z" fill="url(#water)"/>
+  <g opacity="0.23">
+    <rect x="365" y="1115" width="350" height="11" rx="5.5" fill="#E7B9F1"/>
+    <rect x="420" y="1165" width="245" height="8" rx="4" fill="#E0B6F0"/>
+    <rect x="335" y="1230" width="410" height="7" rx="3.5" fill="#B882CF"/>
+    <rect x="455" y="1302" width="170" height="6" rx="3" fill="#D9A9E9"/>
+    <rect x="375" y="1380" width="330" height="5" rx="2.5" fill="#A66BC2"/>
+  </g>
+
+  <!-- left blossom branch -->
+  <path d="M-40 145 C110 270 86 465 190 640 C245 735 246 900 150 1020" fill="none" stroke="#1C0A29" stroke-width="28" stroke-linecap="round" opacity="0.95"/>
+  <path d="M55 310 C175 385 250 430 320 505" fill="none" stroke="#220C32" stroke-width="16" stroke-linecap="round" opacity="0.85"/>
+  <g fill="url(#petal)">
+    <g transform="translate(105 250)"><ellipse rx="24" ry="42"/><ellipse rx="24" ry="42" transform="rotate(72)"/><ellipse rx="24" ry="42" transform="rotate(144)"/><ellipse rx="24" ry="42" transform="rotate(216)"/><ellipse rx="24" ry="42" transform="rotate(288)"/><circle r="12" fill="#FFD5F8"/></g>
+    <g transform="translate(190 420) scale(.82)"><ellipse rx="24" ry="42"/><ellipse rx="24" ry="42" transform="rotate(72)"/><ellipse rx="24" ry="42" transform="rotate(144)"/><ellipse rx="24" ry="42" transform="rotate(216)"/><ellipse rx="24" ry="42" transform="rotate(288)"/><circle r="12" fill="#FFD5F8"/></g>
+    <g transform="translate(128 625) scale(.75)"><ellipse rx="24" ry="42"/><ellipse rx="24" ry="42" transform="rotate(72)"/><ellipse rx="24" ry="42" transform="rotate(144)"/><ellipse rx="24" ry="42" transform="rotate(216)"/><ellipse rx="24" ry="42" transform="rotate(288)"/><circle r="12" fill="#FFD5F8"/></g>
+    <g transform="translate(228 790) scale(.62)"><ellipse rx="24" ry="42"/><ellipse rx="24" ry="42" transform="rotate(72)"/><ellipse rx="24" ry="42" transform="rotate(144)"/><ellipse rx="24" ry="42" transform="rotate(216)"/><ellipse rx="24" ry="42" transform="rotate(288)"/><circle r="12" fill="#FFD5F8"/></g>
+  </g>
+
+  <!-- lower right blossoms -->
+  <path d="M1080 1585 C960 1510 940 1660 855 1720 C810 1750 785 1830 755 1940" fill="none" stroke="#1C0A29" stroke-width="26" stroke-linecap="round" opacity="0.92"/>
+  <g fill="url(#petal)">
+    <g transform="translate(975 1580) scale(.85)"><ellipse rx="24" ry="42"/><ellipse rx="24" ry="42" transform="rotate(72)"/><ellipse rx="24" ry="42" transform="rotate(144)"/><ellipse rx="24" ry="42" transform="rotate(216)"/><ellipse rx="24" ry="42" transform="rotate(288)"/><circle r="12" fill="#FFD5F8"/></g>
+    <g transform="translate(850 1770) scale(.7)"><ellipse rx="24" ry="42"/><ellipse rx="24" ry="42" transform="rotate(72)"/><ellipse rx="24" ry="42" transform="rotate(144)"/><ellipse rx="24" ry="42" transform="rotate(216)"/><ellipse rx="24" ry="42" transform="rotate(288)"/><circle r="12" fill="#FFD5F8"/></g>
+    <g transform="translate(790 1900) scale(.6)"><ellipse rx="24" ry="42"/><ellipse rx="24" ry="42" transform="rotate(72)"/><ellipse rx="24" ry="42" transform="rotate(144)"/><ellipse rx="24" ry="42" transform="rotate(216)"/><ellipse rx="24" ry="42" transform="rotate(288)"/><circle r="12" fill="#FFD5F8"/></g>
+  </g>
+
+  <!-- subtle vignette -->
+  <rect width="1080" height="1920" fill="#12001E" opacity="0.18"/>
+</svg>

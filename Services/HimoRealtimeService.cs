@@ -108,6 +108,8 @@ public sealed class HimoRealtimeService
                         TimeSpan.FromSeconds(5),
                         TimeSpan.FromSeconds(15)
                     })
+                .WithServerTimeout(TimeSpan.FromSeconds(30))
+                .WithKeepAliveInterval(TimeSpan.FromSeconds(10))
                 .Build();
 
             RegisterHandlers(connection);
@@ -440,7 +442,11 @@ public sealed class HimoRealtimeService
                 "اتصال خادم المكالمات غير متاح حاليًا.");
         }
 
-        await connection.SendAsync(
+        // Use InvokeAsync rather than fire-and-forget SendAsync. For call
+        // signaling this is effectively an application-level ACK: the caller
+        // does not advance the Offer/Answer state machine until the hub has
+        // accepted the signal and dispatched it.
+        await connection.InvokeAsync(
             "SendCallSignal",
             conversationId,
             type,

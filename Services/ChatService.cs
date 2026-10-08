@@ -175,6 +175,7 @@ public sealed class ChatService
                 IsMine = true,
                 IsPending = true,
                 DeliveryStatus = "sending",
+                ClientMessageId = Guid.NewGuid().ToString("D"),
                 AttachmentFileName = fileName,
                 AttachmentContentType = contentType,
                 AttachmentSize = attachmentSize,
@@ -206,6 +207,7 @@ public sealed class ChatService
             pending.RemoteId = remoteId;
             pending.IsPending = false;
             pending.DeliveryStatus = "sent";
+            pending.ClientMessageId = null;
             Save();
         }
     }
@@ -291,7 +293,10 @@ public sealed class ChatService
             EnsureLoaded();
             return _messages.Values
                 .SelectMany(x => x)
-                .Where(x => x.IsMine && x.IsPending && !string.IsNullOrWhiteSpace(x.ClientMessageId))
+                .Where(x => x.IsMine && x.IsPending &&
+                            string.Equals(x.DeliveryStatus, "sending", StringComparison.OrdinalIgnoreCase) &&
+                            !string.IsNullOrWhiteSpace(x.ClientMessageId) &&
+                            (!x.IsAttachment || !string.IsNullOrWhiteSpace(x.AttachmentLocalPath)))
                 .OrderBy(x => x.SentAt)
                 .ToList();
         }
@@ -313,6 +318,33 @@ public sealed class ChatService
             }
         }
         return false;
+    }
+
+    public int MarkFailedAttachmentsForRetry()
+    {
+        lock (_sync)
+        {
+            EnsureLoaded();
+            var count = 0;
+            foreach (var messages in _messages.Values)
+            {
+                foreach (var message in messages)
+                {
+                    if (!message.IsMine || !message.IsAttachment || !message.IsPending ||
+                        !string.Equals(message.DeliveryStatus, "failed", StringComparison.OrdinalIgnoreCase) ||
+                        string.IsNullOrWhiteSpace(message.AttachmentLocalPath) ||
+                        !File.Exists(message.AttachmentLocalPath) ||
+                        string.IsNullOrWhiteSpace(message.ClientMessageId))
+                        continue;
+
+                    message.DeliveryStatus = "sending";
+                    count++;
+                }
+            }
+
+            if (count > 0) Save();
+            return count;
+        }
     }
 
     public bool UpdateDeliveryStatus(string remoteId, string status)
@@ -477,10 +509,11 @@ public sealed class ChatService
 
                             foreach (var message in group.OrderBy(x => x.SentAt).ThenBy(x => x.Id))
                             {
-                                // Pending messages are durable outbox entries. Keep them
-                                // across app restarts so an interrupted request can be
-                                // retried safely with the same ClientMessageId.
-                                if (message.IsPending)
+                                // Pending messages are durable outbox entries. Text messages
+                                // keep the previous failed-on-reload behavior. Attachments, however,
+                                // already have a local file in HimoOutbox and must remain queued so
+                                // the app can upload them automatically when connectivity returns.
+                                if (message.IsPending && !message.IsAttachment)
                                     message.DeliveryStatus = "failed";
 
                                 if (!string.IsNullOrWhiteSpace(message.RemoteId) &&

@@ -156,6 +156,9 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                // Explicitly root the Java WebRTC binding before any reflective
+                // lookup. This protects the org.webrtc classes required at runtime.
+                WebRtcJavaBindingKeepAlive.Ensure();
                 _assembly = LoadBinding();
 
                 try
@@ -2065,7 +2068,8 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                 false)
             ??
             throw new InvalidOperationException(
-                $"WebRTC binding type '{name}' was not found.");
+                $"WebRTC managed binding type '{name}' was not found. " +
+                "The FsWebRTC Android binding is not loaded into the APK.");
     }
 
     private object AttachRenderer(

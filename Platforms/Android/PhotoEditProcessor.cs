@@ -163,14 +163,25 @@ internal static class PhotoEditProcessor
             true)
             ?? throw new IOException("تعذر إنشاء نسخة الصورة.");
 
-        ApplyPixels(
-            working,
-            filter,
-            beautyAmount,
-            whitening,
-            brightness,
-            cropSelection,
-            cancellationToken);
+        // Natural + zero adjustments needs no per-pixel processing. This matters
+        // for high-resolution camera photos where ApplyPixels would scan millions
+        // of pixels only to leave them visually unchanged.
+        var needsPixelProcessing = filter != HimoPhotoFilter.Natural
+            || beautyAmount > 0.001f
+            || whitening > 0.001f
+            || Math.Abs(brightness) > 0.001f;
+
+        if (needsPixelProcessing)
+        {
+            ApplyPixels(
+                working,
+                filter,
+                beautyAmount,
+                whitening,
+                brightness,
+                cropSelection,
+                cancellationToken);
+        }
 
         ApplyDrawings(working, drawings, cropRegion, cancellationToken);
         ApplyTextAnnotations(working, textAnnotations, cropRegion, cancellationToken);

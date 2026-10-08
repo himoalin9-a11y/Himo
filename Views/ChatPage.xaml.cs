@@ -1,7 +1,10 @@
 using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Dispatching;
+using Microsoft.Maui.Networking;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Net.Http;
+using System.Diagnostics;
 using Himo.Services;
 using Himo.Models;
 using CommunityToolkit.Maui.Views;
@@ -17,6 +20,7 @@ namespace Himo.Views;
 public partial class ChatPage : ContentPage
 {
     private const int MessagePageSize = 30;
+    private const int InitialVisibleMessageCount = MessagePageSize;
     private const int MessageSyncPageSize = 100;
     private readonly ChatService _chat;
     private readonly HimoApiClient _api;
@@ -31,7 +35,11 @@ public partial class ChatPage : ContentPage
     private int _loadingOlder;
     private bool _allowOlderPaging;
     private bool _initialPositioningLatest;
+    private int _firstVisibleItemIndex = -1;
     private int _lastVisibleItemIndex = -1;
+    private IDispatcherTimer? _scrollIdleTimer;
+    private bool _scrollIdleMediaPending;
+    private bool _scrollIdleOlderPending;
     private bool _hasMoreOlderMessages = true;
     private DateTime? _visibleOldestSentAt;
     private string? _visibleOldestRemoteId;
@@ -103,6 +111,7 @@ public partial class ChatPage : ContentPage
 
     private void PrepareForConversationChange()
     {
+        _openCts?.Cancel();
         StopTyping();
         _replyingTo = null;
         _selectionMode = false;
@@ -138,28 +147,54 @@ public partial class ChatPage : ContentPage
         _realtime.MessageDeleted += OnMessageDeleted;
         _realtime.Reconnected += OnRealtimeReconnected;
         _realtime.CallSignalReceived += OnRealtimeCallSignalReceived;
+
+        _scrollIdleTimer = Dispatcher.CreateTimer();
+        _scrollIdleTimer.Interval = TimeSpan.FromMilliseconds(650);
+        _scrollIdleTimer.IsRepeating = false;
+        _scrollIdleTimer.Tick += OnScrollIdleTimerTick;
+        Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
+    }
+
+    private void OnConnectivityChanged(object? sender, ConnectivityChangedEventArgs e)
+    {
+        // Media messages are intentionally NOT sent automatically after the network returns.
+        // The user must press the visible "إعادة الإرسال" button.
+        if (!IsConversationVisible)
+            return;
+
+        if (e.NetworkAccess == NetworkAccess.Internet)
+            MainThread.BeginInvokeOnMainThread(() => RefreshMessagesView(scrollToEnd: false));
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        Connectivity.Current.ConnectivityChanged -= OnConnectivityChanged;
+        Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
         Volatile.Write(ref _conversationVisible, 1);
 
         _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
         _realtime.CallSignalReceived += OnRealtimeCallSignalReceived;
+        _ = ApplySavedChatWallpaperAsync();
         StartPollingFallback();
 
         // Do not execute the first message bind while Shell is still performing
         // the navigation transition. Let Android draw the ChatPage first, then
         // populate the first message page on the next UI turn.
+        _openCts?.Cancel();
+        _openCts?.Dispose();
+        _openCts = new CancellationTokenSource();
+        var openToken = _openCts.Token;
+
         Dispatcher.Dispatch(() =>
         {
-            _ = InitializeChatAsync();
+            _ = InitializeChatAsync(openToken);
         });
     }
 
     private int _initializationVersion;
     private int _initializationRunning;
+    private CancellationTokenSource? _openCts;
     private bool _localFirstRenderCompleted;
     private int _initialScrollInProgress;
     // Read receipts are allowed only while this ChatPage is actually visible.
@@ -169,7 +204,7 @@ public partial class ChatPage : ContentPage
 
     private bool IsConversationVisible => Volatile.Read(ref _conversationVisible) == 1;
 
-    private async Task InitializeChatAsync()
+    private async Task InitializeChatAsync(CancellationToken cancellationToken)
     {
         if (Interlocked.Exchange(ref _initializationRunning, 1) != 0)
             return;
@@ -184,6 +219,7 @@ public partial class ChatPage : ContentPage
                 // Let the current navigation/layout frame complete first.
                 // Then render the cached last page immediately; do not wait for network.
                 await Task.Yield();
+                cancellationToken.ThrowIfCancellationRequested();
 
                 if (version == Volatile.Read(ref _initializationVersion) &&
                     !_localFirstRenderCompleted)
@@ -192,13 +228,13 @@ public partial class ChatPage : ContentPage
                 }
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             _ = _notifications.InitializeAsync();
 
-            // Never make the first frame wait for authentication/server/SignalR.
-            // Cached messages are rendered first; network synchronization follows.
-            _ = InitializeRemoteSyncAsync(version);
-            _ = FlushOutboxAsync();
-            _ = ClearConversationNotificationAsync();
+            // Start remote work immediately after the first cached paint. The previous
+            // 350ms defer only delayed the first remote history request without fixing
+            // the actual contention point.
+            _ = StartDeferredBackgroundWorkAsync(version, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -213,27 +249,52 @@ public partial class ChatPage : ContentPage
         }
     }
 
-    private async Task InitializeRemoteSyncAsync(int version)
+    private async Task StartDeferredBackgroundWorkAsync(int version, CancellationToken cancellationToken)
     {
         try
         {
-            await _api.TokenInitialization.ConfigureAwait(false);
+            await Task.Yield();
+            cancellationToken.ThrowIfCancellationRequested();
+            _ = InitializeRemoteSyncAsync(version, cancellationToken);
+            _ = ClearConversationNotificationAsync();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task InitializeRemoteSyncAsync(int version, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _api.TokenInitialization.WaitAsync(cancellationToken).ConfigureAwait(false);
             if (!_api.HasToken || version != Volatile.Read(ref _initializationVersion))
                 return;
 
-            await ResolveRemoteConversationAsync().ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            await ResolveRemoteConversationAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
 
             if (version != Volatile.Read(ref _initializationVersion))
                 return;
 
             if (!_localFirstRenderCompleted)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 await MainThread.InvokeOnMainThreadAsync(Load);
+            }
 
             if (version != Volatile.Read(ref _initializationVersion))
                 return;
 
-            _ = StartRealtimeSafelyAsync(version);
-            _ = LoadRemoteSafelyAsync(version);
+            // Message history has priority during first open. Start SignalR only
+            // after the initial page has been loaded so a slow hub negotiation
+            // cannot compete with the history request.
+            await LoadRemoteSafelyAsync(version, cancellationToken);
+
+            if (version != Volatile.Read(ref _initializationVersion))
+                return;
+
+            _ = StartRealtimeSafelyAsync(version, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -244,11 +305,12 @@ public partial class ChatPage : ContentPage
         }
     }
 
-    private async Task StartRealtimeSafelyAsync(int version)
+    private async Task StartRealtimeSafelyAsync(int version, CancellationToken cancellationToken)
     {
         try
         {
-            await StartRealtimeAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+            await StartRealtimeAsync(cancellationToken);
             if (version == Volatile.Read(ref _initializationVersion) &&
                 Guid.TryParse(_remoteConversationId, out var remoteId))
             {
@@ -262,11 +324,11 @@ public partial class ChatPage : ContentPage
         }
     }
 
-    private async Task LoadRemoteSafelyAsync(int version)
+    private async Task LoadRemoteSafelyAsync(int version, CancellationToken cancellationToken)
     {
         try
         {
-            await LoadRemoteAsync();
+            await LoadRemoteAsync(cancellationToken);
 
             if (version != Volatile.Read(ref _initializationVersion))
                 return;
@@ -304,11 +366,16 @@ public partial class ChatPage : ContentPage
             return;
         }
 
-        // Normal path: the navigation query already contains the remote GUID.
+        // The navigation query already contains the remote GUID. Never block the
+        // first message load on GetConversationsAsync(): that endpoint calculates
+        // unread counts and display names for every conversation and can be much
+        // slower than fetching one conversation's messages. Create a lightweight
+        // local placeholder immediately, then hydrate its display metadata in the
+        // background.
         if (!string.IsNullOrWhiteSpace(_remoteConversationId) && Guid.TryParse(_remoteConversationId, out var remoteId))
         {
             var existing = _chat.Conversations.FirstOrDefault(x =>
-                string.Equals(x.RemoteId, _remoteConversationId, StringComparison.OrdinalIgnoreCase));
+                string.Equals(x.RemoteId, remoteId.ToString("D"), StringComparison.OrdinalIgnoreCase));
 
             if (existing is not null)
             {
@@ -316,39 +383,15 @@ public partial class ChatPage : ContentPage
                 return;
             }
 
-            try
-            {
-                var conversations = await _api.GetConversationsAsync();
-                var remote = conversations.FirstOrDefault(x => x.Id == remoteId);
-                if (remote is null) return;
-
-                var local = _chat.Conversations.FirstOrDefault(x =>
-                    string.Equals(x.RemoteId, remote.Id.ToString("D"), StringComparison.OrdinalIgnoreCase));
-
-                if (local is null)
-                {
-                    local = _chat.AddConversation(remote.Name);
-                    local.RemoteId = remote.Id.ToString("D");
-                }
-
-                local.LastMessage = remote.LastMessage;
-                local.Time = remote.UpdatedAt.LocalDateTime.ToString("HH:mm");
-                local.UpdatedAt = remote.UpdatedAt.LocalDateTime;
-                local.UnreadCount = remote.UnreadCount;
-
-                _conversationId = local.Id;
-                return;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Remote conversation resolve failed: {ex.Message}");
-            }
+            var local = _chat.AddConversation("محادثة");
+            local.RemoteId = remoteId.ToString("D");
+            _conversationId = local.Id;
+            return;
         }
 
-        // Recovery path: older local stores can contain a conversation with only
-        // the local integer ID. Resolve that record against the server before the
-        // first history request; otherwise the page has no GUID and silently skips
-        // loading messages until another action refreshes the conversation list.
+        // Recovery path for legacy local records that do not yet have a remote GUID.
+        // Normal Home/Search navigation now passes the remote GUID directly, so this
+        // path is no longer used during normal chat opening.
         if (_conversationId <= 0 || !_api.HasToken)
             return;
 
@@ -431,11 +474,14 @@ public partial class ChatPage : ContentPage
         NameLabel?.SetValue(Label.TextProperty, displayName);
         InitialLabel?.SetValue(Label.TextProperty, string.IsNullOrWhiteSpace(conversation.Initial) ? displayName[..1] : conversation.Initial);
 
-        var recent = _chat.GetRecentMessages(_conversationId, MessagePageSize);
+        var recent = _chat.GetRecentMessages(_conversationId, InitialVisibleMessageCount);
 
+        // First paint must contain only cached message metadata. Starting image/video
+        // downloads here causes network completion and attachment property changes
+        // while CollectionView is measuring the initial message cells, which can
+        // produce visible freezes on Android. Remote sync prepares only a small
+        // number of recent media previews after the chat is already rendered.
         SetMessagesItemsSource(recent);
-        _ = PrepareVisibleImagePreviewsAsync(recent);
-        _ = PrepareVisibleVideoPreviewsAsync(recent);
 
         // A local cache may contain more history than the first page.
         // We do not sort/copy the whole history just to determine this.
@@ -445,8 +491,6 @@ public partial class ChatPage : ContentPage
         EmptyState?.SetValue(IsVisibleProperty, recent.Count == 0);
         _localFirstRenderCompleted = true;
 
-        if (recent.Count == 0)
-    
         if (UnreadDivider is not null)
             UnreadDivider.IsVisible = conversation.UnreadCount > 0 && recent.Count > 0;
 
@@ -606,27 +650,101 @@ public partial class ChatPage : ContentPage
     private async void ChatBackgroundMenuClicked(object? sender, EventArgs e)
     {
         CloseConversationMenu();
+
         var selected = await DisplayActionSheetAsync(
             "خلفية الدردشة",
             "إلغاء",
             null,
-            "فاتحة",
-            "لافندر",
-            "رمادي فاتح");
+            "🌸 الأزهار البنفسجية",
+            "🌄 غروب الجبال",
+            "🌙 ليلة القمر",
+            "🌺 أزهار قريبة",
+            "🌊 بحيرة هادئة",
+            "〰️ تموجات بنفسجية");
 
-        if (selected == "فاتحة")
-            BackgroundColor = Color.FromArgb("#F7F3FB");
-        else if (selected == "لافندر")
-            BackgroundColor = Color.FromArgb("#F1EBFB");
-        else if (selected == "رمادي فاتح")
-            BackgroundColor = Color.FromArgb("#F2F4F7");
-
-        if (!string.Equals(selected, "إلغاء", StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(selected))
+        var wallpaper = selected switch
         {
-            var key = !string.IsNullOrWhiteSpace(_remoteConversationId)
-                ? $"himo_chat_background_{_remoteConversationId}"
-                : $"himo_chat_background_local_{_conversationId}";
-            Preferences.Default.Set(key, selected);
+            "🌸 الأزهار البنفسجية" => "himo_wallpaper_purple_flowers.jpg",
+            "🌄 غروب الجبال" => "himo_wallpaper_mountain_sunset.jpg",
+            "🌙 ليلة القمر" => "himo_wallpaper_moon_lake.jpg",
+            "🌺 أزهار قريبة" => "himo_wallpaper_close_flowers.jpg",
+            "🌊 بحيرة هادئة" => "himo_wallpaper_quiet_lake.jpg",
+            "〰️ تموجات بنفسجية" => "himo_wallpaper_purple_water.jpg",
+            _ => null
+        };
+
+        if (wallpaper is null)
+            return;
+
+        await ApplyChatWallpaperAsync(wallpaper, persist: true);
+    }
+
+    private async Task ApplySavedChatWallpaperAsync()
+    {
+        var key = !string.IsNullOrWhiteSpace(_remoteConversationId)
+            ? $"himo_chat_background_{_remoteConversationId}"
+            : $"himo_chat_background_local_{_conversationId}";
+
+        var saved = Preferences.Default.Get(key, "himo_wallpaper_purple_flowers.jpg");
+        await ApplyChatWallpaperAsync(saved, persist: false);
+    }
+
+    private static string NormalizeChatWallpaperFile(string? value)
+    {
+        return value switch
+        {
+            // Migrate selections stored by the previous code-drawn wallpaper version.
+            "flowers" => "himo_wallpaper_purple_flowers.jpg",
+            "mountains" => "himo_wallpaper_mountain_sunset.jpg",
+            "moon" => "himo_wallpaper_moon_lake.jpg",
+            "closeflowers" => "himo_wallpaper_close_flowers.jpg",
+            "quietlake" => "himo_wallpaper_quiet_lake.jpg",
+            "waves" => "himo_wallpaper_purple_water.jpg",
+            "himo_wallpaper_purple_flowers.jpg" => "himo_wallpaper_purple_flowers.jpg",
+            "himo_wallpaper_mountain_sunset.jpg" => "himo_wallpaper_mountain_sunset.jpg",
+            "himo_wallpaper_moon_lake.jpg" => "himo_wallpaper_moon_lake.jpg",
+            "himo_wallpaper_close_flowers.jpg" => "himo_wallpaper_close_flowers.jpg",
+            "himo_wallpaper_quiet_lake.jpg" => "himo_wallpaper_quiet_lake.jpg",
+            "himo_wallpaper_purple_water.jpg" => "himo_wallpaper_purple_water.jpg",
+            _ => "himo_wallpaper_purple_flowers.jpg"
+        };
+    }
+
+    private async Task ApplyChatWallpaperAsync(string fileName, bool persist)
+    {
+        if (ChatWallpaper is null)
+            return;
+
+        var normalizedFile = NormalizeChatWallpaperFile(fileName);
+
+        try
+        {
+            // Wallpapers are packaged as MAUI app-package assets under Resources/Raw.
+            // Loading the bytes explicitly avoids relying on platform-specific FileImageSource
+            // lookup for Resources/Images, which can silently render nothing on Android.
+            await using var sourceStream = await FileSystem.Current.OpenAppPackageFileAsync(normalizedFile);
+            using var memory = new MemoryStream();
+            await sourceStream.CopyToAsync(memory);
+            var imageBytes = memory.ToArray();
+
+            ChatWallpaper.Source = ImageSource.FromStream(() => new MemoryStream(imageBytes, writable: false));
+            ChatWallpaper.Aspect = Aspect.AspectFill;
+            ChatWallpaper.Opacity = 0.98;
+
+            if (persist)
+            {
+                var key = !string.IsNullOrWhiteSpace(_remoteConversationId)
+                    ? $"himo_chat_background_{_remoteConversationId}"
+                    : $"himo_chat_background_local_{_conversationId}";
+                Preferences.Default.Set(key, normalizedFile);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Never leave the chat on a blank/white background when an asset cannot be opened.
+            ChatWallpaper.Source = null;
+            ChatWallpaper.BackgroundColor = Color.FromArgb("#24103D");
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatWallpaper] Failed to load {normalizedFile}: {ex}");
         }
     }
 
@@ -684,7 +802,7 @@ public partial class ChatPage : ContentPage
 
         try
         {
-            await Shell.Current.GoToAsync($"///CallPage?id={conversationId:D}&mode=audio");
+            await Shell.Current.GoToAsync($"CallPage?id={conversationId:D}&mode=audio");
         }
         catch (Exception ex)
         {
@@ -702,7 +820,7 @@ public partial class ChatPage : ContentPage
 
         try
         {
-            await Shell.Current.GoToAsync($"///CallPage?id={conversationId:D}&mode=video");
+            await Shell.Current.GoToAsync($"CallPage?id={conversationId:D}&mode=video");
         }
         catch (Exception ex)
         {
@@ -733,8 +851,11 @@ public partial class ChatPage : ContentPage
         StopIncomingCallRingtone();
 #endif
         _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
+        Volatile.Write(ref _conversationVisible, 0);
         StopPolling();
         StopTyping();
+        _openCts?.Cancel();
+        Connectivity.Current.ConnectivityChanged -= OnConnectivityChanged;
         base.OnDisappearing();
     }
 
@@ -778,7 +899,7 @@ public partial class ChatPage : ContentPage
             var action = await DisplayActionSheetAsync(title, "رفض", null, "رد");
             if (string.Equals(action, "رد", StringComparison.Ordinal))
             {
-                await Shell.Current.GoToAsync($"///CallPage?id={signal.ConversationId:D}&mode={(mode == CallMode.Video ? "video" : "audio")}&incoming=true");
+                await Shell.Current.GoToAsync($"CallPage?id={signal.ConversationId:D}&mode={(mode == CallMode.Video ? "video" : "audio")}&incoming=true");
             }
             else
             {
@@ -821,14 +942,9 @@ public partial class ChatPage : ContentPage
     }
 #endif
 
-    private async Task StartRealtimeAsync()
+    private async Task StartRealtimeAsync(CancellationToken cancellationToken = default)
     {
-        await _realtime.StartAsync();
-        if (Guid.TryParse(_remoteConversationId, out var remoteId))
-        {
-            var online = await _realtime.GetPresenceAsync(remoteId);
-            SetPresenceText(online);
-        }
+        await _realtime.StartAsync(cancellationToken);
     }
 
     private void OnRealtimeReconnected(object? sender, EventArgs e)
@@ -837,7 +953,6 @@ public partial class ChatPage : ContentPage
         // visible. Pull missed messages and flush the durable outbox with the same
         // ClientMessageId values so a lost HTTP response cannot create duplicates.
         _ = LoadRemoteAsync();
-        _ = FlushOutboxAsync();
         if (Guid.TryParse(_remoteConversationId, out var remoteId))
             _ = RefreshPresenceAfterReconnectAsync(remoteId);
     }
@@ -846,16 +961,15 @@ public partial class ChatPage : ContentPage
 
     private async Task FlushOutboxAsync()
     {
-        if (!_api.HasToken || Interlocked.Exchange(ref _flushingOutbox, 1) != 0)
+        if (!_api.HasToken ||
+            Connectivity.Current.NetworkAccess != NetworkAccess.Internet ||
+            Interlocked.Exchange(ref _flushingOutbox, 1) != 0)
             return;
 
         try
         {
             while (_api.HasToken)
             {
-                // Take a fresh snapshot every pass. This is important when the user
-                // sends message B while message A is still uploading: B must not
-                // wait for the 30-second polling fallback.
                 var pendingBatch = _chat.GetPendingMessages()
                     .OrderBy(x => x.SentAt)
                     .ThenBy(x => x.Id)
@@ -877,9 +991,6 @@ public partial class ChatPage : ContentPage
                     if (conversation is null || string.IsNullOrWhiteSpace(pending.ClientMessageId))
                         continue;
 
-                    // A message can be queued before the remote GUID is hydrated.
-                    // Resolve it here as well so the outbox does not get stuck until
-                    // another navigation/reconnect happens.
                     if (!Guid.TryParse(conversation.RemoteId, out var conversationId))
                     {
                         try
@@ -889,7 +1000,7 @@ public partial class ChatPage : ContentPage
                         catch (Exception ex)
                         {
                             System.Diagnostics.Debug.WriteLine(
-                                $"[Himo ChatPage] Pending message conversation resolve failed: {ex.Message}");
+                                $"[Himo ChatPage] Pending conversation resolve failed: {ex.Message}");
                         }
 
                         conversation = _chat.Conversations
@@ -898,24 +1009,47 @@ public partial class ChatPage : ContentPage
                         if (conversation is null ||
                             !Guid.TryParse(conversation.RemoteId, out conversationId))
                         {
-                            // Keep the message pending. Conversation resolution/auth
-                            // recovery may make it sendable later.
                             continue;
                         }
                     }
 
                     var clientMessageId = pending.ClientMessageId;
-
                     _chat.MarkPendingSending(clientMessageId);
 
                     try
                     {
-                        var replyId =
-                            Guid.TryParse(
-                                pending.ReplyToRemoteId,
-                                out var parsedReplyId)
-                                ? parsedReplyId
-                                : (Guid?)null;
+                        if (pending.IsAttachment)
+                        {
+                            var localPath = pending.AttachmentLocalPath;
+                            if (string.IsNullOrWhiteSpace(localPath) || !File.Exists(localPath))
+                            {
+                                _chat.FailPendingMessage(pending.ConversationId, clientMessageId);
+                                System.Diagnostics.Debug.WriteLine(
+                                    $"[Himo ChatPage] Pending attachment file is missing: {pending.AttachmentFileName}");
+                                continue;
+                            }
+
+                            await using var stream = File.OpenRead(localPath);
+                            var remoteAttachment = await _api.UploadAttachmentAsync(
+                                conversationId,
+                                stream,
+                                pending.AttachmentFileName ?? Path.GetFileName(localPath),
+                                pending.AttachmentContentType ?? "application/octet-stream");
+
+                            _chat.CompletePendingAttachmentMessage(
+                                pending,
+                                remoteAttachment.Id.ToString("D"),
+                                remoteAttachment.SentAt.LocalDateTime);
+
+                            madeProgress = true;
+                            continue;
+                        }
+
+                        var replyId = Guid.TryParse(
+                            pending.ReplyToRemoteId,
+                            out var parsedReplyId)
+                            ? parsedReplyId
+                            : (Guid?)null;
 
                         var remote = await _api.SendMessageAsync(
                             conversationId,
@@ -947,20 +1081,15 @@ public partial class ChatPage : ContentPage
                             clientMessageId);
 
                         System.Diagnostics.Debug.WriteLine(
-                            $"[Himo ChatPage] Text send failed for {clientMessageId}: {ex.Message}");
+                            $"[Himo ChatPage] Outbox send failed for {clientMessageId}: {ex.Message}");
                     }
 
-                    // Let another queued message get a chance without waiting for
-                    // the UI event/polling loop.
                     await Task.Yield();
                 }
 
                 await MainThread.InvokeOnMainThreadAsync(() =>
                     RefreshMessagesView(scrollToEnd: false));
 
-                // If none of the current pending messages could be processed, stop
-                // here. The normal reconnect/polling path will retry without a
-                // tight battery-draining loop.
                 if (!madeProgress)
                     break;
             }
@@ -969,8 +1098,6 @@ public partial class ChatPage : ContentPage
         {
             Interlocked.Exchange(ref _flushingOutbox, 0);
 
-            // A message can be queued in the tiny window between the final snapshot
-            // and releasing the gate. One short follow-up pass catches that race.
             if (_api.HasToken &&
                 _chat.GetPendingMessages().Count > 0)
             {
@@ -1154,12 +1281,6 @@ public partial class ChatPage : ContentPage
         var added = _chat.AddRemoteMessage(conversation.Id, message.Text, message.SentAt.LocalDateTime, isMine, message.Id.ToString(), message.AttachmentFileName, message.AttachmentContentType, message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"), message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted);
         if (!added) return;
 
-        if (message.AttachmentContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true)
-        {
-            var localMessage = _chat.GetMessages(conversation.Id).LastOrDefault(x => string.Equals(x.RemoteId, message.Id.ToString(), StringComparison.OrdinalIgnoreCase));
-            _ = PrepareImagePreviewAsync(localMessage);
-        }
-
         if (conversation.Id == _conversationId)
         {
             var isVisible = IsConversationVisible;
@@ -1197,6 +1318,8 @@ public partial class ChatPage : ContentPage
 
     private async Task LoadRemoteAsync(CancellationToken cancellationToken = default)
     {
+        var timing = Stopwatch.StartNew();
+        System.Diagnostics.Debug.WriteLine($"[HimoTiming] LoadRemote START conversation={_remoteConversationId} localId={_conversationId}");
         await _api.TokenInitialization.ConfigureAwait(false);
         if (!_api.HasToken) return;
         if (!await _remoteLoadGate.WaitAsync(0, cancellationToken).ConfigureAwait(false)) return;
@@ -1219,6 +1342,7 @@ public partial class ChatPage : ContentPage
                     remoteConversationId,
                     limit: MessagePageSize,
                     cancellationToken: cancellationToken).ConfigureAwait(false);
+                System.Diagnostics.Debug.WriteLine($"[HimoTiming] LoadRemote API returned count={remoteMessages.Count} elapsed={timing.ElapsedMilliseconds}ms");
             }
             else
             {
@@ -1250,24 +1374,9 @@ public partial class ChatPage : ContentPage
                     message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"),
                     message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted);
 
-                if (added && message.AttachmentContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true)
-                {
-                    var localMessage = _chat.GetMessages(_conversationId)
-                        .FirstOrDefault(x => string.Equals(x.RemoteId, message.Id.ToString(), StringComparison.OrdinalIgnoreCase));
-                    _ = PrepareImagePreviewAsync(localMessage);
-                }
             }
 
             var allMessages = _chat.GetMessages(_conversationId);
-            // Do not block the chat refresh while downloading image attachments.
-            // Download only a few previews after the UI has been painted.
-            var recentImageMessages = allMessages
-                .OrderBy(x => x.SentAt)
-                .ThenBy(x => x.Id)
-                .TakeLast(Math.Min(6, MessagePageSize))
-                .Where(x => x.IsImageAttachment)
-                .ToList();
-
             var receivedNewMessages = allMessages.Count > messageCountBeforeSync;
             var shouldMarkRead = IsConversationVisible && (wasInitialSync || receivedNewMessages);
 
@@ -1285,9 +1394,11 @@ public partial class ChatPage : ContentPage
                     var recent = allMessages
                         .OrderBy(x => x.SentAt)
                         .ThenBy(x => x.Id)
-                        .TakeLast(MessagePageSize)
+                        .TakeLast(InitialVisibleMessageCount)
                         .ToList();
+                    var bindTimer = Stopwatch.StartNew();
                     SetMessagesItemsSource(recent);
+                    System.Diagnostics.Debug.WriteLine($"[HimoTiming] Bind messages count={recent.Count} elapsed={bindTimer.ElapsedMilliseconds}ms total={timing.ElapsedMilliseconds}ms");
                     _hasMoreOlderMessages = allMessages.Count > recent.Count || remoteMessages.Count >= MessagePageSize;
                     UpdateVisiblePagingCursor();
                     EmptyState?.SetValue(IsVisibleProperty, recent.Count == 0);
@@ -1299,8 +1410,8 @@ public partial class ChatPage : ContentPage
                 }
             }).ConfigureAwait(false);
 
-            _ = PrepareVisibleImagePreviewsAsync(recentImageMessages.TakeLast(3));
-            _ = PrepareVisibleVideoPreviewsAsync(allMessages.Where(x => x.IsVideoAttachment).TakeLast(3));
+            System.Diagnostics.Debug.WriteLine($"[HimoTiming] LoadRemote END total={timing.ElapsedMilliseconds}ms");
+            QueueVisibleMediaPreparation();
         }
         catch (OperationCanceledException)
         {
@@ -1450,14 +1561,7 @@ public partial class ChatPage : ContentPage
 #if ANDROID
         try
         {
-            if (_conversationId == 0 || !_api.HasToken) return;
-            var conversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
-            if (conversation?.RemoteId is not string remoteId || !Guid.TryParse(remoteId, out _))
-            {
-                await DisplayAlertAsync("الرسائل الصوتية", "حدّث المحادثة ثم حاول مرة أخرى.", "حسنًا");
-                return;
-            }
-
+            if (_conversationId == 0) return;
             var permission = await Permissions.RequestAsync<Permissions.Microphone>();
             if (permission != PermissionStatus.Granted)
             {
@@ -1517,17 +1621,15 @@ public partial class ChatPage : ContentPage
                 return;
             }
 
-            var conversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
-            if (conversation?.RemoteId is not string remoteId || !Guid.TryParse(remoteId, out var remoteIdGuid)) return;
-
             SendButton.IsEnabled = false;
-            var fileName = Path.GetFileName(path);
+            var stagedPath = await StageAttachmentForOutboxAsync(path, Path.GetFileName(path));
+            var fileName = Path.GetFileName(stagedPath);
             var localMessage = _chat.AddPendingAttachmentMessage(
                 _conversationId,
                 fileName,
                 "audio/mp4",
                 info.Length,
-                path);
+                stagedPath);
             if (localMessage is null)
                 return;
 
@@ -1536,14 +1638,23 @@ public partial class ChatPage : ContentPage
 
             try
             {
-                await using var stream = File.OpenRead(path);
-                var message = await _api.UploadAttachmentAsync(remoteIdGuid, stream, fileName, "audio/mp4");
-                _chat.CompletePendingAttachmentMessage(localMessage, message.Id.ToString(), message.SentAt.LocalDateTime);
-                RefreshMessagesView(scrollToEnd: true);
+                if (_api.HasToken && Connectivity.Current.NetworkAccess == NetworkAccess.Internet)
+                {
+                    await FlushOutboxAsync();
+                }
+                else
+                {
+                    // Keep the recording on disk, but mark the message as failed so the
+                    // user gets an explicit "إعادة الإرسال" button instead of auto-send.
+                    localMessage.DeliveryStatus = "failed";
+                    localMessage.IsPending = true;
+                    RefreshMessagesView(scrollToEnd: true);
+                }
             }
             catch
             {
                 localMessage.DeliveryStatus = "failed";
+                localMessage.IsPending = true;
                 throw;
             }
         }
@@ -1554,10 +1665,6 @@ public partial class ChatPage : ContentPage
         }
         finally
         {
-            if (!string.IsNullOrWhiteSpace(path))
-            {
-                try { if (File.Exists(path)) File.Delete(path); } catch { }
-            }
             _audioRecordingPath = null;
             MessageEntry.IsEnabled = true;
             SendButton.IsEnabled = true;
@@ -1717,7 +1824,7 @@ public partial class ChatPage : ContentPage
 
     private async Task CaptureMediaAsync()
     {
-        if (_conversationId == 0 || !_api.HasToken)
+        if (_conversationId == 0)
             return;
 
         try
@@ -1755,7 +1862,7 @@ public partial class ChatPage : ContentPage
         if (AttachmentPanel is not null) AttachmentPanel.IsVisible = false;
         try
         {
-            if (_conversationId == 0 || !_api.HasToken) return;
+            if (_conversationId == 0) return;
             var files = await MediaPicker.Default.PickPhotosAsync(new MediaPickerOptions
             {
                 Title = "اختر صورة",
@@ -1788,7 +1895,7 @@ public partial class ChatPage : ContentPage
         if (AttachmentPanel is not null) AttachmentPanel.IsVisible = false;
         try
         {
-            if (_conversationId == 0 || !_api.HasToken) return;
+            if (_conversationId == 0) return;
             var files = await MediaPicker.Default.PickVideosAsync(new MediaPickerOptions
             {
                 Title = "اختر فيديو",
@@ -1857,7 +1964,7 @@ public partial class ChatPage : ContentPage
         if (AttachmentPanel is not null) AttachmentPanel.IsVisible = false;
         try
         {
-            if (_conversationId == 0 || !_api.HasToken) return;
+            if (_conversationId == 0) return;
             var file = await FilePicker.Default.PickAsync(new PickOptions
             {
                 PickerTitle = "اختر ملفًا"
@@ -1877,14 +1984,8 @@ public partial class ChatPage : ContentPage
         try
         {
             if (file is null) return;
-            if (_conversationId == 0 || !_api.HasToken) return;
+            if (_conversationId == 0) return;
 
-            var conversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
-            if (conversation?.RemoteId is not string remoteId || !Guid.TryParse(remoteId, out var remoteIdGuid))
-            {
-                await DisplayAlertAsync("المرفقات", "حدّث المحادثة ثم حاول مرة أخرى.", "حسنًا");
-                return;
-            }
 
             if (file.FileName.Length > 180)
             {
@@ -1932,34 +2033,40 @@ public partial class ChatPage : ContentPage
             }
             catch { }
 
-            // Put the attachment card into the conversation immediately. This removes
-            // the visible wait for the network/database upload to finish.
+            // Always persist a local copy before attempting upload. This is what
+            // makes offline photo/video capture behave like a messaging app: the
+            // message exists locally even when the network is unavailable.
+            var stagedPath = await StageAttachmentForOutboxAsync(file);
             var localMessage = _chat.AddPendingAttachmentMessage(
                 _conversationId,
-                file.FileName,
+                Path.GetFileName(stagedPath),
                 contentType,
-                attachmentSize);
+                attachmentSize,
+                stagedPath);
             if (localMessage is null) return;
 
             RefreshMessagesView(scrollToEnd: true);
 
-            // For images, try to stage a local preview in parallel without delaying
-            // the first appearance of the message.
-            var previewTask = localMessage.IsImageAttachment
-                ? TryStagePickedAttachmentAsync(file, localMessage)
-                : Task.CompletedTask;
-
             try
             {
-                var message = await _api.UploadAttachmentAsync(remoteIdGuid, file);
-                _chat.CompletePendingAttachmentMessage(localMessage, message.Id.ToString(), message.SentAt.LocalDateTime);
-                RefreshMessagesView(scrollToEnd: true);
-                await previewTask;
-                _lastAttachmentUploadSucceeded = true;
+                if (_api.HasToken && Connectivity.Current.NetworkAccess == NetworkAccess.Internet)
+                {
+                    await FlushOutboxAsync();
+                    _lastAttachmentUploadSucceeded = string.Equals(localMessage.DeliveryStatus, "sent", StringComparison.OrdinalIgnoreCase);
+                }
+                else
+                {
+                    // The local copy stays in HimoOutbox. Mark the message as failed so
+                    // the user explicitly controls when the upload is attempted.
+                    localMessage.DeliveryStatus = "failed";
+                    localMessage.IsPending = true;
+                    RefreshMessagesView(scrollToEnd: true);
+                }
             }
             catch
             {
                 localMessage.DeliveryStatus = "failed";
+                localMessage.IsPending = true;
                 throw;
             }
         }
@@ -2024,24 +2131,35 @@ public partial class ChatPage : ContentPage
         };
     }
 
-    private async Task TryStagePickedAttachmentAsync(FileResult file, ChatMessage message)
+    private async Task<string> StageAttachmentForOutboxAsync(FileResult file)
     {
-        if (!message.IsImageAttachment) return;
-        try
-        {
-            var ext = Path.GetExtension(file.FileName);
-            if (string.IsNullOrWhiteSpace(ext)) ext = ".img";
-            var path = Path.Combine(FileSystem.Current.CacheDirectory, $"himo_preview_{Guid.NewGuid():N}{ext}");
-            await using var source = await file.OpenReadAsync();
-            await using var destination = File.Create(path);
-            await source.CopyToAsync(destination);
-            await destination.FlushAsync();
-            message.AttachmentLocalPath = path;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Local attachment staging failed: {ex.Message}");
-        }
+        var root = Path.Combine(FileSystem.Current.AppDataDirectory, "HimoOutbox");
+        Directory.CreateDirectory(root);
+        var ext = Path.GetExtension(file.FileName);
+        if (string.IsNullOrWhiteSpace(ext)) ext = ".bin";
+        var safeName = $"{Guid.NewGuid():N}{ext}";
+        var path = Path.Combine(root, safeName);
+
+        await using var source = await file.OpenReadAsync();
+        await using var destination = File.Create(path);
+        await source.CopyToAsync(destination);
+        await destination.FlushAsync();
+        return path;
+    }
+
+    private async Task<string> StageAttachmentForOutboxAsync(string sourcePath, string fileName)
+    {
+        var root = Path.Combine(FileSystem.Current.AppDataDirectory, "HimoOutbox");
+        Directory.CreateDirectory(root);
+        var ext = Path.GetExtension(fileName);
+        if (string.IsNullOrWhiteSpace(ext)) ext = Path.GetExtension(sourcePath);
+        if (string.IsNullOrWhiteSpace(ext)) ext = ".bin";
+        var path = Path.Combine(root, $"{Guid.NewGuid():N}{ext}");
+        await using var source = File.OpenRead(sourcePath);
+        await using var destination = File.Create(path);
+        await source.CopyToAsync(destination);
+        await destination.FlushAsync();
+        return path;
     }
 
     private async Task PrepareVisibleImagePreviewsAsync(IEnumerable<ChatMessage> messages)
@@ -2141,14 +2259,39 @@ public partial class ChatPage : ContentPage
         }
     }
 
-    private async void VideoAttachmentLoaded(object? sender, EventArgs e)
+    private async Task PrepareInitialMediaPreviewsAsync(
+        IEnumerable<ChatMessage> images,
+        IEnumerable<ChatMessage> videos,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Keep the first CollectionView frame dedicated to message layout.
+            // Media thumbnails are visual enhancements and can wait one frame.
+            await Task.Delay(120, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            await Task.WhenAll(
+                PrepareVisibleImagePreviewsAsync(images),
+                PrepareVisibleVideoPreviewsAsync(videos)).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Deferred media preview failed: {ex.Message}");
+        }
+    }
+
+    private void VideoAttachmentLoaded(object? sender, EventArgs e)
     {
         if (sender is not Border border || border.BindingContext is not ChatMessage message)
             return;
 
+        // A recycled CollectionView cell must never start a network download.
+        // Video thumbnails are generated only by the deferred preview path.
         border.IsVisible = IsVideoAttachment(message);
-        if (message.IsVideoAttachment)
-            await PrepareVideoPreviewAsync(message);
     }
 
     private async Task PrepareVisibleVideoPreviewsAsync(IEnumerable<ChatMessage> messages)
@@ -3120,15 +3263,37 @@ public partial class ChatPage : ContentPage
 
     private async void ResendFailedMessageClicked(object? sender, EventArgs e)
     {
-        if (sender is not Button button || button.BindingContext is not ChatMessage message)
+        if (sender is not Element element || element.BindingContext is not ChatMessage message)
             return;
 
+        await ResendFailedMessageAsync(message, element);
+    }
+
+    private async void ResendFailedMessageTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not Element element || element.BindingContext is not ChatMessage message)
+            return;
+
+        await ResendFailedMessageAsync(message, element);
+    }
+
+    private async Task ResendFailedMessageAsync(ChatMessage message, Element? sourceElement)
+    {
         if (!message.IsMine || !string.Equals(message.DeliveryStatus, "failed", StringComparison.OrdinalIgnoreCase))
             return;
 
+        if (sourceElement is VisualElement visual)
+            visual.IsEnabled = false;
+
         try
         {
-            // Text messages already have a durable ClientMessageId and are retried by the outbox.
+            if (!_api.HasToken || Connectivity.Current.NetworkAccess != NetworkAccess.Internet)
+            {
+                await DisplayAlertAsync("إعادة الإرسال", "لا يوجد اتصال بالإنترنت حاليًا. أعد المحاولة بعد الاتصال بالشبكة.", "حسنًا");
+                return;
+            }
+
+            // Text messages already have a durable ClientMessageId and are retried by the manual button.
             if (!message.IsAttachment && !string.IsNullOrWhiteSpace(message.ClientMessageId))
             {
                 if (_chat.MarkPendingSending(message.ClientMessageId))
@@ -3179,7 +3344,8 @@ public partial class ChatPage : ContentPage
         }
         finally
         {
-            button.IsEnabled = true;
+            if (sourceElement is VisualElement visualElement)
+                visualElement.IsEnabled = true;
         }
     }
 
@@ -3349,6 +3515,80 @@ public partial class ChatPage : ContentPage
         EmptyState?.SetValue(IsVisibleProperty, filtered.Count == 0);
     }
 
+    private void QueueVisibleMediaPreparation()
+    {
+        _scrollIdleMediaPending = true;
+        ArmScrollIdleTimer();
+    }
+
+    private void QueueOlderPagingAfterScrollIdle()
+    {
+        _scrollIdleOlderPending = true;
+        ArmScrollIdleTimer();
+    }
+
+    private void ArmScrollIdleTimer()
+    {
+        if (_scrollIdleTimer is null) return;
+        _scrollIdleTimer.Stop();
+        _scrollIdleTimer.Start();
+    }
+
+    private async void OnScrollIdleTimerTick(object? sender, EventArgs e)
+    {
+        _scrollIdleTimer?.Stop();
+
+        var loadOlder = _scrollIdleOlderPending;
+        var prepareMedia = _scrollIdleMediaPending;
+        _scrollIdleOlderPending = false;
+        _scrollIdleMediaPending = false;
+
+        if (!IsConversationVisible) return;
+
+        if (loadOlder)
+        {
+            await LoadOlderMessagesAsync().ConfigureAwait(false);
+            return;
+        }
+
+        if (prepareMedia)
+            await PrepareVisibleMediaAfterScrollIdleAsync().ConfigureAwait(false);
+    }
+
+    private async Task PrepareVisibleMediaAfterScrollIdleAsync()
+    {
+        try
+        {
+            var first = Volatile.Read(ref _firstVisibleItemIndex);
+            var last = Volatile.Read(ref _lastVisibleItemIndex);
+            if (first < 0 || last < first)
+            {
+                first = Math.Max(0, _visibleMessages.Count - 4);
+                last = Math.Max(first, _visibleMessages.Count - 1);
+            }
+
+            var visible = _visibleMessages
+                .Skip(first)
+                .Take(Math.Max(0, last - first + 1))
+                .ToList();
+
+            var image = visible.FirstOrDefault(x => x.IsImageAttachment);
+            if (image is not null)
+                await PrepareImagePreviewAsync(image).ConfigureAwait(false);
+
+            var video = visible.FirstOrDefault(x => x.IsVideoAttachment);
+            if (video is not null)
+                await PrepareVideoPreviewAsync(video).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Himo ChatPage] Visible media preparation failed: {ex.Message}");
+        }
+    }
+
     private void ConfigureInitialChatPosition()
     {
         if (_visibleMessages.Count == 0)
@@ -3367,39 +3607,15 @@ public partial class ChatPage : ContentPage
             if (Messages?.Handler?.PlatformView is RecyclerView recycler &&
                 recycler.GetLayoutManager() is LinearLayoutManager layoutManager)
             {
-                // Telegram/WhatsApp-style timeline:
-                // normal chronological order, but the native list is anchored
-                // to its end. No delayed ScrollTo loop and no hidden CollectionView.
+                // Let RecyclerView anchor the short first page from the bottom.
+                // Do not issue a second native scroll here: that extra layout pass
+                // was visible as a long Android HWUI/Davey stall on slower devices.
                 layoutManager.ReverseLayout = false;
                 layoutManager.StackFromEnd = true;
-
-                recycler.Post(() =>
-                {
-                    try
-                    {
-                        var count = recycler.GetAdapter()?.ItemCount ?? 0;
-                        if (count > 0)
-                            layoutManager.ScrollToPositionWithOffset(count - 1, 0);
-                    }
-                    catch (global::Java.Lang.IllegalArgumentException ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine(
-                            $"[Himo ChatPage] Initial native positioning ignored: {ex.Message}");
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine(
-                            $"[Himo ChatPage] Initial native positioning failed: {ex}");
-                    }
-                    finally
-                    {
-                        _initialPositioningLatest = false;
-                        _allowOlderPaging = true;
-                        _lastVisibleItemIndex = Math.Max(-1, _visibleMessages.Count - 1);
-                        ScrollToBottomButton?.SetValue(IsVisibleProperty, false);
-                    }
-                });
-
+                _initialPositioningLatest = false;
+                _allowOlderPaging = true;
+                _lastVisibleItemIndex = Math.Max(-1, _visibleMessages.Count - 1);
+                ScrollToBottomButton?.SetValue(IsVisibleProperty, false);
                 return;
             }
         }
@@ -3441,13 +3657,8 @@ public partial class ChatPage : ContentPage
 
     private void MessagesLoaded(object? sender, EventArgs e)
     {
-        if (_visibleMessages.Count > 0)
-            ConfigureInitialChatPosition();
-        else
-        {
-            _initialPositioningLatest = false;
-            _allowOlderPaging = true;
-        }
+        // Kept for older XAML variants. Current chat opening does not use this
+        // event because the initial anchor is configured exactly once by Load().
     }
 
     private void MessagesScrolled(object? sender, ItemsViewScrolledEventArgs e)
@@ -3455,7 +3666,12 @@ public partial class ChatPage : ContentPage
         var messages = _visibleMessages;
         if (messages.Count == 0) return;
 
+        _firstVisibleItemIndex = e.FirstVisibleItemIndex;
         _lastVisibleItemIndex = e.LastVisibleItemIndex;
+
+        // Never do network/file/media work during the active drag. It is scheduled
+        // only after the list has been idle for the timer interval.
+        QueueVisibleMediaPreparation();
 
         // The first CollectionView layout normally reports index 0 even though the
         // page has just been opened. Do not interpret that initial layout as the
@@ -3467,12 +3683,14 @@ public partial class ChatPage : ContentPage
             e.FirstVisibleItemIndex <= 2 &&
             _hasMoreOlderMessages)
         {
-            _ = LoadOlderMessagesAsync();
+            QueueOlderPagingAfterScrollIdle();
         }
 
         if (ScrollToBottomButton is null) return;
         var lastVisible = e.LastVisibleItemIndex;
-        ScrollToBottomButton.IsVisible = lastVisible >= 0 && lastVisible < messages.Count - 2;
+        var shouldShowButton = lastVisible >= 0 && lastVisible < messages.Count - 2;
+        if (ScrollToBottomButton.IsVisible != shouldShowButton)
+            ScrollToBottomButton.IsVisible = shouldShowButton;
     }
 
     private int FindVisibleMessageIndex(ChatMessage message)

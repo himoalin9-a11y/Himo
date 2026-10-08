@@ -2,11 +2,12 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:models="clr-namespace:Himo.Models"
+             xmlns:views="clr-namespace:Himo.Views"
              xmlns:shapes="clr-namespace:Microsoft.Maui.Controls.Shapes;assembly=Microsoft.Maui.Controls"
              x:Class="Himo.Views.ChatPage"
              x:Name="ChatRoot"
              FlowDirection="RightToLeft"
-             BackgroundColor="#F5F6FA"
+             BackgroundColor="#0E0918"
              Shell.NavBarIsVisible="False">
 
     <ContentPage.Resources>
@@ -44,15 +45,341 @@
             </Style>
             <Style x:Key="Meta" TargetType="Label">
                 <Setter Property="FontSize" Value="9.5" />
-                <Setter Property="TextColor" Value="#7A8798" />
+                <Setter Property="TextColor" Value="#6E6A78" />
+                <Style.Triggers>
+                    <DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True">
+                        <Setter Property="TextColor" Value="#EAF5FF" />
+                    </DataTrigger>
+                </Style.Triggers>
             </Style>
+
+            <LinearGradientBrush x:Key="ChatAreaBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#24153F" Offset="0.00" />
+                <GradientStop Color="#4C2E68" Offset="0.26" />
+                <GradientStop Color="#8B679E" Offset="0.48" />
+                <GradientStop Color="#3A2357" Offset="0.68" />
+                <GradientStop Color="#1C1030" Offset="1.00" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="HorizonGlowBrush" StartPoint="0,0" EndPoint="1,0">
+                <GradientStop Color="#00FFD9F4" Offset="0.00" />
+                <GradientStop Color="#FFD8F4FF" Offset="0.50" />
+                <GradientStop Color="#00FFD9F4" Offset="1.00" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="MountainBackBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#4A2B62" Offset="0.00" />
+                <GradientStop Color="#2B1748" Offset="1.00" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="MountainFrontBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#331B51" Offset="0.00" />
+                <GradientStop Color="#180D2D" Offset="1.00" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="LakeBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#543A72" Offset="0.00" />
+                <GradientStop Color="#23123D" Offset="0.56" />
+                <GradientStop Color="#130A25" Offset="1.00" />
+            </LinearGradientBrush>
+            <RadialGradientBrush x:Key="GlowBrush" Center="0.52,0.47" Radius="0.70">
+                <GradientStop Color="#FFE7F7" Offset="0.00" />
+                <GradientStop Color="#BFA2E8" Offset="0.28" />
+                <GradientStop Color="#1AFFFFFF" Offset="0.62" />
+                <GradientStop Color="#00FFFFFF" Offset="1.00" />
+            </RadialGradientBrush>
+            <RadialGradientBrush x:Key="FlowerGlowBrush" Center="0.5,0.5" Radius="0.5">
+                <GradientStop Color="#FFF3FF" Offset="0.00" />
+                <GradientStop Color="#E3A8FF" Offset="0.28" />
+                <GradientStop Color="#8F43D8" Offset="0.65" />
+                <GradientStop Color="#007B43C5" Offset="1.00" />
+            </RadialGradientBrush>
+            <LinearGradientBrush x:Key="SenderBubbleBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#169BFF" Offset="0.00" />
+                <GradientStop Color="#1578F2" Offset="0.48" />
+                <GradientStop Color="#4D55E8" Offset="1.00" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="ReceiverBubbleBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#B86CFF" Offset="0.00" />
+                <GradientStop Color="#8B42E8" Offset="0.50" />
+                <GradientStop Color="#6326B9" Offset="1.00" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="ComposerBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#23113D" Offset="0.00" />
+                <GradientStop Color="#140C24" Offset="1.00" />
+            </LinearGradientBrush>
+
+            <Shadow x:Key="MediaShadow" Brush="#000000" Offset="0,6" Radius="16" Opacity="0.28" />
+            <Shadow x:Key="BubbleShadow" Brush="#000000" Offset="0,4" Radius="12" Opacity="0.24" />
+
+            <Style x:Key="ChatMessageBubble" TargetType="Border">
+                <Setter Property="MaximumWidthRequest" Value="350" />
+                <Setter Property="Padding" Value="11,9,11,8" />
+                <Setter Property="HorizontalOptions" Value="End" />
+                <Setter Property="Margin" Value="34,3,0,3" />
+                <Setter Property="Background" Value="{StaticResource ReceiverBubbleBrush}" />
+                <Setter Property="Stroke" Value="#C58DFF" />
+                <Setter Property="StrokeThickness" Value="1.2" />
+                <Setter Property="Shadow" Value="{StaticResource BubbleShadow}" />
+                <Style.Triggers>
+                    <DataTrigger TargetType="Border" Binding="{Binding IsMine}" Value="True">
+                        <Setter Property="HorizontalOptions" Value="Start" />
+                        <Setter Property="Margin" Value="0,3,34,3" />
+                        <Setter Property="Background" Value="{StaticResource SenderBubbleBrush}" />
+                        <Setter Property="Stroke" Value="#68B8FF" />
+                        <Setter Property="StrokeThickness" Value="1.2" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                        <Setter Property="Stroke" Value="#F1C8FF" />
+                        <Setter Property="StrokeThickness" Value="2" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="MediaBubble" TargetType="Border">
+                <Setter Property="MaximumWidthRequest" Value="280" />
+                <Setter Property="Padding" Value="5" />
+                <Setter Property="HorizontalOptions" Value="End" />
+                <Setter Property="Margin" Value="34,4,0,4" />
+                <Setter Property="Background" Value="{StaticResource ReceiverBubbleBrush}" />
+                <Setter Property="Stroke" Value="#C58DFF" />
+                <Setter Property="StrokeThickness" Value="1.4" />
+                <Setter Property="Shadow" Value="{StaticResource MediaShadow}" />
+                <Style.Triggers>
+                    <DataTrigger TargetType="Border" Binding="{Binding IsMine}" Value="True">
+                        <Setter Property="HorizontalOptions" Value="Start" />
+                        <Setter Property="Margin" Value="0,4,34,4" />
+                        <Setter Property="Background" Value="{StaticResource SenderBubbleBrush}" />
+                        <Setter Property="Stroke" Value="#68B8FF" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                        <Setter Property="Stroke" Value="#F1C8FF" />
+                        <Setter Property="StrokeThickness" Value="2" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="ChatMeta" TargetType="Label">
+                <Setter Property="FontSize" Value="9.5" />
+                <Setter Property="TextColor" Value="#F3EFFF" />
+            </Style>
+
+            <DataTemplate x:Key="ChatTextTemplate" x:DataType="models:ChatMessage">
+                <VerticalStackLayout Spacing="3" Padding="0,2" HorizontalOptions="Fill">
+                    <Grid IsVisible="{Binding HasDateSeparator}" ColumnDefinitions="*,Auto,*" Margin="8,8">
+                        <BoxView Grid.Column="0" HeightRequest="1" Color="#DCE6F1" VerticalOptions="Center" />
+                        <Border Grid.Column="1" Padding="12,5" BackgroundColor="#FFFFFF" Stroke="#E5DFEA" StrokeThickness="1"><Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape><Label Text="{Binding DateSeparatorText}" FontSize="10.5" FontAttributes="Bold" TextColor="#806A97" /></Border>
+                        <BoxView Grid.Column="2" HeightRequest="1" Color="#DCE6F1" VerticalOptions="Center" />
+                    </Grid>
+                    <Border Style="{StaticResource ChatMessageBubble}" Loaded="MessageBubbleLoaded">
+                        <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                        <VerticalStackLayout Spacing="5">
+                            <Border IsVisible="{Binding HasReply}" Padding="9,6" BackgroundColor="#5B2A90" Stroke="#D6B4FF" StrokeThickness="0.8"><Border.StrokeShape><shapes:RoundRectangle CornerRadius="10" /></Border.StrokeShape><Label Text="{Binding ReplyToText}" FontSize="10.5" TextColor="#F3E7FF" MaxLines="2" LineBreakMode="TailTruncation" /></Border>
+                            <Label Text="{Binding Text}" FontSize="16" LineHeight="1.16" TextColor="#FFFFFF" LineBreakMode="WordWrap" Margin="1,1,1,0"><Label.Triggers><DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True"><Setter Property="TextColor" Value="#FFFFFF" /></DataTrigger></Label.Triggers></Label>
+                            <HorizontalStackLayout HorizontalOptions="End" Spacing="4">
+                                <Label Text="{Binding EditedLabel}" Style="{StaticResource ChatMeta}" />
+                                <Label Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" />
+                                <Label Text="{Binding DeliveryStatusText}" FontSize="10.5" FontAttributes="Bold" IsVisible="{Binding IsMine}">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="#DCEBFF" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="#C5EEFF" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding IsPending}" Value="True"><Setter Property="Text" Value="◷" /><Setter Property="TextColor" Value="#E4D7FF" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="Text" Value="!" /><Setter Property="TextColor" Value="#FFD0D9" /></DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </HorizontalStackLayout>
+                            <Button Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold" TextColor="#FFFFFF" BackgroundColor="#8B42E8" BorderColor="#D9B7FF" BorderWidth="1" CornerRadius="10" Padding="12,4" HorizontalOptions="End" IsVisible="False" Clicked="ResendFailedMessageClicked">
+                                <Button.Triggers>
+                                    <DataTrigger TargetType="Button" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="IsVisible" Value="True" /></DataTrigger>
+                                </Button.Triggers>
+                            </Button>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ChatImageTemplate" x:DataType="models:ChatMessage">
+                <VerticalStackLayout Spacing="2" Padding="0,1" HorizontalOptions="Fill">
+                    <Grid IsVisible="{Binding HasDateSeparator}" ColumnDefinitions="*,Auto,*" Margin="8,8">
+                        <BoxView Grid.Column="0" HeightRequest="1" Color="#5B4B73" VerticalOptions="Center" />
+                        <Border Grid.Column="1" Padding="12,5" BackgroundColor="#251435" Stroke="#8B62B3" StrokeThickness="1">
+                            <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                            <Label Text="{Binding DateSeparatorText}" FontSize="10.5" FontAttributes="Bold" TextColor="#E9D8FF" />
+                        </Border>
+                        <BoxView Grid.Column="2" HeightRequest="1" Color="#5B4B73" VerticalOptions="Center" />
+                    </Grid>
+                    <Border Style="{StaticResource MediaBubble}" Loaded="MessageBubbleLoaded">
+                        <Border.StrokeShape><shapes:RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                        <VerticalStackLayout Spacing="5">
+                            <Border Padding="0" BackgroundColor="#130916" Stroke="#FFFFFF" StrokeThickness="0.8">
+                                <Border.StrokeShape><shapes:RoundRectangle CornerRadius="16" /></Border.StrokeShape>
+                                <Grid WidthRequest="240" HeightRequest="330" BackgroundColor="#0A0610">
+                                    <Image Source="{Binding AttachmentLocalPath}" Aspect="AspectFit" IsVisible="{Binding HasLocalImagePreview}" />
+                                    <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="5" IsVisible="False">
+                                        <VerticalStackLayout.Triggers>
+                                            <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding HasLocalImagePreview}" Value="False">
+                                                <Setter Property="IsVisible" Value="True" />
+                                            </DataTrigger>
+                                        </VerticalStackLayout.Triggers>
+                                        <Image Source="himo_ui_gallery.png" WidthRequest="34" HeightRequest="34" />
+                                        <Label Text="صورة" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF" HorizontalTextAlignment="Center" />
+                                        <Label Text="اضغط للعرض" FontSize="9.5" TextColor="#CFC5DA" HorizontalTextAlignment="Center" />
+                                    </VerticalStackLayout>
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="ImagePreviewCardTapped" />
+                                    </Grid.GestureRecognizers>
+                                </Grid>
+                            </Border>
+                            <Grid ColumnDefinitions="*,Auto" Padding="3,0,3,1" ColumnSpacing="7">
+                                <Label Grid.Column="0" Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" HorizontalOptions="End" />
+                                <Label Grid.Column="1" Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="#EAF5FF">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="#DCEBFF" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="#BDEBFF" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="Text" Value="!" /><Setter Property="TextColor" Value="#FFD0D9" /></DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </Grid>
+                            <Button Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold" TextColor="#FFFFFF" BackgroundColor="#8B42E8" BorderColor="#D9B7FF" BorderWidth="1" CornerRadius="11" Padding="14,5" HorizontalOptions="End" IsVisible="False" Clicked="ResendFailedMessageClicked">
+                                <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="IsVisible" Value="True" /></DataTrigger></Button.Triggers>
+                            </Button>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ChatVideoTemplate" x:DataType="models:ChatMessage">
+                <VerticalStackLayout Spacing="2" Padding="0,1" HorizontalOptions="Fill">
+                    <Grid IsVisible="{Binding HasDateSeparator}" ColumnDefinitions="*,Auto,*" Margin="8,8">
+                        <BoxView Grid.Column="0" HeightRequest="1" Color="#5B4B73" VerticalOptions="Center" />
+                        <Border Grid.Column="1" Padding="12,5" BackgroundColor="#251435" Stroke="#8B62B3" StrokeThickness="1">
+                            <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                            <Label Text="{Binding DateSeparatorText}" FontSize="10.5" FontAttributes="Bold" TextColor="#E9D8FF" />
+                        </Border>
+                        <BoxView Grid.Column="2" HeightRequest="1" Color="#5B4B73" VerticalOptions="Center" />
+                    </Grid>
+                    <Border Style="{StaticResource MediaBubble}" Loaded="MessageBubbleLoaded">
+                        <Border.StrokeShape><shapes:RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                        <VerticalStackLayout Spacing="5">
+                            <Border Padding="0" BackgroundColor="#09070E" Stroke="#FFFFFF" StrokeThickness="0.8">
+                                <Border.StrokeShape><shapes:RoundRectangle CornerRadius="16" /></Border.StrokeShape>
+                                <Grid WidthRequest="240" HeightRequest="350" BackgroundColor="#09070E">
+                                    <Image Source="{Binding VideoThumbnailPath}" Aspect="AspectFit" IsVisible="{Binding HasVideoPreview}" />
+                                    <Grid IsVisible="False">
+                                        <Grid.Triggers>
+                                            <DataTrigger TargetType="Grid" Binding="{Binding HasVideoPreview}" Value="False"><Setter Property="IsVisible" Value="True" /></DataTrigger>
+                                        </Grid.Triggers>
+                                        <Image Source="himo_ui_video.png" WidthRequest="34" HeightRequest="34" Opacity="0.88" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Grid>
+                                    <BoxView BackgroundColor="#000000" Opacity="0.14" />
+                                    <Border WidthRequest="62" HeightRequest="62" BackgroundColor="#99000000" Stroke="#FFFFFF" StrokeThickness="1" HorizontalOptions="Center" VerticalOptions="Center">
+                                        <Border.StrokeShape><shapes:RoundRectangle CornerRadius="31" /></Border.StrokeShape>
+                                        <Image Source="himo_ui_play_white.png" WidthRequest="28" HeightRequest="28" />
+                                    </Border>
+                                    <Grid.GestureRecognizers><TapGestureRecognizer Tapped="VideoPreviewClicked" /></Grid.GestureRecognizers>
+                                </Grid>
+                            </Border>
+                            <Grid ColumnDefinitions="*,Auto" Padding="3,0,3,1" ColumnSpacing="7">
+                                <Label Grid.Column="0" Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" HorizontalOptions="End" />
+                                <Label Grid.Column="1" Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="#EAF5FF">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="#DCEBFF" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="#BDEBFF" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="Text" Value="!" /><Setter Property="TextColor" Value="#FFD0D9" /></DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </Grid>
+                            <Button Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold" TextColor="#FFFFFF" BackgroundColor="#8B42E8" BorderColor="#D9B7FF" BorderWidth="1" CornerRadius="11" Padding="14,5" HorizontalOptions="End" IsVisible="False" Clicked="ResendFailedMessageClicked">
+                                <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="IsVisible" Value="True" /></DataTrigger></Button.Triggers>
+                            </Button>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ChatAudioTemplate" x:DataType="models:ChatMessage">
+                <VerticalStackLayout Spacing="2" Padding="0,1" HorizontalOptions="Fill">
+                    <Grid IsVisible="{Binding HasDateSeparator}" ColumnDefinitions="*,Auto,*" Margin="8,8">
+                        <BoxView Grid.Column="0" HeightRequest="1" Color="#5B4B73" VerticalOptions="Center" />
+                        <Border Grid.Column="1" Padding="12,5" BackgroundColor="#251435" Stroke="#8B62B3" StrokeThickness="1">
+                            <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                            <Label Text="{Binding DateSeparatorText}" FontSize="10.5" FontAttributes="Bold" TextColor="#E9D8FF" />
+                        </Border>
+                        <BoxView Grid.Column="2" HeightRequest="1" Color="#5B4B73" VerticalOptions="Center" />
+                    </Grid>
+                    <Border Style="{StaticResource MediaBubble}" Loaded="MessageBubbleLoaded">
+                        <Border.StrokeShape><shapes:RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                        <VerticalStackLayout Spacing="6">
+                            <Grid ColumnDefinitions="56,*,Auto" ColumnSpacing="10" HeightRequest="56">
+                                <ImageButton Grid.Column="0" Source="himo_ui_play_white.png" WidthRequest="50" HeightRequest="50" Padding="14" BackgroundColor="#FFFFFF" Opacity="0.96" CornerRadius="25" Clicked="AudioClicked" />
+                                <HorizontalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+                                    <BoxView WidthRequest="2.5" HeightRequest="10" Color="#D8B9FF" /><BoxView WidthRequest="2.5" HeightRequest="18" Color="#C89DFF" /><BoxView WidthRequest="2.5" HeightRequest="26" Color="#E1C8FF" /><BoxView WidthRequest="2.5" HeightRequest="15" Color="#B986FF" /><BoxView WidthRequest="2.5" HeightRequest="22" Color="#E1C8FF" /><BoxView WidthRequest="2.5" HeightRequest="30" Color="#F0DEFF" /><BoxView WidthRequest="2.5" HeightRequest="17" Color="#BE8FFF" /><BoxView WidthRequest="2.5" HeightRequest="24" Color="#E1C8FF" />
+                                </HorizontalStackLayout>
+                                <VerticalStackLayout Grid.Column="2" Spacing="1" VerticalOptions="Center">
+                                    <Label Text="صوت" FontSize="9.5" FontAttributes="Bold" TextColor="#FFFFFF" />
+                                    <Label Text="♪" FontSize="15" TextColor="#E6D4FF" HorizontalTextAlignment="End" />
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto" Padding="3,0,3,1" ColumnSpacing="7">
+                                <Label Grid.Column="0" Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" HorizontalOptions="End" />
+                                <Label Grid.Column="1" Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="#EAF5FF">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="#DCEBFF" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="#BDEBFF" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="Text" Value="!" /><Setter Property="TextColor" Value="#FFD0D9" /></DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </Grid>
+                            <Button Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold" TextColor="#FFFFFF" BackgroundColor="#8B42E8" BorderColor="#D9B7FF" BorderWidth="1" CornerRadius="11" Padding="14,5" HorizontalOptions="End" IsVisible="False" Clicked="ResendFailedMessageClicked">
+                                <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="IsVisible" Value="True" /></DataTrigger></Button.Triggers>
+                            </Button>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ChatFileTemplate" x:DataType="models:ChatMessage">
+                <VerticalStackLayout Spacing="2" Padding="0,1" HorizontalOptions="Fill">
+                    <Grid IsVisible="{Binding HasDateSeparator}" ColumnDefinitions="*,Auto,*" Margin="8,8">
+                        <BoxView Grid.Column="0" HeightRequest="1" Color="#5B4B73" VerticalOptions="Center" />
+                        <Border Grid.Column="1" Padding="12,5" BackgroundColor="#251435" Stroke="#8B62B3" StrokeThickness="1">
+                            <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                            <Label Text="{Binding DateSeparatorText}" FontSize="10.5" FontAttributes="Bold" TextColor="#E9D8FF" />
+                        </Border>
+                        <BoxView Grid.Column="2" HeightRequest="1" Color="#5B4B73" VerticalOptions="Center" />
+                    </Grid>
+                    <Border Style="{StaticResource MediaBubble}" Loaded="MessageBubbleLoaded" Padding="8">
+                        <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                        <Grid ColumnDefinitions="42,*" ColumnSpacing="9">
+                            <Border WidthRequest="42" HeightRequest="42" BackgroundColor="#FFFFFF" StrokeThickness="0">
+                                <Border.StrokeShape><shapes:RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                                <Image Source="icon_attachment.png" WidthRequest="20" HeightRequest="20" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                                <Label Text="{Binding AttachmentFileName}" FontSize="11.5" FontAttributes="Bold" TextColor="#FFFFFF" MaxLines="1" LineBreakMode="TailTruncation" />
+                                <Label Text="مرفق" FontSize="9.5" TextColor="#E9D8FF" />
+                            </VerticalStackLayout>
+                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="AttachmentTapped" /></Grid.GestureRecognizers>
+                        </Grid>
+                    </Border>
+                    <HorizontalStackLayout HorizontalOptions="End" Spacing="4">
+                        <Label Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" />
+                        <Label Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="#EAF5FF" />
+                    </HorizontalStackLayout>
+                    <Button Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold" TextColor="#FFFFFF" BackgroundColor="#8B42E8" BorderColor="#D9B7FF" BorderWidth="1" CornerRadius="11" Padding="14,5" HorizontalOptions="End" IsVisible="False" Clicked="ResendFailedMessageClicked">
+                        <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="IsVisible" Value="True" /></DataTrigger></Button.Triggers>
+                    </Button>
+                </VerticalStackLayout>
+            </DataTemplate>
+
+            <views:ChatMessageTemplateSelector x:Key="ChatMessageSelector"
+                TextTemplate="{StaticResource ChatTextTemplate}"
+                ImageTemplate="{StaticResource ChatImageTemplate}"
+                VideoTemplate="{StaticResource ChatVideoTemplate}"
+                AudioTemplate="{StaticResource ChatAudioTemplate}"
+                FileTemplate="{StaticResource ChatFileTemplate}" />
+
         </ResourceDictionary>
     </ContentPage.Resources>
 
     <Grid RowDefinitions="68,Auto,*,Auto" BackgroundColor="#F5F6FA">
 
         <!-- CHAT HEADER -->
-        <Border Grid.Row="0" BackgroundColor="#FFFFFF" Stroke="#E9E7EE" StrokeThickness="1" Padding="10,6">
+        <Border Grid.Row="0" BackgroundColor="#FAF6FF" Stroke="#E2D4F1" StrokeThickness="1" Padding="10,6">
             <Grid ColumnDefinitions="Auto,*,Auto" FlowDirection="LeftToRight">
                 <HorizontalStackLayout Grid.Column="0" Spacing="3" VerticalOptions="Center" HorizontalOptions="Start">
                     <ImageButton Source="himo_icon_arrow_back_purple.png" Style="{StaticResource ChatHeaderButton}" Clicked="BackClicked" />
@@ -226,341 +553,53 @@
         </Grid>
 
         <!-- MESSAGES -->
-        <Grid Grid.Row="2" Padding="12,6,12,0">
-            <Image Source="himo_phase1_login_waves.png" Aspect="AspectFill" Opacity="0.035" HeightRequest="190"
-                   VerticalOptions="End" HorizontalOptions="Fill" InputTransparent="True" />
+        <!-- MESSAGES -->
+        <Grid Grid.Row="2" Padding="0" BackgroundColor="#140A24">
+            <!-- Photographic wallpaper. The selected image is changed from the three-dots menu. -->
+            <Image x:Name="ChatWallpaper"
+                   HorizontalOptions="Fill"
+                   VerticalOptions="Fill"
+                   InputTransparent="True"
+                   Aspect="AspectFill"
+                   Opacity="0.98"
+                   ZIndex="0" />
+
+            <Border HorizontalOptions="Fill" VerticalOptions="Fill" InputTransparent="True" Opacity="0.14" ZIndex="1">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#180B1024" Offset="0" />
+                        <GradientStop Color="#100A0D1F" Offset="0.52" />
+                        <GradientStop Color="#30070418" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
 
             <Border x:Name="UnreadDivider" IsVisible="False" ZIndex="3" HorizontalOptions="Center"
                     VerticalOptions="Start" Margin="0,4,0,0" Padding="14,6"
-                    BackgroundColor="#FFFFFF" Stroke="#CFE2FB" StrokeThickness="1">
+                    BackgroundColor="#28133D" Stroke="#8A62B3" StrokeThickness="1">
                 <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
-                <Label Text="رسائل جديدة" FontSize="11" FontAttributes="Bold" TextColor="#6C3FD1" />
+                <Label Text="رسائل جديدة" FontSize="11" FontAttributes="Bold" TextColor="#E6C8FF" />
             </Border>
 
             <Border x:Name="MessageSearchBar" IsVisible="False" ZIndex="10" HorizontalOptions="Fill"
-                    VerticalOptions="Start" Padding="7" BackgroundColor="#FFFFFF" Stroke="#D8E5F2" StrokeThickness="1">
+                    VerticalOptions="Start" Padding="7" BackgroundColor="#21112F" Stroke="#6D4B8F" StrokeThickness="1">
                 <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="7">
                     <SearchBar x:Name="MessageSearchEntry" Grid.Column="0" Placeholder="بحث في الرسائل..."
-                               FontSize="13.5" TextColor="#2B2235" PlaceholderColor="#94A3B8"
+                               FontSize="13.5" TextColor="#FFFFFF" PlaceholderColor="#B8A9C8"
                                BackgroundColor="Transparent" SearchButtonPressed="MessageSearchChanged"
                                TextChanged="MessageSearchChanged" />
                     <ImageButton Grid.Column="1" Source="himo_ui_close.png" WidthRequest="36" HeightRequest="36" Padding="10"
-                                 CornerRadius="18" BackgroundColor="#F2EBFA" Clicked="CloseMessageSearchClicked" />
+                                 CornerRadius="18" BackgroundColor="#34204A" Clicked="CloseMessageSearchClicked" />
                 </Grid>
             </Border>
 
-            <CollectionView x:Name="Messages" SelectionMode="None" VerticalScrollBarVisibility="Never"
-                            Loaded="MessagesLoaded" Scrolled="MessagesScrolled" BackgroundColor="Transparent"
-                            Margin="0,3,0,0">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="models:ChatMessage">
-                        <VerticalStackLayout Spacing="5" Padding="0,2">
-                            <!-- DATE -->
-                            <Grid IsVisible="{Binding HasDateSeparator}" ColumnDefinitions="*,Auto,*" Margin="8,8">
-                                <BoxView Grid.Column="0" HeightRequest="1" Color="#DCE6F1" VerticalOptions="Center" Margin="0,0,9,0" />
-                                <Border Grid.Column="1" Padding="12,5" BackgroundColor="#FFFFFF" Stroke="#E5DFEA" StrokeThickness="1">
-                                    <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
-                                    <Label Text="{Binding DateSeparatorText}" FontSize="10.5" FontAttributes="Bold" TextColor="#806A97" HorizontalTextAlignment="Center" />
-                                </Border>
-                                <BoxView Grid.Column="2" HeightRequest="1" Color="#DCE6F1" VerticalOptions="Center" Margin="9,0,0,0" />
-                            </Grid>
-
-                            <Border MaximumWidthRequest="350" Padding="10,8,10,6"
-                                    HorizontalOptions="End" Margin="34,1,0,1" BackgroundColor="#FFFFFF"
-                                    Stroke="#E7E2EC" StrokeThickness="1"
-                                    Loaded="MessageBubbleLoaded">
-                                <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
-                                <VerticalStackLayout Spacing="5">
-
-                                    <!-- REPLY -->
-                                    <Border IsVisible="{Binding HasReply}" Padding="9,6" BackgroundColor="#F8F5FC"
-                                            Stroke="#E6DDF0" StrokeThickness="1">
-                                        <Border.StrokeShape><shapes:RoundRectangle CornerRadius="10" /></Border.StrokeShape>
-                                        <Label Text="{Binding ReplyToText}" FontSize="10.5" TextColor="#718096"
-                                               MaxLines="2" LineBreakMode="TailTruncation" />
-                                    </Border>
-
-                                    <!-- IMAGE ATTACHMENT: fixed media frame matching the video card size -->
-                                    <Border IsVisible="{Binding IsImageAttachment}"
-                                            BackgroundColor="Transparent"
-                                            Stroke="#2196F3" StrokeThickness="4" Padding="0" Margin="0,1"
-                                            HorizontalOptions="Start" VerticalOptions="Start"
-                                            WidthRequest="300" HeightRequest="260"
-                                            MaximumWidthRequest="300" MaximumHeightRequest="260">
-                                        <Border.StrokeShape>
-                                            <shapes:RoundRectangle CornerRadius="16" />
-                                        </Border.StrokeShape>
-                                        <Grid WidthRequest="300" HeightRequest="260"
-                                              HorizontalOptions="Fill" VerticalOptions="Fill">
-                                            <Border Padding="0" BackgroundColor="Transparent"
-                                                    StrokeThickness="0"
-                                                    HorizontalOptions="Fill" VerticalOptions="Fill">
-                                                <Border.StrokeShape>
-                                                    <shapes:RoundRectangle CornerRadius="12" />
-                                                </Border.StrokeShape>
-                                                <Image Source="{Binding AttachmentLocalPath}"
-                                                       Aspect="AspectFit"
-                                                       WidthRequest="300" HeightRequest="260"
-                                                       MaximumWidthRequest="300" MaximumHeightRequest="260"
-                                                       HorizontalOptions="Fill" VerticalOptions="Fill"
-                                                       IsVisible="{Binding HasLocalImagePreview}" />
-                                            </Border>
-
-                                            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center"
-                                                                 Spacing="5" Margin="12" IsVisible="False"
-                                                                 MaximumWidthRequest="260" MaximumHeightRequest="220">
-                                                <VerticalStackLayout.Triggers>
-                                                    <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding HasLocalImagePreview}" Value="False">
-                                                        <Setter Property="IsVisible" Value="True" />
-                                                    </DataTrigger>
-                                                </VerticalStackLayout.Triggers>
-                                                <Image Source="himo_ui_gallery.png" WidthRequest="32" HeightRequest="32" HorizontalOptions="Center" />
-                                                <Label Text="صورة" FontSize="12" FontAttributes="Bold" TextColor="#2B2235" HorizontalTextAlignment="Center" />
-                                                <Label Text="اضغط للعرض" FontSize="9.5" TextColor="#718096" HorizontalTextAlignment="Center" />
-                                                <Label Text="{Binding AttachmentFileName}" FontSize="8.5" TextColor="#8A98AA" MaxLines="1" LineBreakMode="TailTruncation" HorizontalTextAlignment="Center" />
-                                            </VerticalStackLayout>
-
-                                            <Grid.GestureRecognizers>
-                                                <TapGestureRecognizer Tapped="ImagePreviewCardTapped" NumberOfTapsRequired="1" />
-                                            </Grid.GestureRecognizers>
-                                        </Grid>
-                                    </Border>
-
-                                    <!-- VIDEO ATTACHMENT: WhatsApp-style natural preview -->
-                                    <Border IsVisible="{Binding IsVideoAttachment}"
-                                            Padding="0" Margin="0,2" BackgroundColor="Transparent"
-                                            Stroke="#2196F3" StrokeThickness="4"
-                                            HorizontalOptions="Start" VerticalOptions="Start"
-                                            Loaded="VideoAttachmentLoaded">
-                                        <Border.StrokeShape>
-                                            <shapes:RoundRectangle CornerRadius="16" />
-                                        </Border.StrokeShape>
-                                        <Grid WidthRequest="{Binding VideoDisplayWidth}"
-                                              HeightRequest="{Binding VideoDisplayHeight}"
-                                              HorizontalOptions="Start" VerticalOptions="Start">
-                                            <Grid BackgroundColor="#17141D"
-                                                  IsVisible="True">
-                                                <Image Source="himo_ui_video.png" WidthRequest="34" HeightRequest="34"
-                                                       Opacity="0.88" HorizontalOptions="Center" VerticalOptions="Center">
-                                                    <Image.Triggers>
-                                                        <DataTrigger TargetType="Image" Binding="{Binding HasVideoPreview}" Value="True">
-                                                            <Setter Property="IsVisible" Value="False" />
-                                                        </DataTrigger>
-                                                    </Image.Triggers>
-                                                </Image>
-                                            </Grid>
-
-                                            <Image Source="{Binding VideoThumbnailPath}"
-                                                   Aspect="AspectFill"
-                                                   WidthRequest="{Binding VideoDisplayWidth}"
-                                                   HeightRequest="{Binding VideoDisplayHeight}"
-                                                   HorizontalOptions="Fill" VerticalOptions="Fill"
-                                                   IsVisible="{Binding HasVideoPreview}" />
-
-                                            <BoxView BackgroundColor="#000000" Opacity="0.10"
-                                                     HorizontalOptions="Fill" VerticalOptions="Fill" />
-
-                                            <Border WidthRequest="62" HeightRequest="62"
-                                                    BackgroundColor="#80000000" StrokeThickness="0"
-                                                    HorizontalOptions="Center" VerticalOptions="Center">
-                                                <Border.StrokeShape>
-                                                    <shapes:RoundRectangle CornerRadius="31" />
-                                                </Border.StrokeShape>
-                                                <Image Source="himo_ui_play_white.png" WidthRequest="28" HeightRequest="28"
-                                                       HorizontalOptions="Center" VerticalOptions="Center" />
-                                            </Border>
-
-                                            <Border HorizontalOptions="Start" VerticalOptions="End"
-                                                    Margin="10" Padding="7,3" BackgroundColor="#99000000"
-                                                    StrokeThickness="0">
-                                                <Border.StrokeShape>
-                                                    <shapes:RoundRectangle CornerRadius="9" />
-                                                </Border.StrokeShape>
-                                                <HorizontalStackLayout Spacing="5">
-                                                    <Image Source="himo_ui_video.png" WidthRequest="13" HeightRequest="13" />
-                                                    <Label Text="{Binding VideoDurationText}" FontSize="10.5" TextColor="White"
-                                                           VerticalTextAlignment="Center" />
-                                                </HorizontalStackLayout>
-                                            </Border>
-
-                                            <Grid.GestureRecognizers>
-                                                <TapGestureRecognizer Tapped="VideoPreviewClicked" NumberOfTapsRequired="1" />
-                                            </Grid.GestureRecognizers>
-                                        </Grid>
-                                    </Border>
-
-                                    <!-- FILE -->
-                                    <Border IsVisible="{Binding IsAttachment}" Padding="8" BackgroundColor="#F8F4FC" Loaded="FileAttachmentLoaded"
-                                            Stroke="#E4DAEC" StrokeThickness="1">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="AttachmentTapped" NumberOfTapsRequired="1" />
-                                        </Border.GestureRecognizers>
-                                        <Border.StrokeShape><shapes:RoundRectangle CornerRadius="13" /></Border.StrokeShape>
-                                        <Border.Triggers>
-                                            <DataTrigger TargetType="Border" Binding="{Binding IsAudioAttachment}" Value="True">
-                                                <Setter Property="IsVisible" Value="False" />
-                                            </DataTrigger>
-                                            <DataTrigger TargetType="Border" Binding="{Binding IsImageAttachment}" Value="True">
-                                                <Setter Property="IsVisible" Value="False" />
-                                            </DataTrigger>
-                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/mp4"><Setter Property="IsVisible" Value="False" /></DataTrigger>
-                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/webm"><Setter Property="IsVisible" Value="False" /></DataTrigger>
-                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/quicktime"><Setter Property="IsVisible" Value="False" /></DataTrigger>
-                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/3gpp"><Setter Property="IsVisible" Value="False" /></DataTrigger>
-                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/3gpp2"><Setter Property="IsVisible" Value="False" /></DataTrigger>
-                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/x-matroska"><Setter Property="IsVisible" Value="False" /></DataTrigger>
-                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/mpeg"><Setter Property="IsVisible" Value="False" /></DataTrigger>
-                                            <DataTrigger TargetType="Border" Binding="{Binding AttachmentContentType}" Value="video/ogg"><Setter Property="IsVisible" Value="False" /></DataTrigger>
-                                        </Border.Triggers>
-                                        <Grid ColumnDefinitions="38,*" ColumnSpacing="8">
-                                            <Border WidthRequest="38" HeightRequest="38" BackgroundColor="#F2EBFA" StrokeThickness="0">
-                                                <Border.StrokeShape><shapes:RoundRectangle CornerRadius="12" /></Border.StrokeShape>
-                                                <Image Source="icon_attachment.png" WidthRequest="19" HeightRequest="19" />
-                                            </Border>
-                                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="0">
-                                                <Label Text="{Binding AttachmentFileName}" FontSize="11.5" FontAttributes="Bold"
-                                                       TextColor="#2B2235" MaxLines="1" LineBreakMode="TailTruncation" />
-                                                <Label Text="مرفق" FontSize="9.5" TextColor="#718096" />
-                                            </VerticalStackLayout>
-                                        </Grid>
-                                    </Border>
-
-                                    <!-- AUDIO -->
-                                    <Border IsVisible="{Binding IsAudioAttachment}" Padding="7,5" Margin="0,2"
-                                            BackgroundColor="Transparent" StrokeThickness="0">
-                                        <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
-                                        <Border.Triggers>
-                                            <DataTrigger TargetType="Border" Binding="{Binding IsMine}" Value="True">
-                                                <Setter Property="BackgroundColor" Value="Transparent" />
-                                                <Setter Property="StrokeThickness" Value="0" />
-                                            </DataTrigger>
-                                        </Border.Triggers>
-                                        <Grid ColumnDefinitions="50,*,Auto" ColumnSpacing="11" HeightRequest="56">
-                                            <ImageButton Grid.Column="0" Source="himo_ui_play_white.png" WidthRequest="48" HeightRequest="48"
-                                                         Padding="13" BackgroundColor="#6C3FD1" CornerRadius="24"
-                                                         VerticalOptions="Center" Clicked="AudioClicked">
-                                                <ImageButton.Triggers>
-                                                    <DataTrigger TargetType="ImageButton" Binding="{Binding IsMine}" Value="True">
-                                                        <Setter Property="BackgroundColor" Value="White" />
-                                                        <Setter Property="Source" Value="himo_ui_play_purple.png" />
-                                                    </DataTrigger>
-                                                </ImageButton.Triggers>
-                                            </ImageButton>
-
-                                            <Grid Grid.Column="1" RowDefinitions="*,Auto" RowSpacing="3" VerticalOptions="Center">
-                                                <HorizontalStackLayout Grid.Row="0" Spacing="3" VerticalOptions="Center">
-                                                    <BoxView WidthRequest="2.5" HeightRequest="10" CornerRadius="2" Color="#C8B3E8" />
-                                                    <BoxView WidthRequest="2.5" HeightRequest="18" CornerRadius="2" Color="#9C7FD0" />
-                                                    <BoxView WidthRequest="2.5" HeightRequest="26" CornerRadius="2" Color="#6C3FD1" />
-                                                    <BoxView WidthRequest="2.5" HeightRequest="15" CornerRadius="2" Color="#8C69C5" />
-                                                    <BoxView WidthRequest="2.5" HeightRequest="22" CornerRadius="2" Color="#6C3FD1" />
-                                                    <BoxView WidthRequest="2.5" HeightRequest="30" CornerRadius="2" Color="#6C3FD1" />
-                                                    <BoxView WidthRequest="2.5" HeightRequest="17" CornerRadius="2" Color="#A17DD5" />
-                                                    <BoxView WidthRequest="2.5" HeightRequest="24" CornerRadius="2" Color="#6C3FD1" />
-                                                    <BoxView WidthRequest="2.5" HeightRequest="12" CornerRadius="2" Color="#B89CE1" />
-                                                    <BoxView WidthRequest="2.5" HeightRequest="20" CornerRadius="2" Color="#A17DD5" />
-                                                    <BoxView WidthRequest="2.5" HeightRequest="28" CornerRadius="2" Color="#6C3FD1" />
-                                                    <BoxView WidthRequest="2.5" HeightRequest="14" CornerRadius="2" Color="#C0AAE3" />
-                                                </HorizontalStackLayout>
-                                                <BoxView Grid.Row="1" HeightRequest="2" CornerRadius="1" Color="#E6D9F1" HorizontalOptions="Fill" />
-                                            </Grid>
-
-                                            <VerticalStackLayout Grid.Column="2" Spacing="1" VerticalOptions="Center" HorizontalOptions="End">
-                                                <Label Text="صوت" FontSize="9" TextColor="#718096" HorizontalTextAlignment="Center">
-                                                    <Label.Triggers><DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True"><Setter Property="TextColor" Value="#F0E8FB" /></DataTrigger></Label.Triggers>
-                                                </Label>
-                                                <Label Text="♪" FontSize="15" TextColor="#7C96B5" HorizontalTextAlignment="Center">
-                                                    <Label.Triggers><DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True"><Setter Property="TextColor" Value="#E1D2F4" /></DataTrigger></Label.Triggers>
-                                                </Label>
-                                            </VerticalStackLayout>
-                                        </Grid>
-                                    </Border>
-
-                                    <!-- TEXT -->
-                                    <Label Text="{Binding Text}" FontSize="16" LineHeight="1.16" TextColor="#2B2235" LineBreakMode="WordWrap"
-                                           Margin="1,1,1,0">
-                                        <Label.Triggers>
-                                            <DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True">
-                                                <Setter Property="TextColor" Value="White" />
-                                            </DataTrigger>
-                                            <DataTrigger TargetType="Label" Binding="{Binding HasLocalImagePreview}" Value="True"><Setter Property="IsVisible" Value="False" /></DataTrigger>
-                                            <DataTrigger TargetType="Label" Binding="{Binding IsAttachment}" Value="True"><Setter Property="IsVisible" Value="False" /></DataTrigger>
-                                            <DataTrigger TargetType="Label" Binding="{Binding IsAudioAttachment}" Value="True"><Setter Property="IsVisible" Value="False" /></DataTrigger>
-                                        </Label.Triggers>
-                                    </Label>
-
-                                    <!-- TIME / STATUS -->
-                                    <HorizontalStackLayout HorizontalOptions="End" Spacing="4">
-                                        <Label Text="{Binding EditedLabel}" Style="{StaticResource Meta}" VerticalOptions="Center">
-                                            <Label.Triggers><DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True"><Setter Property="TextColor" Value="#E9DCFF" /></DataTrigger></Label.Triggers>
-                                        </Label>
-                                        <Label Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource Meta}" VerticalOptions="Center">
-                                            <Label.Triggers><DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True"><Setter Property="TextColor" Value="#E9DCFF" /></DataTrigger></Label.Triggers>
-                                        </Label>
-                                        <Label FontSize="10.5" FontAttributes="Bold" VerticalOptions="Center" Text="✓" IsVisible="False">
-                                            <Label.Triggers>
-                                                <!-- Delivery state belongs only to messages sent by this user. -->
-                                                <DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True">
-                                                    <Setter Property="IsVisible" Value="True" />
-                                                    <Setter Property="TextColor" Value="#E9DCFF" />
-                                                </DataTrigger>
-                                                <DataTrigger TargetType="Label" Binding="{Binding IsPending}" Value="True">
-                                                    <Setter Property="Text" Value="◷" />
-                                                    <Setter Property="TextColor" Value="#E8D8FF" />
-                                                </DataTrigger>
-                                                <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="sent">
-                                                    <Setter Property="Text" Value="✓" />
-                                                    <Setter Property="TextColor" Value="#E9DCFF" />
-                                                </DataTrigger>
-                                                <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered">
-                                                    <Setter Property="Text" Value="✓✓" />
-                                                    <Setter Property="TextColor" Value="#B8BDC7" />
-                                                </DataTrigger>
-                                                <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read">
-                                                    <Setter Property="Text" Value="✓✓" />
-                                                    <Setter Property="TextColor" Value="#62B0FF" />
-                                                </DataTrigger>
-                                                <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="failed">
-                                                    <Setter Property="Text" Value="!" />
-                                                    <Setter Property="TextColor" Value="#FFB4BD" />
-                                                </DataTrigger>
-                                            </Label.Triggers>
-                                        </Label>
-                                    </HorizontalStackLayout>
-                                </VerticalStackLayout>
-
-                                <Border.Triggers>
-                                    <DataTrigger TargetType="Border" Binding="{Binding IsMine}" Value="True">
-                                        <Setter Property="HorizontalOptions" Value="Start" />
-                                        <Setter Property="Margin" Value="24,1,0,1" />
-                                        <Setter Property="BackgroundColor" Value="#6C3FD1" />
-                                        <Setter Property="Stroke" Value="#6C3FD1" />
-                                        <Setter Property="StrokeThickness" Value="0" />
-                                    </DataTrigger>
-                                    <DataTrigger TargetType="Border" Binding="{Binding IsImageAttachment}" Value="True">
-                                        <Setter Property="StrokeThickness" Value="0" />
-                                        <Setter Property="Padding" Value="0" />
-                                        <Setter Property="BackgroundColor" Value="Transparent" />
-                                    </DataTrigger>
-                                    <DataTrigger TargetType="Border" Binding="{Binding IsAudioAttachment}" Value="True">
-                                        <Setter Property="StrokeThickness" Value="0" />
-                                    </DataTrigger>
-                                    <DataTrigger TargetType="Border" Binding="{Binding IsVideoAttachment}" Value="True">
-                                        <Setter Property="StrokeThickness" Value="0" />
-                                        <Setter Property="Padding" Value="0" />
-                                        <Setter Property="BackgroundColor" Value="Transparent" />
-                                    </DataTrigger>
-                                    <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
-                                        <Setter Property="Stroke" Value="#A07BE0" />
-                                        <Setter Property="StrokeThickness" Value="2.2" />
-                                    </DataTrigger>
-                                </Border.Triggers>
-                            </Border>
-                        </VerticalStackLayout>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+            <CollectionView x:Name="Messages" SelectionMode="None"
+                            ItemTemplate="{StaticResource ChatMessageSelector}"
+                            VerticalScrollBarVisibility="Never"
+                            Scrolled="MessagesScrolled"
+                            BackgroundColor="Transparent"
+                            Margin="0,3,0,0" />
 
             <ContentView x:Name="HiddenAudioPlayerHost" Grid.RowSpan="4"
                          WidthRequest="1" HeightRequest="1"
@@ -587,11 +626,11 @@
         </Grid>
 
         <!-- COMPOSER -->
-        <Border Grid.Row="3" Margin="8,4,8,7" Padding="6,5" BackgroundColor="#FFFFFF"
-                Stroke="#E1E4EA" StrokeThickness="1">
+        <Border Grid.Row="3" Margin="8,4,8,7" Padding="6,5" Background="{StaticResource ComposerBrush}"
+                Stroke="#7C52C5" StrokeThickness="1">
             <Border.StrokeShape><shapes:RoundRectangle CornerRadius="25" /></Border.StrokeShape>
             <VerticalStackLayout Spacing="2">
-                <Grid x:Name="ReplyPreview" IsVisible="False" Padding="9,5" ColumnDefinitions="*,Auto" BackgroundColor="#F8F4FC">
+                <Grid x:Name="ReplyPreview" IsVisible="False" Padding="9,5" ColumnDefinitions="*,Auto" BackgroundColor="#2B1646">
                     <VerticalStackLayout Grid.Column="0" Spacing="1">
                         <Label Text="رد على رسالة" FontSize="10" FontAttributes="Bold" TextColor="#6C3FD1" />
                         <Label x:Name="ReplyPreviewLabel" FontSize="11" TextColor="#718096" MaxLines="1" LineBreakMode="TailTruncation" />
@@ -602,7 +641,7 @@
                 <Grid x:Name="RecordingBar" IsVisible="False" Padding="9,3" ColumnDefinitions="Auto,*,Auto">
                     <BoxView Grid.Column="0" WidthRequest="8" HeightRequest="8" CornerRadius="4" Color="#EF4444" VerticalOptions="Center" />
                     <Label Grid.Column="1" Text="جارٍ تسجيل رسالة صوتية..." FontSize="11.5" FontAttributes="Bold"
-                           TextColor="#2B2235" VerticalTextAlignment="Center" />
+                           TextColor="#FFFFFF" VerticalTextAlignment="Center" />
                     <Label Grid.Column="2" Text="اضغط لإيقاف التسجيل" FontSize="9.5" TextColor="#718096" VerticalTextAlignment="Center" />
                 </Grid>
                 <!-- ATTACHMENT / MEDIA PANEL -->
@@ -650,12 +689,12 @@
                                  Style="{StaticResource ComposerButton}" Clicked="CameraButtonClicked" />
                     <Entry x:Name="MessageEntry" Grid.Column="2" Placeholder="اكتب رسالة..." ReturnType="Send"
                            ClearButtonVisibility="Never" MaxLength="4000" Completed="SendClicked"
-                           TextChanged="MessageEntryTextChanged" FontSize="14" TextColor="#2B2235" BackgroundColor="#F7F6FA"
-                           PlaceholderColor="#94A3B8" VerticalOptions="Center" HorizontalTextAlignment="End" />
+                           TextChanged="MessageEntryTextChanged" FontSize="14" TextColor="#FFFFFF" BackgroundColor="#2A183E"
+                           PlaceholderColor="#BCAFD0" VerticalOptions="Center" HorizontalTextAlignment="End" />
                     <ImageButton x:Name="AttachmentButton" Grid.Column="3" Source="himo_icon_attachment.png" Style="{StaticResource ComposerButton}"
                                  Clicked="AttachmentButtonClicked" VerticalOptions="Center" />
                     <ImageButton x:Name="SendButton" Grid.Column="4" Source="himo_icon_send.png"
-                                 WidthRequest="44" HeightRequest="44" Padding="10" BackgroundColor="#6C3FD1"
+                                 WidthRequest="44" HeightRequest="44" Padding="10" BackgroundColor="#8B42E8"
                                  CornerRadius="22" Clicked="SendClicked" HorizontalOptions="Center" VerticalOptions="Center" />
                 </Grid>
             </VerticalStackLayout>

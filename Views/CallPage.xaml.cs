@@ -72,10 +72,10 @@ public partial class CallPage : ContentPage
             StatusLabel.Text = state.IsConnected ? FormatDuration() : "بانتظار الطرف الآخر";
             VideoSurface.IsVisible = _mode == CallMode.Video;
         _cameraEnabled = _mode == CallMode.Video;
-        CameraButton.IsEnabled = true;
+        CameraButton.IsEnabled = _mode == CallMode.Video;
         CameraButton.Opacity = _mode == CallMode.Video ? 1.0 : 0.55;
 #if ANDROID
-        if (_mode == CallMode.Video) _ = AttachVideoAsync();
+        if (_mode == CallMode.Video) _ = AttachVideoWithRetryAsync();
 #endif
             RemoteAudioButton.Source = state.IsRemoteAudioEnabled ? "himo_phase1_icon_volume.png" : "himo_phase1_icon_volume_off.png";
             RemoteAudioButton.IsEnabled = state.IsConnected && !_remoteAudioToggleInProgress;
@@ -99,15 +99,16 @@ public partial class CallPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        _connectedAt = null;
+        _calls.StateChanged -= CallsStateChanged;
+        _calls.StateChanged += CallsStateChanged;
+        _calls.CallEnded -= CallsEnded;
+        _calls.CallEnded += CallsEnded;
+        _connectedAt = _calls.Current?.IsConnected == true ? DateTimeOffset.UtcNow : null;
         _navigationStarted = false;
         VideoSurface.IsVisible = _mode == CallMode.Video;
         _cameraEnabled = _mode == CallMode.Video;
-        CameraButton.IsEnabled = true;
+        CameraButton.IsEnabled = _mode == CallMode.Video;
         CameraButton.Opacity = _mode == CallMode.Video ? 1.0 : 0.55;
-#if ANDROID
-        if (_mode == CallMode.Video) _ = AttachVideoAsync();
-#endif
         ModeLabel.Text = _mode == CallMode.Video ? "مكالمة فيديو" : "مكالمة صوتية";
         StatusLabel.Text = _incoming ? "مكالمة واردة..." : "جاري تجهيز الاتصال...";
         RemoteAudioButton.IsEnabled = false;
@@ -127,8 +128,10 @@ public partial class CallPage : ContentPage
 
             if (_incoming)
             {
-                // The Invite already created the pending CallState. Accepting here
-                // starts local media and sends Accept; the caller then creates SDP.
+                // A cold-start notification may navigate directly to CallPage without
+                // the SignalR Invite ever reaching CallService. Rehydrate the incoming
+                // call state before accepting so the callee can always answer.
+                await _calls.PrepareIncomingAsync(new CallRequest(_conversationId, _mode));
                 await _calls.AcceptAsync();
                 StatusLabel.Text = "جاري الاتصال...";
             }
@@ -140,6 +143,11 @@ public partial class CallPage : ContentPage
 #endif
                 StatusLabel.Text = "بانتظار قبول المكالمة...";
             }
+
+#if ANDROID
+            if (_mode == CallMode.Video)
+                await AttachVideoWithRetryAsync();
+#endif
         }
         catch (Exception ex)
         {
@@ -170,7 +178,9 @@ public partial class CallPage : ContentPage
         _navigationStarted = true;
         try
         {
-            await MainThread.InvokeOnMainThreadAsync(async () => await Shell.Current.GoToAsync(".."));
+            var shell = Shell.Current;
+            if (shell is null) return;
+            await MainThread.InvokeOnMainThreadAsync(async () => await shell.GoToAsync(".."));
         }
         catch (Exception ex)
         {
@@ -259,24 +269,33 @@ public partial class CallPage : ContentPage
         }
     }
 
-    private async Task AttachVideoAsync()
+    private async Task AttachVideoWithRetryAsync()
     {
-        try
+        if (_mode != CallMode.Video) return;
+
+        for (var attempt = 0; attempt < 6; attempt++)
         {
-            await MainThread.InvokeOnMainThreadAsync(async () =>
+            try
             {
-                if (_calls is not null)
+                var attached = false;
+                await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
                     var engine = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services.GetService<IWebRtcMediaEngine>() as AndroidWebRtcMediaEngine;
-                    if (engine is not null)
-                    {
-                        await engine.AttachRemoteVideoAsync(RemoteVideoHost);
-                        await engine.AttachLocalVideoAsync(LocalVideoHost);
-                    }
-                }
-            });
+                    if (engine is null || !engine.IsStarted) return;
+                    await engine.AttachRemoteVideoAsync(RemoteVideoHost);
+                    await engine.AttachLocalVideoAsync(LocalVideoHost);
+                    attached = true;
+                });
+
+                if (attached) return;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Video renderer attach attempt {attempt + 1} failed: {ex.Message}");
+            }
+
+            await Task.Delay(120);
         }
-        catch { }
     }
 #endif
 
@@ -342,7 +361,9 @@ public partial class CallPage : ContentPage
         _navigationStarted = true;
         try
         {
-            await MainThread.InvokeOnMainThreadAsync(async () => await Shell.Current.GoToAsync(".."));
+            var shell = Shell.Current;
+            if (shell is null) return;
+            await MainThread.InvokeOnMainThreadAsync(async () => await shell.GoToAsync(".."));
         }
         catch (Exception ex)
         {

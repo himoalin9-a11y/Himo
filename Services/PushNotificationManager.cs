@@ -52,6 +52,19 @@ public sealed class PushNotificationManager
         _appInForeground = foreground;
     }
 
+    private async Task StartRealtimeInBackgroundAsync()
+    {
+        try
+        {
+            await _realtime.StartAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // FCM remains the background delivery path even when SignalR is unavailable.
+            System.Diagnostics.Debug.WriteLine($"[Himo Push] SignalR background startup skipped: {ex.Message}");
+        }
+    }
+
     public async Task InitializeAsync()
     {
         await _notifications.InitializeAsync();
@@ -69,15 +82,11 @@ public sealed class PushNotificationManager
         else
             await UnregisterCurrentTokenAsync();
 
-        try
-        {
-            await _realtime.StartAsync();
-        }
-        catch (Exception ex)
-        {
-            // FCM remains the background delivery path even when SignalR is unavailable.
-            System.Diagnostics.Debug.WriteLine($"[Himo Push] SignalR startup skipped: {ex}");
-        }
+        // SignalR is not required to display push notifications and must never
+        // hold application/page startup while a hub connection negotiates.
+        // Run it in the background; HimoRealtimeService already serializes
+        // duplicate starts through its internal gate.
+        _ = StartRealtimeInBackgroundAsync();
     }
 
 #if ANDROID
@@ -119,33 +128,13 @@ public sealed class PushNotificationManager
     {
         try
         {
-            var notification = e?.Notification;
-            var data = notification?.Data;
-
-            // Delivery must not depend on ChatPage being open. When the plugin raises
-            // the FCM event, acknowledge the message at application level first.
-            if (data is not null &&
-                data.TryGetValue("message_id", out var messageIdText) &&
-                Guid.TryParse(messageIdText, out var deliveredMessageId) &&
-                _account.IsSignedIn &&
-                _api.HasToken)
-            {
-                try
-                {
-                    await _api.MarkMessageDeliveredAsync(deliveredMessageId);
-                }
-                catch (Exception ackEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Himo Push] FCM delivery acknowledgement failed: {ackEx}");
-                }
-            }
-
             // Background/killed notifications are displayed by the FCM plugin itself.
             // We only create a local notification while the app is visible.
             if (!_appInForeground)
                 return;
 
-            if (notification is null || data is null)
+            var notification = e?.Notification;
+            if (notification is null || notification.Data is null)
                 return;
 
             if (notification.Data.TryGetValue("call_type", out var callType) &&

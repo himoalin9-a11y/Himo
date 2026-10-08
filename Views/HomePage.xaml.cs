@@ -32,7 +32,10 @@ public partial class HomePage : ContentPage
             ((CollectionView)sender).SelectedItem = null;
             var shell = Shell.Current;
             if (shell is null) return;
-            await shell.GoToAsync($"chat?id={conversation.Id}", false);
+            var routeId = !string.IsNullOrWhiteSpace(conversation.RemoteId)
+                ? conversation.RemoteId
+                : conversation.Id.ToString();
+            await shell.GoToAsync($"chat?id={routeId}", false);
         }
     }
 

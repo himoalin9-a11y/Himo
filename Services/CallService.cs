@@ -39,6 +39,7 @@ public interface ICallService
     CallState? Current { get; }
     Task<bool> RequestPermissionsAsync(CallMode mode, CancellationToken cancellationToken = default);
     Task StartAsync(CallRequest request, CancellationToken cancellationToken = default);
+    Task PrepareIncomingAsync(CallRequest request, CancellationToken cancellationToken = default);
     Task AcceptAsync(CancellationToken cancellationToken = default);
     Task RejectAsync(CancellationToken cancellationToken = default);
     Task EndAsync(CancellationToken cancellationToken = default);
@@ -59,6 +60,7 @@ public sealed class CallService : ICallService, IDisposable
     private CallState? _current;
     private readonly SemaphoreSlim _remoteAudioGate = new(1, 1);
     private int _ending;
+    private long _operationVersion;
     private CallLifecycleState _lifecycle = CallLifecycleState.Idle;
 
     public event EventHandler<CallState>? StateChanged;
@@ -90,6 +92,7 @@ public sealed class CallService : ICallService, IDisposable
 
     public async Task StartAsync(CallRequest request, CancellationToken cancellationToken = default)
     {
+        var operationVersion = Interlocked.Increment(ref _operationVersion);
         await _remoteAudioGate.WaitAsync(cancellationToken);
         try
         {
@@ -107,6 +110,12 @@ public sealed class CallService : ICallService, IDisposable
             try
             {
                 await _webRtc.StartAsync(request.Mode, cancellationToken);
+                if (operationVersion != Volatile.Read(ref _operationVersion) || Volatile.Read(ref _ending) != 0)
+                {
+                    await StopCallResourcesQuietlyAsync();
+                    Clear();
+                    return;
+                }
                 RaiseState();
                 await _realtime.SendCallSignalAsync(
                     request.ConversationId,
@@ -117,7 +126,7 @@ public sealed class CallService : ICallService, IDisposable
             catch
             {
                 await StopCallResourcesQuietlyAsync();
-                _current = null;
+                Clear();
                 throw;
             }
         }
@@ -127,22 +136,59 @@ public sealed class CallService : ICallService, IDisposable
         }
     }
 
+    public async Task PrepareIncomingAsync(CallRequest request, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Interlocked.Increment(ref _operationVersion);
+
+        var current = _current;
+        if (current is not null)
+        {
+            if (current.ConversationId == request.ConversationId && current.Mode == request.Mode)
+                return;
+
+            if (current.IsConnected || _lifecycle == CallLifecycleState.Calling)
+                throw new InvalidOperationException("يوجد اتصال نشط أو جارٍ لمكالمة أخرى.");
+
+            await StopCallResourcesQuietlyAsync();
+        }
+
+        Volatile.Write(ref _ending, 0);
+        _lifecycle = CallLifecycleState.Calling;
+        _current = new CallState(
+            request.ConversationId,
+            request.Mode,
+            false,
+            false,
+            _media.IsSpeakerEnabled,
+            _webRtc.IsRemoteAudioEnabled);
+        RaiseState();
+    }
+
     public async Task AcceptAsync(CancellationToken cancellationToken = default)
     {
+        var operationVersion = Interlocked.Increment(ref _operationVersion);
         await _remoteAudioGate.WaitAsync(cancellationToken);
         try
         {
-            if (_current is null || Volatile.Read(ref _ending) != 0) return;
+            var current = _current;
+            if (current is null || Volatile.Read(ref _ending) != 0) return;
 
             _lifecycle = CallLifecycleState.Calling;
-            await _media.StartAsync(_current.Mode, cancellationToken);
-            _current = _current with { IsSpeakerOn = _media.IsSpeakerEnabled };
+            await _media.StartAsync(current.Mode, cancellationToken);
+            _current = current = current with { IsSpeakerOn = _media.IsSpeakerEnabled };
 
             try
             {
-                await _webRtc.StartAsync(_current.Mode, cancellationToken);
+                await _webRtc.StartAsync(current.Mode, cancellationToken);
+                if (operationVersion != Volatile.Read(ref _operationVersion) || Volatile.Read(ref _ending) != 0)
+                {
+                    await StopCallResourcesQuietlyAsync();
+                    return;
+                }
+                RaiseState();
                 await _realtime.SendCallSignalAsync(
-                    _current.ConversationId,
+                    current.ConversationId,
                     CallSignalType.Accept.ToString(),
                     null,
                     cancellationToken);
@@ -150,7 +196,7 @@ public sealed class CallService : ICallService, IDisposable
             catch
             {
                 await StopCallResourcesQuietlyAsync();
-                _current = null;
+                Clear();
                 throw;
             }
         }
@@ -162,6 +208,7 @@ public sealed class CallService : ICallService, IDisposable
 
     public async Task RejectAsync(CancellationToken cancellationToken = default)
     {
+        Interlocked.Increment(ref _operationVersion);
         if (Interlocked.Exchange(ref _ending, 1) != 0) return;
         var state = _current;
         if (state is null) return;
@@ -177,6 +224,7 @@ public sealed class CallService : ICallService, IDisposable
 
     public async Task EndAsync(CancellationToken cancellationToken = default)
     {
+        Interlocked.Increment(ref _operationVersion);
         if (Interlocked.Exchange(ref _ending, 1) != 0) return;
         var state = _current;
 
@@ -255,6 +303,19 @@ public sealed class CallService : ICallService, IDisposable
                 }
                 catch { }
             }
+            if (_current is not null && _current.ConversationId != signal.ConversationId)
+            {
+                if (_current.IsConnected || _lifecycle == CallLifecycleState.Calling)
+                {
+                    _ = SendCallSignalBestEffortAsync(signal.ConversationId, CallSignalType.Reject, CancellationToken.None);
+                    return;
+                }
+
+                await StopCallResourcesQuietlyAsync();
+            }
+
+            Volatile.Write(ref _ending, 0);
+            _lifecycle = CallLifecycleState.Calling;
             _current = new CallState(signal.ConversationId, mode, false, false, _media.IsSpeakerEnabled, _webRtc.IsRemoteAudioEnabled);
             RaiseState();
         }

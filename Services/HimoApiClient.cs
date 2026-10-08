@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Diagnostics;
 using Himo.Models;
 
 #if ANDROID
@@ -712,7 +713,9 @@ public sealed class HimoApiClient
         string? messageId,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(messageId) || !Guid.TryParse(messageId, out var parsedMessageId) || parsedMessageId == Guid.Empty)
+        if (string.IsNullOrWhiteSpace(messageId) ||
+            !Guid.TryParse(messageId, out var parsedMessageId) ||
+            parsedMessageId == Guid.Empty)
             return;
 
         using var response =
@@ -721,9 +724,7 @@ public sealed class HimoApiClient
                 content: null,
                 cancellationToken);
 
-        await EnsureSuccessAsync(
-            response,
-            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
     }
 
     public Task<ConversationDto> CreateConversationAsync(
@@ -830,6 +831,7 @@ public sealed class HimoApiClient
             path += "?" + string.Join("&", query);
         }
 
+        var timing = Stopwatch.StartNew();
         using var response =
             await _http.GetAsync(
                 path,
@@ -839,10 +841,13 @@ public sealed class HimoApiClient
             response,
             cancellationToken);
 
-        return await response.Content
+        var result = await response.Content
             .ReadFromJsonAsync<List<MessageDto>>(
                 cancellationToken: cancellationToken)
             ?? new List<MessageDto>();
+
+        Debug.WriteLine($"[HimoTiming] GET messages HTTP={(int)response.StatusCode} count={result.Count} elapsed={timing.ElapsedMilliseconds}ms path={path}");
+        return result;
     }
 
     public async Task<MessageDto> SendMessageAsync(

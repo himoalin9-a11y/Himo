@@ -8,12 +8,10 @@ public partial class AppShell : Shell
 {
     static AppShell()
     {
-        // ChatPage is transient, so let Shell resolve a fresh page through the
-        // MAUI DI container for every navigation. This avoids reusing a page whose
-        // Handler/MauiContext may already have been disposed.
         Routing.RegisterRoute("chat", typeof(ChatPage));
-        Routing.RegisterRoute("settings", new SingletonRouteFactory<SettingsPage>());
-        Routing.RegisterRoute("profile", new SingletonRouteFactory<ProfilePage>());
+        Routing.RegisterRoute("CallPage", new CallPageRouteFactory());
+        Routing.RegisterRoute("settings", new SettingsPageRouteFactory());
+        Routing.RegisterRoute("profile", new ProfilePageRouteFactory());
         Routing.RegisterRoute("search", typeof(SearchPage));
     }
 
@@ -28,24 +26,41 @@ public partial class AppShell : Shell
     }
 }
 
-/// <summary>
-/// Makes Shell navigation resolve a page from MAUI DI instead of constructing a
-/// new instance from the registered page type on every navigation.
-/// </summary>
-internal sealed class SingletonRouteFactory<TPage> : RouteFactory
-    where TPage : Element
+internal sealed class CallPageRouteFactory : RouteFactory
 {
     public override Element GetOrCreate()
     {
         var services = Application.Current?.Handler?.MauiContext?.Services
             ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق.");
-
-        return services.GetRequiredService<TPage>();
+        return services.GetRequiredService<CallPage>();
     }
 
-    public override Element GetOrCreate(IServiceProvider services)
+    public override Element GetOrCreate(IServiceProvider services) =>
+        services.GetRequiredService<CallPage>();
+}
+
+internal sealed class SettingsPageRouteFactory : RouteFactory
+{
+    public override Element GetOrCreate()
     {
-        return services.GetRequiredService<TPage>();
+        var services = Application.Current?.Handler?.MauiContext?.Services
+            ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق.");
+        return services.GetRequiredService<SettingsPage>();
     }
 
+    public override Element GetOrCreate(IServiceProvider services) =>
+        services.GetRequiredService<SettingsPage>();
+}
+
+internal sealed class ProfilePageRouteFactory : RouteFactory
+{
+    public override Element GetOrCreate()
+    {
+        var services = Application.Current?.Handler?.MauiContext?.Services
+            ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق.");
+        return services.GetRequiredService<ProfilePage>();
+    }
+
+    public override Element GetOrCreate(IServiceProvider services) =>
+        services.GetRequiredService<ProfilePage>();
 }

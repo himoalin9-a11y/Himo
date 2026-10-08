@@ -101,7 +101,11 @@ public sealed class WebRtcNegotiationCoordinator : IDisposable
 
     private async void OnIncomingSignal(object? sender, CallSignalMessage signal)
     {
-        if (_session?.ConversationId != signal.ConversationId) return;
+        if (_calls.Current is null || _calls.Current.ConversationId != signal.ConversationId)
+            return;
+
+        if (_session is null || _session.ConversationId != signal.ConversationId || _session.Mode != _calls.Current.Mode)
+            Start(signal.ConversationId, _calls.Current.Mode);
 
         try
         {
@@ -120,8 +124,9 @@ public sealed class WebRtcNegotiationCoordinator : IDisposable
                 if (!_webRtc.IsStarted) return;
                 await _webRtc.SetRemoteOfferAsync(signal.Payload);
                 var answer = await _webRtc.CreateAnswerAsync();
-                if (!string.IsNullOrWhiteSpace(answer))
-                    await _session.SendAnswerAsync(answer);
+                var session = _session;
+                if (session is not null && !string.IsNullOrWhiteSpace(answer))
+                    await session.SendAnswerAsync(answer);
                 return;
             }
 
@@ -144,9 +149,9 @@ public sealed class WebRtcNegotiationCoordinator : IDisposable
                 Stop();
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Signaling callbacks must not tear down the realtime event loop.
+            System.Diagnostics.Debug.WriteLine($"[Himo WebRTC] Negotiation signal failed: {ex}");
         }
     }
 

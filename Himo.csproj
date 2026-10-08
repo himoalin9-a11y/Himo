@@ -27,6 +27,14 @@
     <AndroidIncludeDebugSymbols>true</AndroidIncludeDebugSymbols>
     <AndroidFastDeployment>false</AndroidFastDeployment>
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
+    <!-- WebRTC is reflection-heavy and its Java binding is resolved dynamically.
+         Keep the managed binding intact so Release trimming cannot remove the
+         Java peers that PeerConnectionFactory and PeerConnection need. -->
+    <AndroidLinkMode>None</AndroidLinkMode>
+    <PublishTrimmed>false</PublishTrimmed>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <EnableProguard>false</EnableProguard>
+    <AndroidLinkTool></AndroidLinkTool>
   </PropertyGroup>
 
   <!-- Explicit Debug configuration: Visual Studio can attach the Android debugger. -->
@@ -101,6 +109,7 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android36.0'">
     <GoogleServicesJson Include="Platforms\Android\google-services.json" />
+    <ProguardConfiguration Include="Platforms\Android\proguard-webrtc.cfg" />
   </ItemGroup>
 
 </Project>

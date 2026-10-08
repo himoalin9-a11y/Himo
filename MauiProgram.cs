@@ -66,7 +66,7 @@ public static class MauiProgram
         builder.Services.AddTransient<HomeViewModel>();
         builder.Services.AddTransient<Views.HomePage>();
         builder.Services.AddTransient<Views.LoginPage>();
-        builder.Services.AddSingleton<Views.ChatPage>();
+        builder.Services.AddTransient<Views.ChatPage>();
         builder.Services.AddSingleton<Views.SettingsPage>();
         builder.Services.AddSingleton<Views.ProfilePage>();
         builder.Services.AddTransient<Views.SearchPage>();

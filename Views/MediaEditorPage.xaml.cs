@@ -1260,6 +1260,18 @@ public partial class MediaEditorPage : ContentPage
 
     private async Task<CameraCaptureResult?> SavePhotoAsync()
     {
+        // The default camera flow uses Natural with no crop/rotation/drawing/text.
+        // In that case there is nothing to render. Returning the already captured
+        // file avoids decoding every pixel, running the beauty filter pipeline, and
+        // recompressing the JPEG before the actual upload begins.
+        if (!HasPhotoOutputChanges())
+        {
+            var contentType = string.IsNullOrWhiteSpace(_sourceContentType)
+                ? "image/jpeg"
+                : _sourceContentType;
+            return new CameraCaptureResult(_workingImagePath, _sourceFileName, contentType);
+        }
+
         var outputDirectory = FileSystem.CacheDirectory;
         var name = Path.GetFileNameWithoutExtension(_sourceFileName);
         var outputPath = Path.Combine(
@@ -1296,6 +1308,23 @@ public partial class MediaEditorPage : ContentPage
 
         await VerifyCropOutputAsync(outputPath);
         return new CameraCaptureResult(outputPath, Path.GetFileName(outputPath), "image/jpeg");
+    }
+
+    private bool HasPhotoOutputChanges()
+    {
+        var hasFilterChange = _selectedFilter != HimoPhotoFilter.Natural
+            || _beautyAmount > 0.001f
+            || _whitening > 0.001f
+            || Math.Abs(_brightness) > 0.001f;
+
+        var hasTransformChange = ((_rotationDegrees % 360) + 360) % 360 != 0
+            || _cropAspectRatio > 0.01f
+            || _manualCrop.HasValue;
+
+        return hasFilterChange
+            || hasTransformChange
+            || _drawStrokes.Count > 0
+            || _textItems.Count > 0;
     }
 
     private async Task VerifyCropOutputAsync(string outputPath)
