@@ -1,47 +1,92 @@
 #if ANDROID
 using System;
-using Android.Runtime;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Himo.Platforms.Android.Services;
 
 /// <summary>
-/// Keeps WebRTC Java peers that are resolved by reflection from being removed
-/// from the Android application. The call engine intentionally uses reflection
-/// because FsWebRTC generated member names vary between releases.
+/// Roots WebRTC binding types that are accessed through reflection.
+/// Uses the .NET 10 DynamicDependency constructors supported by the linker.
 /// </summary>
-[Preserve(AllMembers = true)]
 internal static class WebRtcJavaBindingKeepAlive
 {
-    // These are the Java-bound types resolved by name in AndroidWebRtcMediaEngine.
-    // The explicit managed references give the Android linker a real root so the
-    // corresponding org.webrtc classes are packaged in the final APK.
-    private static readonly Type[] RequiredTypes =
-    {
-        typeof(Org.Webrtc.PeerConnectionFactory),
-        typeof(Org.Webrtc.PeerConnection),
-        typeof(Org.Webrtc.MediaConstraints),
-        typeof(Org.Webrtc.EglBase),
-        typeof(Org.Webrtc.SurfaceTextureHelper),
-        typeof(Org.Webrtc.Camera2Enumerator),
-        typeof(Org.Webrtc.SessionDescription),
-        typeof(Org.Webrtc.IceCandidate),
-        typeof(Org.Webrtc.AudioTrack),
-        typeof(Org.Webrtc.VideoTrack),
-        typeof(Org.Webrtc.SurfaceViewRenderer)
-    };
+    private const string BindingAssembly = "FsWebRTC.Bindings.Maui.Android";
 
-    // Intentionally public to make it easy for the media engine to touch this
-    // type later without changing the binding contract. The Preserve attribute
-    // is what matters for linker rooting.
+    // These top-level binding types are referenced as managed Types by the engine.
+    // The 2-argument DynamicDependency overload is the correct overload for a Type.
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        typeof(Org.Webrtc.PeerConnectionFactory))]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        typeof(Org.Webrtc.PeerConnection))]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        typeof(Org.Webrtc.MediaConstraints))]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        typeof(Org.Webrtc.SurfaceTextureHelper))]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        typeof(Org.Webrtc.Camera2Enumerator))]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        typeof(Org.Webrtc.SessionDescription))]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        typeof(Org.Webrtc.IceCandidate))]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        typeof(Org.Webrtc.AudioTrack))]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        typeof(Org.Webrtc.VideoTrack))]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        typeof(Org.Webrtc.SurfaceViewRenderer))]
+
+    // Reflection-only nested types. These use the documented 3-string
+    // DynamicDependency overload: member types, full type name, assembly name.
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        "Org.Webrtc.PeerConnection+RTCConfiguration",
+        BindingAssembly)]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        "Org.Webrtc.PeerConnection+RtcConfiguration",
+        BindingAssembly)]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        "Org.Webrtc.PeerConnection+IceServer",
+        BindingAssembly)]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        "Org.Webrtc.PeerConnection+IceServer+Builder",
+        BindingAssembly)]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        "Org.Webrtc.PeerConnectionFactory+Builder",
+        BindingAssembly)]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        "Org.Webrtc.PeerConnectionFactory+InitializationOptions",
+        BindingAssembly)]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        "Org.Webrtc.PeerConnectionFactory+InitializationOptions+Builder",
+        BindingAssembly)]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        "Org.Webrtc.MediaConstraints+KeyValuePair",
+        BindingAssembly)]
+    [DynamicDependency(
+        DynamicallyAccessedMemberTypes.All,
+        "Org.Webrtc.SessionDescription+Type",
+        BindingAssembly)]
     public static void Ensure()
     {
-        // Touch every generated peer before WebRTC starts. This is intentionally
-        // executed from the media engine; merely having the type in this file is
-        // not sufficient protection when Android trimming is enabled by a host
-        // configuration.
-        _ = RequiredTypes.Length;
-        foreach (var type in RequiredTypes)
-            GC.KeepAlive(type);
+        // The attributes are intentionally the mechanism here; there is no
+        // runtime reflection or obsolete PreserveAttribute involved.
     }
 }
 #endif

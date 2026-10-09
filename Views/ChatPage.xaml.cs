@@ -899,7 +899,11 @@ public partial class ChatPage : ContentPage
             var action = await DisplayActionSheetAsync(title, "رفض", null, "رد");
             if (string.Equals(action, "رد", StringComparison.Ordinal))
             {
-                await Shell.Current.GoToAsync($"CallPage?id={signal.ConversationId:D}&mode={(mode == CallMode.Video ? "video" : "audio")}&incoming=true");
+                var callId = Guid.Empty;
+                if (CallSignalEnvelope.TryParse(signal.Payload, out var inviteEnvelope))
+                    callId = inviteEnvelope.CallId;
+                var callIdQuery = callId == Guid.Empty ? string.Empty : $"&callId={callId:D}";
+                await Shell.Current.GoToAsync($"CallPage?id={signal.ConversationId:D}&mode={(mode == CallMode.Video ? "video" : "audio")}&incoming=true{callIdQuery}");
             }
             else
             {

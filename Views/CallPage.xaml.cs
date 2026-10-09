@@ -8,6 +8,7 @@ namespace Himo.Views;
 [QueryProperty(nameof(ConversationId), "id")]
 [QueryProperty(nameof(Mode), "mode")]
 [QueryProperty(nameof(Incoming), "incoming")]
+[QueryProperty(nameof(CallId), "callId")]
 public partial class CallPage : ContentPage
 {
     private readonly ICallService _calls;
@@ -21,6 +22,7 @@ public partial class CallPage : ContentPage
     private bool _remoteAudioToggleInProgress;
     private long _callUiStateVersion;
     private bool _incoming;
+    private Guid _callId;
     private bool _navigationStarted;
 #if ANDROID
     private global::Android.Media.MediaPlayer? _outgoingRingback;
@@ -42,6 +44,12 @@ public partial class CallPage : ContentPage
     {
         get => _incoming ? "true" : "false";
         set => _incoming = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public string CallId
+    {
+        get => _callId == Guid.Empty ? string.Empty : _callId.ToString("D");
+        set => Guid.TryParse(value, out _callId);
     }
 
     public CallPage(ICallService calls, HimoRealtimeService realtime, WebRtcNegotiationCoordinator negotiation)
@@ -131,7 +139,7 @@ public partial class CallPage : ContentPage
                 // A cold-start notification may navigate directly to CallPage without
                 // the SignalR Invite ever reaching CallService. Rehydrate the incoming
                 // call state before accepting so the callee can always answer.
-                await _calls.PrepareIncomingAsync(new CallRequest(_conversationId, _mode));
+                await _calls.PrepareIncomingAsync(new CallRequest(_conversationId, _mode, _callId));
                 await _calls.AcceptAsync();
                 StatusLabel.Text = "جاري الاتصال...";
             }
@@ -154,9 +162,7 @@ public partial class CallPage : ContentPage
 #if ANDROID
             StopOutgoingRingback();
 #endif
-            StatusLabel.Text = _mode == CallMode.Video
-                ? "تعذر تجهيز مكالمة الفيديو. حاول مرة أخرى."
-                : "تعذر تجهيز المكالمة الصوتية. حاول مرة أخرى.";
+            StatusLabel.Text = "تعذر تجهيز المكالمة الصوتية. حاول مرة أخرى.";
             System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Start failed: {ex}");
         }
     }

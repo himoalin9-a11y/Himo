@@ -183,7 +183,8 @@ public sealed class PushNotificationManager
                     !string.IsNullOrWhiteSpace(callConversationId))
                 {
                     data.TryGetValue("call_mode", out var callMode);
-                    MainActivity.SetPendingCall(callConversationId, callMode ?? "audio");
+                    data.TryGetValue("call_id", out var callId);
+                    MainActivity.SetPendingCall(callConversationId, callMode ?? "audio", callId);
                     MainActivity.TryNavigateToPendingCall();
                     return;
                 }

@@ -232,6 +232,7 @@ sealed class FcmPushService
         string callerName,
         Guid conversationId,
         string mode,
+        Guid callId,
         CancellationToken cancellationToken = default)
     {
         if (_messaging is null || tokens.Count == 0) return;
@@ -243,6 +244,7 @@ sealed class FcmPushService
         {
             ["call_type"] = "invite",
             ["conversation_id"] = conversationId.ToString("D"),
+            ["call_id"] = callId.ToString("D"),
             ["call_mode"] = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio",
             ["is_silent_in_foreground"] = "true"
         };

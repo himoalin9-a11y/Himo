@@ -2579,7 +2579,20 @@ sealed class HimoChatHub : Hub
                         }
                         catch { }
                     }
-                    await _push.SendCallInviteAsync(tokens, session.Name, conversationId, mode, Context.ConnectionAborted);
+                    var callId = Guid.Empty;
+                    if (!string.IsNullOrWhiteSpace(payload))
+                    {
+                        try
+                        {
+                            using var callDoc = System.Text.Json.JsonDocument.Parse(payload);
+                            if (callDoc.RootElement.TryGetProperty("callId", out var callIdValue) &&
+                                Guid.TryParse(callIdValue.GetString(), out var parsedCallId))
+                                callId = parsedCallId;
+                        }
+                        catch { }
+                    }
+
+                    await _push.SendCallInviteAsync(tokens, session.Name, conversationId, mode, callId, Context.ConnectionAborted);
                 }
             }
             catch (Exception ex)

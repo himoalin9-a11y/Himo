@@ -1049,65 +1049,141 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
         string? username = null,
         string? password = null)
     {
+        var context =
+            global::Android.App.Application.Context
+            ?? throw new InvalidOperationException(
+                "Android application context is unavailable for ICE server creation.");
+
+        var classLoader =
+            context.ClassLoader
+            ?? throw new InvalidOperationException(
+                "Android application ClassLoader is unavailable for ICE server creation.");
+
+        // The Java AAR exposes PeerConnection.IceServer.builder(String), but
+        // FsWebRTC 0.9.3.15 does not project that static method through the
+        // generated managed binding. Use the exact Java API through the
+        // application's ClassLoader, then wrap the returned IceServer in the
+        // generated managed binding type.
+        var iceServerClass =
+            Java.Lang.Class.ForName(
+                "org.webrtc.PeerConnection$IceServer",
+                false,
+                classLoader)
+            ?? throw new InvalidOperationException(
+                "Java PeerConnection.IceServer class could not be loaded.");
+
+        var stringClass =
+            Java.Lang.Class.ForName(
+                "java.lang.String",
+                false,
+                classLoader)
+            ?? throw new InvalidOperationException(
+                "Java String class could not be loaded.");
+
         var builderMethod =
-            iceServerType
-                .GetMethods(
-                    BindingFlags.Public |
-                    BindingFlags.Static)
-                .FirstOrDefault(
-                    m =>
-                        string.Equals(
-                            m.Name,
-                            "Builder",
-                            StringComparison.OrdinalIgnoreCase)
-                        &&
-                        m.GetParameters().Length == 1);
+            iceServerClass.GetMethod(
+                "builder",
+                new Java.Lang.Class[]
+                {
+                    stringClass
+                })
+            ?? throw new MissingMethodException(
+                "org.webrtc.PeerConnection$IceServer",
+                "builder");
 
-        if (builderMethod is null)
-        {
-            throw new MissingMethodException(
-                iceServerType.FullName ??
-                "IceServer",
-                "Builder");
-        }
-
-        var builder =
+        var javaBuilder =
             builderMethod.Invoke(
                 null,
-                new object?[]
+                new Java.Lang.Object[]
                 {
-                    url
+                    new Java.Lang.String(url)
                 })
+            as Java.Lang.Object
             ?? throw new InvalidOperationException(
-                $"ICE server builder could not be created for {url}.");
+                $"Java ICE server builder could not be created for {url}.");
 
         if (!string.IsNullOrWhiteSpace(username))
         {
-            InvokeRequired(
-                builder,
-                "SetUsername",
-                username);
+            var setUsernameMethod =
+                javaBuilder.Class.GetMethod(
+                    "setUsername",
+                    new Java.Lang.Class[]
+                    {
+                        stringClass
+                    })
+                ?? throw new MissingMethodException(
+                    "org.webrtc.PeerConnection$IceServer$Builder",
+                    "setUsername");
+
+            _ = setUsernameMethod.Invoke(
+                javaBuilder,
+                new Java.Lang.Object[]
+                {
+                    new Java.Lang.String(username)
+                });
         }
 
         if (!string.IsNullOrWhiteSpace(password))
         {
-            InvokeRequired(
-                builder,
-                "SetPassword",
-                password);
+            var setPasswordMethod =
+                javaBuilder.Class.GetMethod(
+                    "setPassword",
+                    new Java.Lang.Class[]
+                    {
+                        stringClass
+                    })
+                ?? throw new MissingMethodException(
+                    "org.webrtc.PeerConnection$IceServer$Builder",
+                    "setPassword");
+
+            _ = setPasswordMethod.Invoke(
+                javaBuilder,
+                new Java.Lang.Object[]
+                {
+                    new Java.Lang.String(password)
+                });
         }
 
-        var iceServer =
-            InvokeOptional(
-                builder,
-                "CreateIceServer")
-            ?? throw new InvalidOperationException(
-                $"ICE server could not be created for {url}.");
+        var createIceServerMethod =
+            javaBuilder.Class.GetMethod(
+                "createIceServer",
+                Array.Empty<Java.Lang.Class>())
+            ?? throw new MissingMethodException(
+                "org.webrtc.PeerConnection$IceServer$Builder",
+                "createIceServer");
 
-        InvokeOptional(
+        var javaIceServer =
+            createIceServerMethod.Invoke(
+                javaBuilder,
+                Array.Empty<Java.Lang.Object>())
+            as Java.Lang.Object
+            ?? throw new InvalidOperationException(
+                $"Java ICE server could not be created for {url}.");
+
+        var managedIceServer =
+            Java.Lang.Object.GetObject<Org.Webrtc.PeerConnection.IceServer>(
+                javaIceServer.Handle,
+                JniHandleOwnership.DoNotTransfer)
+            ?? throw new InvalidOperationException(
+                $"The Java ICE server could not be wrapped by the FsWebRTC managed binding for {url}.");
+
+        var addMethod =
+            iceServers.GetType().GetMethod(
+                "Add",
+                new[]
+                {
+                    iceServerType
+                })
+            ?? throw new MissingMethodException(
+                iceServers.GetType().FullName ?? "List<PeerConnection.IceServer>",
+                "Add");
+
+        _ = addMethod.Invoke(
             iceServers,
-            "Add",
-            iceServer);
+            new object?[]
+            {
+                managedIceServer
+            });
     }
 
     private static string? GetSdpText(
@@ -1342,7 +1418,8 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                 "Org.Webrtc.PeerConnection");
 
         var rtcConfigurationType =
-            RequiredType(
+            RequiredTypeAny(
+                "Org.Webrtc.PeerConnection+RTCConfiguration",
                 "Org.Webrtc.PeerConnection+RtcConfiguration");
 
         var iceServerType =
@@ -1405,28 +1482,6 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
 
         var factoryType =
             _factory!.GetType();
-
-        var method =
-            factoryType
-                .GetMethods(
-                    BindingFlags.Public |
-                    BindingFlags.Instance)
-                .FirstOrDefault(
-                    m =>
-                        string.Equals(
-                            m.Name,
-                            "CreatePeerConnection",
-                            StringComparison.OrdinalIgnoreCase)
-                        &&
-                        m.GetParameters().Length == 2);
-
-        if (method is null)
-        {
-            throw new MissingMethodException(
-                factoryType.FullName ??
-                "PeerConnectionFactory",
-                "CreatePeerConnection");
-        }
 
         _peerConnectionObserver =
             new PeerConnectionObserverBridge(
@@ -1498,6 +1553,69 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                     NotifyConnectionEstablishedChanged();
                 });
 
+        var observerType =
+            _peerConnectionObserver.GetType();
+
+        // WebRTC exposes several CreatePeerConnection overloads:
+        //   (RTCConfiguration, Observer)
+        //   (List<IceServer>, Observer)
+        //   and 3-argument variants with MediaConstraints.
+        // The previous reflection lookup selected the first 2-argument
+        // overload, which on this binding was the List<IceServer> overload.
+        // Select the overload whose first parameter accepts the actual
+        // RTCConfiguration instance and whose second parameter accepts the
+        // actual observer instance.
+        var method =
+            factoryType
+                .GetMethods(
+                    BindingFlags.Public |
+                    BindingFlags.NonPublic |
+                    BindingFlags.Instance)
+                .Where(
+                    m =>
+                        string.Equals(
+                            m.Name,
+                            "CreatePeerConnection",
+                            StringComparison.OrdinalIgnoreCase))
+                .FirstOrDefault(
+                    m =>
+                    {
+                        var parameters =
+                            m.GetParameters();
+
+                        return parameters.Length == 2 &&
+                               parameters[0].ParameterType.IsAssignableFrom(
+                                   configuration.GetType()) &&
+                               parameters[1].ParameterType.IsAssignableFrom(
+                                   observerType);
+                    });
+
+        if (method is null)
+        {
+            var available =
+                string.Join(
+                    " | ",
+                    factoryType
+                        .GetMethods(
+                            BindingFlags.Public |
+                            BindingFlags.NonPublic |
+                            BindingFlags.Instance)
+                        .Where(
+                            m =>
+                                string.Equals(
+                                    m.Name,
+                                    "CreatePeerConnection",
+                                    StringComparison.OrdinalIgnoreCase))
+                        .Select(
+                            m =>
+                                m.ToString()));
+
+            throw new MissingMethodException(
+                factoryType.FullName ??
+                "PeerConnectionFactory",
+                $"CreatePeerConnection(RTCConfiguration, Observer). Available overloads: {available}");
+        }
+
         _peerConnection =
             method.Invoke(
                 _factory,
@@ -1540,17 +1658,70 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
         EnsurePeerConnectionFactoryInitialized(
             factoryType);
 
-        var builder =
-            InvokeRequiredStaticFactory(
-                factoryType,
-                "Builder")
+        var context =
+            global::Android.App.Application.Context
             ?? throw new InvalidOperationException(
-                "WebRTC PeerConnectionFactory builder could not be created.");
+                "Android application context is unavailable for PeerConnectionFactory creation.");
 
-        _factory =
-            InvokeRequired(
-                builder,
-                "CreatePeerConnectionFactory");
+        var classLoader =
+            context.ClassLoader
+            ?? throw new InvalidOperationException(
+                "Android application ClassLoader is unavailable for PeerConnectionFactory creation.");
+
+        // FsWebRTC.Bindings.Maui.Android 0.9.3.15 does not expose the Java
+        // PeerConnectionFactory.builder() method as a usable managed static
+        // method. The AAR itself exposes the Java API, so create the factory
+        // through the application ClassLoader and then wrap the returned JNI
+        // object in the generated managed binding. This avoids depending on
+        // a managed Builder method that is not present in this binding.
+        var factoryClass =
+            Java.Lang.Class.ForName(
+                "org.webrtc.PeerConnectionFactory",
+                false,
+                classLoader)
+            ?? throw new InvalidOperationException(
+                "Java PeerConnectionFactory class could not be loaded.");
+
+        var builderMethod =
+            factoryClass.GetMethod(
+                "builder",
+                Array.Empty<Java.Lang.Class>())
+            ?? throw new MissingMethodException(
+                "org.webrtc.PeerConnectionFactory",
+                "builder");
+
+        var javaBuilder =
+            builderMethod.Invoke(
+                null,
+                Array.Empty<Java.Lang.Object>())
+            as Java.Lang.Object
+            ?? throw new InvalidOperationException(
+                "Java PeerConnectionFactory.builder() returned null.");
+
+        var createFactoryMethod =
+            javaBuilder.Class.GetMethod(
+                "createPeerConnectionFactory",
+                Array.Empty<Java.Lang.Class>())
+            ?? throw new MissingMethodException(
+                "org.webrtc.PeerConnectionFactory.Builder",
+                "createPeerConnectionFactory");
+
+        var javaFactory =
+            createFactoryMethod.Invoke(
+                javaBuilder,
+                Array.Empty<Java.Lang.Object>())
+            as Java.Lang.Object
+            ?? throw new InvalidOperationException(
+                "Java PeerConnectionFactory.Builder.createPeerConnectionFactory() returned null.");
+
+        var managedFactory =
+            Java.Lang.Object.GetObject<Org.Webrtc.PeerConnectionFactory>(
+                javaFactory.Handle,
+                JniHandleOwnership.DoNotTransfer)
+            ?? throw new InvalidOperationException(
+                "The Java PeerConnectionFactory could not be wrapped by the FsWebRTC managed binding.");
+
+        _factory = managedFactory;
     }
 
     private static void EnsurePeerConnectionFactoryInitialized(
@@ -1817,73 +1988,87 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
     {
         try
         {
+            var classLoader =
+                context.ClassLoader
+                ?? throw new InvalidOperationException(
+                    "Android application ClassLoader is unavailable for WebRTC initialization.");
+
+            // Resolve all Java classes through the application ClassLoader.
+            // Do not use the boot ClassLoader and do not depend on the generated
+            // managed nested types for InitializationOptions.
             var factoryClass =
                 Java.Lang.Class.ForName(
-                    "org.webrtc.PeerConnectionFactory");
+                    "org.webrtc.PeerConnectionFactory",
+                    false,
+                    classLoader);
 
-            if (factoryClass is null)
+            var optionsClass =
+                Java.Lang.Class.ForName(
+                    "org.webrtc.PeerConnectionFactory$InitializationOptions",
+                    false,
+                    classLoader);
+
+            var contextClass =
+                Java.Lang.Class.ForName(
+                    "android.content.Context",
+                    false,
+                    classLoader);
+
+            var builderMethod =
+                optionsClass.GetMethod(
+                    "builder",
+                    new Java.Lang.Class[]
+                    {
+                        contextClass
+                    });
+
+            if (builderMethod is null)
                 return false;
 
-            /*
-             * Build InitializationOptions using the generated managed type.
-             * The nested Java class normally exists even when the static
-             * initialize() method is not projected into the .NET binding.
-             */
-            var optionsType =
-                managedFactoryType.GetNestedType(
-                    "InitializationOptions",
-                    BindingFlags.Public |
-                    BindingFlags.NonPublic);
+            var builder =
+                builderMethod.Invoke(
+                    null,
+                    new Java.Lang.Object[]
+                    {
+                        context
+                    });
 
-            if (optionsType is null)
+            if (builder is null)
+                return false;
+
+            var createOptionsMethod =
+                builder.Class.GetMethod(
+                    "createInitializationOptions",
+                    Array.Empty<Java.Lang.Class>());
+
+            if (createOptionsMethod is null)
                 return false;
 
             var options =
-                TryCreateInitializationOptions(
-                    optionsType,
-                    context);
+                createOptionsMethod.Invoke(
+                    builder,
+                    Array.Empty<Java.Lang.Object>());
 
-            if (options is not Java.Lang.Object javaOptions)
+            if (options is null)
                 return false;
-
-            var javaOptionsClass =
-                javaOptions.Class;
-
-            if (javaOptionsClass is null)
-                return false;
-
-            /*
-             * Use Java reflection:
-             *
-             * PeerConnectionFactory.initialize(
-             *     InitializationOptions options)
-             *
-             * GetMethod requires a Java.Lang.Class[].
-             * Do NOT pass a nullable Class[].
-             */
-            var parameterTypes =
-                new Java.Lang.Class[]
-                {
-                    javaOptionsClass
-                };
 
             var initializeMethod =
                 factoryClass.GetMethod(
                     "initialize",
-                    parameterTypes);
+                    new Java.Lang.Class[]
+                    {
+                        options.Class
+                    });
 
             if (initializeMethod is null)
                 return false;
 
-            var arguments =
-                new Java.Lang.Object[]
-                {
-                    javaOptions
-                };
-
             initializeMethod.Invoke(
                 null,
-                arguments);
+                new Java.Lang.Object[]
+                {
+                    options
+                });
 
             return true;
         }
@@ -1906,6 +2091,8 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                 ex);
         }
     }
+
+    
 
     private static object? InvokeRequiredStaticFactory(
         Type type,
@@ -2070,6 +2257,29 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             throw new InvalidOperationException(
                 $"WebRTC managed binding type '{name}' was not found. " +
                 "The FsWebRTC Android binding is not loaded into the APK.");
+    }
+
+    private Type RequiredTypeAny(
+        params string[] names)
+    {
+        if (_assembly is not null)
+        {
+            foreach (var name in names)
+            {
+                var type =
+                    _assembly.GetType(
+                        name,
+                        false,
+                        false);
+
+                if (type is not null)
+                    return type;
+            }
+        }
+
+        throw new InvalidOperationException(
+            "WebRTC managed RTCConfiguration type was not found in the FsWebRTC Android binding. " +
+            string.Join(", ", names));
     }
 
     private object AttachRenderer(

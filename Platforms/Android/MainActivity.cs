@@ -20,11 +20,13 @@ public class MainActivity : MauiAppCompatActivity
     private static string? _pendingConversationId;
     private static string? _pendingCallConversationId;
     private static string? _pendingCallMode;
+    private static string? _pendingCallId;
     private static int _navigationInProgress;
     private static int _callNavigationInProgress;
     private const string PendingConversationPreferenceKey = "himo_pending_conversation_id";
     private const string PendingCallConversationPreferenceKey = "himo_pending_call_conversation_id";
     private const string PendingCallModePreferenceKey = "himo_pending_call_mode";
+    private const string PendingCallIdPreferenceKey = "himo_pending_call_id";
 
     public static string? PendingConversationId => _pendingConversationId;
 
@@ -43,21 +45,31 @@ public class MainActivity : MauiAppCompatActivity
         }
     }
 
-    public static void SetPendingCall(string conversationId, string mode)
+    public static void SetPendingCall(string conversationId, string mode, string? callId = null)
     {
         if (string.IsNullOrWhiteSpace(conversationId)) return;
         _pendingCallConversationId = conversationId;
         _pendingCallMode = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio";
+        _pendingCallId = Guid.TryParse(callId, out var parsedCallId) && parsedCallId != Guid.Empty
+            ? parsedCallId.ToString("D")
+            : null;
+
         Preferences.Default.Set(PendingCallConversationPreferenceKey, conversationId);
         Preferences.Default.Set(PendingCallModePreferenceKey, _pendingCallMode);
+        if (_pendingCallId is not null)
+            Preferences.Default.Set(PendingCallIdPreferenceKey, _pendingCallId);
+        else
+            Preferences.Default.Remove(PendingCallIdPreferenceKey);
     }
 
     public static void ClearPendingCall()
     {
         _pendingCallConversationId = null;
         _pendingCallMode = null;
+        _pendingCallId = null;
         Preferences.Default.Remove(PendingCallConversationPreferenceKey);
         Preferences.Default.Remove(PendingCallModePreferenceKey);
+        Preferences.Default.Remove(PendingCallIdPreferenceKey);
     }
 
     protected override void OnCreate(global::Android.OS.Bundle? savedInstanceState)
@@ -103,8 +115,12 @@ public class MainActivity : MauiAppCompatActivity
                 if (shell is null) return;
                 conversationId = _pendingCallConversationId;
                 mode = _pendingCallMode ?? "audio";
+                var callId = _pendingCallId ?? string.Empty;
                 if (string.IsNullOrWhiteSpace(conversationId)) return;
-                await shell.GoToAsync($"///CallPage?id={Uri.EscapeDataString(conversationId)}&mode={Uri.EscapeDataString(mode)}&incoming=true");
+                var callIdQuery = string.IsNullOrWhiteSpace(callId)
+                    ? string.Empty
+                    : $"&callId={Uri.EscapeDataString(callId)}";
+                await shell.GoToAsync($"///CallPage?id={Uri.EscapeDataString(conversationId)}&mode={Uri.EscapeDataString(mode)}&incoming=true{callIdQuery}");
                 ClearPendingCall();
             }
             catch
@@ -164,6 +180,8 @@ public class MainActivity : MauiAppCompatActivity
             _pendingCallConversationId = Preferences.Default.Get(PendingCallConversationPreferenceKey, string.Empty);
         if (string.IsNullOrWhiteSpace(_pendingCallMode))
             _pendingCallMode = Preferences.Default.Get(PendingCallModePreferenceKey, "audio");
+        if (string.IsNullOrWhiteSpace(_pendingCallId))
+            _pendingCallId = Preferences.Default.Get(PendingCallIdPreferenceKey, string.Empty);
     }
 
     private static void SchedulePendingCallNavigation()
@@ -211,9 +229,10 @@ public class MainActivity : MauiAppCompatActivity
         var conversationId = intent.GetStringExtra("conversation_id");
         var callType = intent.GetStringExtra("call_type");
         var callMode = intent.GetStringExtra("call_mode");
+        var callId = intent.GetStringExtra("call_id");
         if (string.Equals(callType, "invite", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(conversationId))
         {
-            SetPendingCall(conversationId, callMode ?? "audio");
+            SetPendingCall(conversationId, callMode ?? "audio", callId);
             return;
         }
 
@@ -226,22 +245,23 @@ public class MainActivity : MauiAppCompatActivity
         var found = FindNotificationData(intent.Extras);
         if (found.CallConversationId is not null)
         {
-            SetPendingCall(found.CallConversationId, found.CallMode ?? "audio");
+            SetPendingCall(found.CallConversationId, found.CallMode ?? "audio", found.CallId);
             return;
         }
         if (found.ConversationId is not null)
             SetPendingConversation(found.ConversationId);
     }
 
-    private static (string? ConversationId, string? CallConversationId, string? CallMode) FindNotificationData(global::Android.OS.Bundle? bundle)
+    private static (string? ConversationId, string? CallConversationId, string? CallMode, string? CallId) FindNotificationData(global::Android.OS.Bundle? bundle)
     {
-        if (bundle is null) return (null, null, null);
+        if (bundle is null) return (null, null, null, null);
         var conversationId = bundle.GetString("conversation_id");
         var callType = bundle.GetString("call_type");
         var callMode = bundle.GetString("call_mode");
+        var callId = bundle.GetString("call_id");
         if (string.Equals(callType, "invite", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(conversationId))
-            return (conversationId, conversationId, callMode);
-        if (!string.IsNullOrWhiteSpace(conversationId)) return (conversationId, null, null);
+            return (conversationId, conversationId, callMode, callId);
+        if (!string.IsNullOrWhiteSpace(conversationId)) return (conversationId, null, null, null);
 
         foreach (var key in bundle.KeySet() ?? new global::System.Collections.Generic.HashSet<string>())
         {
@@ -255,7 +275,7 @@ public class MainActivity : MauiAppCompatActivity
             }
             catch { }
         }
-        return (null, null, null);
+        return (null, null, null, null);
     }
 
     public static void ConfigureFirebaseMessagingChannel()
