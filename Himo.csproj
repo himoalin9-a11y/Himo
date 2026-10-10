@@ -108,37 +108,20 @@
     <GoogleServicesJson Include="Platforms\Android\google-services.json" />
 
     <!--
-      WebRTC is a Java/AAR binding. The managed binding assembly can be present
-      while the Java runtime classes are omitted from the final APK. That exact
-      failure appears on-device as ClassNotFoundException: org.webrtc.PeerConnectionFactory.
-      Include the restored AAR explicitly, without generating a second managed
-      binding, so the Java classes and jni/*.so are unconditionally packaged.
+      FsWebRTC.Bindings.Maui.Android already contributes its libwebrtc.aar as an
+      AndroidLibrary item. Tools\Install-WebRTC16KB.ps1 replaces that package-cache
+      AAR with the verified unified 16 KB build and stages the same file locally.
+      Do NOT include the local AAR a second time: Android packaging then reports
+      XA4301 because the same libjingle_peerconnection_so.so exists twice.
     -->
-    <!-- The patched AAR is staged inside the project by Tools\Install-WebRTC16KB.ps1.
-         This removes dependency on whether NuGet's transitive AndroidLibrary item
-         is propagated into the final APK. Bind=false keeps the existing generated
-         FsWebRTC managed bindings while packaging the Java classes/native .so files. -->
-    <AndroidLibrary Include="Platforms\Android\Jars\libwebrtc.aar" Bind="false"
-                    Condition="Exists('Platforms\Android\Jars\libwebrtc.aar')" />
   </ItemGroup>
 
-  <!--
-    FsWebRTC.Bindings.Maui.Android supplies both the managed binding assembly and
-    its original AAR. Keep the package reference for the managed binding, but do
-    not package its stale, 4 KB-aligned AAR. The verified replacement is staged
-    in Platforms\Android\Jars by Tools\Install-WebRTC16KB.ps1.
-    This is a real input replacement, not a suppression of XA0141.
-  -->
-  <Target Name="UseVerifiedHimoWebRtcAar" BeforeTargets="ResolveAndroidLibraryInputs"
+  <Target Name="ValidateHimoWebRtcAar" BeforeTargets="ResolveAndroidLibraryInputs"
           Condition="'$(TargetFramework)' == 'net10.0-android36.0'">
     <Error Condition="!Exists('Platforms\Android\Jars\libwebrtc.aar')"
-           Text="Himo WebRTC AAR is missing. Run Tools\Install-WebRTC16KB.ps1, then clean and rebuild the Android project." />
-    <ItemGroup>
-      <AndroidLibrary Remove="@(AndroidLibrary)"
-                      Condition="$([System.String]::Copy('%(AndroidLibrary.Identity)').ToLowerInvariant().Contains('fswebrtc.bindings.maui.android'))" />
-    </ItemGroup>
-    <Message Importance="high"
-             Text="Himo WebRTC: excluded FsWebRTC NuGet AAR; using the verified project-local AAR." />
+           Text="Himo WebRTC AAR staging file is missing. Run Tools\Install-WebRTC16KB.ps1 before building the Android project." />
+    <Error Condition="!Exists('$(NuGetPackageRoot)fswebrtc.bindings.maui.android\0.9.3.15\lib\net10.0-android36.0\libwebrtc.aar')"
+           Text="The FsWebRTC NuGet cache AAR is missing. Run Tools\Install-WebRTC16KB.ps1 before building; the package-cache AAR is the single packaged AAR." />
   </Target>
 
 </Project>

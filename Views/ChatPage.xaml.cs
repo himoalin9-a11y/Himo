@@ -1,7 +1,9 @@
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Dispatching;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Networking;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Collections.Specialized;
 using System.Net.Http;
 using System.Diagnostics;
@@ -29,6 +31,7 @@ public partial class ChatPage : ContentPage
     private readonly HimoRealtimeService _realtime;
     private readonly ICallService _calls;
     private readonly RangeObservableCollection<ChatMessage> _visibleMessages = new();
+    private Conversation? _avatarBoundConversation;
     private CancellationTokenSource? _pollCts;
     private readonly SemaphoreSlim _remoteLoadGate = new(1, 1);
     private int _conversationId;
@@ -147,6 +150,7 @@ public partial class ChatPage : ContentPage
         _realtime.MessageEdited += OnMessageEdited;
         _realtime.MessageDeleted += OnMessageDeleted;
         _realtime.Reconnected += OnRealtimeReconnected;
+        _realtime.CallSignalReceived += OnRealtimeCallSignalReceived;
 
         _scrollIdleTimer = Dispatcher.CreateTimer();
         _scrollIdleTimer.Interval = TimeSpan.FromMilliseconds(650);
@@ -172,7 +176,15 @@ public partial class ChatPage : ContentPage
         Connectivity.Current.ConnectivityChanged -= OnConnectivityChanged;
         Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
         Volatile.Write(ref _conversationVisible, 1);
+        if (_conversationId > 0)
+        {
+            var currentConversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
+            if (currentConversation is not null)
+                BindConversationAvatar(currentConversation);
+        }
 
+        _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
+        _realtime.CallSignalReceived += OnRealtimeCallSignalReceived;
         _ = ApplySavedChatWallpaperAsync();
         StartPollingFallback();
 
@@ -271,6 +283,10 @@ public partial class ChatPage : ContentPage
 
             cancellationToken.ThrowIfCancellationRequested();
             await ResolveRemoteConversationAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+
+            var avatarConversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
+            if (avatarConversation is not null)
+                _ = EnsureConversationAvatarAsync(avatarConversation);
 
             if (version != Volatile.Read(ref _initializationVersion))
                 return;
@@ -471,6 +487,7 @@ public partial class ChatPage : ContentPage
         var displayName = string.IsNullOrWhiteSpace(conversation.Name) ? "محادثة" : conversation.Name.Trim();
         NameLabel?.SetValue(Label.TextProperty, displayName);
         InitialLabel?.SetValue(Label.TextProperty, string.IsNullOrWhiteSpace(conversation.Initial) ? displayName[..1] : conversation.Initial);
+        BindConversationAvatar(conversation);
 
         var recent = _chat.GetRecentMessages(_conversationId, InitialVisibleMessageCount);
 
@@ -498,6 +515,93 @@ public partial class ChatPage : ContentPage
 
         if (recent.Count > 0)
             ConfigureInitialChatPosition();
+    }
+
+    private void BindConversationAvatar(Conversation conversation)
+    {
+        if (!ReferenceEquals(_avatarBoundConversation, conversation))
+        {
+            if (_avatarBoundConversation is not null)
+                _avatarBoundConversation.PropertyChanged -= AvatarConversationPropertyChanged;
+
+            _avatarBoundConversation = conversation;
+            _avatarBoundConversation.PropertyChanged += AvatarConversationPropertyChanged;
+        }
+
+        DisplayConversationAvatar(conversation);
+        _ = EnsureConversationAvatarAsync(conversation);
+    }
+
+    private void AvatarConversationPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(e.PropertyName) &&
+            e.PropertyName != nameof(Conversation.ProfilePhotoPath) &&
+            e.PropertyName != nameof(Conversation.HasRemoteProfilePhoto) &&
+            e.PropertyName != nameof(Conversation.OtherParticipantUserId) &&
+            e.PropertyName != nameof(Conversation.ProfilePhotoVersion))
+            return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (_avatarBoundConversation is Conversation conversation)
+                DisplayConversationAvatar(conversation);
+        });
+    }
+
+    private void DisplayConversationAvatar(Conversation conversation)
+    {
+        var hasPhoto = conversation.HasLocalProfilePhoto;
+        ContactPhotoImage.Source = hasPhoto ? ImageSource.FromFile(conversation.ProfilePhotoPath!) : null;
+        ContactPhotoImage.IsVisible = hasPhoto;
+        InitialLabel.IsVisible = !hasPhoto;
+    }
+
+    private async Task EnsureConversationAvatarAsync(Conversation conversation)
+    {
+        try
+        {
+            if (!_api.HasToken) return;
+
+            // A chat opened from a notification can start from a lightweight local
+            // placeholder. Hydrate participant/avatar metadata in the background;
+            // never block the first message render on this request.
+            if (conversation.OtherParticipantUserId is null &&
+                Guid.TryParse(conversation.RemoteId, out var remoteConversationId))
+            {
+                var remote = await _api.GetConversationsAsync();
+                var details = remote.FirstOrDefault(x => x.Id == remoteConversationId);
+                if (details is not null)
+                {
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        conversation.OtherParticipantUserId = details.OtherParticipantUserId;
+                        conversation.HasRemoteProfilePhoto = details.HasProfilePhoto;
+                        conversation.ProfilePhotoVersion = details.ProfilePhotoVersion;
+                    });
+                }
+            }
+
+            if (conversation.OtherParticipantUserId is not Guid userId)
+                return;
+
+            var photoVersion = conversation.ProfilePhotoVersion;
+            var hasRemotePhoto = conversation.HasRemoteProfilePhoto;
+            var path = await ProfilePhotoCache.GetPathAsync(_api, userId, hasRemotePhoto, photoVersion);
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                if (conversation.OtherParticipantUserId == userId &&
+                    conversation.ProfilePhotoVersion == photoVersion &&
+                    conversation.HasRemoteProfilePhoto == hasRemotePhoto)
+                {
+                    conversation.ProfilePhotoPath = path;
+                    DisplayConversationAvatar(conversation);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Contact avatar load failed: {ex.Message}");
+        }
     }
 
     private List<ChatMessage> GetOrderedLocalMessages()
@@ -800,8 +904,7 @@ public partial class ChatPage : ContentPage
 
         try
         {
-            var peerName = Uri.EscapeDataString(string.IsNullOrWhiteSpace(NameLabel?.Text) ? "جهة اتصال" : NameLabel.Text.Trim());
-            await Shell.Current.GoToAsync($"CallPage?id={conversationId:D}&mode=audio&peerName={peerName}");
+            await Shell.Current.GoToAsync($"CallPage?id={conversationId:D}&mode=audio");
         }
         catch (Exception ex)
         {
@@ -819,8 +922,7 @@ public partial class ChatPage : ContentPage
 
         try
         {
-            var peerName = Uri.EscapeDataString(string.IsNullOrWhiteSpace(NameLabel?.Text) ? "جهة اتصال" : NameLabel.Text.Trim());
-            await Shell.Current.GoToAsync($"CallPage?id={conversationId:D}&mode=video&peerName={peerName}");
+            await Shell.Current.GoToAsync($"CallPage?id={conversationId:D}&mode=video");
         }
         catch (Exception ex)
         {
@@ -850,6 +952,12 @@ public partial class ChatPage : ContentPage
         CloseInlineVideo();
         StopIncomingCallRingtone();
 #endif
+        _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
+        if (_avatarBoundConversation is not null)
+        {
+            _avatarBoundConversation.PropertyChanged -= AvatarConversationPropertyChanged;
+            _avatarBoundConversation = null;
+        }
         Volatile.Write(ref _conversationVisible, 0);
         StopPolling();
         StopTyping();
@@ -921,10 +1029,9 @@ public partial class ChatPage : ContentPage
             if (string.Equals(action, "رد", StringComparison.Ordinal))
             {
                 var callIdQuery = incomingCallId == Guid.Empty ? string.Empty : $"&callId={incomingCallId:D}";
-                var peerNameQuery = $"&peerName={Uri.EscapeDataString(name)}";
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                     await Shell.Current.GoToAsync(
-                        $"CallPage?id={signal.ConversationId:D}&mode={(mode == CallMode.Video ? "video" : "audio")}&incoming=true{callIdQuery}{peerNameQuery}"));
+                        $"CallPage?id={signal.ConversationId:D}&mode={(mode == CallMode.Video ? "video" : "audio")}&incoming=true{callIdQuery}"));
             }
             else
             {

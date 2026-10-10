@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Himo.Models;
 using Himo.Services;
+using Microsoft.Maui.ApplicationModel;
 
 namespace Himo.ViewModels;
 
@@ -44,6 +45,12 @@ public sealed class HomeViewModel
                     RemoteId = remoteId,
                     Name = x.Name,
                     Initial = GetInitial(x.Name),
+                    OtherParticipantUserId = x.OtherParticipantUserId,
+                    HasRemoteProfilePhoto = x.HasProfilePhoto,
+                    ProfilePhotoVersion = x.ProfilePhotoVersion,
+                    ProfilePhotoPath = x.OtherParticipantUserId is Guid photoUserId && x.HasProfilePhoto
+                        ? ProfilePhotoCache.Find(photoUserId, x.ProfilePhotoVersion)
+                        : null,
                     LastMessage = x.LastMessage,
                     Time = x.UpdatedAt.LocalDateTime.ToString("HH:mm"),
                     UpdatedAt = x.UpdatedAt.LocalDateTime,
@@ -52,6 +59,9 @@ public sealed class HomeViewModel
             }).ToList();
             _chat.ReplaceConversations(mapped);
             Filter();
+            // Load missing avatars after the conversation list is already rendered.
+            // Do not make opening the home screen wait for photo downloads.
+            _ = LoadConversationPhotosAsync(mapped);
             return true;
         }
         catch { /* Keep local conversations available when the server is unavailable. */
@@ -91,12 +101,50 @@ public sealed class HomeViewModel
             local.RemoteId = remoteId;
         }
 
+        local.OtherParticipantUserId = remote.OtherParticipantUserId;
+        local.HasRemoteProfilePhoto = remote.HasProfilePhoto;
+        local.ProfilePhotoVersion = remote.ProfilePhotoVersion;
+        local.ProfilePhotoPath = remote.OtherParticipantUserId is Guid photoUserId && remote.HasProfilePhoto
+            ? ProfilePhotoCache.Find(photoUserId, remote.ProfilePhotoVersion)
+            : null;
         local.LastMessage = remote.LastMessage;
         local.Time = remote.UpdatedAt.LocalDateTime.ToString("HH:mm");
+        _ = LoadConversationPhotosAsync(new[] { local });
         local.UpdatedAt = remote.UpdatedAt.LocalDateTime;
         local.UnreadCount = remote.UnreadCount;
         Filter();
         return local;
+    }
+
+    private async Task LoadConversationPhotosAsync(IEnumerable<Conversation> conversations)
+    {
+        foreach (var conversation in conversations)
+        {
+            if (conversation.OtherParticipantUserId is not Guid userId)
+                continue; // Group conversations use their own initials until group photos are supported.
+
+            var revision = conversation.ProfilePhotoVersion;
+            var hasPhoto = conversation.HasRemoteProfilePhoto;
+            try
+            {
+                var path = await ProfilePhotoCache.GetPathAsync(_api, userId, hasPhoto, revision);
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    // Do not apply an old download if a refresh has already supplied
+                    // a newer avatar version for this conversation.
+                    if (conversation.OtherParticipantUserId == userId &&
+                        conversation.ProfilePhotoVersion == revision &&
+                        conversation.HasRemoteProfilePhoto == hasPhoto)
+                    {
+                        conversation.ProfilePhotoPath = path;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo] Profile photo load failed for {userId}: {ex.Message}");
+            }
+        }
     }
 
     private static string GetInitial(string? name)

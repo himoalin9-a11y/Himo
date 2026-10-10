@@ -46,7 +46,21 @@
                     BackgroundColor="#FFFFFF" Stroke="#E3EAF3" StrokeThickness="1"
                     VerticalOptions="Center">
                 <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
-                <Image Source="himo_phase1_icon_user.png" WidthRequest="23" HeightRequest="23" />
+                <Grid>
+                    <Image x:Name="HomeProfilePlaceholderIcon"
+                           Source="himo_phase1_icon_user.png"
+                           WidthRequest="23" HeightRequest="23"
+                           HorizontalOptions="Center" VerticalOptions="Center" />
+                    <Image x:Name="HomeProfilePhotoImage"
+                           IsVisible="False"
+                           Aspect="AspectFill"
+                           WidthRequest="42" HeightRequest="42"
+                           HorizontalOptions="Center" VerticalOptions="Center">
+                        <Image.Clip>
+                            <EllipseGeometry Center="21,21" RadiusX="21" RadiusY="21" />
+                        </Image.Clip>
+                    </Image>
+                </Grid>
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="ProfileClicked" />
                 </Border.GestureRecognizers>
@@ -124,9 +138,20 @@
                                     <Border WidthRequest="52" HeightRequest="52" BackgroundColor="#EAF3FF"
                                             Stroke="#D4E5FA" StrokeThickness="1">
                                         <Border.StrokeShape><RoundRectangle CornerRadius="26" /></Border.StrokeShape>
-                                        <Label Text="{Binding Initial}" FontSize="20" FontAttributes="Bold"
-                                               TextColor="#2F80ED" HorizontalTextAlignment="Center"
-                                               VerticalTextAlignment="Center" />
+                                        <Grid>
+                                            <Label Text="{Binding Initial}" IsVisible="{Binding ShowProfileInitial}"
+                                                   FontSize="20" FontAttributes="Bold"
+                                                   TextColor="#2F80ED" HorizontalTextAlignment="Center"
+                                                   VerticalTextAlignment="Center" />
+                                            <Image Source="{Binding ProfilePhotoPath}"
+                                                   IsVisible="{Binding HasLocalProfilePhoto}"
+                                                   Aspect="AspectFill"
+                                                   WidthRequest="52" HeightRequest="52">
+                                                <Image.Clip>
+                                                    <EllipseGeometry Center="26,26" RadiusX="26" RadiusY="26" />
+                                                </Image.Clip>
+                                            </Image>
+                                        </Grid>
                                     </Border>
                                     <Ellipse WidthRequest="12" HeightRequest="12" HorizontalOptions="End"
                                              VerticalOptions="End" Margin="0,0,0,1" Fill="#28C76F"

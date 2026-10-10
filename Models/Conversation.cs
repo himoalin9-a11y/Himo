@@ -16,6 +16,60 @@ public sealed class Conversation : INotifyPropertyChanged
     public string Name { get; init; } = "";
     public string Initial { get; init; } = "";
 
+    private Guid? _otherParticipantUserId;
+    public Guid? OtherParticipantUserId
+    {
+        get => _otherParticipantUserId;
+        set
+        {
+            if (_otherParticipantUserId == value) return;
+            _otherParticipantUserId = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OtherParticipantUserId)));
+        }
+    }
+
+    private bool _hasRemoteProfilePhoto;
+    public bool HasRemoteProfilePhoto
+    {
+        get => _hasRemoteProfilePhoto;
+        set
+        {
+            if (_hasRemoteProfilePhoto == value) return;
+            _hasRemoteProfilePhoto = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasRemoteProfilePhoto)));
+        }
+    }
+
+    private long _profilePhotoVersion;
+    public long ProfilePhotoVersion
+    {
+        get => _profilePhotoVersion;
+        set
+        {
+            if (_profilePhotoVersion == value) return;
+            _profilePhotoVersion = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ProfilePhotoVersion)));
+        }
+    }
+
+    private string? _profilePhotoPath;
+    public string? ProfilePhotoPath
+    {
+        get => _profilePhotoPath;
+        set
+        {
+            if (string.Equals(_profilePhotoPath, value, StringComparison.Ordinal)) return;
+            _profilePhotoPath = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ProfilePhotoPath)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasLocalProfilePhoto)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowProfileInitial)));
+        }
+    }
+
+    public bool HasLocalProfilePhoto =>
+        !string.IsNullOrWhiteSpace(ProfilePhotoPath) && File.Exists(ProfilePhotoPath);
+    public bool ShowProfileInitial => !HasLocalProfilePhoto;
+
     public DateTime UpdatedAt
     {
         get => _updatedAt;

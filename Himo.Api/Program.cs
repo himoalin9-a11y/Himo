@@ -328,6 +328,23 @@ webApp.MapGet("/api/me/photo", (HttpRequest http, PostgresStore store) =>
     return Results.File(photoBytes, photo.ContentType);
 });
 
+// Profile photos for other participants are visible only to authenticated Himo users.
+webApp.MapGet("/api/users/{id:guid}/photo", (Guid id, HttpRequest http, PostgresStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    try
+    {
+        var photo = store.GetProfilePhoto(id);
+        var photoBytes = photo.Data;
+        if (photoBytes is null || photoBytes.Length == 0) return Results.NotFound();
+        return Results.File(photoBytes, photo.ContentType);
+    }
+    catch (InvalidOperationException)
+    {
+        return Results.NotFound();
+    }
+});
+
 webApp.MapPut("/api/me/photo", (HttpRequest http, ProfilePhotoUploadRequest request, PostgresStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
@@ -437,7 +454,8 @@ webApp.MapPost("/api/conversations", (HttpRequest http, CreateConversationReques
     try
     {
         var conversation = store.CreateConversation(session.UserId, name, request.UserId);
-        return Results.Created($"/api/conversations/{conversation.Id}", conversation);
+        var enriched = store.GetConversations(session.UserId).FirstOrDefault(item => item.Id == conversation.Id) ?? conversation;
+        return Results.Created($"/api/conversations/{conversation.Id}", enriched);
     }
     catch (InvalidOperationException ex)
     {
@@ -1086,6 +1104,7 @@ ALTER TABLE Users ADD COLUMN IF NOT EXISTS PasswordHash TEXT NULL;
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS EmailVerified BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS ProfilePhoto BYTEA NULL;
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS ProfilePhotoContentType TEXT NULL;
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS ProfilePhotoVersion BIGINT NOT NULL DEFAULT 0;
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS ContactPhoneNumber TEXT NULL;
 CREATE TABLE IF NOT EXISTS PushTokens (
     UserId TEXT NOT NULL,
@@ -1243,7 +1262,7 @@ WHERE NOT EXISTS (SELECT 1 FROM ConversationParticipants cp WHERE cp.Conversatio
         {
             using var connection = Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE Users SET ProfilePhoto=@photo, ProfilePhotoContentType=@contentType WHERE Id=@id;";
+            command.CommandText = "UPDATE Users SET ProfilePhoto=@photo, ProfilePhotoContentType=@contentType, ProfilePhotoVersion=COALESCE(ProfilePhotoVersion,0)+1 WHERE Id=@id;";
             command.Parameters.AddWithValue("@photo", data);
             command.Parameters.AddWithValue("@contentType", contentType);
             command.Parameters.AddWithValue("@id", userId.ToString());
@@ -1257,7 +1276,7 @@ WHERE NOT EXISTS (SELECT 1 FROM ConversationParticipants cp WHERE cp.Conversatio
         {
             using var connection = Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE Users SET ProfilePhoto=NULL, ProfilePhotoContentType=NULL WHERE Id=@id;";
+            command.CommandText = "UPDATE Users SET ProfilePhoto=NULL, ProfilePhotoContentType=NULL, ProfilePhotoVersion=COALESCE(ProfilePhotoVersion,0)+1 WHERE Id=@id;";
             command.Parameters.AddWithValue("@id", userId.ToString());
             if (command.ExecuteNonQuery() == 0) throw new InvalidOperationException("المستخدم غير موجود.");
         }
@@ -2005,9 +2024,21 @@ SELECT c.Id,
         FROM Messages m
         WHERE m.ConversationId=c.Id
           AND m.SenderUserId<>@user
-          AND m.SentAt > COALESCE(p.LastReadAt, p.JoinedAt)) AS UnreadCount
+          AND m.SentAt > COALESCE(p.LastReadAt, p.JoinedAt)) AS UnreadCount,
+       other.ParticipantUserId AS OtherParticipantUserId,
+       COALESCE(other.HasProfilePhoto,FALSE) AS HasProfilePhoto,
+       COALESCE(other.ProfilePhotoVersion,0) AS ProfilePhotoVersion
 FROM Conversations c
 JOIN ConversationParticipants p ON p.ConversationId=c.Id
+LEFT JOIN LATERAL (
+    SELECT cp2.UserId AS ParticipantUserId,
+           (u.ProfilePhoto IS NOT NULL) AS HasProfilePhoto,
+           COALESCE(u.ProfilePhotoVersion,0) AS ProfilePhotoVersion
+    FROM ConversationParticipants cp2
+    JOIN Users u ON u.Id=cp2.UserId
+    WHERE cp2.ConversationId=c.Id AND cp2.UserId<>@user
+    LIMIT 1
+) other ON (SELECT COUNT(*) FROM ConversationParticipants cpCount WHERE cpCount.ConversationId=c.Id)=2
 WHERE p.UserId=@user
 ORDER BY c.UpdatedAt DESC;";
             command.Parameters.AddWithValue("@user", userId.ToString());
@@ -2019,7 +2050,21 @@ ORDER BY c.UpdatedAt DESC;";
                     reader.IsDBNull(1) || reader.IsDBNull(2) || reader.IsDBNull(4) ||
                     !DateTimeOffset.TryParse(reader.GetString(3), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var updatedAt))
                     continue;
-                result.Add(new ConversationDto(id, reader.GetString(1), reader.GetString(2), updatedAt, reader.GetInt32(4)));
+                Guid? otherParticipantUserId = null;
+                if (!reader.IsDBNull(5) && Guid.TryParse(reader.GetString(5), out var parsedOtherUserId))
+                    otherParticipantUserId = parsedOtherUserId;
+
+                var hasProfilePhoto = !reader.IsDBNull(6) && reader.GetBoolean(6);
+                var profilePhotoVersion = reader.IsDBNull(7) ? 0L : reader.GetInt64(7);
+                result.Add(new ConversationDto(
+                    id,
+                    reader.GetString(1),
+                    reader.GetString(2),
+                    updatedAt,
+                    reader.GetInt32(4),
+                    otherParticipantUserId,
+                    hasProfilePhoto,
+                    profilePhotoVersion));
             }
             return result;
         }
@@ -2837,6 +2882,9 @@ sealed class ConversationDto
     public string LastMessage { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
     public int UnreadCount { get; init; }
+    public Guid? OtherParticipantUserId { get; init; }
+    public bool HasProfilePhoto { get; init; }
+    public long ProfilePhotoVersion { get; init; }
 
     public ConversationDto()
     {
@@ -2844,13 +2892,24 @@ sealed class ConversationDto
         LastMessage = string.Empty;
     }
 
-    public ConversationDto(Guid id, string name, string lastMessage, DateTimeOffset updatedAt, int unreadCount)
+    public ConversationDto(
+        Guid id,
+        string name,
+        string lastMessage,
+        DateTimeOffset updatedAt,
+        int unreadCount,
+        Guid? otherParticipantUserId = null,
+        bool hasProfilePhoto = false,
+        long profilePhotoVersion = 0)
     {
         Id = id;
         Name = name ?? string.Empty;
         LastMessage = lastMessage ?? string.Empty;
         UpdatedAt = updatedAt;
         UnreadCount = unreadCount;
+        OtherParticipantUserId = otherParticipantUserId;
+        HasProfilePhoto = hasProfilePhoto;
+        ProfilePhotoVersion = profilePhotoVersion;
     }
 }
 record MessageDto(Guid Id, Guid ConversationId, Guid SenderUserId, string SenderPhoneNumber, string Text, DateTimeOffset SentAt, string? AttachmentFileName = null, string? AttachmentContentType = null, long? AttachmentSize = null, string Status = "sent", Guid? ReplyToMessageId = null, string? ReplyToText = null, bool IsEdited = false, string? EditedAt = null, bool IsDeleted = false);

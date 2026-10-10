@@ -546,6 +546,28 @@ public sealed class HimoApiClient
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
+    public async Task<ProfilePhotoDownload?> GetUserProfilePhotoAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        if (userId == Guid.Empty) return null;
+
+        using var response = await _http.GetAsync($"api/users/{userId:D}/photo", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        await EnsureSuccessAsync(response, cancellationToken);
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        if (bytes.Length == 0 || bytes.Length > 4 * 1024 * 1024)
+            throw new InvalidOperationException("صورة المستخدم المستلمة غير صالحة.");
+
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
+        if (!IsSupportedProfilePhotoType(contentType))
+            throw new InvalidOperationException("صيغة صورة المستخدم غير مدعومة.");
+
+        return new ProfilePhotoDownload(bytes, contentType);
+    }
+
     private static bool IsSupportedProfilePhotoType(string contentType) =>
         contentType is "image/jpeg" or "image/jpg" or "image/png" or "image/webp" or
             "image/heic" or "image/heif" or "image/gif";
@@ -1298,7 +1320,10 @@ public sealed class HimoApiClient
         string Name,
         string LastMessage,
         DateTimeOffset UpdatedAt,
-        int UnreadCount);
+        int UnreadCount,
+        Guid? OtherParticipantUserId = null,
+        bool HasProfilePhoto = false,
+        long ProfilePhotoVersion = 0);
 
     public sealed record MessageDto(
         Guid Id,

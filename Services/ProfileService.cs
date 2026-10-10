@@ -65,14 +65,17 @@ public sealed class ProfileService
             EnsureLoaded();
             var directory = FileSystem.Current.AppDataDirectory;
             Directory.CreateDirectory(directory);
-            var path = Path.Combine(directory, "himo_profile_photo" + extension);
+            // Use a fresh path for every update. MAUI's image loader can cache a
+            // previous image by path, so overwriting one fixed filename may keep
+            // showing the old picture even though upload/save succeeded.
+            var path = Path.Combine(directory, $"himo_profile_photo_{DateTime.UtcNow.Ticks}_{Guid.NewGuid():N}{extension}");
             var temporaryPath = path + ".tmp";
 
             // Write first so a failed write never deletes the currently saved photo.
             File.WriteAllBytes(temporaryPath, imageBytes);
             File.Move(temporaryPath, path, true);
 
-            foreach (var oldPath in Directory.EnumerateFiles(directory, "himo_profile_photo.*"))
+            foreach (var oldPath in Directory.EnumerateFiles(directory, "himo_profile_photo*.*"))
             {
                 if (string.Equals(oldPath, path, StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(oldPath, temporaryPath, StringComparison.OrdinalIgnoreCase))
@@ -103,7 +106,7 @@ public sealed class ProfileService
             try
             {
                 var directory = FileSystem.Current.AppDataDirectory;
-                foreach (var oldPath in Directory.EnumerateFiles(directory, "himo_profile_photo.*"))
+                foreach (var oldPath in Directory.EnumerateFiles(directory, "himo_profile_photo*.*"))
                 {
                     try { File.Delete(oldPath); } catch { }
                 }

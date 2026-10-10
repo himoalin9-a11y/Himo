@@ -392,8 +392,16 @@
                     <Grid Grid.Column="0" WidthRequest="50" HeightRequest="50">
                         <Border WidthRequest="46" HeightRequest="46" BackgroundColor="#F3EDF9" Stroke="#D8C8F0" StrokeThickness="1">
                             <Border.StrokeShape><shapes:RoundRectangle CornerRadius="25" /></Border.StrokeShape>
-                            <Label x:Name="InitialLabel" Text="H" FontSize="19" FontAttributes="Bold"
-                                   TextColor="#6C3FD1" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                            <Grid>
+                                <Label x:Name="InitialLabel" Text="H" FontSize="19" FontAttributes="Bold"
+                                       TextColor="#6C3FD1" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                <Image x:Name="ContactPhotoImage" IsVisible="False"
+                                       Aspect="AspectFill" WidthRequest="46" HeightRequest="46">
+                                    <Image.Clip>
+                                        <EllipseGeometry Center="23,23" RadiusX="23" RadiusY="23" />
+                                    </Image.Clip>
+                                </Image>
+                            </Grid>
                         </Border>
                         <Ellipse x:Name="StatusDot" WidthRequest="11" HeightRequest="11"
                                  HorizontalOptions="End" VerticalOptions="End" Margin="0,0,0,2"

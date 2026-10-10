@@ -1,6 +1,7 @@
 using Himo.Models;
 using Himo.Services;
 using Himo.ViewModels;
+using Microsoft.Maui.ApplicationModel;
 
 namespace Himo.Views;
 
@@ -8,14 +9,17 @@ public partial class HomePage : ContentPage
 {
     private readonly HomeViewModel _vm;
     private readonly HimoApiClient _api;
+    private readonly ProfileService _profile;
     private CancellationTokenSource? _pollCts;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
-    public HomePage(HomeViewModel vm, HimoApiClient api)
+    public HomePage(HomeViewModel vm, HimoApiClient api, ProfileService profile)
     {
         InitializeComponent();
         _vm = vm;
         _api = api;
+        _profile = profile;
         BindingContext = vm;
+        DisplayOwnProfilePhoto(_profile.Profile.PhotoPath);
     }
 
     private void SearchTextChanged(object sender, TextChangedEventArgs e)
@@ -53,11 +57,52 @@ public partial class HomePage : ContentPage
     {
         base.OnAppearing();
         UpdateEmptyState();
+        DisplayOwnProfilePhoto(_profile.Profile.PhotoPath);
         StartPolling();
+        // Refresh the local account avatar independently of the conversation list,
+        // so the home page can render immediately while the server request runs.
+        _ = RefreshOwnProfilePhotoAsync();
         // Let the first frame render before notification/network work.
         _ = InitializeHomeAsync();
     }
 
+
+    private void DisplayOwnProfilePhoto(string? path)
+    {
+        var hasPhoto = !string.IsNullOrWhiteSpace(path) && File.Exists(path);
+        HomeProfilePhotoImage.Source = hasPhoto ? ImageSource.FromFile(path!) : null;
+        HomeProfilePhotoImage.IsVisible = hasPhoto;
+        HomeProfilePlaceholderIcon.IsVisible = !hasPhoto;
+    }
+
+    private async Task RefreshOwnProfilePhotoAsync()
+    {
+        try
+        {
+            await _api.TokenInitialization;
+            if (!_api.HasToken) return;
+
+            var profile = await _api.GetMyProfileAsync();
+            if (profile.HasProfilePhoto == true)
+            {
+                var photo = await _api.GetMyProfilePhotoAsync();
+                if (photo is null) return;
+
+                var path = _profile.SavePhoto(photo.Bytes, photo.ContentType);
+                await MainThread.InvokeOnMainThreadAsync(() => DisplayOwnProfilePhoto(path));
+            }
+            else if (profile.HasProfilePhoto == false)
+            {
+                _profile.ClearPhoto();
+                await MainThread.InvokeOnMainThreadAsync(() => DisplayOwnProfilePhoto(null));
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo Home] Profile avatar refresh failed: {ex.Message}");
+            // Keep a locally saved avatar if the server is temporarily unavailable.
+        }
+    }
 
     private async Task InitializeHomeAsync()
     {
