@@ -49,6 +49,7 @@ public partial class ChatPage : ContentPage
     private CancellationTokenSource? _typingCts;
     private bool _typingActive;
     private bool _remoteTyping;
+    private int _incomingCallPromptActive;
     private bool _initialRemoteSyncCompleted;
     private ChatMessage? _replyingTo;
     private readonly HashSet<int> _selectedMessageIds = new();
@@ -146,7 +147,6 @@ public partial class ChatPage : ContentPage
         _realtime.MessageEdited += OnMessageEdited;
         _realtime.MessageDeleted += OnMessageDeleted;
         _realtime.Reconnected += OnRealtimeReconnected;
-        _realtime.CallSignalReceived += OnRealtimeCallSignalReceived;
 
         _scrollIdleTimer = Dispatcher.CreateTimer();
         _scrollIdleTimer.Interval = TimeSpan.FromMilliseconds(650);
@@ -173,8 +173,6 @@ public partial class ChatPage : ContentPage
         Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
         Volatile.Write(ref _conversationVisible, 1);
 
-        _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
-        _realtime.CallSignalReceived += OnRealtimeCallSignalReceived;
         _ = ApplySavedChatWallpaperAsync();
         StartPollingFallback();
 
@@ -802,7 +800,8 @@ public partial class ChatPage : ContentPage
 
         try
         {
-            await Shell.Current.GoToAsync($"CallPage?id={conversationId:D}&mode=audio");
+            var peerName = Uri.EscapeDataString(string.IsNullOrWhiteSpace(NameLabel?.Text) ? "جهة اتصال" : NameLabel.Text.Trim());
+            await Shell.Current.GoToAsync($"CallPage?id={conversationId:D}&mode=audio&peerName={peerName}");
         }
         catch (Exception ex)
         {
@@ -820,7 +819,8 @@ public partial class ChatPage : ContentPage
 
         try
         {
-            await Shell.Current.GoToAsync($"CallPage?id={conversationId:D}&mode=video");
+            var peerName = Uri.EscapeDataString(string.IsNullOrWhiteSpace(NameLabel?.Text) ? "جهة اتصال" : NameLabel.Text.Trim());
+            await Shell.Current.GoToAsync($"CallPage?id={conversationId:D}&mode=video&peerName={peerName}");
         }
         catch (Exception ex)
         {
@@ -850,7 +850,6 @@ public partial class ChatPage : ContentPage
         CloseInlineVideo();
         StopIncomingCallRingtone();
 #endif
-        _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
         Volatile.Write(ref _conversationVisible, 0);
         StopPolling();
         StopTyping();
@@ -861,19 +860,32 @@ public partial class ChatPage : ContentPage
 
     private async void OnRealtimeCallSignalReceived(object? sender, CallSignalMessage signal)
     {
-        if (!string.Equals(signal.Type, CallSignalType.Invite.ToString(), StringComparison.OrdinalIgnoreCase))
+        // Only the visible chat may present an incoming-call prompt. A Shell page
+        // kept alive in the navigation stack must not ring or open a second sheet.
+        if (!IsConversationVisible ||
+            !string.Equals(signal.Type, CallSignalType.Invite.ToString(), StringComparison.OrdinalIgnoreCase))
             return;
 
         if (_calls.Current is not null &&
             (_calls.Current.ConversationId != signal.ConversationId || _calls.Current.IsConnected))
         {
-            // A second invite cannot safely replace an active call.
             await _calls.RejectAsync();
             return;
         }
 
+        // SignalR may deliver a duplicate Invite while the action sheet is open.
+        if (Interlocked.CompareExchange(ref _incomingCallPromptActive, 1, 0) != 0)
+            return;
+
         var mode = CallMode.Audio;
-        if (!string.IsNullOrWhiteSpace(signal.Payload))
+        var incomingCallId = Guid.Empty;
+        if (CallSignalEnvelope.TryParse(signal.Payload, out var inviteEnvelope))
+        {
+            incomingCallId = inviteEnvelope.CallId;
+            if (inviteEnvelope.Mode.HasValue)
+                mode = inviteEnvelope.Mode.Value;
+        }
+        else if (!string.IsNullOrWhiteSpace(signal.Payload))
         {
             try
             {
@@ -891,30 +903,45 @@ public partial class ChatPage : ContentPage
         if (string.IsNullOrWhiteSpace(name))
             name = "جهة اتصال";
         var title = mode == CallMode.Video ? $"مكالمة فيديو واردة من {name}" : $"مكالمة صوتية واردة من {name}";
-#if ANDROID
-        StartIncomingCallRingtone();
-#endif
+
         try
         {
-            var action = await DisplayActionSheetAsync(title, "رفض", null, "رد");
+#if ANDROID
+            // Ringtone and MAUI dialogs must be started on the Android UI thread.
+            await MainThread.InvokeOnMainThreadAsync(StartIncomingCallRingtone);
+#endif
+            var action = await MainThread.InvokeOnMainThreadAsync(
+                () => DisplayActionSheetAsync(title, "رفض", null, "رد"));
+
+            // Stop the receiver's ringtone as soon as the user answers or rejects,
+            // before navigation or call setup can take additional time.
+#if ANDROID
+            await MainThread.InvokeOnMainThreadAsync(StopIncomingCallRingtone);
+#endif
             if (string.Equals(action, "رد", StringComparison.Ordinal))
             {
-                var callId = Guid.Empty;
-                if (CallSignalEnvelope.TryParse(signal.Payload, out var inviteEnvelope))
-                    callId = inviteEnvelope.CallId;
-                var callIdQuery = callId == Guid.Empty ? string.Empty : $"&callId={callId:D}";
-                await Shell.Current.GoToAsync($"CallPage?id={signal.ConversationId:D}&mode={(mode == CallMode.Video ? "video" : "audio")}&incoming=true{callIdQuery}");
+                var callIdQuery = incomingCallId == Guid.Empty ? string.Empty : $"&callId={incomingCallId:D}";
+                var peerNameQuery = $"&peerName={Uri.EscapeDataString(name)}";
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                    await Shell.Current.GoToAsync(
+                        $"CallPage?id={signal.ConversationId:D}&mode={(mode == CallMode.Video ? "video" : "audio")}&incoming=true{callIdQuery}{peerNameQuery}"));
             }
             else
             {
                 await _calls.RejectAsync();
             }
         }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Incoming call prompt failed: {ex}");
+            try { await _calls.RejectAsync(); } catch { }
+        }
         finally
         {
 #if ANDROID
-            StopIncomingCallRingtone();
+            await MainThread.InvokeOnMainThreadAsync(StopIncomingCallRingtone);
 #endif
+            Interlocked.Exchange(ref _incomingCallPromptActive, 0);
         }
     }
 
@@ -929,7 +956,14 @@ public partial class ChatPage : ContentPage
             if (uri is null) return;
 
             _incomingCallRingtone = global::Android.Media.RingtoneManager.GetRingtone(context, uri);
-            _incomingCallRingtone?.Play();
+            if (_incomingCallRingtone is null) return;
+
+            // Ringtone playback is non-looping by default on Android. A call must
+            // keep ringing until the user answers/rejects or the call is cancelled.
+            if (global::Android.OS.Build.VERSION.SdkInt >= global::Android.OS.BuildVersionCodes.P)
+                _incomingCallRingtone.Looping = true;
+
+            _incomingCallRingtone.Play();
         }
         catch (Exception ex)
         {

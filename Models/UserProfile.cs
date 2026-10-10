@@ -4,6 +4,7 @@ public sealed class UserProfile
 {
     public string Name { get; set; } = "مستخدم Himo";
     public string Status { get; set; } = "متاح على Himo";
+    public string? PhotoPath { get; set; }
     public string Initial => GetInitial(Name);
 
     private static string GetInitial(string? name)

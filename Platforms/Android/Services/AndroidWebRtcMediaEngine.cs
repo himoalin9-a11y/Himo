@@ -652,6 +652,13 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
 
         if (!_remoteDescriptionSet)
         {
+            var queuedCandidate =
+                GetIceCandidateTextFromPayload(candidatePayload);
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo WebRTC] Remote ICE candidate queued before remote description: " +
+                $"type={GetIceCandidateType(queuedCandidate)}; protocol={GetIceCandidateProtocol(queuedCandidate)}");
+
             _pendingRemoteIceCandidates.Enqueue(
                 candidatePayload);
 
@@ -882,11 +889,14 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             ?? throw new InvalidOperationException(
                 "SessionDescription.Type was not found.");
 
+        // FsWebRTC's Android binding exposes SessionDescription.Type as a
+        // Java enum wrapper class, not necessarily a CLR System.Enum. Calling
+        // Enum.Parse unconditionally throws "Type provided must be an Enum"
+        // on that binding. Resolve the actual generated enum value instead.
         var typeValue =
-            Enum.Parse(
+            ResolveSessionDescriptionType(
                 enumType,
-                typeName,
-                true);
+                typeName);
 
         var description =
             Activator.CreateInstance(
@@ -932,6 +942,86 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
         return AwaitWithCancellationAsync(
             tcs.Task,
             cancellationToken);
+    }
+
+    private static object ResolveSessionDescriptionType(
+        Type typeClass,
+        string typeName)
+    {
+        if (typeClass.IsEnum)
+        {
+            return Enum.Parse(
+                typeClass,
+                typeName,
+                ignoreCase: true);
+        }
+
+        const BindingFlags staticFlags =
+            BindingFlags.Public |
+            BindingFlags.NonPublic |
+            BindingFlags.Static |
+            BindingFlags.FlattenHierarchy;
+
+        // Java enum constants in Xamarin/.NET Android bindings are commonly
+        // projected as static fields or static properties on a Java.Lang.Enum
+        // subclass. They are objects, not CLR enum members.
+        var field = typeClass.GetFields(staticFlags).FirstOrDefault(
+            member => string.Equals(
+                member.Name,
+                typeName,
+                StringComparison.OrdinalIgnoreCase));
+
+        if (field is not null)
+        {
+            var value = field.GetValue(null);
+            if (value is not null && typeClass.IsInstanceOfType(value))
+                return value;
+        }
+
+        var property = typeClass.GetProperties(staticFlags).FirstOrDefault(
+            member =>
+                string.Equals(
+                    member.Name,
+                    typeName,
+                    StringComparison.OrdinalIgnoreCase)
+                && member.GetIndexParameters().Length == 0
+                && member.GetGetMethod(true)?.IsStatic == true);
+
+        if (property is not null)
+        {
+            var value = property.GetValue(null);
+            if (value is not null && typeClass.IsInstanceOfType(value))
+                return value;
+        }
+
+        // Some generated bindings expose Java's valueOf(String) factory
+        // instead of directly exposing enum constants.
+        var valueOf = typeClass.GetMethods(staticFlags).FirstOrDefault(
+            method =>
+                (string.Equals(method.Name, "ValueOf", StringComparison.OrdinalIgnoreCase)
+                 || string.Equals(method.Name, "valueOf", StringComparison.OrdinalIgnoreCase))
+                && method.GetParameters().Length == 1
+                && method.GetParameters()[0].ParameterType == typeof(string));
+
+        if (valueOf is not null)
+        {
+            var value = valueOf.Invoke(null, new object?[] { typeName });
+            if (value is not null && typeClass.IsInstanceOfType(value))
+                return value;
+        }
+
+        var members = typeClass.GetFields(staticFlags)
+            .Select(member => member.Name)
+            .Concat(typeClass.GetProperties(staticFlags)
+                .Where(member => member.GetGetMethod(true)?.IsStatic == true)
+                .Select(member => member.Name))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(name => name, StringComparer.Ordinal);
+
+        throw new InvalidOperationException(
+            $"Could not resolve SessionDescription.Type '{typeName}' from binding type " +
+            $"'{typeClass.FullName}'. CLR enum={typeClass.IsEnum}. " +
+            $"Available static members: {string.Join(", ", members)}");
     }
 
     private void AddIceCandidatePayload(
@@ -1000,11 +1090,19 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                 nameof(payload));
         }
 
+        System.Diagnostics.Debug.WriteLine(
+            $"[Himo WebRTC] Remote ICE candidate received: type={GetIceCandidateType(candidateSdp)}; " +
+            $"protocol={GetIceCandidateProtocol(candidateSdp)}; mid={sdpMid ?? "(null)"}; mline={sdpMLineIndex}");
+
         var key =
             $"{sdpMid}|{sdpMLineIndex}|{candidateSdp}";
 
         if (!_remoteIceCandidateKeys.Add(key))
+        {
+            System.Diagnostics.Debug.WriteLine(
+                "[Himo WebRTC] Duplicate remote ICE candidate ignored.");
             return;
+        }
 
         var candidateType =
             RequiredType(
@@ -1019,10 +1117,85 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             ?? throw new InvalidOperationException(
                 "ICE candidate could not be created.");
 
-        InvokeRequired(
-            _peerConnection!,
-            "AddIceCandidate",
-            candidate);
+        var addResult =
+            InvokeRequired(
+                _peerConnection!,
+                "AddIceCandidate",
+                candidate);
+
+        bool accepted;
+        bool hasAcceptanceResult;
+        if (addResult is bool nativeBool)
+        {
+            accepted = nativeBool;
+            hasAcceptanceResult = true;
+        }
+        else if (bool.TryParse(addResult?.ToString(), out var parsedBool))
+        {
+            accepted = parsedBool;
+            hasAcceptanceResult = true;
+        }
+        else
+        {
+            accepted = false;
+            hasAcceptanceResult = false;
+        }
+
+        if (hasAcceptanceResult)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo WebRTC] Native AddIceCandidate result: accepted={accepted}; " +
+                $"type={GetIceCandidateType(candidateSdp)}; protocol={GetIceCandidateProtocol(candidateSdp)}");
+
+            if (!accepted)
+            {
+                throw new InvalidOperationException(
+                    $"Native WebRTC rejected remote ICE candidate (type={GetIceCandidateType(candidateSdp)}, protocol={GetIceCandidateProtocol(candidateSdp)}).");
+            }
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo WebRTC] Native AddIceCandidate returned {addResult?.GetType().Name ?? "null/void"}; " +
+                $"type={GetIceCandidateType(candidateSdp)}; protocol={GetIceCandidateProtocol(candidateSdp)}");
+        }
+    }
+
+    private static string GetIceCandidateTextFromPayload(string payload)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<IceCandidatePayload>(payload)?.Candidate
+                ?? payload;
+        }
+        catch
+        {
+            return payload;
+        }
+    }
+
+    private static string GetIceCandidateType(string? candidateSdp)
+    {
+        if (string.IsNullOrWhiteSpace(candidateSdp))
+            return "unknown";
+
+        var parts = candidateSdp.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        for (var i = 0; i < parts.Length - 1; i++)
+        {
+            if (string.Equals(parts[i], "typ", StringComparison.OrdinalIgnoreCase))
+                return parts[i + 1].ToLowerInvariant();
+        }
+
+        return "unknown";
+    }
+
+    private static string GetIceCandidateProtocol(string? candidateSdp)
+    {
+        if (string.IsNullOrWhiteSpace(candidateSdp))
+            return "unknown";
+
+        var parts = candidateSdp.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 3 ? parts[2].ToLowerInvariant() : "unknown";
     }
 
     private sealed record IceCandidatePayload(
@@ -1493,6 +1666,13 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                         return;
                     }
 
+                    var candidateText =
+                        GetIceCandidateTextFromPayload(candidate);
+
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[Himo WebRTC] Local ICE candidate gathered: type={GetIceCandidateType(candidateText)}; " +
+                        $"protocol={GetIceCandidateProtocol(candidateText)}");
+
                     IceCandidateGenerated?.Invoke(
                         this,
                         candidate);
@@ -1529,6 +1709,9 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                     _lastIceConnectionState =
                         state;
 
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[Himo WebRTC] ICE connection state changed: {state}");
+
                     IceConnectionStateChanged?.Invoke(
                         this,
                         state);
@@ -1545,6 +1728,9 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
 
                     _lastPeerConnectionState =
                         state;
+
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[Himo WebRTC] PeerConnection state changed: {state}");
 
                     PeerConnectionStateChanged?.Invoke(
                         this,
@@ -1755,7 +1941,15 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
              * If neither exists, we use Java reflection below.
              */
 
-            if (TryInitializeUsingManagedBinding(
+            /*
+             * Prefer the Java API from the exact AAR that is packaged into the APK.
+             * The generated FsWebRTC binding may not expose a usable managed
+             * InitializationOptions.Builder on the installed 0.9.3.15 surface;
+             * invoking that path first can fail before native call setup begins.
+             * Java reflection keeps InitializationOptions and PeerConnectionFactory
+             * on the same WebRTC revision and avoids raw JNIEnv reference handling.
+             */
+            if (TryInitializeUsingJavaReflection(
                 factoryType,
                 context))
             {
@@ -1763,21 +1957,9 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                 return;
             }
 
-            /*
-             * FsWebRTC.Bindings.Maui.Android 0.9.x can contain the Java
-             * PeerConnectionFactory.initialize(...) method in libwebrtc.aar
-             * without exposing that static method through the generated
-             * managed surface.
-             *
-             * Therefore use Java reflection instead of raw JNIEnv.
-             *
-             * This avoids the Local/Global reference mismatch that caused:
-             *
-             * JNI DETECTED ERROR IN APPLICATION:
-             * expected reference of kind Local but found Global
-             */
-
-            if (TryInitializeUsingJavaReflection(
+            // Fallback only when the Java API is not present; never prefer the
+            // potentially mismatched managed Builder method over the packaged AAR.
+            if (TryInitializeUsingManagedBinding(
                 factoryType,
                 context))
             {
@@ -2129,6 +2311,12 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             args);
     }
 
+    // Reflection returns null for a successfully invoked void method. Keep a
+    // non-null sentinel so callers that intentionally ignore a void result do
+    // not mistake successful WebRTC calls (for example SetLocalDescription)
+    // for failures. For non-void methods, null remains an error.
+    private static readonly object VoidInvocationResult = new();
+
     private static object InvokeRequired(
         object target,
         string name,
@@ -2145,9 +2333,12 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                 target.GetType().Name,
                 name);
 
-        return method.Invoke(
-                target,
-                args)
+        var result = method.Invoke(target, args);
+
+        if (method.ReturnType == typeof(void))
+            return VoidInvocationResult;
+
+        return result
             ?? throw new InvalidOperationException(
                 $"WebRTC method '{name}' returned null.");
     }
@@ -2625,6 +2816,11 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
         public void OnIceGatheringChange(
             Org.Webrtc.PeerConnection.IceGatheringState? state)
         {
+            if (state is not null)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[Himo WebRTC] ICE gathering state changed: {state}");
+            }
         }
 
         public void OnIceCandidatesRemoved(
@@ -2661,6 +2857,11 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
         public void OnIceCandidateError(
             Org.Webrtc.IceCandidateErrorEvent? error)
         {
+            if (error is not null)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[Himo WebRTC] ICE candidate gathering error: {error}");
+            }
         }
 
         public void OnAddTrack(

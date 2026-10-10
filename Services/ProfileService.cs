@@ -42,6 +42,76 @@ public sealed class ProfileService
         }
     }
 
+
+    public string SavePhoto(byte[] imageBytes, string contentType)
+    {
+        ArgumentNullException.ThrowIfNull(imageBytes);
+        if (imageBytes.Length == 0 || imageBytes.Length > 4 * 1024 * 1024)
+            throw new ArgumentException("حجم الصورة يجب ألا يتجاوز 4 ميغابايت.", nameof(imageBytes));
+
+        var extension = contentType.Trim().ToLowerInvariant() switch
+        {
+            "image/jpeg" or "image/jpg" => ".jpg",
+            "image/png" => ".png",
+            "image/webp" => ".webp",
+            "image/heic" => ".heic",
+            "image/heif" => ".heif",
+            "image/gif" => ".gif",
+            _ => throw new ArgumentException("صيغة الصورة غير مدعومة.", nameof(contentType))
+        };
+
+        lock (_sync)
+        {
+            EnsureLoaded();
+            var directory = FileSystem.Current.AppDataDirectory;
+            Directory.CreateDirectory(directory);
+            var path = Path.Combine(directory, "himo_profile_photo" + extension);
+            var temporaryPath = path + ".tmp";
+
+            // Write first so a failed write never deletes the currently saved photo.
+            File.WriteAllBytes(temporaryPath, imageBytes);
+            File.Move(temporaryPath, path, true);
+
+            foreach (var oldPath in Directory.EnumerateFiles(directory, "himo_profile_photo.*"))
+            {
+                if (string.Equals(oldPath, path, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(oldPath, temporaryPath, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                try { File.Delete(oldPath); } catch { }
+            }
+
+            _profile.PhotoPath = path;
+            Save();
+            return path;
+        }
+    }
+
+    public void ClearPhoto()
+    {
+        lock (_sync)
+        {
+            EnsureLoaded();
+            var previousPath = _profile.PhotoPath;
+            _profile.PhotoPath = null;
+            Save();
+
+            if (!string.IsNullOrWhiteSpace(previousPath))
+            {
+                try { if (File.Exists(previousPath)) File.Delete(previousPath); } catch { }
+            }
+
+            try
+            {
+                var directory = FileSystem.Current.AppDataDirectory;
+                foreach (var oldPath in Directory.EnumerateFiles(directory, "himo_profile_photo.*"))
+                {
+                    try { File.Delete(oldPath); } catch { }
+                }
+            }
+            catch { }
+        }
+    }
+
     private void Load()
     {
         lock (_sync)

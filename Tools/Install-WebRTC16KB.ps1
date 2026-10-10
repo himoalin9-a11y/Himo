@@ -16,6 +16,8 @@ foreach ($ndk in $ndkCandidates) {
 if (!$readelf) { throw "llvm-readelf.exe was not found in the expected Android NDK locations." }
 
 $packageAar = Join-Path $env:USERPROFILE '.nuget\packages\fswebrtc.bindings.maui.android\0.9.3.15\lib\net10.0-android36.0\libwebrtc.aar'
+$projectRoot = Split-Path -Parent $PSScriptRoot
+$projectAar = Join-Path $projectRoot 'Platforms\Android\Jars\libwebrtc.aar'
 if (!(Test-Path $packageAar)) { throw "FsWebRTC package AAR was not found: $packageAar" }
 
 $cacheRoot = Join-Path $env:LOCALAPPDATA 'Himo\WebRTC16KB'
@@ -114,8 +116,11 @@ try {
     # WebRTC revision. The FsWebRTC NuGet package's existing binding transforms
     # remain in the package and are still applied by the Android binding build.
     Copy-Item $cachedAar $packageAar -Force
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $projectAar) | Out-Null
+    Copy-Item $cachedAar $projectAar -Force
 
-    Write-Host "Installed unified WebRTC $Version AAR: $packageAar"
+    Write-Host "Installed unified WebRTC $Version AAR into NuGet cache: $packageAar"
+    Write-Host "Staged the same verified AAR for the project build: $projectAar"
     Write-Host "Java + native WebRTC are now from the same AAR revision."
     Write-Host "Do not run the older script that replaces only the .so files."
 }

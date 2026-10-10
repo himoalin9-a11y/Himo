@@ -156,11 +156,15 @@ public sealed class HimoApiClient
         string email,
         string password,
         string name,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? contactPhoneNumber = null)
     {
         email = NormalizeEmail(email);
         ValidatePassword(password);
         name = ValidateName(name);
+        contactPhoneNumber = string.IsNullOrWhiteSpace(contactPhoneNumber)
+            ? null
+            : contactPhoneNumber.Trim();
 
         using var response =
             await _http.PostAsJsonAsync(
@@ -169,7 +173,8 @@ public sealed class HimoApiClient
                 {
                     email,
                     password,
-                    name
+                    name,
+                    contactPhoneNumber
                 },
                 cancellationToken);
 
@@ -489,6 +494,61 @@ public sealed class HimoApiClient
             ?? throw new InvalidOperationException(
                 "استجابة الملف الشخصي غير صالحة.");
     }
+
+    public async Task UploadMyProfilePhotoAsync(
+        byte[] imageBytes,
+        string contentType,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(imageBytes);
+        if (imageBytes.Length == 0 || imageBytes.Length > 4 * 1024 * 1024)
+            throw new ArgumentException("حجم الصورة يجب ألا يتجاوز 4 ميغابايت.", nameof(imageBytes));
+
+        var normalizedType = (contentType ?? string.Empty).Trim().ToLowerInvariant();
+        if (!IsSupportedProfilePhotoType(normalizedType))
+            throw new ArgumentException("صيغة الصورة غير مدعومة. استخدم JPG أو PNG أو WebP أو HEIC.", nameof(contentType));
+
+        using var response = await _http.PutAsJsonAsync(
+            "api/me/photo",
+            new
+            {
+                base64Data = Convert.ToBase64String(imageBytes),
+                contentType = normalizedType
+            },
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task<ProfilePhotoDownload?> GetMyProfilePhotoAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync("api/me/photo", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        await EnsureSuccessAsync(response, cancellationToken);
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        if (bytes.Length == 0 || bytes.Length > 4 * 1024 * 1024)
+            throw new InvalidOperationException("صورة الملف الشخصي المستلمة غير صالحة.");
+
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
+        if (!IsSupportedProfilePhotoType(contentType))
+            throw new InvalidOperationException("صيغة صورة الملف الشخصي غير مدعومة.");
+
+        return new ProfilePhotoDownload(bytes, contentType);
+    }
+
+    public async Task DeleteMyProfilePhotoAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.DeleteAsync("api/me/photo", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    private static bool IsSupportedProfilePhotoType(string contentType) =>
+        contentType is "image/jpeg" or "image/jpg" or "image/png" or "image/webp" or
+            "image/heic" or "image/heif" or "image/gif";
 
     public async Task DeleteAccountAsync(
         CancellationToken cancellationToken = default)
@@ -1267,7 +1327,12 @@ public sealed class HimoApiClient
         Guid UserId,
         string Email,
         string Name,
-        string Status);
+        string Status,
+        bool? HasProfilePhoto = null);
+
+    public sealed record ProfilePhotoDownload(
+        byte[] Bytes,
+        string ContentType);
 
     private sealed record RequestCodeResponse(
         string Message,

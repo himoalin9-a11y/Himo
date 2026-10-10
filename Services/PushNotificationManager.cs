@@ -16,6 +16,7 @@ public sealed class PushNotificationManager
     private const string RegisteredTokenKey = "himo_registered_fcm_token";
     private const string PendingCleanupTokenKey = "himo_pending_fcm_token_cleanup";
     private const int MaxRememberedMessageIds = 250;
+    private const int MaxRememberedCallIds = 64;
 
     private readonly AccountService _account;
     private readonly HimoApiClient _api;
@@ -25,6 +26,9 @@ public sealed class PushNotificationManager
     private readonly object _dedupeGate = new();
     private readonly HashSet<string> _shownMessageIds = new(StringComparer.OrdinalIgnoreCase);
     private readonly Queue<string> _shownMessageOrder = new();
+    private readonly object _callDedupeGate = new();
+    private readonly HashSet<string> _handledIncomingCalls = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Queue<string> _handledIncomingCallOrder = new();
 
     private int _fcmHandlersRegistered;
     private int _tokenRegistrationInProgress;
@@ -45,6 +49,7 @@ public sealed class PushNotificationManager
         _notifications = notifications;
 
         _realtime.MessageReceived += OnRealtimeMessageReceived;
+        _realtime.CallSignalReceived += OnRealtimeCallSignalReceived;
     }
 
     public void SetAppForeground(bool foreground)
@@ -139,7 +144,16 @@ public sealed class PushNotificationManager
 
             if (notification.Data.TryGetValue("call_type", out var callType) &&
                 string.Equals(callType, "invite", StringComparison.OrdinalIgnoreCase))
+            {
+                if (notification.Data.TryGetValue("conversation_id", out var callConversationId) &&
+                    !string.IsNullOrWhiteSpace(callConversationId))
+                {
+                    notification.Data.TryGetValue("call_mode", out var callMode);
+                    notification.Data.TryGetValue("call_id", out var callId);
+                    RouteIncomingCall(callConversationId, callMode, callId);
+                }
                 return;
+            }
 
             if (!notification.Data.TryGetValue("conversation_id", out var conversationId) ||
                 string.IsNullOrWhiteSpace(conversationId))
@@ -168,6 +182,66 @@ public sealed class PushNotificationManager
         {
             System.Diagnostics.Debug.WriteLine($"[Himo Push] Foreground FCM handling failed: {ex}");
         }
+    }
+
+    private void OnRealtimeCallSignalReceived(object? sender, CallSignalMessage signal)
+    {
+        if (!_appInForeground || !_account.IsSignedIn ||
+            !string.Equals(signal.Type, CallSignalType.Invite.ToString(), StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var mode = "audio";
+        var callId = string.Empty;
+        if (CallSignalEnvelope.TryParse(signal.Payload, out var envelope))
+        {
+            callId = envelope.CallId == Guid.Empty ? string.Empty : envelope.CallId.ToString("D");
+            if (envelope.Mode == CallMode.Video) mode = "video";
+        }
+        else if (!string.IsNullOrWhiteSpace(signal.Payload))
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(signal.Payload);
+                if (doc.RootElement.TryGetProperty("mode", out var modeValue) &&
+                    string.Equals(modeValue.GetString(), "video", StringComparison.OrdinalIgnoreCase))
+                    mode = "video";
+                if (doc.RootElement.TryGetProperty("callId", out var idValue))
+                    callId = idValue.GetString() ?? string.Empty;
+            }
+            catch { }
+        }
+
+        RouteIncomingCall(signal.ConversationId.ToString("D"), mode, callId);
+    }
+
+    private void RouteIncomingCall(string conversationId, string? mode, string? callId)
+    {
+        if (!_appInForeground || !_account.IsSignedIn || !Guid.TryParse(conversationId, out var parsedConversationId))
+            return;
+
+        var normalizedMode = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio";
+        var normalizedCallId = Guid.TryParse(callId, out var parsedCallId) && parsedCallId != Guid.Empty
+            ? parsedCallId.ToString("D")
+            : string.Empty;
+        var dedupeKey = normalizedCallId.Length > 0
+            ? $"{parsedConversationId:D}:{normalizedCallId}"
+            : $"{parsedConversationId:D}:{normalizedMode}:unknown";
+
+        lock (_callDedupeGate)
+        {
+            if (!_handledIncomingCalls.Add(dedupeKey))
+                return;
+            _handledIncomingCallOrder.Enqueue(dedupeKey);
+            while (_handledIncomingCallOrder.Count > MaxRememberedCallIds)
+                _handledIncomingCalls.Remove(_handledIncomingCallOrder.Dequeue());
+        }
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (!_appInForeground) return;
+            MainActivity.SetPendingCall(parsedConversationId.ToString("D"), normalizedMode, normalizedCallId);
+            MainActivity.TryNavigateToPendingCall();
+        });
     }
 
     private void OnFcmNotificationTapped(object? sender, FCMNotificationTappedEventArgs e)

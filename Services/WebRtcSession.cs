@@ -13,6 +13,7 @@ public sealed class WebRtcSession : IDisposable
 
     public Guid ConversationId { get; }
     public CallMode Mode { get; }
+    public Guid CallId { get; }
     public string? RemoteOfferSdp { get; private set; }
     public string? RemoteAnswerSdp { get; private set; }
     public bool HasRemoteOffer => !string.IsNullOrWhiteSpace(RemoteOfferSdp);
@@ -23,17 +24,19 @@ public sealed class WebRtcSession : IDisposable
     public event EventHandler<string>? RemoteAnswerReceived;
     public event EventHandler<string>? IceCandidateReceived;
 
-    public WebRtcSession(ICallService calls, Guid conversationId, CallMode mode)
+    public WebRtcSession(ICallService calls, Guid conversationId, CallMode mode, Guid callId = default)
     {
         _calls = calls;
         ConversationId = conversationId;
         Mode = mode;
+        CallId = callId;
         _calls.IncomingSignal += OnSignal;
     }
 
     public async Task SendOfferAsync(string sdp, CancellationToken cancellationToken = default)
     {
         EnsureActive();
+        EnsureMatchingActiveCall();
         ValidateSdp(sdp);
         await _calls.SendOfferAsync(sdp, cancellationToken);
     }
@@ -41,6 +44,7 @@ public sealed class WebRtcSession : IDisposable
     public async Task SendAnswerAsync(string sdp, CancellationToken cancellationToken = default)
     {
         EnsureActive();
+        EnsureMatchingActiveCall();
         ValidateSdp(sdp);
         await _calls.SendAnswerAsync(sdp, cancellationToken);
     }
@@ -48,6 +52,7 @@ public sealed class WebRtcSession : IDisposable
     public async Task SendIceCandidateAsync(string candidate, CancellationToken cancellationToken = default)
     {
         EnsureActive();
+        EnsureMatchingActiveCall();
         if (string.IsNullOrWhiteSpace(candidate)) return;
         await _calls.SendIceCandidateAsync(candidate, cancellationToken);
     }
@@ -63,27 +68,35 @@ public sealed class WebRtcSession : IDisposable
     {
         if (_disposed || signal.ConversationId != ConversationId) return;
 
+        var payload = signal.Payload;
+        if (CallSignalEnvelope.TryParse(signal.Payload, out var envelope))
+        {
+            if (CallId != Guid.Empty && envelope.CallId != Guid.Empty && envelope.CallId != CallId)
+                return;
+            payload = envelope.Data;
+        }
+
         if (string.Equals(signal.Type, CallSignalType.Offer.ToString(), StringComparison.OrdinalIgnoreCase))
         {
-            if (string.IsNullOrWhiteSpace(signal.Payload)) return;
-            RemoteOfferSdp = signal.Payload;
-            RemoteOfferReceived?.Invoke(this, signal.Payload);
+            if (string.IsNullOrWhiteSpace(payload)) return;
+            RemoteOfferSdp = payload;
+            RemoteOfferReceived?.Invoke(this, payload);
             return;
         }
 
         if (string.Equals(signal.Type, CallSignalType.Answer.ToString(), StringComparison.OrdinalIgnoreCase))
         {
-            if (string.IsNullOrWhiteSpace(signal.Payload)) return;
-            RemoteAnswerSdp = signal.Payload;
-            RemoteAnswerReceived?.Invoke(this, signal.Payload);
+            if (string.IsNullOrWhiteSpace(payload)) return;
+            RemoteAnswerSdp = payload;
+            RemoteAnswerReceived?.Invoke(this, payload);
             return;
         }
 
         if (string.Equals(signal.Type, CallSignalType.IceCandidate.ToString(), StringComparison.OrdinalIgnoreCase))
         {
-            if (string.IsNullOrWhiteSpace(signal.Payload)) return;
-            _pendingIceCandidates.Enqueue(signal.Payload);
-            IceCandidateReceived?.Invoke(this, signal.Payload);
+            if (string.IsNullOrWhiteSpace(payload)) return;
+            _pendingIceCandidates.Enqueue(payload);
+            IceCandidateReceived?.Invoke(this, payload);
         }
     }
 
@@ -99,6 +112,17 @@ public sealed class WebRtcSession : IDisposable
     private void EnsureActive()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+    }
+
+    private void EnsureMatchingActiveCall()
+    {
+        var current = _calls.Current;
+        if (current is null || current.ConversationId != ConversationId || current.Mode != Mode ||
+            (CallId != Guid.Empty && current.CallId != CallId))
+        {
+            throw new InvalidOperationException(
+                $"WebRTC session is stale; expected conversation={ConversationId:D}, callId={CallId:D}.");
+        }
     }
 
     public void Dispose()

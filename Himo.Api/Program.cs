@@ -130,6 +130,8 @@ webApp.MapPost("/api/auth/request-email-verification", async (EmailRegisterReque
     var name = request.Name?.Trim() ?? string.Empty;
     if (string.IsNullOrWhiteSpace(name)) return Results.BadRequest(new { message = "الاسم مطلوب." });
     if (name.Length > 60) return Results.BadRequest(new { message = "الاسم طويل جدًا." });
+    var contactPhoneNumber = NormalizeOptionalContactPhone(request.ContactPhoneNumber);
+    if (contactPhoneNumber.Error is not null) return Results.BadRequest(new { message = contactPhoneNumber.Error });
     var password = request.Password ?? string.Empty;
     if (!PasswordRules.IsValid(password)) return Results.BadRequest(new { message = "كلمة المرور يجب أن تكون بين 8 و128 حرفًا." });
     if (store.EmailExists(email)) return Results.Conflict(new { message = "هذا البريد الإلكتروني مستخدم بالفعل." });
@@ -138,7 +140,7 @@ webApp.MapPost("/api/auth/request-email-verification", async (EmailRegisterReque
         ? "123456"
         : RandomNumberGenerator.GetInt32(100000, 1000000).ToString(CultureInfo.InvariantCulture);
     var expiresAt = DateTimeOffset.UtcNow.AddMinutes(10);
-    if (!store.TrySetEmailVerification(email, name, PasswordRules.Hash(password), code, expiresAt, out var retryAfterSeconds))
+    if (!store.TrySetEmailVerification(email, name, PasswordRules.Hash(password), contactPhoneNumber.Value, code, expiresAt, out var retryAfterSeconds))
         return Results.Json(new { message = $"اطلب رمزًا جديدًا بعد {retryAfterSeconds} ثانية." }, statusCode: StatusCodes.Status429TooManyRequests);
 
     if (environment.IsDevelopment())
@@ -193,7 +195,7 @@ webApp.MapPost("/api/auth/verify-email", (VerifyEmailRequest request, PostgresSt
 
     try
     {
-        var user = store.CreateEmailUser(email, pending.Name, pending.PasswordHash, true);
+        var user = store.CreateEmailUser(email, pending.Name, pending.PasswordHash, true, pending.ContactPhoneNumber);
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         store.CreateSession(token, user.Id, DateTimeOffset.UtcNow.AddDays(30));
         return Results.Ok(new AuthResponse(token, user.Id, email, user.Name));
@@ -315,6 +317,45 @@ webApp.MapPut("/api/me", (HttpRequest http, UpdateProfileRequest request, Postgr
     if (status.Length > 100) return Results.BadRequest(new { message = "الحالة طويلة جدًا." });
     var cleanStatus = string.IsNullOrWhiteSpace(status) ? "متاح على Himo" : status;
     return Results.Ok(store.UpdateProfile(session.UserId, name, cleanStatus));
+});
+
+webApp.MapGet("/api/me/photo", (HttpRequest http, PostgresStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    var photo = store.GetProfilePhoto(session.UserId);
+    var photoBytes = photo.Data;
+    if (photoBytes is null || photoBytes.Length == 0) return Results.NotFound();
+    return Results.File(photoBytes, photo.ContentType);
+});
+
+webApp.MapPut("/api/me/photo", (HttpRequest http, ProfilePhotoUploadRequest request, PostgresStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+
+    var contentType = (request.ContentType ?? string.Empty).Trim().ToLowerInvariant();
+    if (contentType == "image/jpg") contentType = "image/jpeg";
+    if (!IsSupportedProfilePhotoType(contentType))
+        return Results.BadRequest(new { message = "صيغة الصورة غير مدعومة. استخدم JPG أو PNG أو WebP أو HEIC." });
+
+    if (string.IsNullOrWhiteSpace(request.Base64Data) || request.Base64Data.Length > 6 * 1024 * 1024)
+        return Results.BadRequest(new { message = "حجم الصورة غير صالح أو أكبر من 4 ميغابايت." });
+
+    byte[] bytes;
+    try { bytes = Convert.FromBase64String(request.Base64Data); }
+    catch (FormatException) { return Results.BadRequest(new { message = "بيانات الصورة غير صالحة." }); }
+
+    if (bytes.Length == 0 || bytes.Length > 4 * 1024 * 1024 || !IsValidProfilePhotoPayload(bytes, contentType))
+        return Results.BadRequest(new { message = "الملف المحدد ليس صورة مدعومة أو يتجاوز 4 ميغابايت." });
+
+    store.UpdateProfilePhoto(session.UserId, bytes, contentType);
+    return Results.Ok(new { hasProfilePhoto = true });
+});
+
+webApp.MapDelete("/api/me/photo", (HttpRequest http, PostgresStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    store.DeleteProfilePhoto(session.UserId);
+    return Results.NoContent();
 });
 
 webApp.MapGet("/api/users/search", (HttpRequest http, string? email, PostgresStore store) =>
@@ -696,6 +737,36 @@ webApp.MapGet("/api/messages/{messageId:guid}/attachment", (Guid messageId, Http
 
 webApp.Run();
 
+static bool IsSupportedProfilePhotoType(string contentType) =>
+    contentType is "image/jpeg" or "image/png" or "image/webp" or "image/heic" or
+        "image/heif" or "image/gif";
+
+static bool IsValidProfilePhotoPayload(byte[] bytes, string contentType)
+{
+    if (bytes.Length < 12) return false;
+    return contentType switch
+    {
+        "image/jpeg" => bytes.Length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF,
+        "image/png" => bytes.Length >= 8 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47 && bytes[4] == 0x0D && bytes[5] == 0x0A && bytes[6] == 0x1A && bytes[7] == 0x0A,
+        "image/webp" => Encoding.ASCII.GetString(bytes, 0, 4) == "RIFF" && Encoding.ASCII.GetString(bytes, 8, 4) == "WEBP",
+        "image/gif" => Encoding.ASCII.GetString(bytes, 0, 6) is "GIF87a" or "GIF89a",
+        "image/heic" or "image/heif" => IsIsoBmffImage(bytes, contentType),
+        _ => false
+    };
+}
+
+static bool IsIsoBmffImage(byte[] bytes, string contentType)
+{
+    if (bytes.Length < 12 || Encoding.ASCII.GetString(bytes, 4, 4) != "ftyp") return false;
+    var brand = Encoding.ASCII.GetString(bytes, 8, 4).ToLowerInvariant();
+    return contentType switch
+    {
+        "image/heic" => brand is "heic" or "heix" or "hevc" or "hevx" or "mif1" or "msf1",
+        "image/heif" => brand is "heif" or "heic" or "heix" or "mif1" or "msf1",
+        _ => false
+    };
+}
+
 static string NormalizeDigits(string? value)
 {
     var input = value ?? string.Empty;
@@ -713,6 +784,21 @@ static string NormalizeDigits(string? value)
 }
 
 static string NormalizeEmail(string? value) => (value ?? string.Empty).Trim().ToLowerInvariant();
+
+static (string? Value, string? Error) NormalizeOptionalContactPhone(string? input)
+{
+    var value = NormalizeDigits(input?.Trim());
+    if (string.IsNullOrWhiteSpace(value)) return (null, null);
+    if (value.Length > 25) return (null, "رقم الهاتف طويل جدًا.");
+    if (value.Any(ch => !char.IsDigit(ch) && ch is not ('+' or '-' or '(' or ')' or ' ') && !char.IsWhiteSpace(ch)))
+        return (null, "رقم الهاتف يحتوي على أحرف غير مسموحة.");
+    var digits = new string(value.Where(ch => ch is >= '0' and <= '9').ToArray());
+    if (digits.Length is < 7 or > 15) return (null, "أدخل رقم هاتف من 7 إلى 15 رقمًا، أو اتركه فارغًا لأنه اختياري.");
+    var firstNonSpace = value.FirstOrDefault(ch => !char.IsWhiteSpace(ch));
+    if (value.Count(ch => ch == '+') > 1 || (value.Contains('+') && firstNonSpace != '+'))
+        return (null, "ضع علامة + في بداية رقم الهاتف فقط.");
+    return (value, null);
+}
 
 static bool IsValidEmail(string? value)
 {
@@ -998,6 +1084,9 @@ CREATE TABLE IF NOT EXISTS Users (
 );
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS PasswordHash TEXT NULL;
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS EmailVerified BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS ProfilePhoto BYTEA NULL;
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS ProfilePhotoContentType TEXT NULL;
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS ContactPhoneNumber TEXT NULL;
 CREATE TABLE IF NOT EXISTS PushTokens (
     UserId TEXT NOT NULL,
     Token TEXT NOT NULL UNIQUE,
@@ -1022,6 +1111,7 @@ CREATE TABLE IF NOT EXISTS EmailVerificationCodes (
     FailedAttempts INTEGER NOT NULL DEFAULT 0,
     LastSentAt TEXT NULL
 );
+ALTER TABLE EmailVerificationCodes ADD COLUMN IF NOT EXISTS ContactPhoneNumber TEXT NULL;
 CREATE TABLE IF NOT EXISTS PasswordResetCodes (
     Email TEXT PRIMARY KEY NOT NULL,
     Code TEXT NOT NULL,
@@ -1118,14 +1208,58 @@ WHERE NOT EXISTS (SELECT 1 FROM ConversationParticipants cp WHERE cp.Conversatio
         lock (_sync)
         {
             using var connection = Open();
-        using var command = connection.CreateCommand();
-            command.CommandText = "SELECT PhoneNumber,Name,Status FROM Users WHERE Id=@id LIMIT 1;";
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT PhoneNumber,Name,Status,ContactPhoneNumber,(ProfilePhoto IS NOT NULL) FROM Users WHERE Id=@id LIMIT 1;";
             command.Parameters.AddWithValue("@id", userId.ToString());
             using var reader = command.ExecuteReader();
             if (!reader.Read()) throw new InvalidOperationException("المستخدم غير موجود.");
             if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2))
                 throw new InvalidOperationException("بيانات الملف الشخصي غير صالحة.");
-            return new { userId, email = reader.GetString(0), name = reader.GetString(1), status = reader.GetString(2) };
+            var contactPhoneNumber = reader.IsDBNull(3) ? null : reader.GetString(3);
+            var hasProfilePhoto = reader.GetBoolean(4);
+            return new { userId, email = reader.GetString(0), name = reader.GetString(1), status = reader.GetString(2), contactPhoneNumber, hasProfilePhoto };
+        }
+    }
+
+    public (byte[]? Data, string ContentType) GetProfilePhoto(Guid userId)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT ProfilePhoto,ProfilePhotoContentType FROM Users WHERE Id=@id LIMIT 1;";
+            command.Parameters.AddWithValue("@id", userId.ToString());
+            using var reader = command.ExecuteReader();
+            if (!reader.Read()) throw new InvalidOperationException("المستخدم غير موجود.");
+            var data = reader.IsDBNull(0) ? null : reader.GetFieldValue<byte[]>(0);
+            var contentType = reader.IsDBNull(1) ? "image/jpeg" : reader.GetString(1);
+            return (data, contentType);
+        }
+    }
+
+    public void UpdateProfilePhoto(Guid userId, byte[] data, string contentType)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE Users SET ProfilePhoto=@photo, ProfilePhotoContentType=@contentType WHERE Id=@id;";
+            command.Parameters.AddWithValue("@photo", data);
+            command.Parameters.AddWithValue("@contentType", contentType);
+            command.Parameters.AddWithValue("@id", userId.ToString());
+            if (command.ExecuteNonQuery() == 0) throw new InvalidOperationException("المستخدم غير موجود.");
+        }
+    }
+
+    public void DeleteProfilePhoto(Guid userId)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE Users SET ProfilePhoto=NULL, ProfilePhotoContentType=NULL WHERE Id=@id;";
+            command.Parameters.AddWithValue("@id", userId.ToString());
+            if (command.ExecuteNonQuery() == 0) throw new InvalidOperationException("المستخدم غير موجود.");
         }
     }
 
@@ -1281,7 +1415,7 @@ WHERE ConversationId IN (SELECT Id FROM Conversations WHERE OwnerUserId=@user);"
         }
     }
 
-    public bool TrySetEmailVerification(string email, string name, string passwordHash, string code, DateTimeOffset expiresAt, out int retryAfterSeconds)
+    public bool TrySetEmailVerification(string email, string name, string passwordHash, string? contactPhoneNumber, string code, DateTimeOffset expiresAt, out int retryAfterSeconds)
     {
         lock (_sync)
         {
@@ -1307,15 +1441,16 @@ WHERE ConversationId IN (SELECT Id FROM Conversations WHERE OwnerUserId=@user);"
             }
 
             using var command = connection.CreateCommand();
-            command.CommandText = @"INSERT INTO EmailVerificationCodes(Email,Code,Name,PasswordHash,ExpiresAt,FailedAttempts,LastSentAt)
-VALUES(@email,@code,@name,@passwordHash,@expires,0,@sent)
-ON CONFLICT(Email) DO UPDATE SET Code=@code,Name=@name,PasswordHash=@passwordHash,ExpiresAt=@expires,FailedAttempts=0,LastSentAt=@sent;";
+            command.CommandText = @"INSERT INTO EmailVerificationCodes(Email,Code,Name,PasswordHash,ExpiresAt,FailedAttempts,LastSentAt,ContactPhoneNumber)
+VALUES(@email,@code,@name,@passwordHash,@expires,0,@sent,@contactPhoneNumber)
+ON CONFLICT(Email) DO UPDATE SET Code=@code,Name=@name,PasswordHash=@passwordHash,ExpiresAt=@expires,FailedAttempts=0,LastSentAt=@sent,ContactPhoneNumber=@contactPhoneNumber;";
             command.Parameters.AddWithValue("@email", email);
             command.Parameters.AddWithValue("@code", HashOtp(code));
             command.Parameters.AddWithValue("@name", name);
             command.Parameters.AddWithValue("@passwordHash", passwordHash);
             command.Parameters.AddWithValue("@expires", expiresAt.ToString("O"));
             command.Parameters.AddWithValue("@sent", now.ToString("O"));
+            command.Parameters.AddWithValue("@contactPhoneNumber", (object?)contactPhoneNumber ?? DBNull.Value);
             command.ExecuteNonQuery();
             retryAfterSeconds = 0;
             return true;
@@ -1342,7 +1477,7 @@ ON CONFLICT(Email) DO UPDATE SET Code=@code,Name=@name,PasswordHash=@passwordHas
             using var transaction = connection.BeginTransaction();
             using var read = connection.CreateCommand();
             read.Transaction = transaction;
-            read.CommandText = "SELECT Name,PasswordHash,ExpiresAt,FailedAttempts,Code FROM EmailVerificationCodes WHERE Email=@email;";
+            read.CommandText = "SELECT Name,PasswordHash,ExpiresAt,FailedAttempts,Code,ContactPhoneNumber FROM EmailVerificationCodes WHERE Email=@email;";
             read.Parameters.AddWithValue("@email", email);
             using var reader = read.ExecuteReader();
             if (!reader.Read())
@@ -1357,6 +1492,7 @@ ON CONFLICT(Email) DO UPDATE SET Code=@code,Name=@name,PasswordHash=@passwordHas
             var expiresText = reader.GetString(2);
             var failedAttempts = reader.GetInt32(3);
             var storedHash = reader.GetString(4);
+            var contactPhoneNumber = reader.IsDBNull(5) ? null : reader.GetString(5);
             if (!DateTimeOffset.TryParse(expiresText, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var expiresAt) || expiresAt <= DateTimeOffset.UtcNow || failedAttempts >= 5)
             {
                 reader.Close();
@@ -1393,7 +1529,7 @@ ON CONFLICT(Email) DO UPDATE SET Code=@code,Name=@name,PasswordHash=@passwordHas
             delete.Parameters.AddWithValue("@email", email);
             delete.ExecuteNonQuery();
             transaction.Commit();
-            pending = new EmailVerificationPending(email, name, passwordHash, expiresAt, failedAttempts);
+            pending = new EmailVerificationPending(email, name, passwordHash, expiresAt, failedAttempts, contactPhoneNumber);
             return true;
         }
     }
@@ -1552,7 +1688,7 @@ ON CONFLICT(Email) DO UPDATE SET Code=@code,ExpiresAt=@expires,FailedAttempts=0,
         }
     }
 
-    public UserRecord CreateEmailUser(string email, string name, string passwordHash, bool emailVerified)
+    public UserRecord CreateEmailUser(string email, string name, string passwordHash, bool emailVerified, string? contactPhoneNumber)
     {
         lock (_sync)
         {
@@ -1568,13 +1704,14 @@ ON CONFLICT(Email) DO UPDATE SET Code=@code,ExpiresAt=@expires,FailedAttempts=0,
             var created = new UserRecord(Guid.NewGuid(), email, name);
             using var insert = connection.CreateCommand();
             insert.Transaction = transaction;
-            insert.CommandText = "INSERT INTO Users(Id,PhoneNumber,Name,CreatedAt,PasswordHash,EmailVerified) VALUES(@id,@email,@name,@created,@hash,@verified);";
+            insert.CommandText = "INSERT INTO Users(Id,PhoneNumber,Name,CreatedAt,PasswordHash,EmailVerified,ContactPhoneNumber) VALUES(@id,@email,@name,@created,@hash,@verified,@contactPhoneNumber);";
             insert.Parameters.AddWithValue("@id", created.Id.ToString());
             insert.Parameters.AddWithValue("@email", email);
             insert.Parameters.AddWithValue("@name", name);
             insert.Parameters.AddWithValue("@created", DateTimeOffset.UtcNow.ToString("O"));
             insert.Parameters.AddWithValue("@hash", passwordHash);
             insert.Parameters.AddWithValue("@verified", emailVerified);
+            insert.Parameters.AddWithValue("@contactPhoneNumber", (object?)contactPhoneNumber ?? DBNull.Value);
             insert.ExecuteNonQuery();
             transaction.Commit();
             return created;
@@ -2675,7 +2812,7 @@ static class PasswordRules
     }
 }
 
-record EmailRegisterRequest(string? Email, string? Password, string? Name);
+record EmailRegisterRequest(string? Email, string? Password, string? Name, string? ContactPhoneNumber = null);
 record EmailLoginRequest(string? Email, string? Password);
 record VerifyEmailRequest(string? Email, string? Code);
 record PasswordResetRequest(string? Email);
@@ -2684,13 +2821,14 @@ record PasswordResetResult(Guid UserId, string Email, string Name);
 enum PasswordResetFailure { None, InvalidCode, RateLimited }
 record PushTokenRequest(string? Token);
 record UpdateProfileRequest(string? Name, string? Status);
+record ProfilePhotoUploadRequest(string? Base64Data, string? ContentType);
 record CreateConversationRequest(string? Name, Guid? UserId);
 record CallSignalMessage(Guid ConversationId, Guid SenderUserId, string Type, string? Payload);
 record SendMessageRequest(string? Text, string? ClientMessageId, Guid? ReplyToMessageId);
 record ReportConversationRequest(string? Reason);
 record AuthResponse(string Token, Guid UserId, string Email, string Name);
 record UserRecord(Guid Id, string PhoneNumber, string Name);
-record EmailVerificationPending(string Email, string Name, string PasswordHash, DateTimeOffset ExpiresAt, int FailedAttempts);
+record EmailVerificationPending(string Email, string Name, string PasswordHash, DateTimeOffset ExpiresAt, int FailedAttempts, string? ContactPhoneNumber = null);
 record SessionRecord(Guid UserId, string PhoneNumber, string Name, DateTimeOffset ExpiresAt);
 sealed class ConversationDto
 {

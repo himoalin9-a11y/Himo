@@ -12,6 +12,7 @@ public partial class LoginPage : ContentPage
     private bool _busy;
     private string _pendingEmail = string.Empty;
     private string _pendingName = string.Empty;
+    private string _pendingPhoneNumber = string.Empty;
     private string _pendingPassword = string.Empty;
 
     public LoginPage(AccountService account, HimoApiClient api)
@@ -19,7 +20,7 @@ public partial class LoginPage : ContentPage
         InitializeComponent();
         _account = account;
         _api = api;
-        PasswordEyeButton.Source = "eye_open.png";
+        PasswordEyeButton.Source = "himo_login_eye_open.png";
         PasswordEyeButton.IsVisible = true;
         PasswordEyeButton.Opacity = 1;
         UpdateModeUi();
@@ -39,6 +40,7 @@ public partial class LoginPage : ContentPage
         var email = EmailEntry?.Text?.Trim() ?? string.Empty;
         var password = PasswordEntry?.Text ?? string.Empty;
         var name = NameEntry?.Text?.Trim() ?? string.Empty;
+        var phoneNumber = PhoneEntry?.Text?.Trim() ?? string.Empty;
 
         if (!IsValidEmail(email))
         {
@@ -55,6 +57,12 @@ public partial class LoginPage : ContentPage
             await DisplayAlertAsync("تنبيه", "الاسم مطلوب عند إنشاء الحساب.", "حسنًا");
             return;
         }
+        if (_registerMode && !IsValidOptionalPhone(phoneNumber))
+        {
+            await DisplayAlertAsync("رقم الهاتف", "أدخل رقم هاتف صحيحًا من 7 إلى 15 رقمًا، أو اترك الحقل فارغًا لأنه اختياري.", "حسنًا");
+            PhoneEntry?.Focus();
+            return;
+        }
 
         try
         {
@@ -64,9 +72,10 @@ public partial class LoginPage : ContentPage
             {
                 _pendingEmail = email.ToLowerInvariant();
                 _pendingName = name;
+                _pendingPhoneNumber = phoneNumber;
                 _pendingPassword = password;
                 StatusLabel.Text = "جارٍ إرسال رمز التحقق إلى بريدك الإلكتروني...";
-                await _api.RequestEmailVerificationAsync(_pendingEmail, _pendingPassword, _pendingName);
+                await _api.RequestEmailVerificationAsync(_pendingEmail, _pendingPassword, _pendingName, contactPhoneNumber: _pendingPhoneNumber);
                 _verificationPending = true;
                 UpdateModeUi();
                 VerificationCodeEntry.Focus();
@@ -128,7 +137,7 @@ public partial class LoginPage : ContentPage
         {
             SetBusy(true);
             StatusLabel.Text = "جارٍ إعادة إرسال رمز التحقق...";
-            await _api.RequestEmailVerificationAsync(_pendingEmail, _pendingPassword, _pendingName);
+            await _api.RequestEmailVerificationAsync(_pendingEmail, _pendingPassword, _pendingName, contactPhoneNumber: _pendingPhoneNumber);
             StatusLabel.Text = "تم إرسال رمز تحقق جديد إلى بريدك الإلكتروني.";
         }
         catch (Exception ex)
@@ -195,11 +204,72 @@ public partial class LoginPage : ContentPage
         if (PasswordEntry is null || PasswordEyeButton is null) return;
 
         PasswordEntry.IsPassword = !PasswordEntry.IsPassword;
-        PasswordEyeButton.Source = PasswordEntry.IsPassword ? "eye_open.png" : "eye_closed.png";
+        PasswordEyeButton.Source = PasswordEntry.IsPassword ? "himo_login_eye_open.png" : "himo_login_eye_closed.png";
         PasswordEyeButton.IsVisible = true;
         PasswordEyeButton.Opacity = 1;
         PasswordEntry.CursorPosition = PasswordEntry.Text?.Length ?? 0;
         PasswordEntry.Focus();
+    }
+
+    private void EmailCompleted(object sender, EventArgs e)
+    {
+        if (_registerMode && !_verificationPending)
+            NameEntry.Focus();
+        else
+            PasswordEntry.Focus();
+    }
+
+    private void NameCompleted(object sender, EventArgs e)
+    {
+        if (_registerMode && PhoneBorder?.IsVisible == true && !_verificationPending)
+            PhoneEntry?.Focus();
+        else
+            PasswordEntry.Focus();
+    }
+
+    private void PhoneCompleted(object sender, EventArgs e)
+    {
+        PasswordEntry.Focus();
+    }
+
+    private void PasswordCompleted(object sender, EventArgs e)
+    {
+        if (_busy) return;
+        PrimaryClicked(PrimaryButton, EventArgs.Empty);
+    }
+
+    private void VerificationCompleted(object sender, EventArgs e)
+    {
+        if (_busy || !_verificationPending) return;
+        PrimaryClicked(PrimaryButton, EventArgs.Empty);
+    }
+
+    private void InputFocused(object sender, FocusEventArgs e)
+    {
+        if (sender is not Entry entry) return;
+        var border = GetBorderForEntry(entry);
+        if (border is null) return;
+        border.Stroke = new SolidColorBrush(Color.FromArgb("#F08BFF"));
+        border.StrokeThickness = 2.2;
+    }
+
+    private void InputUnfocused(object sender, FocusEventArgs e)
+    {
+        if (sender is not Entry entry) return;
+        var border = GetBorderForEntry(entry);
+        if (border is null) return;
+        border.Stroke = new SolidColorBrush(Color.FromArgb("#284A72"));
+        border.StrokeThickness = 1.2;
+    }
+
+    private Border? GetBorderForEntry(Entry entry)
+    {
+        if (ReferenceEquals(entry, EmailEntry)) return EmailBorder;
+        if (ReferenceEquals(entry, NameEntry)) return NameBorder;
+        if (ReferenceEquals(entry, PhoneEntry)) return PhoneBorder;
+        if (ReferenceEquals(entry, VerificationCodeEntry)) return VerificationBorder;
+        if (ReferenceEquals(entry, PasswordEntry)) return PasswordBorder;
+        return null;
     }
 
     private void ModeClicked(object sender, EventArgs e)
@@ -209,7 +279,9 @@ public partial class LoginPage : ContentPage
         _verificationPending = false;
         _pendingEmail = string.Empty;
         _pendingName = string.Empty;
+        _pendingPhoneNumber = string.Empty;
         _pendingPassword = string.Empty;
+        if (PhoneEntry is not null) PhoneEntry.Text = string.Empty;
         VerificationCodeEntry.Text = string.Empty;
         UpdateModeUi();
         StatusLabel.Text = string.Empty;
@@ -217,11 +289,16 @@ public partial class LoginPage : ContentPage
 
     private void UpdateModeUi()
     {
-        if (PrimaryButton is null || ModeButton is null || NameBorder is null || NameLabel is null) return;
+        if (PrimaryButton is null || ModeButton is null || ModePromptLabel is null ||
+            NameBorder is null || NameLabel is null || PhoneBorder is null || PhoneLabel is null || ForgotPasswordButton is null) return;
         PrimaryButton.Text = _registerMode ? (_verificationPending ? "تأكيد البريد الإلكتروني" : "إرسال رمز التحقق") : "تسجيل الدخول";
-        ModeButton.Text = _registerMode ? "لدي حساب بالفعل" : "إنشاء حساب جديد";
+        ModePromptLabel.Text = _registerMode ? "لديك حساب بالفعل؟" : "ليس لديك حساب؟";
+        ModeButton.Text = _registerMode ? "تسجيل الدخول" : "إنشاء حساب جديد";
+        ForgotPasswordButton.IsVisible = !_registerMode;
         NameBorder.IsVisible = _registerMode;
         NameLabel.IsVisible = _registerMode;
+        PhoneBorder.IsVisible = _registerMode;
+        PhoneLabel.IsVisible = _registerMode;
         VerificationBorder.IsVisible = _registerMode && _verificationPending;
         VerificationLabel.IsVisible = _registerMode && _verificationPending;
         ResendButton.IsVisible = _registerMode && _verificationPending;
@@ -235,6 +312,20 @@ public partial class LoginPage : ContentPage
         return at > 0 && at < email.Length - 1 && email[(at + 1)..].Contains('.');
     }
 
+    private static bool IsValidOptionalPhone(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return true;
+        var normalized = value.Trim();
+        if (normalized.Length > 25) return false;
+        if (normalized.Any(ch => !char.IsDigit(ch) && ch is not ('+' or '-' or '(' or ')' or ' ') && !char.IsWhiteSpace(ch)))
+            return false;
+        if (normalized.Count(char.IsDigit) is < 7 or > 15) return false;
+        var firstNonSpace = normalized.FirstOrDefault(ch => !char.IsWhiteSpace(ch));
+        if (normalized.Count(ch => ch == '+') > 1 || (normalized.Contains('+') && firstNonSpace != '+'))
+            return false;
+        return true;
+    }
+
     private void SetBusy(bool value)
     {
         _busy = value;
@@ -244,6 +335,7 @@ public partial class LoginPage : ContentPage
         ResendButton.IsEnabled = !value;
         EmailEntry.IsEnabled = !value && !_verificationPending;
         NameEntry.IsEnabled = !value && !_verificationPending;
+        if (PhoneEntry is not null) PhoneEntry.IsEnabled = !value && !_verificationPending;
         PasswordEntry.IsEnabled = !value && !_verificationPending;
         VerificationCodeEntry.IsEnabled = !value;
         BusyIndicator.IsVisible = value;

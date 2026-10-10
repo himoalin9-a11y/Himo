@@ -120,7 +120,7 @@ public class MainActivity : MauiAppCompatActivity
                 var callIdQuery = string.IsNullOrWhiteSpace(callId)
                     ? string.Empty
                     : $"&callId={Uri.EscapeDataString(callId)}";
-                await shell.GoToAsync($"///CallPage?id={Uri.EscapeDataString(conversationId)}&mode={Uri.EscapeDataString(mode)}&incoming=true{callIdQuery}");
+                await shell.GoToAsync($"CallPage?id={Uri.EscapeDataString(conversationId)}&mode={Uri.EscapeDataString(mode)}&incoming=true{callIdQuery}");
                 ClearPendingCall();
             }
             catch
@@ -306,15 +306,19 @@ public class MainActivity : MauiAppCompatActivity
         manager.CreateNotificationChannel(channel);
 
         var calls = new global::Android.App.NotificationChannel(
-            "himo_calls_v2",
+            Platforms.Android.Services.NotificationService.CallsChannelId,
             "مكالمات Himo",
             global::Android.App.NotificationImportance.High)
         {
             Description = "المكالمات الصوتية والمرئية الواردة"
         };
+        var ringtoneAudioAttributes = new global::Android.Media.AudioAttributes.Builder()
+            .SetUsage(global::Android.Media.AudioUsageKind.NotificationRingtone)
+            .SetContentType(global::Android.Media.AudioContentType.Sonification)
+            .Build();
         calls.SetSound(
             global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone),
-            null);
+            ringtoneAudioAttributes);
         manager.CreateNotificationChannel(calls);
         FirebaseCloudMessagingImplementation.ChannelId = Platforms.Android.Services.NotificationService.MessageChannelId;
     }

@@ -110,6 +110,7 @@ public sealed class CallService : ICallService, IDisposable
     private CallLifecycleState _lifecycle = CallLifecycleState.Idle;
     private Guid _pendingIncomingCallId;
     private CancellationTokenSource? _callTimeoutCts;
+    private TaskCompletionSource<bool>? _outgoingWebRtcStartup;
     private static readonly TimeSpan OutgoingTimeout = TimeSpan.FromSeconds(45);
 
     public event EventHandler<CallState>? StateChanged;
@@ -145,52 +146,81 @@ public sealed class CallService : ICallService, IDisposable
         var callId = request.CallId == Guid.Empty ? Guid.NewGuid() : request.CallId;
         request = request with { CallId = callId };
         CancelCallTimeout();
+
+        var inviteAttempted = false;
+        CallState? outgoingState = null;
+
         await _remoteAudioGate.WaitAsync(cancellationToken);
+        var startupGate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Interlocked.Exchange(ref _outgoingWebRtcStartup, startupGate)?.TrySetResult(false);
         try
         {
-            await _media.StartAsync(request.Mode, cancellationToken);
-            Volatile.Write(ref _ending, 0);
-            _lifecycle = CallLifecycleState.Calling;
-            _current = new CallState(
-                request.ConversationId,
-                request.CallId,
-                request.Mode,
-                false,
-                false,
-                _media.IsSpeakerEnabled,
-                _webRtc.IsRemoteAudioEnabled);
-
             try
             {
-                await _webRtc.StartAsync(request.Mode, cancellationToken);
-                if (operationVersion != Volatile.Read(ref _operationVersion) || Volatile.Read(ref _ending) != 0)
+                await _media.StartAsync(request.Mode, cancellationToken);
+                if (operationVersion != Volatile.Read(ref _operationVersion))
                 {
                     await StopCallResourcesQuietlyAsync();
-                    Clear();
                     return;
                 }
+
+                Volatile.Write(ref _ending, 0);
+                _lifecycle = CallLifecycleState.Calling;
+                _current = outgoingState = new CallState(
+                    request.ConversationId,
+                    callId,
+                    request.Mode,
+                    false,
+                    false,
+                    _media.IsSpeakerEnabled,
+                    _webRtc.IsRemoteAudioEnabled);
+
+                // Publish the call state first: CallPage starts the earpiece ringback
+                // after Android has selected the communication audio route.
                 RaiseState();
+
+                // Send Invite before PeerConnectionFactory initialization. If the
+                // local WebRTC engine is slow, the recipient can still receive and
+                // ring for the call instead of seeing no incoming call at all.
+                inviteAttempted = true;
                 await _realtime.SendCallSignalAsync(
                     request.ConversationId,
                     CallSignalType.Invite.ToString(),
                     CallSignalEnvelope.Serialize(callId, request.Mode),
                     cancellationToken);
                 StartOutgoingTimeout(callId);
+
+                await _webRtc.StartAsync(request.Mode, cancellationToken);
+                if (operationVersion != Volatile.Read(ref _operationVersion) || Volatile.Read(ref _ending) != 0)
+                {
+                    startupGate.TrySetResult(false);
+                    await StopCallResourcesQuietlyAsync();
+                    Clear();
+                    return;
+                }
+
+                // A remote Accept can arrive while StartAsync is building PeerConnection.
+                // OnSignalReceived waits for this gate so the Accept is not dropped.
+                startupGate.TrySetResult(true);
+                RaiseState();
             }
             catch
             {
-                // Startup failure is not a call-end event. Keep the CallPage alive so
-                // it can show the real initialization error instead of immediately
-                // navigating back to ChatPage. The next call attempt can replace the
-                // stale state safely through StartAsync/PrepareIncomingAsync.
+                startupGate.TrySetResult(false);
+                CancelCallTimeout();
+                if (inviteAttempted && outgoingState is not null)
+                    await SendCallSignalBestEffortAsync(outgoingState, CallSignalType.End, CancellationToken.None);
+
                 await StopCallResourcesQuietlyAsync();
-                _current = null;
+                if (_current?.CallId == callId)
+                    _current = null;
                 _lifecycle = CallLifecycleState.Ended;
                 throw;
             }
         }
         finally
         {
+            startupGate.TrySetResult(false);
             _remoteAudioGate.Release();
         }
     }
@@ -199,16 +229,18 @@ public sealed class CallService : ICallService, IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
         Interlocked.Increment(ref _operationVersion);
+        Interlocked.Exchange(ref _outgoingWebRtcStartup, null)?.TrySetResult(false);
 
+        // Preserve an existing incoming call's authoritative ID when an FCM deep link
+        // omits callId but the matching SignalR Invite has already arrived. Do not
+        // manufacture a new GUID before comparing with the active incoming state.
         var incomingCallId = request.CallId != Guid.Empty ? request.CallId : _pendingIncomingCallId;
-        if (incomingCallId == Guid.Empty) incomingCallId = Guid.NewGuid();
-        request = request with { CallId = incomingCallId };
         CancelCallTimeout();
         var current = _current;
         if (current is not null)
         {
             if (current.ConversationId == request.ConversationId && current.Mode == request.Mode &&
-                (request.CallId == Guid.Empty || current.CallId == request.CallId))
+                (incomingCallId == Guid.Empty || current.CallId == incomingCallId))
                 return;
 
             if (current.IsConnected || _lifecycle == CallLifecycleState.Calling)
@@ -217,6 +249,8 @@ public sealed class CallService : ICallService, IDisposable
             await StopCallResourcesQuietlyAsync();
         }
 
+        if (incomingCallId == Guid.Empty) incomingCallId = Guid.NewGuid();
+        request = request with { CallId = incomingCallId };
         Volatile.Write(ref _ending, 0);
         _lifecycle = CallLifecycleState.Calling;
         _current = new CallState(
@@ -260,8 +294,11 @@ public sealed class CallService : ICallService, IDisposable
             }
             catch
             {
+                var failedState = _current;
                 await StopCallResourcesQuietlyAsync();
                 Clear();
+                if (failedState is not null)
+                    await SendCallSignalBestEffortAsync(failedState, CallSignalType.Reject, CancellationToken.None);
                 throw;
             }
         }
@@ -279,6 +316,7 @@ public sealed class CallService : ICallService, IDisposable
         if (state is null) return;
 
         _lifecycle = CallLifecycleState.Disconnecting;
+        _outgoingWebRtcStartup?.TrySetResult(false);
         CancelCallTimeout();
         // The local media path is closed FIRST. Signaling is only a best-effort
         // notification after teardown, so a broken hub can never block the UI.
@@ -295,6 +333,7 @@ public sealed class CallService : ICallService, IDisposable
         var state = _current;
 
         _lifecycle = CallLifecycleState.Disconnecting;
+        _outgoingWebRtcStartup?.TrySetResult(false);
         CancelCallTimeout();
         // Exact teardown order: stop local media -> stop WebRTC -> clear UI state ->
         // best-effort End signal. The signal is never allowed to hold navigation.
@@ -404,16 +443,59 @@ public sealed class CallService : ICallService, IDisposable
             if (CallSignalEnvelope.TryParse(signal.Payload, out var envelope) &&
                 envelope.CallId != Guid.Empty &&
                 envelope.CallId != _current.CallId)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[Himo CallService] Drop signal: callId mismatch; type={signal.Type}; " +
+                    $"activeCallId={_current.CallId:D}; receivedCallId={envelope.CallId:D}; " +
+                    $"conversation={signal.ConversationId:D}");
                 return;
+            }
             if (string.Equals(signal.Type, CallSignalType.Accept.ToString(), StringComparison.OrdinalIgnoreCase))
             {
+                // The Invite is sent before local WebRTC startup so the receiver can
+                // ring promptly. If their answer arrives during startup, hold it until
+                // the local PeerConnection is ready instead of silently dropping it.
+                var startupGate = _outgoingWebRtcStartup;
+                if (startupGate is not null && !_webRtc.IsStarted)
+                {
+                    bool started;
+                    try
+                    {
+                        started = await startupGate.Task.WaitAsync(TimeSpan.FromSeconds(25)).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Himo CallService] Waiting for WebRTC startup before Accept failed: {ex.Message}");
+                        return;
+                    }
+
+                    var liveCall = _current;
+                    if (!started || liveCall is null || liveCall.ConversationId != signal.ConversationId ||
+                        (CallSignalEnvelope.TryParse(signal.Payload, out var acceptedEnvelope) &&
+                         acceptedEnvelope.CallId != Guid.Empty && acceptedEnvelope.CallId != liveCall.CallId))
+                    {
+                        System.Diagnostics.Debug.WriteLine("[Himo CallService] Dropped Accept because the matching WebRTC call did not become ready.");
+                        return;
+                    }
+                }
                 // Accept is handled by WebRtcNegotiationCoordinator. Keeping SDP
                 // creation in one place prevents duplicate Offer messages.
             }
             else if (string.Equals(signal.Type, CallSignalType.End.ToString(), StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(signal.Type, CallSignalType.Reject.ToString(), StringComparison.OrdinalIgnoreCase)) await ClearAsync();
+                     string.Equals(signal.Type, CallSignalType.Reject.ToString(), StringComparison.OrdinalIgnoreCase))
+            {
+                Interlocked.Increment(ref _operationVersion);
+                _outgoingWebRtcStartup?.TrySetResult(false);
+                await ClearAsync();
+            }
         }
 
+        var activeCallId = _current?.CallId.ToString("D") ?? "none";
+        System.Diagnostics.Debug.WriteLine(
+            $"[Himo CallService] Dispatch signal; type={signal.Type}; " +
+            $"conversation={signal.ConversationId:D}; " +
+            $"activeCallId={activeCallId}; " +
+            $"payloadLength={signal.Payload?.Length ?? 0}");
         IncomingSignal?.Invoke(this, signal);
     }
 
@@ -437,6 +519,7 @@ public sealed class CallService : ICallService, IDisposable
     private void Clear()
     {
         CancelCallTimeout();
+        Interlocked.Exchange(ref _outgoingWebRtcStartup, null)?.TrySetResult(false);
         _pendingIncomingCallId = Guid.Empty;
         if (_current is null) return;
         _current = null;
@@ -491,6 +574,10 @@ public sealed class CallService : ICallService, IDisposable
             {
                 await Task.Delay(OutgoingTimeout, cts.Token).ConfigureAwait(false);
                 if (cts.IsCancellationRequested || _current?.CallId != callId || _current.IsConnected) return;
+                System.Diagnostics.Debug.WriteLine(
+                    $"[Himo CallService] Outgoing call timed out without WebRTC connection; " +
+                    $"callId={callId:D}; conversation={_current.ConversationId:D}; " +
+                    $"ice/peer connection was not established before timeout.");
                 await EndAsync(CancellationToken.None).ConfigureAwait(false);
             }
             catch (OperationCanceledException) { }

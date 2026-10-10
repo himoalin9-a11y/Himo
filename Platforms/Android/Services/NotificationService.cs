@@ -5,6 +5,8 @@ namespace Himo.Platforms.Android.Services;
 public sealed class NotificationService : INotificationService
 {
     public const string MessageChannelId = "himo_messages_v5";
+    // Versioned because Android does not allow changing sound/audio attributes on an existing channel.
+    public const string CallsChannelId = "himo_calls_v3";
     private const string ChannelName = "رسائل Himo";
     private const string ChannelDescription = "إشعارات الرسائل الجديدة في Himo";
     private const int NotificationIdBase = 12000;
@@ -158,15 +160,23 @@ public sealed class NotificationService : INotificationService
             manager.CreateNotificationChannel(channel);
 
             var calls = new global::Android.App.NotificationChannel(
-                "himo_calls_v2",
+                CallsChannelId,
                 "مكالمات Himo",
                 global::Android.App.NotificationImportance.High)
             {
                 Description = "المكالمات الصوتية والمرئية الواردة"
             };
+
+            // Treat this as a ringtone, not voice-call audio. Android normally routes
+            // notification ringtones through the device loudspeaker.
+            var ringtoneAudioAttributes = new global::Android.Media.AudioAttributes.Builder()
+                .SetUsage(global::Android.Media.AudioUsageKind.NotificationRingtone)
+                .SetContentType(global::Android.Media.AudioContentType.Sonification)
+                .Build();
+
             calls.SetSound(
                 global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone),
-                null);
+                ringtoneAudioAttributes);
             manager.CreateNotificationChannel(calls);
         }
         catch (Exception ex)

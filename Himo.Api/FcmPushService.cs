@@ -270,7 +270,7 @@ sealed class FcmPushService
                         CollapseKey = $"himo-call-{conversationId:D}",
                         Notification = new AndroidNotification
                         {
-                            ChannelId = "himo_calls_v2",
+                            ChannelId = "himo_calls_v3",
                             Priority = NotificationPriority.HIGH,
                             DefaultSound = true,
                             DefaultVibrateTimings = true,
