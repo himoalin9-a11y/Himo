@@ -43,6 +43,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<AppLockService>();
         builder.Services.AddSingleton<AccountService>();
         builder.Services.AddSingleton<ProfileService>();
+        builder.Services.AddSingleton<CallHistoryService>();
         builder.Services.AddSingleton<HimoApiClient>();
         builder.Services.AddSingleton<HimoRealtimeService>();
         builder.Services.AddSingleton<ICallService, CallService>();

@@ -3,10 +3,24 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Himo.Views.ProfilePage"
              FlowDirection="RightToLeft"
-             BackgroundColor="#09051B"
+             Background="{StaticResource HimoBackgroundGradient}"
              Title="الملف الشخصي"
              Shell.NavBarIsVisible="False">
     <Grid RowDefinitions="Auto,*">
+        <Border Grid.RowSpan="2" WidthRequest="340" HeightRequest="340"
+                HorizontalOptions="Start" VerticalOptions="Start"
+                TranslationX="-215" TranslationY="-210"
+                BackgroundColor="#7B1FE3" Opacity="0.11"
+                StrokeThickness="0" InputTransparent="True" ZIndex="-1">
+            <Border.StrokeShape><RoundRectangle CornerRadius="170" /></Border.StrokeShape>
+        </Border>
+        <Border Grid.RowSpan="2" WidthRequest="280" HeightRequest="280"
+                HorizontalOptions="End" VerticalOptions="End"
+                TranslationX="155" TranslationY="180"
+                BackgroundColor="#A323FF" Opacity="0.10"
+                StrokeThickness="0" InputTransparent="True" ZIndex="-1">
+            <Border.StrokeShape><RoundRectangle CornerRadius="140" /></Border.StrokeShape>
+        </Border>
         <Border Grid.Row="0"
                 BackgroundColor="#130A2B"
                 Stroke="#34205C"
@@ -66,6 +80,7 @@
                                     Stroke="#C084FC"
                                     StrokeThickness="3"
                                     Padding="2">
+                                <Border.Shadow><Shadow Brush="#9B25FF" Offset="0,0" Radius="20" Opacity="0.32" /></Border.Shadow>
                                 <Border.StrokeShape>
                                     <RoundRectangle CornerRadius="63" />
                                 </Border.StrokeShape>
@@ -210,6 +225,7 @@
                 <Border StrokeThickness="0"
                         Margin="0,5,0,0"
                         HeightRequest="54">
+                    <Border.Shadow><Shadow Brush="#9B25FF" Offset="0,0" Radius="18" Opacity="0.34" /></Border.Shadow>
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="18" />
                     </Border.StrokeShape>
@@ -237,5 +253,9 @@
                        Margin="0,0,0,4" />
             </VerticalStackLayout>
         </ScrollView>
+        <Grid.GestureRecognizers>
+            <SwipeGestureRecognizer Direction="Left" Swiped="PageSwiped" />
+            <SwipeGestureRecognizer Direction="Right" Swiped="PageSwiped" />
+        </Grid.GestureRecognizers>
     </Grid>
 </ContentPage>

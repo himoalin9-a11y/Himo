@@ -21,7 +21,20 @@ public partial class ProfilePage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        _ = SwipePageTransition.AnimateIncomingAsync(this);
         LoadProfile();
+    }
+
+    private async void PageSwiped(object? sender, SwipedEventArgs e)
+    {
+        if (e.Direction == SwipeDirection.Left)
+        {
+            await SwipePageTransition.NavigateAsync(this, "settings", SwipeDirection.Left);
+            return;
+        }
+
+        // Profile follows phone search; the right swipe returns to that home section.
+        await SwipePageTransition.NavigateToHomeSectionAsync(this, "phone", SwipeDirection.Right);
     }
 
     private void LoadProfile()
@@ -31,10 +44,10 @@ public partial class ProfilePage : ContentPage
         _loadingProfileFields = true;
         try
         {
-            NameEntry.Text = value.Name;
-            StatusEntry.Text = value.Status;
-            InitialLabel.Text = value.Initial;
-            ProfileNameLabel.Text = value.Name;
+            if (NameEntry is not null) NameEntry.Text = value.Name;
+            if (StatusEntry is not null) StatusEntry.Text = value.Status;
+            if (InitialLabel is not null) InitialLabel.Text = value.Initial;
+            if (ProfileNameLabel is not null) ProfileNameLabel.Text = value.Name;
             DisplayPhoto(value.PhotoPath);
         }
         finally
@@ -56,10 +69,10 @@ public partial class ProfilePage : ContentPage
             try
             {
                 _profile.Update(remote.Name, remote.Status);
-                NameEntry.Text = remote.Name;
-                StatusEntry.Text = remote.Status;
-                InitialLabel.Text = _profile.Profile.Initial;
-                ProfileNameLabel.Text = remote.Name;
+                if (NameEntry is not null) NameEntry.Text = remote.Name;
+                if (StatusEntry is not null) StatusEntry.Text = remote.Status;
+                if (InitialLabel is not null) InitialLabel.Text = _profile.Profile.Initial;
+                if (ProfileNameLabel is not null) ProfileNameLabel.Text = remote.Name;
             }
             finally
             {
@@ -93,7 +106,7 @@ public partial class ProfilePage : ContentPage
     {
         if (_loadingProfileFields || _busy) return;
         _profileChangedLocally = true;
-        if (ReferenceEquals(sender, NameEntry) && ProfileNameLabel is not null)
+        if (NameEntry is not null && ReferenceEquals(sender, NameEntry) && ProfileNameLabel is not null)
         {
             var editedName = NameEntry.Text?.Trim();
             ProfileNameLabel.Text = string.IsNullOrWhiteSpace(editedName)
@@ -109,11 +122,14 @@ public partial class ProfilePage : ContentPage
         try
         {
             SetBusy(true, "جارٍ تحديث الصورة...");
-            var pickedPhoto = await MediaPicker.Default.PickPhotoAsync(new MediaPickerOptions
+            var pickedPhotos = await MediaPicker.Default.PickPhotosAsync(new MediaPickerOptions
             {
-                Title = "اختر صورة الملف الشخصي"
+                Title = "اختر صورة الملف الشخصي",
+                SelectionLimit = 1
             });
-            if (pickedPhoto is null) return;
+            // Keep single-photo behavior on .NET 10 and handle cancellation safely.
+            if (pickedPhotos is null || pickedPhotos.Count == 0) return;
+            var pickedPhoto = pickedPhotos[0];
 
             var contentType = ResolvePhotoContentType(pickedPhoto);
             byte[] imageBytes;
@@ -210,24 +226,27 @@ public partial class ProfilePage : ContentPage
     private void DisplayPhoto(string? path)
     {
         var hasPhoto = !string.IsNullOrWhiteSpace(path) && File.Exists(path);
-        ProfilePhotoImage.IsVisible = hasPhoto;
-        InitialLabel.IsVisible = !hasPhoto;
-        ProfilePhotoImage.Source = hasPhoto ? ImageSource.FromFile(path!) : null;
-        RemovePhotoButton.IsVisible = hasPhoto;
-        ChangePhotoButton.Text = hasPhoto ? "تغيير الصورة" : "إضافة صورة";
+        if (ProfilePhotoImage is not null)
+        {
+            ProfilePhotoImage.IsVisible = hasPhoto;
+            ProfilePhotoImage.Source = hasPhoto ? ImageSource.FromFile(path!) : null;
+        }
+        if (InitialLabel is not null) InitialLabel.IsVisible = !hasPhoto;
+        if (RemovePhotoButton is not null) RemovePhotoButton.IsVisible = hasPhoto;
+        if (ChangePhotoButton is not null) ChangePhotoButton.Text = hasPhoto ? "تغيير الصورة" : "إضافة صورة";
     }
 
     private void SetBusy(bool busy, string? buttonText = null)
     {
         _busy = busy;
-        SaveButton.IsEnabled = !busy;
-        ChangePhotoButton.IsEnabled = !busy;
-        RemovePhotoButton.IsEnabled = !busy;
-        CameraPhotoButton.IsEnabled = !busy;
-        if (busy && !string.IsNullOrWhiteSpace(buttonText))
-            SaveButton.Text = buttonText;
-        else
-            SaveButton.Text = "حفظ التغييرات";
+        if (SaveButton is not null) SaveButton.IsEnabled = !busy;
+        if (ChangePhotoButton is not null) ChangePhotoButton.IsEnabled = !busy;
+        if (RemovePhotoButton is not null) RemovePhotoButton.IsEnabled = !busy;
+        if (CameraPhotoButton is not null) CameraPhotoButton.IsEnabled = !busy;
+        if (SaveButton is not null)
+            SaveButton.Text = busy && !string.IsNullOrWhiteSpace(buttonText)
+                ? buttonText
+                : "حفظ التغييرات";
     }
 
     private async void SaveClicked(object sender, EventArgs e)
@@ -237,8 +256,8 @@ public partial class ProfilePage : ContentPage
         try
         {
             SetBusy(true, "جارٍ الحفظ...");
-            var name = NameEntry.Text ?? string.Empty;
-            var status = StatusEntry.Text ?? string.Empty;
+            var name = NameEntry?.Text ?? string.Empty;
+            var status = StatusEntry?.Text ?? string.Empty;
             if (_api.HasToken)
             {
                 // Keep the local view unchanged unless the server accepted the edit.
@@ -252,8 +271,8 @@ public partial class ProfilePage : ContentPage
                 _profileChangedLocally = true;
             }
 
-            InitialLabel.Text = _profile.Profile.Initial;
-            ProfileNameLabel.Text = _profile.Profile.Name;
+            if (InitialLabel is not null) InitialLabel.Text = _profile.Profile.Initial;
+            if (ProfileNameLabel is not null) ProfileNameLabel.Text = _profile.Profile.Name;
             await DisplayAlertAsync("تم الحفظ", "تم تحديث الملف الشخصي.", "حسنًا");
         }
         catch (ArgumentException ex)
@@ -280,8 +299,6 @@ public partial class ProfilePage : ContentPage
 
     private async void BackClicked(object sender, EventArgs e)
     {
-        var shell = Shell.Current;
-        if (shell is null) return;
-        await shell.GoToAsync("..", false);
+        await SwipePageTransition.GoBackAsync(this, SwipeDirection.Right);
     }
 }

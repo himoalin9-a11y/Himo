@@ -384,6 +384,49 @@ webApp.MapGet("/api/users/search", (HttpRequest http, string? email, PostgresSto
     return Results.Ok(users);
 });
 
+webApp.MapPut("/api/me/contact-phone", (HttpRequest http, UpdateContactPhoneRequest request, PostgresStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+
+    var normalized = NormalizeContactPhoneForMatching(request.ContactPhoneNumber);
+    if (normalized.Error is not null)
+        return Results.BadRequest(new { message = normalized.Error });
+    if (request.PhoneDiscoverable && normalized.Value is null)
+        return Results.BadRequest(new { message = "أدخل رقم الهاتف قبل السماح للآخرين بالعثور على حسابك." });
+
+    var phoneDiscoverable = request.PhoneDiscoverable && normalized.Value is not null;
+    if (!store.TryUpdateContactPhone(session.UserId, normalized.Value, phoneDiscoverable, out var updateError))
+        return Results.Conflict(new { message = updateError ?? "تعذر تحديث رقم الهاتف." });
+
+    return Results.Ok(new
+    {
+        contactPhoneNumber = normalized.Value is null ? null : "+" + normalized.Value,
+        phoneDiscoverable
+    });
+});
+
+// Phone numbers are used for matching only and are not persisted by this endpoint.
+// The response contains the account id/name and only the phone number matched from the caller-supplied list, so the app can associate a result with its local contact. The address book is not stored.
+webApp.MapPost("/api/contacts/lookup", (HttpRequest http, ContactLookupRequest request, PostgresStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    var submitted = request.PhoneNumbers ?? Array.Empty<string>();
+    if (submitted.Length > 250)
+        return Results.BadRequest(new { message = "أرسل 250 رقمًا كحد أقصى في كل طلب." });
+
+    var normalizedNumbers = new HashSet<string>(StringComparer.Ordinal);
+    foreach (var phone in submitted)
+    {
+        var normalized = NormalizeContactPhoneForMatching(phone);
+        if (normalized.Value is not null)
+            normalizedNumbers.Add(normalized.Value);
+    }
+    if (normalizedNumbers.Count == 0)
+        return Results.Ok(Array.Empty<ContactMatchResponse>());
+
+    return Results.Ok(store.FindUsersByPhoneNumbers(normalizedNumbers, session.UserId));
+});
+
 webApp.MapPost("/api/push-token", (HttpRequest http, [Microsoft.AspNetCore.Mvc.FromBody] PushTokenRequest request, PostgresStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
@@ -818,6 +861,25 @@ static (string? Value, string? Error) NormalizeOptionalContactPhone(string? inpu
     return (value, null);
 }
 
+static (string? Value, string? Error) NormalizeContactPhoneForMatching(string? input)
+{
+    var validated = NormalizeOptionalContactPhone(input);
+    if (validated.Error is not null || validated.Value is null)
+        return validated;
+
+    var digits = new string(NormalizeDigits(validated.Value).Where(char.IsDigit).ToArray());
+    if (digits.StartsWith("00", StringComparison.Ordinal))
+        digits = digits[2..];
+    if (digits.Length == 10 && digits.StartsWith("05", StringComparison.Ordinal))
+        digits = "966" + digits[1..];
+    else if (digits.Length == 9 && digits.StartsWith("5", StringComparison.Ordinal))
+        digits = "966" + digits;
+
+    if (digits.Length is < 7 or > 15)
+        return (null, "أدخل رقم هاتف صحيحًا من 7 إلى 15 رقمًا.");
+    return (digits, null);
+}
+
 static bool IsValidEmail(string? value)
 {
     var email = NormalizeEmail(value);
@@ -1106,6 +1168,9 @@ ALTER TABLE Users ADD COLUMN IF NOT EXISTS ProfilePhoto BYTEA NULL;
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS ProfilePhotoContentType TEXT NULL;
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS ProfilePhotoVersion BIGINT NOT NULL DEFAULT 0;
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS ContactPhoneNumber TEXT NULL;
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS PhoneDiscoverable BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS IX_Users_ContactPhoneNumber ON Users(ContactPhoneNumber);
+CREATE INDEX IF NOT EXISTS IX_Users_PhoneDiscoverable ON Users(PhoneDiscoverable) WHERE ContactPhoneNumber IS NOT NULL;
 CREATE TABLE IF NOT EXISTS PushTokens (
     UserId TEXT NOT NULL,
     Token TEXT NOT NULL UNIQUE,
@@ -1228,16 +1293,100 @@ WHERE NOT EXISTS (SELECT 1 FROM ConversationParticipants cp WHERE cp.Conversatio
         {
             using var connection = Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT PhoneNumber,Name,Status,ContactPhoneNumber,(ProfilePhoto IS NOT NULL) FROM Users WHERE Id=@id LIMIT 1;";
+            command.CommandText = "SELECT PhoneNumber,Name,Status,ContactPhoneNumber,COALESCE(PhoneDiscoverable,FALSE),(ProfilePhoto IS NOT NULL) FROM Users WHERE Id=@id LIMIT 1;";
             command.Parameters.AddWithValue("@id", userId.ToString());
             using var reader = command.ExecuteReader();
             if (!reader.Read()) throw new InvalidOperationException("المستخدم غير موجود.");
             if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2))
                 throw new InvalidOperationException("بيانات الملف الشخصي غير صالحة.");
             var contactPhoneNumber = reader.IsDBNull(3) ? null : reader.GetString(3);
-            var hasProfilePhoto = reader.GetBoolean(4);
-            return new { userId, email = reader.GetString(0), name = reader.GetString(1), status = reader.GetString(2), contactPhoneNumber, hasProfilePhoto };
+            var phoneDiscoverable = !reader.IsDBNull(4) && reader.GetBoolean(4);
+            var hasProfilePhoto = !reader.IsDBNull(5) && reader.GetBoolean(5);
+            return new { userId, email = reader.GetString(0), name = reader.GetString(1), status = reader.GetString(2), contactPhoneNumber, phoneDiscoverable, hasProfilePhoto };
         }
+    }
+
+    public bool TryUpdateContactPhone(Guid userId, string? canonicalPhoneDigits, bool phoneDiscoverable, out string? error)
+    {
+        error = null;
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var transaction = connection.BeginTransaction();
+
+            if (!string.IsNullOrWhiteSpace(canonicalPhoneDigits))
+            {
+                using var check = connection.CreateCommand();
+                check.Transaction = transaction;
+                check.CommandText = "SELECT Id,ContactPhoneNumber FROM Users WHERE ContactPhoneNumber IS NOT NULL AND Id<>@id;";
+                check.Parameters.AddWithValue("@id", userId.ToString());
+                using var reader = check.ExecuteReader();
+                while (reader.Read())
+                {
+                    if (reader.IsDBNull(0) || reader.IsDBNull(1)) continue;
+                    if (NormalizeContactPhoneDigitsForStore(reader.GetString(1)) == canonicalPhoneDigits)
+                    {
+                        reader.Close();
+                        transaction.Rollback();
+                        error = "رقم الهاتف مرتبط بالفعل بحساب آخر في Himo.";
+                        return false;
+                    }
+                }
+            }
+
+            using var update = connection.CreateCommand();
+            update.Transaction = transaction;
+            update.CommandText = "UPDATE Users SET ContactPhoneNumber=@phone, PhoneDiscoverable=@discoverable WHERE Id=@id;";
+            update.Parameters.AddWithValue("@phone", string.IsNullOrWhiteSpace(canonicalPhoneDigits) ? (object)DBNull.Value : "+" + canonicalPhoneDigits);
+            update.Parameters.AddWithValue("@discoverable", phoneDiscoverable && !string.IsNullOrWhiteSpace(canonicalPhoneDigits));
+            update.Parameters.AddWithValue("@id", userId.ToString());
+            if (update.ExecuteNonQuery() == 0)
+            {
+                transaction.Rollback();
+                error = "المستخدم غير موجود.";
+                return false;
+            }
+            transaction.Commit();
+            return true;
+        }
+    }
+
+    public IReadOnlyList<ContactMatchResponse> FindUsersByPhoneNumbers(IReadOnlySet<string> normalizedPhoneNumbers, Guid currentUserId)
+    {
+        if (normalizedPhoneNumbers.Count == 0) return Array.Empty<ContactMatchResponse>();
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT Id,Name,ContactPhoneNumber FROM Users WHERE Id<>@current AND COALESCE(PhoneDiscoverable,FALSE)=TRUE AND ContactPhoneNumber IS NOT NULL ORDER BY Name;";
+            command.Parameters.AddWithValue("@current", currentUserId.ToString());
+            using var reader = command.ExecuteReader();
+            var found = new Dictionary<Guid, ContactMatchResponse>();
+            while (reader.Read())
+            {
+                if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2)) continue;
+                if (!Guid.TryParse(reader.GetString(0), out var id)) continue;
+                var phoneDigits = NormalizeContactPhoneDigitsForStore(reader.GetString(2));
+                if (normalizedPhoneNumbers.Contains(phoneDigits))
+                    found[id] = new ContactMatchResponse(id, reader.GetString(1), "+" + phoneDigits);
+            }
+            return found.Values.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase).Take(200).ToList();
+        }
+    }
+
+    private static string NormalizeContactPhoneDigitsForStore(string? value)
+    {
+        var digits = new string((value ?? string.Empty).Select(ch => ch switch
+        {
+            >= '0' and <= '9' => ch,
+            >= '٠' and <= '٩' => (char)('0' + ch - '٠'),
+            >= '۰' and <= '۹' => (char)('0' + ch - '۰'),
+            _ => '\0'
+        }).Where(ch => ch != '\0').ToArray());
+        if (digits.StartsWith("00", StringComparison.Ordinal)) digits = digits[2..];
+        if (digits.Length == 10 && digits.StartsWith("05", StringComparison.Ordinal)) digits = "966" + digits[1..];
+        else if (digits.Length == 9 && digits.StartsWith("5", StringComparison.Ordinal)) digits = "966" + digits;
+        return digits;
     }
 
     public (byte[]? Data, string ContentType) GetProfilePhoto(Guid userId)
@@ -2866,6 +3015,9 @@ record PasswordResetResult(Guid UserId, string Email, string Name);
 enum PasswordResetFailure { None, InvalidCode, RateLimited }
 record PushTokenRequest(string? Token);
 record UpdateProfileRequest(string? Name, string? Status);
+record UpdateContactPhoneRequest(string? ContactPhoneNumber, bool PhoneDiscoverable);
+record ContactLookupRequest(string[]? PhoneNumbers);
+record ContactMatchResponse(Guid Id, string Name, string MatchedPhoneNumber);
 record ProfilePhotoUploadRequest(string? Base64Data, string? ContentType);
 record CreateConversationRequest(string? Name, Guid? UserId);
 record CallSignalMessage(Guid ConversationId, Guid SenderUserId, string Type, string? Payload);

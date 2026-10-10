@@ -4,36 +4,50 @@
              x:Class="Himo.App">
     <Application.Resources>
         <ResourceDictionary>
-            <Color x:Key="HimoBackground">#F6F4FA</Color>
-            <Color x:Key="HimoPrimary">#5A2BC2</Color>
-            <Color x:Key="HimoMuted">#7A7187</Color>
-            <Color x:Key="HimoCard">#FFFFFF</Color>
-            <Color x:Key="HimoBorder">#E2DDEA</Color>
-            <Color x:Key="HimoInput">#FCFAFF</Color>
-            <Color x:Key="HimoAccent">#6A32D0</Color>
-            <Color x:Key="HimoAccentDark">#5425B8</Color>
-            <Color x:Key="HimoBubbleMine">#6A32D0</Color>
-            <Color x:Key="HimoBubbleOther">#FFFFFF</Color>
-            <Color x:Key="HimoAvatar">#EAE0F7</Color>
-            <Color x:Key="HimoSoft">#F1ECFB</Color>
-            <Color x:Key="HimoSuccess">#16A34A</Color>
-            <Color x:Key="HimoDanger">#DC2626</Color>
-            <Color x:Key="HimoWarning">#D97706</Color>
-            <Color x:Key="HimoHeader">#632CCB</Color>
+            <!-- Himo Neon Violet design system -->
+            <Color x:Key="HimoBackground">#090511</Color>
+            <Color x:Key="HimoPrimary">#FBF6FF</Color>
+            <Color x:Key="HimoMuted">#BBA6D6</Color>
+            <Color x:Key="HimoCard">#170B28</Color>
+            <Color x:Key="HimoBorder">#512579</Color>
+            <Color x:Key="HimoInput">#190B30</Color>
+            <Color x:Key="HimoAccent">#A12AFF</Color>
+            <Color x:Key="HimoAccentDark">#6517C8</Color>
+            <Color x:Key="HimoBubbleMine">#9228ED</Color>
+            <Color x:Key="HimoBubbleOther">#251337</Color>
+            <Color x:Key="HimoAvatar">#2B1646</Color>
+            <Color x:Key="HimoSoft">#25113D</Color>
+            <Color x:Key="HimoSuccess">#31E7A1</Color>
+            <Color x:Key="HimoDanger">#FF4678</Color>
+            <Color x:Key="HimoWarning">#FFC56C</Color>
+            <Color x:Key="HimoHeader">#12061F</Color>
             <Color x:Key="HimoOnAccent">#FFFFFF</Color>
-            <Color x:Key="HimoSurfaceElevated">#FFFFFF</Color>
-            <Color x:Key="HimoDivider">#ECE7F4</Color>
-            <Color x:Key="HimoFocus">#B99AEF</Color>
-
-
-            <!-- Stage 6 unified visual system -->
-            <Color x:Key="HimoSurface">#FFFFFF</Color>
-            <Color x:Key="HimoHeaderSoft">#632CCB</Color>
-            <Color x:Key="HimoHeaderTextMuted">#E3D8F8</Color>
-            <Color x:Key="HimoTextSecondary">#766D82</Color>
-            <Color x:Key="HimoAvatarSoft">#EEE7FA</Color>
-            <Color x:Key="HimoNavMuted">#8D8498</Color>
-            <Color x:Key="HimoDangerSoft">#FDECEC</Color>
+            <Color x:Key="HimoSurfaceElevated">#1F0F33</Color>
+            <Color x:Key="HimoDivider">#3A2053</Color>
+            <Color x:Key="HimoFocus">#EF73FF</Color>
+            <Color x:Key="HimoSurface">#160A27</Color>
+            <Color x:Key="HimoHeaderSoft">#250B3D</Color>
+            <Color x:Key="HimoHeaderTextMuted">#D9B7FF</Color>
+            <Color x:Key="HimoTextSecondary">#B7A2D2</Color>
+            <Color x:Key="HimoAvatarSoft">#2A1643</Color>
+            <Color x:Key="HimoNavMuted">#A48AC6</Color>
+            <Color x:Key="HimoDangerSoft">#41162F</Color>
+            <Color x:Key="HimoGlow">#B92EFF</Color>
+            <Color x:Key="HimoGlowSoft">#6627FF</Color>
+            <Color x:Key="HimoPanel">#170A28</Color>
+            <Color x:Key="HimoPanelRaised">#24113A</Color>
+            <Color x:Key="HimoNeonBorder">#7427B6</Color>
+            <LinearGradientBrush x:Key="HimoAccentGradient" StartPoint="0,0" EndPoint="1,0">
+                <GradientStop Color="#F58BFF" Offset="0.0" />
+                <GradientStop Color="#A12AFF" Offset="0.42" />
+                <GradientStop Color="#7218FF" Offset="0.76" />
+                <GradientStop Color="#D34DFF" Offset="1.0" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="HimoBackgroundGradient" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#12061F" Offset="0.0" />
+                <GradientStop Color="#090511" Offset="0.55" />
+                <GradientStop Color="#160725" Offset="1.0" />
+            </LinearGradientBrush>
 
             <Style x:Key="HimoPageTitle" TargetType="Label">
                 <Setter Property="FontSize" Value="23" />
@@ -71,6 +85,40 @@
                 </Setter>
             </Style>
 
+            <Style TargetType="Label">
+                <Setter Property="TextColor" Value="{DynamicResource HimoPrimary}" />
+            </Style>
+            <Style TargetType="Editor">
+                <Setter Property="TextColor" Value="{DynamicResource HimoPrimary}" />
+                <Setter Property="PlaceholderColor" Value="{DynamicResource HimoMuted}" />
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="FontSize" Value="16" />
+            </Style>
+            <Style TargetType="Picker">
+                <Setter Property="TextColor" Value="{DynamicResource HimoPrimary}" />
+                <Setter Property="TitleColor" Value="{DynamicResource HimoMuted}" />
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="FontSize" Value="16" />
+            </Style>
+            <Style TargetType="DatePicker">
+                <Setter Property="TextColor" Value="{DynamicResource HimoPrimary}" />
+                <Setter Property="BackgroundColor" Value="Transparent" />
+            </Style>
+            <Style TargetType="TimePicker">
+                <Setter Property="TextColor" Value="{DynamicResource HimoPrimary}" />
+                <Setter Property="BackgroundColor" Value="Transparent" />
+            </Style>
+            <Style TargetType="Switch">
+                <Setter Property="OnColor" Value="{DynamicResource HimoAccent}" />
+                <Setter Property="ThumbColor" Value="#F7EDFF" />
+            </Style>
+            <Style TargetType="CheckBox">
+                <Setter Property="Color" Value="{DynamicResource HimoAccent}" />
+            </Style>
+            <Style TargetType="ActivityIndicator">
+                <Setter Property="Color" Value="{DynamicResource HimoAccent}" />
+            </Style>
+
             <Style TargetType="Entry">
                 <Setter Property="TextColor" Value="{DynamicResource HimoPrimary}" />
                 <Setter Property="PlaceholderColor" Value="{DynamicResource HimoMuted}" />
@@ -96,6 +144,11 @@
                 <Setter Property="FontAttributes" Value="Bold" />
                 <Setter Property="CornerRadius" Value="16" />
                 <Setter Property="HeightRequest" Value="52" />
+                <Setter Property="BorderColor" Value="{DynamicResource HimoFocus}" />
+                <Setter Property="BorderWidth" Value="1" />
+                <Setter Property="Shadow">
+                    <Setter.Value><Shadow Brush="#9B25FF" Offset="0,0" Radius="12" Opacity="0.22" /></Setter.Value>
+                </Setter>
             </Style>
             <Style x:Key="HimoOutlineButton" TargetType="Button">
                 <Setter Property="BackgroundColor" Value="Transparent" />
@@ -143,6 +196,9 @@
                 <Setter Property="StrokeThickness" Value="1" />
                 <Setter Property="Padding" Value="14,12" />
                 <Setter Property="Margin" Value="0,4" />
+                <Setter Property="Shadow">
+                    <Setter.Value><Shadow Brush="#8C22E8" Offset="0,2" Radius="10" Opacity="0.10" /></Setter.Value>
+                </Setter>
                 <Setter Property="VisualStateManager.VisualStateGroups">
                     <VisualStateGroupList>
                         <VisualStateGroup Name="CommonStates">
@@ -202,6 +258,11 @@
                 <Setter Property="CornerRadius" Value="16" />
                 <Setter Property="MinimumHeightRequest" Value="46" />
                 <Setter Property="Padding" Value="16,0" />
+                <Setter Property="BorderColor" Value="{DynamicResource HimoFocus}" />
+                <Setter Property="BorderWidth" Value="1" />
+                <Setter Property="Shadow">
+                    <Setter.Value><Shadow Brush="#9B25FF" Offset="0,0" Radius="10" Opacity="0.20" /></Setter.Value>
+                </Setter>
                 <Setter Property="VisualStateManager.VisualStateGroups">
                     <VisualStateGroupList>
                         <VisualStateGroup Name="CommonStates">

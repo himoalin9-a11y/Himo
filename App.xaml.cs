@@ -18,7 +18,7 @@ public partial class App : Application
     public App(AccountService account, HimoApiClient api, ChatService chat, INotificationService notifications, AppLockService appLock, PushNotificationManager pushNotifications)
     {
         InitializeComponent();
-        UserAppTheme = Preferences.Default.Get(ThemeKey, false) ? AppTheme.Dark : AppTheme.Light;
+        UserAppTheme = Preferences.Default.Get(ThemeKey, true) ? AppTheme.Dark : AppTheme.Light;
         _account = account;
         _api = api;
         _chat = chat;
@@ -121,7 +121,7 @@ public partial class App : Application
         }
     }
 
-    public bool IsDarkModeEnabled => Preferences.Default.Get(ThemeKey, false);
+    public bool IsDarkModeEnabled => Preferences.Default.Get(ThemeKey, true);
 
     public void SetDarkMode(bool enabled)
     {
@@ -132,30 +132,41 @@ public partial class App : Application
 
     private void ApplyThemeResources()
     {
-        var resources = Resources;
+        // Keep both appearance preferences inside Himo's dark neon-violet identity.
+        // The switch adjusts depth/contrast without reverting individual screens to blue/white.
         var dark = IsDarkModeEnabled;
-        resources["HimoBackground"] = Color.FromArgb(dark ? "#081526" : "#F5F8FC");
-        resources["HimoPrimary"] = Color.FromArgb(dark ? "#F5F9FF" : "#102A43");
-        resources["HimoMuted"] = Color.FromArgb(dark ? "#AFC3DA" : "#6B7C93");
-        resources["HimoCard"] = Color.FromArgb(dark ? "#102238" : "#FFFFFF");
-        resources["HimoAccent"] = Color.FromArgb(dark ? "#3F9BFF" : "#1478F2");
-        resources["HimoBorder"] = Color.FromArgb(dark ? "#24425F" : "#DCE6F0");
-        resources["HimoBubbleMine"] = Color.FromArgb(dark ? "#1478F2" : "#1478F2");
-        resources["HimoBubbleOther"] = Color.FromArgb(dark ? "#182027" : "#FFFFFF");
-        resources["HimoAvatar"] = Color.FromArgb(dark ? "#173A5E" : "#DCEEFF");
-        resources["HimoSoft"] = Color.FromArgb(dark ? "#14385C" : "#EAF4FF");
-        resources["HimoSuccess"] = Color.FromArgb(dark ? "#62D7A4" : "#1F9D68");
-        resources["HimoDanger"] = Color.FromArgb(dark ? "#FF8A80" : "#C62828");
-        resources["HimoHeader"] = Color.FromArgb(dark ? "#214F8D" : "#632CCB");
-        resources["HimoHeaderSoft"] = Color.FromArgb(dark ? "#285D9F" : "#6F3BD2");
-        resources["HimoHeaderTextMuted"] = Color.FromArgb(dark ? "#C9DBEF" : "#E8DDF8");
-        resources["HimoTextSecondary"] = Color.FromArgb(dark ? "#B2C4D8" : "#766D82");
-        resources["HimoAvatarSoft"] = Color.FromArgb(dark ? "#1A3D61" : "#EEE7FA");
-        resources["HimoNavMuted"] = Color.FromArgb(dark ? "#8EA8C2" : "#8D8498");
-        resources["HimoDangerSoft"] = Color.FromArgb(dark ? "#48222A" : "#FDECEC");
-        resources["HimoSurfaceElevated"] = Color.FromArgb(dark ? "#142B42" : "#FFFFFF");
-        resources["HimoDivider"] = Color.FromArgb(dark ? "#24425F" : "#ECE7F4");
-        resources["HimoFocus"] = Color.FromArgb(dark ? "#6DA8E8" : "#B99AEF");
+        var resources = Resources;
+        resources["HimoBackground"] = Color.FromArgb(dark ? "#07030E" : "#10071A");
+        resources["HimoPrimary"] = Color.FromArgb("#FBF6FF");
+        resources["HimoMuted"] = Color.FromArgb(dark ? "#B8A1D4" : "#C3B0DB");
+        resources["HimoCard"] = Color.FromArgb(dark ? "#140820" : "#1B0D2D");
+        resources["HimoInput"] = Color.FromArgb(dark ? "#17092A" : "#201033");
+        resources["HimoAccent"] = Color.FromArgb("#A12AFF");
+        resources["HimoAccentDark"] = Color.FromArgb("#6517C8");
+        resources["HimoBorder"] = Color.FromArgb(dark ? "#4A216F" : "#5B2B80");
+        resources["HimoBubbleMine"] = Color.FromArgb("#9228ED");
+        resources["HimoBubbleOther"] = Color.FromArgb(dark ? "#21102F" : "#2B1740");
+        resources["HimoAvatar"] = Color.FromArgb("#2B1646");
+        resources["HimoSoft"] = Color.FromArgb(dark ? "#211039" : "#291543");
+        resources["HimoSuccess"] = Color.FromArgb("#31E7A1");
+        resources["HimoDanger"] = Color.FromArgb("#FF4678");
+        resources["HimoWarning"] = Color.FromArgb("#FFC56C");
+        resources["HimoHeader"] = Color.FromArgb("#12061F");
+        resources["HimoHeaderSoft"] = Color.FromArgb("#250B3D");
+        resources["HimoHeaderTextMuted"] = Color.FromArgb("#D9B7FF");
+        resources["HimoTextSecondary"] = Color.FromArgb("#B7A2D2");
+        resources["HimoAvatarSoft"] = Color.FromArgb("#2A1643");
+        resources["HimoNavMuted"] = Color.FromArgb("#A48AC6");
+        resources["HimoDangerSoft"] = Color.FromArgb("#41162F");
+        resources["HimoSurfaceElevated"] = Color.FromArgb(dark ? "#1B0C2D" : "#24113A");
+        resources["HimoSurface"] = Color.FromArgb(dark ? "#140820" : "#1B0D2D");
+        resources["HimoDivider"] = Color.FromArgb("#3A2053");
+        resources["HimoFocus"] = Color.FromArgb("#EF73FF");
+        resources["HimoGlow"] = Color.FromArgb("#B92EFF");
+        resources["HimoGlowSoft"] = Color.FromArgb("#6627FF");
+        resources["HimoPanel"] = Color.FromArgb(dark ? "#170A28" : "#1C0C2E");
+        resources["HimoPanelRaised"] = Color.FromArgb("#24113A");
+        resources["HimoNeonBorder"] = Color.FromArgb("#7427B6");
     }
 
 #if ANDROID

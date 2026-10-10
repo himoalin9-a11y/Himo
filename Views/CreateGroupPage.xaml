@@ -4,9 +4,14 @@
              xmlns:models="clr-namespace:Himo.Models"
              x:Class="Himo.Views.CreateGroupPage"
              FlowDirection="RightToLeft"
-             BackgroundColor="{DynamicResource HimoBackground}"
+             Background="{StaticResource HimoBackgroundGradient}"
              Shell.NavBarIsVisible="False">
     <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="16,10,16,18">
+        <Border Grid.RowSpan="4" WidthRequest="290" HeightRequest="290" HorizontalOptions="End" VerticalOptions="Start"
+                TranslationX="160" TranslationY="-170" BackgroundColor="#8624F1" Opacity="0.09"
+                StrokeThickness="0" InputTransparent="True" ZIndex="-1">
+            <Border.StrokeShape><RoundRectangle CornerRadius="145" /></Border.StrokeShape>
+        </Border>
         <Grid ColumnDefinitions="48,*,48">
             <Button Grid.Column="0" Text="‹" Style="{StaticResource HimoBackButton}" Clicked="BackClicked" />
             <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="1">

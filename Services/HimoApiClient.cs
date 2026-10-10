@@ -495,6 +495,46 @@ public sealed class HimoApiClient
                 "استجابة الملف الشخصي غير صالحة.");
     }
 
+    public async Task<ContactPhoneSettingsResponse> UpdateMyContactPhoneAsync(
+        string? contactPhoneNumber,
+        bool phoneDiscoverable,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PutAsJsonAsync(
+            "api/me/contact-phone",
+            new { contactPhoneNumber, phoneDiscoverable },
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<ContactPhoneSettingsResponse>(
+                   cancellationToken: cancellationToken)
+               ?? throw new InvalidOperationException("استجابة إعداد الهاتف غير صالحة.");
+    }
+
+    public async Task<IReadOnlyList<ContactMatchDto>> FindUsersByPhoneNumbersAsync(
+        IEnumerable<string> phoneNumbers,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(phoneNumbers);
+        var numbers = phoneNumbers
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .Take(250)
+            .ToArray();
+        if (numbers.Length == 0)
+            return Array.Empty<ContactMatchDto>();
+
+        using var response = await _http.PostAsJsonAsync(
+            "api/contacts/lookup",
+            new { phoneNumbers = numbers },
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<List<ContactMatchDto>>(
+                   cancellationToken: cancellationToken)
+               ?? new List<ContactMatchDto>();
+    }
+
     public async Task UploadMyProfilePhotoAsync(
         byte[] imageBytes,
         string contentType,
@@ -1353,7 +1393,13 @@ public sealed class HimoApiClient
         string Email,
         string Name,
         string Status,
-        bool? HasProfilePhoto = null);
+        bool? HasProfilePhoto = null,
+        string? ContactPhoneNumber = null,
+        bool PhoneDiscoverable = false);
+
+    public sealed record ContactPhoneSettingsResponse(
+        string? ContactPhoneNumber,
+        bool PhoneDiscoverable);
 
     public sealed record ProfilePhotoDownload(
         byte[] Bytes,

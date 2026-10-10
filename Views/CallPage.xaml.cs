@@ -15,6 +15,9 @@ public partial class CallPage : ContentPage
     private readonly ICallService _calls;
     private readonly HimoRealtimeService _realtime;
     private readonly WebRtcNegotiationCoordinator _negotiation;
+    private readonly ChatService _chat;
+    private readonly CallHistoryService _callHistory;
+    private Guid _historyEntryId;
     private Guid _conversationId;
     private CallMode _mode = CallMode.Audio;
     private DateTimeOffset? _connectedAt;
@@ -79,12 +82,14 @@ public partial class CallPage : ContentPage
         return string.IsNullOrEmpty(trimmed) ? "H" : trimmed.Substring(0, 1);
     }
 
-    public CallPage(ICallService calls, HimoRealtimeService realtime, WebRtcNegotiationCoordinator negotiation)
+    public CallPage(ICallService calls, HimoRealtimeService realtime, WebRtcNegotiationCoordinator negotiation, ChatService chat, CallHistoryService callHistory)
     {
         InitializeComponent();
         _calls = calls;
         _realtime = realtime;
         _negotiation = negotiation;
+        _chat = chat;
+        _callHistory = callHistory;
         _calls.StateChanged += CallsStateChanged;
         _calls.CallEnded += CallsEnded;
     }
@@ -104,6 +109,7 @@ public partial class CallPage : ContentPage
 #endif
                 _incomingAnswered = _incoming || _incomingAnswered;
                 _connectedAt = DateTimeOffset.UtcNow;
+                if (_historyEntryId != Guid.Empty) _callHistory.MarkConnected(_historyEntryId);
                 StartTimer();
             }
 #if ANDROID
@@ -130,24 +136,24 @@ public partial class CallPage : ContentPage
             CameraButton.IsEnabled = _mode == CallMode.Video && state.IsConnected;
             CameraButton.Opacity = _mode == CallMode.Video ? 1.0 : 0.4;
             MuteActionLabel.Text = state.IsMuted ? "إلغاء الكتم" : "كتم الصوت";
-            MuteButton.BackgroundColor = state.IsMuted ? Color.FromArgb("#702B3A") : Color.FromArgb("#24354B");
-            MuteActionLabel.TextColor = state.IsMuted ? Color.FromArgb("#FFD4DB") : Color.FromArgb("#D1DCEA");
+            MuteButton.BackgroundColor = state.IsMuted ? Color.FromArgb("#702B3A") : Color.FromArgb("#35174F");
+            MuteActionLabel.TextColor = state.IsMuted ? Color.FromArgb("#FFD4DB") : Color.FromArgb("#EADFFF");
             CameraActionLabel.Text = _mode == CallMode.Video
                 ? (_cameraEnabled ? "إيقاف الكاميرا" : "تشغيل الكاميرا")
                 : "فيديو غير متاح";
             CameraButton.BackgroundColor = _mode != CallMode.Video
-                ? Color.FromArgb("#19283A")
-                : (_cameraEnabled ? Color.FromArgb("#24364C") : Color.FromArgb("#702B3A"));
+                ? Color.FromArgb("#20102F")
+                : (_cameraEnabled ? Color.FromArgb("#35164E") : Color.FromArgb("#702B3A"));
             CameraButton.Opacity = _mode == CallMode.Video ? 1.0 : 0.42;
             CameraActionLabel.TextColor = _mode != CallMode.Video
-                ? Color.FromArgb("#8396AE")
-                : (_cameraEnabled ? Color.FromArgb("#DCE7F5") : Color.FromArgb("#FFD4DB"));
+                ? Color.FromArgb("#AD99C2")
+                : (_cameraEnabled ? Color.FromArgb("#F0E5FF") : Color.FromArgb("#FFD4DB"));
             SpeakerActionLabel.Text = state.IsSpeakerOn ? "إيقاف المكبر" : "مكبر الصوت";
-            SpeakerButton.BackgroundColor = state.IsSpeakerOn ? Color.FromArgb("#17563E") : Color.FromArgb("#24354B");
-            SpeakerActionLabel.TextColor = state.IsSpeakerOn ? Color.FromArgb("#B7F5D1") : Color.FromArgb("#D1DCEA");
+            SpeakerButton.BackgroundColor = state.IsSpeakerOn ? Color.FromArgb("#17563E") : Color.FromArgb("#35174F");
+            SpeakerActionLabel.TextColor = state.IsSpeakerOn ? Color.FromArgb("#B7F5D1") : Color.FromArgb("#EADFFF");
             RemoteAudioActionLabel.Text = state.IsRemoteAudioEnabled ? "كتم الوارد" : "تشغيل الوارد";
-            RemoteAudioButton.BackgroundColor = state.IsRemoteAudioEnabled ? Color.FromArgb("#17563E") : Color.FromArgb("#24354B");
-            RemoteAudioActionLabel.TextColor = state.IsRemoteAudioEnabled ? Color.FromArgb("#B7F5D1") : Color.FromArgb("#D1DCEA");
+            RemoteAudioButton.BackgroundColor = state.IsRemoteAudioEnabled ? Color.FromArgb("#17563E") : Color.FromArgb("#35174F");
+            RemoteAudioActionLabel.TextColor = state.IsRemoteAudioEnabled ? Color.FromArgb("#B7F5D1") : Color.FromArgb("#EADFFF");
 #if ANDROID
             if (_mode == CallMode.Video && state.IsConnected) _ = AttachVideoWithRetryAsync();
 #endif
@@ -185,6 +191,22 @@ public partial class CallPage : ContentPage
         _incomingAnswered = false;
         _connectedAt = _calls.Current?.IsConnected == true ? DateTimeOffset.UtcNow : null;
         _navigationStarted = false;
+
+        var linkedConversation = _chat.Conversations.FirstOrDefault(item =>
+            string.Equals(item.RemoteId, _conversationId.ToString("D"), StringComparison.OrdinalIgnoreCase));
+        if ((_peerName == "جهة اتصال" || string.IsNullOrWhiteSpace(_peerName)) && linkedConversation is not null)
+            PeerName = linkedConversation.Name;
+
+        if (_historyEntryId == Guid.Empty && _conversationId != Guid.Empty)
+        {
+            _historyEntryId = _callHistory.Begin(
+                _conversationId.ToString("D"),
+                _peerName,
+                _incoming,
+                _mode == CallMode.Video ? "video" : "audio");
+            if (_calls.Current?.IsConnected == true && _historyEntryId != Guid.Empty)
+                _callHistory.MarkConnected(_historyEntryId);
+        }
         VideoSurface.IsVisible = false;
         VideoWaitingOverlay.IsVisible = true;
         ProfilePanel.IsVisible = true;
@@ -193,8 +215,8 @@ public partial class CallPage : ContentPage
         CameraButton.Opacity = _mode == CallMode.Video ? 1.0 : 0.42;
         CameraButton.Source = _cameraEnabled ? "call_camera_white.png" : "call_camera_off_white.png";
         CameraButton.BackgroundColor = _mode == CallMode.Video
-            ? Color.FromArgb("#24364C")
-            : Color.FromArgb("#19283A");
+            ? Color.FromArgb("#35164E")
+            : Color.FromArgb("#20102F");
         MuteButton.Source = "call_mic_white.png";
         SpeakerButton.Source = "call_speaker_off_white.png";
         RemoteAudioButton.Source = "call_speaker_off_white.png";
@@ -202,8 +224,8 @@ public partial class CallPage : ContentPage
             ? (_cameraEnabled ? "إيقاف الكاميرا" : "تشغيل الكاميرا")
             : "فيديو غير متاح";
         CameraActionLabel.TextColor = _mode == CallMode.Video
-            ? Color.FromArgb("#DCE7F5")
-            : Color.FromArgb("#8396AE");
+            ? Color.FromArgb("#F0E5FF")
+            : Color.FromArgb("#AD99C2");
         ModeLabel.Text = _mode == CallMode.Video ? "مكالمة فيديو" : "مكالمة صوتية";
         NameLabel.Text = _peerName;
         VideoCallNameLabel.Text = _peerName;
@@ -239,6 +261,7 @@ public partial class CallPage : ContentPage
 #endif
                 StatusLabel.Text = "تعذر استقبال المكالمة.";
                 VideoStatusLabel.Text = StatusLabel.Text;
+                if (_historyEntryId != Guid.Empty) _callHistory.Finish(_historyEntryId, "تعذر الاستقبال");
                 System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Incoming call setup failed: {ex}");
             }
             return;
@@ -274,6 +297,7 @@ public partial class CallPage : ContentPage
             StopOutgoingRingback();
 #endif
             StatusLabel.Text = "تعذر تجهيز المكالمة. تحقق من الاتصال ثم حاول مرة أخرى.";
+            if (_historyEntryId != Guid.Empty) _callHistory.Finish(_historyEntryId, "تعذر الاتصال");
             System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Start failed: {ex}");
         }
         finally
@@ -342,6 +366,7 @@ public partial class CallPage : ContentPage
 #if ANDROID
         StopIncomingRingtone();
 #endif
+        if (_historyEntryId != Guid.Empty) _callHistory.Finish(_historyEntryId, "مرفوضة");
         try { await _calls.RejectAsync(); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Reject failed: {ex}"); }
         await NavigateBackFromCallAsync();
@@ -381,6 +406,7 @@ public partial class CallPage : ContentPage
 
     private async void CallsEnded(object? sender, EventArgs e)
     {
+        if (_historyEntryId != Guid.Empty) _callHistory.Finish(_historyEntryId);
         Interlocked.Increment(ref _callUiStateVersion);
         _remoteAudioToggleInProgress = false;
         StopTimer();
@@ -626,8 +652,8 @@ public partial class CallPage : ContentPage
         await engine.SetCameraEnabledAsync(_cameraEnabled);
         CameraButton.Source = _cameraEnabled ? "call_camera_white.png" : "call_camera_off_white.png";
         CameraActionLabel.Text = _cameraEnabled ? "إيقاف الكاميرا" : "تشغيل الكاميرا";
-        CameraButton.BackgroundColor = _cameraEnabled ? Color.FromArgb("#24354B") : Color.FromArgb("#702B3A");
-        CameraActionLabel.TextColor = _cameraEnabled ? Color.FromArgb("#D1DCEA") : Color.FromArgb("#FFD4DB");
+        CameraButton.BackgroundColor = _cameraEnabled ? Color.FromArgb("#35174F") : Color.FromArgb("#702B3A");
+        CameraActionLabel.TextColor = _cameraEnabled ? Color.FromArgb("#EADFFF") : Color.FromArgb("#FFD4DB");
 #else
         await Task.CompletedTask;
 #endif
@@ -642,6 +668,8 @@ public partial class CallPage : ContentPage
     private async void EndClicked(object? sender, EventArgs e)
     {
         if (_navigationStarted) return;
+        if (_historyEntryId != Guid.Empty)
+            _callHistory.Finish(_historyEntryId, _calls.Current?.IsConnected == true ? "مكتملة" : (_incoming && !_incomingAnswered ? "مرفوضة" : "تم الإلغاء"));
         try
         {
             if (_incoming && !_incomingAnswered)
@@ -709,9 +737,9 @@ public partial class CallPage : ContentPage
         var muted = !(_calls.Current?.IsMuted ?? false);
         await _calls.SetMutedAsync(muted);
         MuteActionLabel.Text = muted ? "إلغاء الكتم" : "كتم الصوت";
-        MuteButton.BackgroundColor = muted ? Color.FromArgb("#702B3A") : Color.FromArgb("#24354B");
+        MuteButton.BackgroundColor = muted ? Color.FromArgb("#702B3A") : Color.FromArgb("#35174F");
         MuteButton.Source = muted ? "call_mic_off_white.png" : "call_mic_white.png";
-        MuteActionLabel.TextColor = muted ? Color.FromArgb("#FFD4DB") : Color.FromArgb("#D1DCEA");
+        MuteActionLabel.TextColor = muted ? Color.FromArgb("#FFD4DB") : Color.FromArgb("#EADFFF");
     }
 
     private async void ToggleRemoteAudioClicked(object? sender, EventArgs e)
@@ -728,8 +756,8 @@ public partial class CallPage : ContentPage
             await _calls.SetRemoteAudioEnabledAsync(enabled);
             RemoteAudioButton.Source = enabled ? "call_speaker_white.png" : "call_speaker_off_white.png";
             RemoteAudioActionLabel.Text = enabled ? "كتم الوارد" : "تشغيل الوارد";
-            RemoteAudioButton.BackgroundColor = enabled ? Color.FromArgb("#17563E") : Color.FromArgb("#24354B");
-            RemoteAudioActionLabel.TextColor = enabled ? Color.FromArgb("#B7F5D1") : Color.FromArgb("#D1DCEA");
+            RemoteAudioButton.BackgroundColor = enabled ? Color.FromArgb("#17563E") : Color.FromArgb("#35174F");
+            RemoteAudioActionLabel.TextColor = enabled ? Color.FromArgb("#B7F5D1") : Color.FromArgb("#EADFFF");
             StatusLabel.Text = enabled ? "الصوت الوارد مفعّل" : "الصوت الوارد مكتوم";
         }
         finally
@@ -745,8 +773,8 @@ public partial class CallPage : ContentPage
         await _calls.SetSpeakerAsync(enabled);
         SpeakerButton.Source = enabled ? "call_speaker_white.png" : "call_speaker_off_white.png";
         SpeakerActionLabel.Text = enabled ? "إيقاف المكبر" : "مكبر الصوت";
-        SpeakerButton.BackgroundColor = enabled ? Color.FromArgb("#17563E") : Color.FromArgb("#24354B");
-        SpeakerActionLabel.TextColor = enabled ? Color.FromArgb("#B7F5D1") : Color.FromArgb("#D1DCEA");
+        SpeakerButton.BackgroundColor = enabled ? Color.FromArgb("#17563E") : Color.FromArgb("#35174F");
+        SpeakerActionLabel.TextColor = enabled ? Color.FromArgb("#B7F5D1") : Color.FromArgb("#EADFFF");
         StatusLabel.Text = enabled ? "مكبر الصوت مفعّل" : "مكبر الصوت متوقف";
     }
 }

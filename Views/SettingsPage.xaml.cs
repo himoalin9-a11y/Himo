@@ -1,4 +1,8 @@
 using Himo.Services;
+using Himo.Models;
+using Himo.ViewModels;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.ApplicationModel.Communication;
 
 namespace Himo.Views;
 
@@ -10,12 +14,17 @@ public partial class SettingsPage : ContentPage
     private readonly ChatService _chat;
     private readonly INotificationService _notifications;
     private readonly AppLockService _appLock;
+    private readonly HomeViewModel _home;
     private bool _initializingAppLockSwitch;
     private bool _initializingNotificationsSwitch;
     private bool _initializingThemeSwitch;
     private int _accountActionInProgress;
+    private bool _loadingContactPhoneSettings;
+    private bool _savedPhoneDiscoverable;
+    private bool _contactLookupBusy;
+    private bool _contactMatchBusy;
 
-    public SettingsPage(HimoApiClient api, AccountService account, ChatService chat, INotificationService notifications, AppLockService appLock)
+    public SettingsPage(HimoApiClient api, AccountService account, ChatService chat, INotificationService notifications, AppLockService appLock, HomeViewModel home)
     {
         InitializeComponent();
         _api = api;
@@ -23,6 +32,7 @@ public partial class SettingsPage : ContentPage
         _chat = chat;
         _notifications = notifications;
         _appLock = appLock;
+        _home = home;
         _initializingNotificationsSwitch = true;
         if (NotificationsSwitch is not null)
             NotificationsSwitch.IsToggled = _notifications.IsEnabled;
@@ -42,9 +52,21 @@ public partial class SettingsPage : ContentPage
 
     private async void ProfileClicked(object sender, EventArgs e)
     {
-        var shell = Shell.Current;
-        if (shell is null) return;
-        await shell.GoToAsync("profile", false);
+        if (SwipePageTransition.SettingsWasEnteredFromProfile)
+            await SwipePageTransition.GoBackAsync(this, SwipeDirection.Right);
+        else
+            await SwipePageTransition.NavigateAsync(this, "profile", SwipeDirection.Right);
+    }
+
+    private async void PageSwiped(object? sender, SwipedEventArgs e)
+    {
+        if (e.Direction != SwipeDirection.Right)
+            return; // Settings is the final page in the horizontal sequence.
+
+        if (SwipePageTransition.SettingsWasEnteredFromProfile)
+            await SwipePageTransition.GoBackAsync(this, SwipeDirection.Right);
+        else
+            await SwipePageTransition.NavigateAsync(this, "profile", SwipeDirection.Right);
     }
 
     private void NotificationPreviewToggled(object sender, ToggledEventArgs e)
@@ -110,7 +132,9 @@ public partial class SettingsPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        _ = SwipePageTransition.AnimateIncomingAsync(this);
         UpdateNotificationPermissionStatus();
+        _ = LoadContactPhoneSettingsAsync();
     }
 
     private void UpdateNotificationPermissionStatus()
@@ -179,6 +203,260 @@ public partial class SettingsPage : ContentPage
             if (NotificationsSwitch is not null)
                 NotificationsSwitch.IsToggled = !e.Value;
             await DisplayAlertAsync("الإشعارات", $"تعذر تغيير إعداد الإشعارات: {ex.Message}", "حسنًا");
+        }
+    }
+
+    private async Task LoadContactPhoneSettingsAsync()
+    {
+        if (!_api.HasToken || _loadingContactPhoneSettings) return;
+        _loadingContactPhoneSettings = true;
+        try
+        {
+            var profile = await _api.GetMyProfileAsync();
+            if (ContactPhoneEntry is not null)
+                ContactPhoneEntry.Text = profile.ContactPhoneNumber ?? string.Empty;
+            _savedPhoneDiscoverable = profile.PhoneDiscoverable;
+            if (PhoneDiscoverySwitch is not null)
+                PhoneDiscoverySwitch.IsToggled = profile.PhoneDiscoverable;
+            if (ContactsMatchStatusLabel is not null)
+                ContactsMatchStatusLabel.Text = profile.PhoneDiscoverable
+                    ? "تم تفعيل إمكانية العثور على حسابك برقم الهاتف."
+                    : "رقم الهاتف اختياري، ويمكنك إيقاف إمكانية العثور على حسابك متى شئت.";
+        }
+        catch (Exception ex)
+        {
+            if (ContactsMatchStatusLabel is not null)
+                ContactsMatchStatusLabel.Text = "تعذر تحميل إعداد الهاتف: " + ex.Message;
+        }
+        finally
+        {
+            _loadingContactPhoneSettings = false;
+        }
+    }
+
+    private async void SaveContactPhoneClicked(object sender, EventArgs e)
+    {
+        if (SaveContactPhoneButton is null || SaveContactPhoneButton.IsEnabled == false) return;
+        if (!_api.HasToken)
+        {
+            await DisplayAlertAsync("رقم الهاتف", "سجّل الدخول أولًا لحفظ رقم الهاتف.", "حسنًا");
+            return;
+        }
+
+        var phone = ContactPhoneEntry?.Text?.Trim();
+        var discoverable = PhoneDiscoverySwitch?.IsToggled == true;
+        if (discoverable && string.IsNullOrWhiteSpace(phone))
+        {
+            await DisplayAlertAsync("رقم الهاتف", "أدخل رقم هاتف أولًا قبل تفعيل العثور على حسابك.", "حسنًا");
+            return;
+        }
+
+        if (discoverable && !_savedPhoneDiscoverable)
+        {
+            var approved = await DisplayAlertAsync(
+                "السماح بالعثور على حسابك",
+                "عند تفعيل هذا الخيار، يستطيع الأشخاص الذين لديهم رقمك في جهات اتصالهم العثور على حساب Himo. لن نعرض رقم هاتفك لهم، بل اسم حسابك فقط.",
+                "تفعيل",
+                "إلغاء");
+            if (!approved)
+            {
+                if (PhoneDiscoverySwitch is not null)
+                    PhoneDiscoverySwitch.IsToggled = false;
+                return;
+            }
+        }
+
+        try
+        {
+            SaveContactPhoneButton.IsEnabled = false;
+            SaveContactPhoneButton.Text = "جارٍ الحفظ...";
+            var saved = await _api.UpdateMyContactPhoneAsync(phone, discoverable);
+            if (ContactPhoneEntry is not null)
+                ContactPhoneEntry.Text = saved.ContactPhoneNumber ?? string.Empty;
+            if (PhoneDiscoverySwitch is not null)
+                PhoneDiscoverySwitch.IsToggled = saved.PhoneDiscoverable;
+            _savedPhoneDiscoverable = saved.PhoneDiscoverable;
+            if (ContactsMatchStatusLabel is not null)
+                ContactsMatchStatusLabel.Text = saved.ContactPhoneNumber is null
+                    ? "تم حذف رقم الهاتف من حسابك."
+                    : saved.PhoneDiscoverable
+                        ? "تم حفظ الرقم وتفعيل العثور على حسابك عبر الهاتف."
+                        : "تم حفظ الرقم. العثور على حسابك عبر الهاتف متوقف.";
+            await DisplayAlertAsync("تم الحفظ", "تم تحديث إعدادات رقم الهاتف بنجاح.", "حسنًا");
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("تعذر حفظ رقم الهاتف", ex.Message, "حسنًا");
+        }
+        finally
+        {
+            SaveContactPhoneButton.IsEnabled = true;
+            SaveContactPhoneButton.Text = "حفظ رقم الهاتف";
+        }
+    }
+
+    private async void FindContactsClicked(object sender, EventArgs e)
+    {
+        if (_contactLookupBusy) return;
+        if (!_api.HasToken)
+        {
+            await DisplayAlertAsync("جهات الاتصال", "سجّل الدخول أولًا للبحث عن أصدقائك.", "حسنًا");
+            return;
+        }
+
+        if (!Preferences.Default.Get("himo_contacts_lookup_consent", false))
+        {
+            var consent = await DisplayAlertAsync(
+                "الخصوصية وجهات الاتصال",
+                "سيقرأ Himo أرقام الهاتف المحفوظة في جهات اتصالك ويرسل الأرقام اللازمة للمطابقة عبر اتصال آمن. لن يحفظ الخادم دفتر العناوين؛ سيعيد فقط حسابات Himo التي تطابق أرقامها، وبشرط أن يكون أصحابها قد سمحوا بالعثور عليهم.",
+                "متابعة",
+                "إلغاء");
+            if (!consent) return;
+            Preferences.Default.Set("himo_contacts_lookup_consent", true);
+        }
+
+#if ANDROID
+        try
+        {
+            _contactLookupBusy = true;
+            if (FindContactsButton is not null) FindContactsButton.IsEnabled = false;
+            if (ContactsLookupProgress is not null)
+            {
+                ContactsLookupProgress.IsVisible = true;
+                ContactsLookupProgress.IsRunning = true;
+            }
+            if (ContactsMatchStatusLabel is not null)
+                ContactsMatchStatusLabel.Text = "جارٍ قراءة جهات الاتصال والبحث عن الحسابات المسجلة...";
+            if (ContactMatchesList is not null)
+            {
+                ContactMatchesList.IsVisible = false;
+                ContactMatchesList.ItemsSource = null;
+            }
+
+            var permission = await Permissions.CheckStatusAsync<Permissions.ContactsRead>();
+            if (permission != PermissionStatus.Granted)
+                permission = await Permissions.RequestAsync<Permissions.ContactsRead>();
+
+            if (permission != PermissionStatus.Granted)
+            {
+                if (ContactsMatchStatusLabel is not null)
+                    ContactsMatchStatusLabel.Text = "لم يتم منح إذن جهات الاتصال. يمكنك تفعيله من إعدادات Android ثم المحاولة مجددًا.";
+                return;
+            }
+
+            var contacts = await Contacts.Default.GetAllAsync();
+            if (contacts is null)
+            {
+                if (ContactsMatchStatusLabel is not null)
+                    ContactsMatchStatusLabel.Text = "تعذر قراءة جهات الاتصال من الهاتف.";
+                return;
+            }
+
+            var numbers = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var contact in contacts)
+            {
+                if (contact?.Phones is null) continue;
+                foreach (var contactPhone in contact.Phones)
+                {
+                    var normalized = NormalizeContactNumber(contactPhone?.PhoneNumber);
+                    if (normalized is not null)
+                        numbers.Add(normalized);
+                    if (numbers.Count >= 5000) break;
+                }
+                if (numbers.Count >= 5000) break;
+            }
+
+            if (numbers.Count == 0)
+            {
+                if (ContactsMatchStatusLabel is not null)
+                    ContactsMatchStatusLabel.Text = "لم نعثر على أرقام هاتف صالحة في جهات اتصالك.";
+                return;
+            }
+
+            var matches = new Dictionary<Guid, ContactMatchDto>();
+            var totalBatches = (int)Math.Ceiling(numbers.Count / 200d);
+            var batchNumber = 0;
+            foreach (var batch in numbers.Chunk(200))
+            {
+                batchNumber++;
+                if (ContactsMatchStatusLabel is not null)
+                    ContactsMatchStatusLabel.Text = $"جارٍ فحص جهات الاتصال... ({batchNumber}/{totalBatches})";
+
+                var found = await _api.FindUsersByPhoneNumbersAsync(batch);
+                foreach (var match in found)
+                    matches[match.Id] = match;
+            }
+
+            var ordered = matches.Values.OrderBy(x => x.Name, StringComparer.CurrentCulture).ToList();
+            if (ContactMatchesList is not null)
+            {
+                ContactMatchesList.ItemsSource = ordered;
+                ContactMatchesList.IsVisible = ordered.Count > 0;
+            }
+            if (ContactsMatchStatusLabel is not null)
+                ContactsMatchStatusLabel.Text = ordered.Count == 0
+                    ? "لم نعثر على حسابات Himo مطابقة. يمكنك دعوة أصدقائك للانضمام إلى Himo."
+                    : $"عُثر على {ordered.Count} حسابًا. اضغط على أي حساب لبدء محادثة.";
+        }
+        catch (Exception ex)
+        {
+            if (ContactsMatchStatusLabel is not null)
+                ContactsMatchStatusLabel.Text = "تعذر البحث في جهات الاتصال: " + ex.Message;
+            await DisplayAlertAsync("جهات الاتصال", ex.Message, "حسنًا");
+        }
+        finally
+        {
+            _contactLookupBusy = false;
+            if (FindContactsButton is not null) FindContactsButton.IsEnabled = true;
+            if (ContactsLookupProgress is not null)
+            {
+                ContactsLookupProgress.IsRunning = false;
+                ContactsLookupProgress.IsVisible = false;
+            }
+        }
+#else
+        await DisplayAlertAsync("جهات الاتصال", "ميزة البحث في جهات الاتصال متاحة حاليًا على Android.", "حسنًا");
+#endif
+    }
+
+    private static string? NormalizeContactNumber(string? value)
+    {
+        var digits = PhoneNumberUtils.Normalize(value);
+        if (digits.StartsWith("00", StringComparison.Ordinal))
+            digits = digits[2..];
+        if (digits.Length == 10 && digits.StartsWith("05", StringComparison.Ordinal))
+            digits = "966" + digits[1..];
+        else if (digits.Length == 9 && digits.StartsWith("5", StringComparison.Ordinal))
+            digits = "966" + digits;
+
+        return digits.Length is >= 7 and <= 15 ? digits : null;
+    }
+
+    private async void ContactMatchSelected(object sender, SelectionChangedEventArgs e)
+    {
+        if (_contactMatchBusy || e.CurrentSelection.FirstOrDefault() is not ContactMatchDto match)
+            return;
+        if (sender is CollectionView collection)
+            collection.SelectedItem = null;
+
+        _contactMatchBusy = true;
+        try
+        {
+            var conversation = await _home.CreateConversationWithUserAsync(match.Name, match.Id);
+            var remoteId = !string.IsNullOrWhiteSpace(conversation.RemoteId)
+                ? conversation.RemoteId
+                : conversation.Id.ToString();
+            var shell = Shell.Current;
+            if (shell is not null)
+                await shell.GoToAsync($"chat?id={Uri.EscapeDataString(remoteId)}", false);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("بدء المحادثة", ex.Message, "حسنًا");
+        }
+        finally
+        {
+            _contactMatchBusy = false;
         }
     }
 
@@ -332,8 +610,6 @@ public partial class SettingsPage : ContentPage
 
     private async void BackClicked(object sender, EventArgs e)
     {
-        var shell = Shell.Current;
-        if (shell is null) return;
-        await shell.GoToAsync("..", false);
+        await SwipePageTransition.GoBackAsync(this, SwipeDirection.Right);
     }
 }

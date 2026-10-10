@@ -4,9 +4,14 @@
              x:Class="Himo.Views.AppLockPage"
              Title="قفل Himo"
              FlowDirection="RightToLeft"
-             BackgroundColor="{DynamicResource HimoPrimary}"
+             Background="{StaticResource HimoBackgroundGradient}"
              Shell.NavBarIsVisible="False">
     <Grid Padding="22,22,22,22" RowDefinitions="Auto,*,Auto">
+        <Border Grid.RowSpan="3" WidthRequest="300" HeightRequest="300" HorizontalOptions="End" VerticalOptions="Start"
+                TranslationX="150" TranslationY="-190" BackgroundColor="#9C24FF" Opacity="0.10"
+                StrokeThickness="0" InputTransparent="True" ZIndex="-1">
+            <Border.StrokeShape><RoundRectangle CornerRadius="150" /></Border.StrokeShape>
+        </Border>
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
             <Border Grid.Column="0" WidthRequest="44" HeightRequest="44"
                     BackgroundColor="#FFFFFF18" Stroke="#FFFFFF30" StrokeThickness="1">
@@ -29,13 +34,13 @@
             <Label Text="التطبيق مقفل" FontSize="26" FontAttributes="Bold"
                    TextColor="White" HorizontalTextAlignment="Center" Margin="0,10,0,0" />
             <Label Text="أدخل رمز القفل للمتابعة إلى حسابك" FontSize="14"
-                   TextColor="#D9E5F5" HorizontalTextAlignment="Center" />
+                   TextColor="#D9B7FF" HorizontalTextAlignment="Center" />
 
             <Border BackgroundColor="#FFFFFF16" Stroke="#FFFFFF38" StrokeThickness="1"
                     Padding="14,4" Margin="0,14,0,0">
                 <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
                 <Entry x:Name="PinEntry" Keyboard="Numeric" IsPassword="True" MaxLength="6"
-                       Placeholder="رمز القفل" PlaceholderColor="#B8C9DE" TextColor="White"
+                       Placeholder="رمز القفل" PlaceholderColor="#BBA6D6" TextColor="White"
                        HorizontalTextAlignment="Center" FontSize="25" ClearButtonVisibility="WhileEditing"
                        Completed="UnlockClicked" />
             </Border>
@@ -49,6 +54,6 @@
         </VerticalStackLayout>
 
         <Label Grid.Row="2" Text="Himo • حماية حسابك تبدأ من هنا" FontSize="12"
-               TextColor="#BFD0E5" HorizontalTextAlignment="Center" />
+               TextColor="#BBA6D6" HorizontalTextAlignment="Center" />
     </Grid>
 </ContentPage>

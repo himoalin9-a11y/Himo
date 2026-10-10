@@ -7,9 +7,9 @@
 
     <ContentPage.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#061521" Offset="0.0" />
-            <GradientStop Color="#0B1225" Offset="0.52" />
-            <GradientStop Color="#17101F" Offset="1.0" />
+            <GradientStop Color="#080413" Offset="0.0" />
+            <GradientStop Color="#10051D" Offset="0.52" />
+            <GradientStop Color="#180924" Offset="1.0" />
         </LinearGradientBrush>
     </ContentPage.Background>
 
@@ -18,8 +18,8 @@
             <Setter Property="WidthRequest" Value="44" />
             <Setter Property="HeightRequest" Value="44" />
             <Setter Property="Padding" Value="11" />
-            <Setter Property="BackgroundColor" Value="#1B2A3D" />
-            <Setter Property="BorderColor" Value="#405774" />
+            <Setter Property="BackgroundColor" Value="#28133D" />
+            <Setter Property="BorderColor" Value="#673B8B" />
             <Setter Property="BorderWidth" Value="1" />
             <Setter Property="CornerRadius" Value="22" />
             <Setter Property="Aspect" Value="AspectFit" />
@@ -33,8 +33,8 @@
             <Setter Property="WidthRequest" Value="66" />
             <Setter Property="HeightRequest" Value="66" />
             <Setter Property="Padding" Value="14" />
-            <Setter Property="BackgroundColor" Value="#24364C" />
-            <Setter Property="BorderColor" Value="#506580" />
+            <Setter Property="BackgroundColor" Value="#35164E" />
+            <Setter Property="BorderColor" Value="#865AA8" />
             <Setter Property="BorderWidth" Value="1.2" />
             <Setter Property="CornerRadius" Value="33" />
             <Setter Property="Aspect" Value="AspectFit" />
@@ -47,7 +47,7 @@
         <Style x:Key="ControlLabel" TargetType="Label">
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontAttributes" Value="Bold" />
-            <Setter Property="TextColor" Value="#DCE7F5" />
+            <Setter Property="TextColor" Value="#F0E5FF" />
             <Setter Property="HorizontalTextAlignment" Value="Center" />
             <Setter Property="LineBreakMode" Value="TailTruncation" />
         </Style>
@@ -57,10 +57,10 @@
         <!-- Low contrast ambient glows keep the screen dark without competing with the call actions. -->
         <Ellipse Grid.RowSpan="3" WidthRequest="300" HeightRequest="300"
                  HorizontalOptions="Start" VerticalOptions="Start" TranslationX="-145" TranslationY="-160"
-                 Fill="#0C4264" Opacity="0.50" InputTransparent="True" />
+                 Fill="#4D1680" Opacity="0.50" InputTransparent="True" />
         <Ellipse Grid.RowSpan="3" WidthRequest="270" HeightRequest="270"
                  HorizontalOptions="End" VerticalOptions="End" TranslationX="140" TranslationY="150"
-                 Fill="#31204A" Opacity="0.34" InputTransparent="True" />
+                 Fill="#591B7A" Opacity="0.34" InputTransparent="True" />
 
         <!-- Brand header -->
         <Grid Grid.Row="0" ColumnDefinitions="44,*,44" HeightRequest="58" VerticalOptions="Center">
@@ -71,24 +71,24 @@
             <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" VerticalOptions="Center" Spacing="3">
                 <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="7" FlowDirection="LeftToRight">
                     <HorizontalStackLayout Spacing="3" VerticalOptions="Center" HeightRequest="23">
-                        <Border WidthRequest="3" HeightRequest="10" VerticalOptions="Center" BackgroundColor="#4D7CFF" StrokeThickness="0">
+                        <Border WidthRequest="3" HeightRequest="10" VerticalOptions="Center" BackgroundColor="#8B31FF" StrokeThickness="0">
                             <Border.StrokeShape><RoundRectangle CornerRadius="2" /></Border.StrokeShape>
                         </Border>
-                        <Border WidthRequest="3" HeightRequest="18" VerticalOptions="Center" BackgroundColor="#4D7CFF" StrokeThickness="0">
+                        <Border WidthRequest="3" HeightRequest="18" VerticalOptions="Center" BackgroundColor="#8B31FF" StrokeThickness="0">
                             <Border.StrokeShape><RoundRectangle CornerRadius="2" /></Border.StrokeShape>
                         </Border>
-                        <Border WidthRequest="3" HeightRequest="13" VerticalOptions="Center" BackgroundColor="#65D8FF" StrokeThickness="0">
+                        <Border WidthRequest="3" HeightRequest="13" VerticalOptions="Center" BackgroundColor="#D65CFF" StrokeThickness="0">
                             <Border.StrokeShape><RoundRectangle CornerRadius="2" /></Border.StrokeShape>
                         </Border>
-                        <Border WidthRequest="3" HeightRequest="8" VerticalOptions="Center" BackgroundColor="#4D7CFF" StrokeThickness="0">
+                        <Border WidthRequest="3" HeightRequest="8" VerticalOptions="Center" BackgroundColor="#8B31FF" StrokeThickness="0">
                             <Border.StrokeShape><RoundRectangle CornerRadius="2" /></Border.StrokeShape>
                         </Border>
                     </HorizontalStackLayout>
-                    <Label Text="Himo" FontSize="22" FontAttributes="Bold" TextColor="#F7FAFF"
+                    <Label Text="Himo" FontSize="22" FontAttributes="Bold" TextColor="#FFF8FF"
                            VerticalTextAlignment="Center" />
                 </HorizontalStackLayout>
                 <Label x:Name="ModeLabel" Text="مكالمة صوتية" FontSize="11" CharacterSpacing="0.4"
-                       TextColor="#91A7C2" HorizontalTextAlignment="Center" />
+                       TextColor="#BAA0D0" HorizontalTextAlignment="Center" />
             </VerticalStackLayout>
 
             <BoxView Grid.Column="2" WidthRequest="42" HeightRequest="42" Opacity="0" />
@@ -96,11 +96,11 @@
 
         <!-- Caller identity / video surface -->
         <Grid Grid.Row="1" Padding="0,8,0,8">
-            <Border x:Name="VideoSurface" IsVisible="False" BackgroundColor="#070D16"
-                    Stroke="#29384D" StrokeThickness="1">
+            <Border x:Name="VideoSurface" IsVisible="False" BackgroundColor="#0D0617"
+                    Stroke="#592A76" StrokeThickness="1">
                 <Border.StrokeShape><RoundRectangle CornerRadius="28" /></Border.StrokeShape>
                 <Grid>
-                    <Grid x:Name="RemoteVideoHost" BackgroundColor="#070D16" />
+                    <Grid x:Name="RemoteVideoHost" BackgroundColor="#0D0617" />
 
                     <Grid VerticalOptions="Start" HorizontalOptions="Fill" Padding="16,18"
                           ColumnDefinitions="*,Auto" FlowDirection="LeftToRight">
@@ -108,31 +108,31 @@
                             <Label x:Name="VideoCallNameLabel" Text="جهة اتصال" FontSize="18" FontAttributes="Bold"
                                    TextColor="#FFFFFF" HorizontalTextAlignment="Start" />
                             <Label x:Name="VideoStatusLabel" Text="متصل • 00:00" FontSize="12"
-                                   TextColor="#DAE6F4" HorizontalTextAlignment="Start" />
+                                   TextColor="#E8D6FB" HorizontalTextAlignment="Start" />
                         </VerticalStackLayout>
-                        <Border Grid.Column="1" BackgroundColor="#162337" Stroke="#51647D" StrokeThickness="1"
+                        <Border Grid.Column="1" BackgroundColor="#26113B" Stroke="#8857A8" StrokeThickness="1"
                                 WidthRequest="94" HeightRequest="34" Padding="8,5" HorizontalOptions="End">
                             <Border.StrokeShape><RoundRectangle CornerRadius="17" /></Border.StrokeShape>
-                            <Label Text="Himo Video" FontSize="10" FontAttributes="Bold" TextColor="#DDEAFF"
+                            <Label Text="Himo Video" FontSize="10" FontAttributes="Bold" TextColor="#EEDBFF"
                                    HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                         </Border>
                     </Grid>
 
                     <VerticalStackLayout x:Name="VideoWaitingOverlay" HorizontalOptions="Center"
                                          VerticalOptions="Center" Spacing="10" IsVisible="True" InputTransparent="True">
-                        <Border BackgroundColor="#17263B" Stroke="#435875" StrokeThickness="1"
+                        <Border BackgroundColor="#29113E" Stroke="#7C4A9D" StrokeThickness="1"
                                 WidthRequest="70" HeightRequest="70" Padding="20">
                             <Border.StrokeShape><RoundRectangle CornerRadius="24" /></Border.StrokeShape>
                             <Image Source="call_camera_white.png" Opacity="0.92" />
                         </Border>
-                        <Label Text="بانتظار ظهور الفيديو" FontSize="13" TextColor="#E5ECF8"
+                        <Label Text="بانتظار ظهور الفيديو" FontSize="13" TextColor="#F4E8FF"
                                HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
 
                     <Border WidthRequest="102" HeightRequest="138" HorizontalOptions="End" VerticalOptions="End"
-                            Margin="14,14,14,18" BackgroundColor="#162337" Stroke="#B7C9DF" StrokeThickness="2">
+                            Margin="14,14,14,18" BackgroundColor="#26113B" Stroke="#D7BEEB" StrokeThickness="2">
                         <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
-                        <Grid x:Name="LocalVideoHost" BackgroundColor="#162337" />
+                        <Grid x:Name="LocalVideoHost" BackgroundColor="#26113B" />
                     </Border>
                 </Grid>
             </Border>
@@ -141,23 +141,23 @@
             <VerticalStackLayout x:Name="ProfilePanel" HorizontalOptions="Center" VerticalOptions="Center"
                                  Spacing="20" Padding="0,8">
                 <Label x:Name="StatusLabel" Text="جاري تجهيز الاتصال..." FontSize="14" FontAttributes="Bold"
-                       TextColor="#A8C6E5" HorizontalTextAlignment="Center" />
+                       TextColor="#CBA8E8" HorizontalTextAlignment="Center" />
 
                 <Grid WidthRequest="210" HeightRequest="210">
                     <Ellipse WidthRequest="208" HeightRequest="208" HorizontalOptions="Center" VerticalOptions="Center"
-                             Fill="#0B2435" Stroke="#0E4B6D" StrokeThickness="1" />
+                             Fill="#230D36" Stroke="#5D1C86" StrokeThickness="1" />
                     <Ellipse WidthRequest="184" HeightRequest="184" HorizontalOptions="Center" VerticalOptions="Center"
-                             Fill="#0D2A40" Stroke="#145A7D" StrokeThickness="2" />
+                             Fill="#2B1044" Stroke="#7022A3" StrokeThickness="2" />
                     <Ellipse WidthRequest="158" HeightRequest="158" HorizontalOptions="Center" VerticalOptions="Center"
-                             Fill="#102A40" Stroke="#4C91F5" StrokeThickness="3" />
+                             Fill="#33134F" Stroke="#B744FF" StrokeThickness="3" />
                     <Border WidthRequest="136" HeightRequest="136" HorizontalOptions="Center" VerticalOptions="Center"
-                            BackgroundColor="#183B57" Stroke="#E0F3FF" StrokeThickness="3">
+                            BackgroundColor="#401760" Stroke="#F4E8FF" StrokeThickness="3">
                         <Border.StrokeShape><RoundRectangle CornerRadius="68" /></Border.StrokeShape>
                         <Label x:Name="InitialLabel" Text="H" FontSize="56" FontAttributes="Bold"
-                               TextColor="#F4FBFF" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                               TextColor="#FFF7FF" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                     </Border>
                     <Border WidthRequest="48" HeightRequest="48" HorizontalOptions="End" VerticalOptions="End"
-                            Margin="8,8,12,12" BackgroundColor="#2D6BFF" Stroke="#8EC8FF" StrokeThickness="2" Padding="13">
+                            Margin="8,8,12,12" BackgroundColor="#7828E8" Stroke="#D7A2FF" StrokeThickness="2" Padding="13">
                         <Border.StrokeShape><RoundRectangle CornerRadius="24" /></Border.StrokeShape>
                         <Image Source="call_phone_white.png" />
                     </Border>
@@ -165,9 +165,9 @@
 
                 <VerticalStackLayout Spacing="7" HorizontalOptions="Center">
                     <Label x:Name="NameLabel" Text="جهة اتصال" FontSize="28" FontAttributes="Bold"
-                           TextColor="#F7FAFF" HorizontalTextAlignment="Center" />
+                           TextColor="#FFF8FF" HorizontalTextAlignment="Center" />
                     <Label Text="اتصال آمن عبر Himo" FontSize="12" CharacterSpacing="0.5"
-                           TextColor="#7288A3" HorizontalTextAlignment="Center" />
+                           TextColor="#B29AC5" HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
             </VerticalStackLayout>
         </Grid>
@@ -215,14 +215,14 @@
                 </ImageButton.Shadow>
             </ImageButton>
             <Label x:Name="WaitingCallTitle" Text="جاري الاتصال بالطرف الآخر" FontSize="15"
-                   FontAttributes="Bold" TextColor="#F5F8FF" HorizontalTextAlignment="Center" />
+                   FontAttributes="Bold" TextColor="#FFF8FF" HorizontalTextAlignment="Center" />
             <Label x:Name="WaitingCallSubtitle" Text="بانتظار رد الطرف الآخر..." FontSize="12"
-                   TextColor="#8FA3BE" HorizontalTextAlignment="Center" />
+                   TextColor="#C0A9D4" HorizontalTextAlignment="Center" />
         </VerticalStackLayout>
 
         <!-- Active call tools: a 3 x 2 control deck similar to the visual reference. -->
         <Border x:Name="CallControls" Grid.Row="2" IsVisible="False" Margin="0,0,0,4"
-                BackgroundColor="#E6101C2C" Stroke="#425775" StrokeThickness="1.2" Padding="15,16,15,14">
+                BackgroundColor="#E6150824" Stroke="#6B3A8A" StrokeThickness="1.2" Padding="15,16,15,14">
             <Border.StrokeShape><RoundRectangle CornerRadius="30" /></Border.StrokeShape>
             <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="9" RowSpacing="16"
                   FlowDirection="LeftToRight">

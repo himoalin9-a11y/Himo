@@ -10,6 +10,6 @@ public sealed class UserProfile
     private static string GetInitial(string? name)
     {
         var value = name?.Trim() ?? string.Empty;
-        return value.Length == 0 ? "H" : value[0].ToString();
+        return value.Length == 0 ? "H" : value.Substring(0, 1);
     }
 }

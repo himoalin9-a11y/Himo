@@ -169,14 +169,15 @@ public sealed class NotificationService : INotificationService
 
             // Treat this as a ringtone, not voice-call audio. Android normally routes
             // notification ringtones through the device loudspeaker.
-            var ringtoneAudioAttributes = new global::Android.Media.AudioAttributes.Builder()
-                .SetUsage(global::Android.Media.AudioUsageKind.NotificationRingtone)
-                .SetContentType(global::Android.Media.AudioContentType.Sonification)
-                .Build();
-
-            calls.SetSound(
-                global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone),
-                ringtoneAudioAttributes);
+            // Avoid fluent Android binding calls that are annotated nullable in some SDK packs.
+            var ringtoneAudioAttributesBuilder = new global::Android.Media.AudioAttributes.Builder();
+            ringtoneAudioAttributesBuilder.SetUsage(global::Android.Media.AudioUsageKind.NotificationRingtone);
+            ringtoneAudioAttributesBuilder.SetContentType(global::Android.Media.AudioContentType.Sonification);
+            var ringtoneAudioAttributes = ringtoneAudioAttributesBuilder.Build();
+            var ringtoneUri = global::Android.Media.RingtoneManager.GetDefaultUri(
+                global::Android.Media.RingtoneType.Ringtone);
+            if (ringtoneUri is not null)
+                calls.SetSound(ringtoneUri, ringtoneAudioAttributes);
             manager.CreateNotificationChannel(calls);
         }
         catch (Exception ex)

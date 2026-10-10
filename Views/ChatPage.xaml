@@ -7,7 +7,7 @@
              x:Class="Himo.Views.ChatPage"
              x:Name="ChatRoot"
              FlowDirection="RightToLeft"
-             BackgroundColor="#0E0918"
+             BackgroundColor="#090511"
              Shell.NavBarIsVisible="False">
 
     <ContentPage.Resources>
@@ -16,7 +16,7 @@
                 <Setter Property="WidthRequest" Value="38" />
                 <Setter Property="HeightRequest" Value="38" />
                 <Setter Property="Padding" Value="9" />
-                <Setter Property="BackgroundColor" Value="#F7F5FB" />
+                <Setter Property="BackgroundColor" Value="#25133B" />
                 <Setter Property="CornerRadius" Value="19" />
                 <Setter Property="Aspect" Value="AspectFit" />
             </Style>
@@ -24,7 +24,7 @@
                 <Setter Property="WidthRequest" Value="42" />
                 <Setter Property="HeightRequest" Value="42" />
                 <Setter Property="Padding" Value="9" />
-                <Setter Property="BackgroundColor" Value="#F4F1FA" />
+                <Setter Property="BackgroundColor" Value="#291541" />
                 <Setter Property="CornerRadius" Value="21" />
                 <Setter Property="Aspect" Value="AspectFit" />
             </Style>
@@ -39,31 +39,31 @@
                 <Setter Property="WidthRequest" Value="48" />
                 <Setter Property="HeightRequest" Value="48" />
                 <Setter Property="Padding" Value="13" />
-                <Setter Property="BackgroundColor" Value="#6C3FD1" />
+                <Setter Property="BackgroundColor" Value="#A12AFF" />
                 <Setter Property="CornerRadius" Value="24" />
                 <Setter Property="Aspect" Value="AspectFit" />
             </Style>
             <Style x:Key="Meta" TargetType="Label">
                 <Setter Property="FontSize" Value="9.5" />
-                <Setter Property="TextColor" Value="#6E6A78" />
+                <Setter Property="TextColor" Value="#C2ACD8" />
                 <Style.Triggers>
                     <DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True">
-                        <Setter Property="TextColor" Value="#EAF5FF" />
+                        <Setter Property="TextColor" Value="#F5E9FF" />
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
 
             <LinearGradientBrush x:Key="ChatAreaBrush" StartPoint="0,0" EndPoint="0,1">
-                <GradientStop Color="#24153F" Offset="0.00" />
-                <GradientStop Color="#4C2E68" Offset="0.26" />
-                <GradientStop Color="#8B679E" Offset="0.48" />
-                <GradientStop Color="#3A2357" Offset="0.68" />
-                <GradientStop Color="#1C1030" Offset="1.00" />
+                <GradientStop Color="#100719" Offset="0.00" />
+                <GradientStop Color="#1B0B2A" Offset="0.26" />
+                <GradientStop Color="#2B1540" Offset="0.48" />
+                <GradientStop Color="#1B0C2B" Offset="0.68" />
+                <GradientStop Color="#0A0512" Offset="1.00" />
             </LinearGradientBrush>
             <LinearGradientBrush x:Key="HorizonGlowBrush" StartPoint="0,0" EndPoint="1,0">
-                <GradientStop Color="#00FFD9F4" Offset="0.00" />
-                <GradientStop Color="#FFD8F4FF" Offset="0.50" />
-                <GradientStop Color="#00FFD9F4" Offset="1.00" />
+                <GradientStop Color="#00E8B7FF" Offset="0.00" />
+                <GradientStop Color="#FFF0D9FF" Offset="0.50" />
+                <GradientStop Color="#00E8B7FF" Offset="1.00" />
             </LinearGradientBrush>
             <LinearGradientBrush x:Key="MountainBackBrush" StartPoint="0,0" EndPoint="0,1">
                 <GradientStop Color="#4A2B62" Offset="0.00" />
@@ -91,14 +91,14 @@
                 <GradientStop Color="#007B43C5" Offset="1.00" />
             </RadialGradientBrush>
             <LinearGradientBrush x:Key="SenderBubbleBrush" StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#169BFF" Offset="0.00" />
-                <GradientStop Color="#1578F2" Offset="0.48" />
-                <GradientStop Color="#4D55E8" Offset="1.00" />
+                <GradientStop Color="#D34DFF" Offset="0.00" />
+                <GradientStop Color="#A12AFF" Offset="0.48" />
+                <GradientStop Color="#6814C7" Offset="1.00" />
             </LinearGradientBrush>
             <LinearGradientBrush x:Key="ReceiverBubbleBrush" StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#B86CFF" Offset="0.00" />
-                <GradientStop Color="#8B42E8" Offset="0.50" />
-                <GradientStop Color="#6326B9" Offset="1.00" />
+                <GradientStop Color="#2F1946" Offset="0.00" />
+                <GradientStop Color="#241236" Offset="0.50" />
+                <GradientStop Color="#1A0D29" Offset="1.00" />
             </LinearGradientBrush>
             <LinearGradientBrush x:Key="ComposerBrush" StartPoint="0,0" EndPoint="1,1">
                 <GradientStop Color="#23113D" Offset="0.00" />
@@ -122,7 +122,7 @@
                         <Setter Property="HorizontalOptions" Value="Start" />
                         <Setter Property="Margin" Value="0,3,34,3" />
                         <Setter Property="Background" Value="{StaticResource SenderBubbleBrush}" />
-                        <Setter Property="Stroke" Value="#68B8FF" />
+                        <Setter Property="Stroke" Value="#D99AFF" />
                         <Setter Property="StrokeThickness" Value="1.2" />
                     </DataTrigger>
                     <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
@@ -145,7 +145,7 @@
                         <Setter Property="HorizontalOptions" Value="Start" />
                         <Setter Property="Margin" Value="0,4,34,4" />
                         <Setter Property="Background" Value="{StaticResource SenderBubbleBrush}" />
-                        <Setter Property="Stroke" Value="#68B8FF" />
+                        <Setter Property="Stroke" Value="#D99AFF" />
                     </DataTrigger>
                     <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
                         <Setter Property="Stroke" Value="#F1C8FF" />
@@ -161,9 +161,9 @@
             <DataTemplate x:Key="ChatTextTemplate" x:DataType="models:ChatMessage">
                 <VerticalStackLayout Spacing="3" Padding="0,2" HorizontalOptions="Fill">
                     <Grid IsVisible="{Binding HasDateSeparator}" ColumnDefinitions="*,Auto,*" Margin="8,8">
-                        <BoxView Grid.Column="0" HeightRequest="1" Color="#DCE6F1" VerticalOptions="Center" />
-                        <Border Grid.Column="1" Padding="12,5" BackgroundColor="#FFFFFF" Stroke="#E5DFEA" StrokeThickness="1"><Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape><Label Text="{Binding DateSeparatorText}" FontSize="10.5" FontAttributes="Bold" TextColor="#806A97" /></Border>
-                        <BoxView Grid.Column="2" HeightRequest="1" Color="#DCE6F1" VerticalOptions="Center" />
+                        <BoxView Grid.Column="0" HeightRequest="1" Color="#57336D" VerticalOptions="Center" />
+                        <Border Grid.Column="1" Padding="12,5" BackgroundColor="#170A28" Stroke="#583174" StrokeThickness="1"><Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape><Label Text="{Binding DateSeparatorText}" FontSize="10.5" FontAttributes="Bold" TextColor="#C4A8E5" /></Border>
+                        <BoxView Grid.Column="2" HeightRequest="1" Color="#57336D" VerticalOptions="Center" />
                     </Grid>
                     <Border Style="{StaticResource ChatMessageBubble}" Loaded="MessageBubbleLoaded">
                         <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
@@ -217,7 +217,7 @@
                                         </VerticalStackLayout.Triggers>
                                         <Image Source="himo_ui_gallery.png" WidthRequest="34" HeightRequest="34" />
                                         <Label Text="صورة" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF" HorizontalTextAlignment="Center" />
-                                        <Label Text="اضغط للعرض" FontSize="9.5" TextColor="#CFC5DA" HorizontalTextAlignment="Center" />
+                                        <Label Text="اضغط للعرض" FontSize="9.5" TextColor="#C6B2DB" HorizontalTextAlignment="Center" />
                                     </VerticalStackLayout>
                                     <Grid.GestureRecognizers>
                                         <TapGestureRecognizer Tapped="ImagePreviewCardTapped" />
@@ -226,7 +226,7 @@
                             </Border>
                             <Grid ColumnDefinitions="*,Auto" Padding="3,0,3,1" ColumnSpacing="7">
                                 <Label Grid.Column="0" Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" HorizontalOptions="End" />
-                                <Label Grid.Column="1" Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="#EAF5FF">
+                                <Label Grid.Column="1" Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="#F5E9FF">
                                     <Label.Triggers>
                                         <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="#DCEBFF" /></DataTrigger>
                                         <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="#BDEBFF" /></DataTrigger>
@@ -266,7 +266,7 @@
                                         <Image Source="himo_ui_video.png" WidthRequest="34" HeightRequest="34" Opacity="0.88" HorizontalOptions="Center" VerticalOptions="Center" />
                                     </Grid>
                                     <BoxView BackgroundColor="#000000" Opacity="0.14" />
-                                    <Border WidthRequest="62" HeightRequest="62" BackgroundColor="#99000000" Stroke="#FFFFFF" StrokeThickness="1" HorizontalOptions="Center" VerticalOptions="Center">
+                                    <Border WidthRequest="62" HeightRequest="62" BackgroundColor="#B30A0312" Stroke="#FFFFFF" StrokeThickness="1" HorizontalOptions="Center" VerticalOptions="Center">
                                         <Border.StrokeShape><shapes:RoundRectangle CornerRadius="31" /></Border.StrokeShape>
                                         <Image Source="himo_ui_play_white.png" WidthRequest="28" HeightRequest="28" />
                                     </Border>
@@ -275,7 +275,7 @@
                             </Border>
                             <Grid ColumnDefinitions="*,Auto" Padding="3,0,3,1" ColumnSpacing="7">
                                 <Label Grid.Column="0" Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" HorizontalOptions="End" />
-                                <Label Grid.Column="1" Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="#EAF5FF">
+                                <Label Grid.Column="1" Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="#F5E9FF">
                                     <Label.Triggers>
                                         <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="#DCEBFF" /></DataTrigger>
                                         <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="#BDEBFF" /></DataTrigger>
@@ -305,7 +305,7 @@
                         <Border.StrokeShape><shapes:RoundRectangle CornerRadius="20" /></Border.StrokeShape>
                         <VerticalStackLayout Spacing="6">
                             <Grid ColumnDefinitions="56,*,Auto" ColumnSpacing="10" HeightRequest="56">
-                                <ImageButton Grid.Column="0" Source="himo_ui_play_white.png" WidthRequest="50" HeightRequest="50" Padding="14" BackgroundColor="#FFFFFF" Opacity="0.96" CornerRadius="25" Clicked="AudioClicked" />
+                                <ImageButton Grid.Column="0" Source="himo_ui_play_white.png" WidthRequest="50" HeightRequest="50" Padding="14" BackgroundColor="#8E22E8" Opacity="0.96" CornerRadius="25" Clicked="AudioClicked" />
                                 <HorizontalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
                                     <BoxView WidthRequest="2.5" HeightRequest="10" Color="#D8B9FF" /><BoxView WidthRequest="2.5" HeightRequest="18" Color="#C89DFF" /><BoxView WidthRequest="2.5" HeightRequest="26" Color="#E1C8FF" /><BoxView WidthRequest="2.5" HeightRequest="15" Color="#B986FF" /><BoxView WidthRequest="2.5" HeightRequest="22" Color="#E1C8FF" /><BoxView WidthRequest="2.5" HeightRequest="30" Color="#F0DEFF" /><BoxView WidthRequest="2.5" HeightRequest="17" Color="#BE8FFF" /><BoxView WidthRequest="2.5" HeightRequest="24" Color="#E1C8FF" />
                                 </HorizontalStackLayout>
@@ -316,7 +316,7 @@
                             </Grid>
                             <Grid ColumnDefinitions="*,Auto" Padding="3,0,3,1" ColumnSpacing="7">
                                 <Label Grid.Column="0" Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" HorizontalOptions="End" />
-                                <Label Grid.Column="1" Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="#EAF5FF">
+                                <Label Grid.Column="1" Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="#F5E9FF">
                                     <Label.Triggers>
                                         <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="#DCEBFF" /></DataTrigger>
                                         <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="#BDEBFF" /></DataTrigger>
@@ -345,7 +345,7 @@
                     <Border Style="{StaticResource MediaBubble}" Loaded="MessageBubbleLoaded" Padding="8">
                         <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
                         <Grid ColumnDefinitions="42,*" ColumnSpacing="9">
-                            <Border WidthRequest="42" HeightRequest="42" BackgroundColor="#FFFFFF" StrokeThickness="0">
+                            <Border WidthRequest="42" HeightRequest="42" BackgroundColor="#241337" StrokeThickness="0">
                                 <Border.StrokeShape><shapes:RoundRectangle CornerRadius="14" /></Border.StrokeShape>
                                 <Image Source="icon_attachment.png" WidthRequest="20" HeightRequest="20" />
                             </Border>
@@ -358,7 +358,7 @@
                     </Border>
                     <HorizontalStackLayout HorizontalOptions="End" Spacing="4">
                         <Label Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" />
-                        <Label Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="#EAF5FF" />
+                        <Label Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="#F5E9FF" />
                     </HorizontalStackLayout>
                     <Button Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold" TextColor="#FFFFFF" BackgroundColor="#8B42E8" BorderColor="#D9B7FF" BorderWidth="1" CornerRadius="11" Padding="14,5" HorizontalOptions="End" IsVisible="False" Clicked="ResendFailedMessageClicked">
                         <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="IsVisible" Value="True" /></DataTrigger></Button.Triggers>
@@ -376,10 +376,10 @@
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="68,Auto,*,Auto" BackgroundColor="#F5F6FA">
+    <Grid RowDefinitions="68,Auto,*,Auto" BackgroundColor="#090511">
 
         <!-- CHAT HEADER -->
-        <Border Grid.Row="0" BackgroundColor="#FAF6FF" Stroke="#E2D4F1" StrokeThickness="1" Padding="10,6">
+        <Border Grid.Row="0" BackgroundColor="#170A28" Stroke="#583174" StrokeThickness="1" Padding="10,6">
             <Grid ColumnDefinitions="Auto,*,Auto" FlowDirection="LeftToRight">
                 <HorizontalStackLayout Grid.Column="0" Spacing="3" VerticalOptions="Center" HorizontalOptions="Start">
                     <ImageButton Source="himo_icon_arrow_back_purple.png" Style="{StaticResource ChatHeaderButton}" Clicked="BackClicked" />
@@ -390,11 +390,11 @@
 
                 <Grid Grid.Column="2" ColumnDefinitions="58,*" ColumnSpacing="9" VerticalOptions="Center" HorizontalOptions="End">
                     <Grid Grid.Column="0" WidthRequest="50" HeightRequest="50">
-                        <Border WidthRequest="46" HeightRequest="46" BackgroundColor="#F3EDF9" Stroke="#D8C8F0" StrokeThickness="1">
+                        <Border WidthRequest="46" HeightRequest="46" BackgroundColor="#2B1643" Stroke="#6A3A8D" StrokeThickness="1">
                             <Border.StrokeShape><shapes:RoundRectangle CornerRadius="25" /></Border.StrokeShape>
                             <Grid>
                                 <Label x:Name="InitialLabel" Text="H" FontSize="19" FontAttributes="Bold"
-                                       TextColor="#6C3FD1" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                       TextColor="#D28BFF" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                                 <Image x:Name="ContactPhotoImage" IsVisible="False"
                                        Aspect="AspectFill" WidthRequest="46" HeightRequest="46">
                                     <Image.Clip>
@@ -409,8 +409,8 @@
                     </Grid>
                     <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center" MaximumWidthRequest="190" FlowDirection="RightToLeft">
                         <Label x:Name="NameLabel" Text="محادثة" FontSize="16.5" FontAttributes="Bold"
-                               TextColor="#2B2235" MaxLines="1" LineBreakMode="TailTruncation" />
-                        <Label x:Name="StatusLabel" Text="غير متصل" FontSize="11" TextColor="#7B8492" />
+                               TextColor="#FBF6FF" MaxLines="1" LineBreakMode="TailTruncation" />
+                        <Label x:Name="StatusLabel" Text="غير متصل" FontSize="11" TextColor="#B7A2D2" />
                     </VerticalStackLayout>
                 </Grid>
             </Grid>
@@ -420,7 +420,7 @@
         <Border x:Name="SelectionBar" Grid.Row="0" IsVisible="False" ZIndex="50"
                 HorizontalOptions="Fill" VerticalOptions="Start"
                 HeightRequest="58" Padding="10,4"
-                BackgroundColor="#FFFFFF" Stroke="#E5DDF1" StrokeThickness="1">
+                BackgroundColor="#170A28" Stroke="#583174" StrokeThickness="1">
             <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto"
                   ColumnSpacing="7" FlowDirection="LeftToRight">
                 <!-- More -->
@@ -444,7 +444,7 @@
 
                 <!-- Selected count -->
                 <Label Grid.Column="5" x:Name="SelectionCountLabel" Text="1"
-                       FontSize="16.5" FontAttributes="Bold" TextColor="#5B3CC4"
+                       FontSize="16.5" FontAttributes="Bold" TextColor="#D8A0FF"
                        HorizontalTextAlignment="Center" VerticalTextAlignment="Center"
                        WidthRequest="42" />
 
@@ -486,7 +486,7 @@
                                LineBreakMode="TailTruncation" />
                         <Label Text="مشغل الفيديو"
                                FontSize="10.5"
-                               TextColor="#BFC9D5"
+                               TextColor="#C2ADD8"
                                VerticalTextAlignment="Center" />
                     </VerticalStackLayout>
                     <Button Grid.Column="1" Text="×"
@@ -518,16 +518,16 @@
                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
                         <Label x:Name="InlineVideoCurrentTimeLabel"
                                Grid.Column="0" Text="00:00" FontSize="11.5"
-                               TextColor="#F1F5F9" VerticalTextAlignment="Center" />
+                               TextColor="#F5E9FF" VerticalTextAlignment="Center" />
                         <Slider x:Name="InlineVideoSlider"
                                 Grid.Column="1" Minimum="0" Maximum="1" Value="0"
                                 HeightRequest="26" ThumbColor="White"
                                 MinimumTrackColor="#8B5CF6"
-                                MaximumTrackColor="#73808C"
+                                MaximumTrackColor="#775B92"
                                 ValueChanged="InlineVideoSliderValueChanged" />
                         <Label x:Name="InlineVideoDurationLabel"
                                Grid.Column="2" Text="00:00" FontSize="11.5"
-                               TextColor="#F1F5F9" VerticalTextAlignment="Center" />
+                               TextColor="#F5E9FF" VerticalTextAlignment="Center" />
                     </Grid>
 
                     <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,*"
@@ -536,24 +536,24 @@
                                 Grid.Column="1" Text="↶ 10"
                                 WidthRequest="62" HeightRequest="42" Padding="0"
                                 FontSize="11" FontAttributes="Bold"
-                                BackgroundColor="#3A4450" TextColor="White"
+                                BackgroundColor="#2A1641" TextColor="White"
                                 CornerRadius="21" Clicked="InlineVideoRewindClicked" />
                         <Button x:Name="InlineVideoPlayButton"
                                 Grid.Column="2" Text="▶"
                                 WidthRequest="50" HeightRequest="50" Padding="0"
                                 FontSize="18" FontAttributes="Bold"
-                                BackgroundColor="#6C3FD1" TextColor="White"
+                                BackgroundColor="#A12AFF" TextColor="White"
                                 CornerRadius="25" Clicked="InlineVideoPlayClicked" />
                         <Button x:Name="InlineVideoForwardButton"
                                 Grid.Column="3" Text="10 ↷"
                                 WidthRequest="62" HeightRequest="42" Padding="0"
                                 FontSize="11" FontAttributes="Bold"
-                                BackgroundColor="#3A4450" TextColor="White"
+                                BackgroundColor="#2A1641" TextColor="White"
                                 CornerRadius="21" Clicked="InlineVideoForwardClicked" />
                         <Button x:Name="InlineVideoMuteButton"
                                 Grid.Column="4" Text="🔊"
                                 WidthRequest="48" HeightRequest="42" Padding="0"
-                                FontSize="17" BackgroundColor="#3A4450" TextColor="White"
+                                FontSize="17" BackgroundColor="#2A1641" TextColor="White"
                                 CornerRadius="21" Clicked="InlineVideoMuteClicked" />
                     </Grid>
                 </VerticalStackLayout>
@@ -617,19 +617,19 @@
 
             <ImageButton x:Name="ScrollToBottomButton" Source="himo_ui_scroll_down.png" IsVisible="False" HorizontalOptions="End"
                          VerticalOptions="End" Margin="0,0,5,12" WidthRequest="44" HeightRequest="44" Padding="12"
-                         BackgroundColor="#FFFFFF" CornerRadius="22" Clicked="ScrollToBottomClicked"
+                         BackgroundColor="#8E22E8" CornerRadius="22" Clicked="ScrollToBottomClicked"
                          BorderWidth="1" BorderColor="#E0D3EA" />
 
             <VerticalStackLayout x:Name="EmptyState" IsVisible="False" HorizontalOptions="Center"
                                  VerticalOptions="Center" Spacing="9" Padding="28">
-                <Border WidthRequest="60" HeightRequest="60" BackgroundColor="#F0E8FA" Stroke="#D8C8F0" StrokeThickness="1">
+                <Border WidthRequest="60" HeightRequest="60" BackgroundColor="#2A1643" Stroke="#6A3A8D" StrokeThickness="1">
                     <Border.StrokeShape><shapes:RoundRectangle CornerRadius="31" /></Border.StrokeShape>
                     <Image Source="himo_phase1_icon_chat_empty.png" WidthRequest="28" HeightRequest="28" />
                 </Border>
                 <Label Text="لا توجد رسائل بعد" FontSize="16.5" FontAttributes="Bold"
-                       HorizontalTextAlignment="Center" TextColor="#2B2235" />
+                       HorizontalTextAlignment="Center" TextColor="#FBF6FF" />
                 <Label Text="ابدأ المحادثة بإرسال أول رسالة" FontSize="13"
-                       HorizontalTextAlignment="Center" TextColor="#718096" />
+                       HorizontalTextAlignment="Center" TextColor="#B7A2D2" />
             </VerticalStackLayout>
         </Grid>
 
@@ -640,8 +640,8 @@
             <VerticalStackLayout Spacing="2">
                 <Grid x:Name="ReplyPreview" IsVisible="False" Padding="9,5" ColumnDefinitions="*,Auto" BackgroundColor="#2B1646">
                     <VerticalStackLayout Grid.Column="0" Spacing="1">
-                        <Label Text="رد على رسالة" FontSize="10" FontAttributes="Bold" TextColor="#6C3FD1" />
-                        <Label x:Name="ReplyPreviewLabel" FontSize="11" TextColor="#718096" MaxLines="1" LineBreakMode="TailTruncation" />
+                        <Label Text="رد على رسالة" FontSize="10" FontAttributes="Bold" TextColor="#D28BFF" />
+                        <Label x:Name="ReplyPreviewLabel" FontSize="11" TextColor="#B7A2D2" MaxLines="1" LineBreakMode="TailTruncation" />
                     </VerticalStackLayout>
                     <ImageButton Grid.Column="1" Source="himo_ui_close.png" WidthRequest="32" HeightRequest="32" Padding="9"
                                  BackgroundColor="Transparent" Clicked="ClearReplyClicked" />
@@ -650,41 +650,41 @@
                     <BoxView Grid.Column="0" WidthRequest="8" HeightRequest="8" CornerRadius="4" Color="#EF4444" VerticalOptions="Center" />
                     <Label Grid.Column="1" Text="جارٍ تسجيل رسالة صوتية..." FontSize="11.5" FontAttributes="Bold"
                            TextColor="#FFFFFF" VerticalTextAlignment="Center" />
-                    <Label Grid.Column="2" Text="اضغط لإيقاف التسجيل" FontSize="9.5" TextColor="#718096" VerticalTextAlignment="Center" />
+                    <Label Grid.Column="2" Text="اضغط لإيقاف التسجيل" FontSize="9.5" TextColor="#B7A2D2" VerticalTextAlignment="Center" />
                 </Grid>
                 <!-- ATTACHMENT / MEDIA PANEL -->
                 <Border x:Name="AttachmentPanel" IsVisible="False" Margin="2,4,2,5"
-                        BackgroundColor="#FFFFFF" Stroke="#E7E2EF" StrokeThickness="1"
+                        BackgroundColor="#170A28" Stroke="#583174" StrokeThickness="1"
                         Padding="10,9">
                     <Border.StrokeShape><shapes:RoundRectangle CornerRadius="20" /></Border.StrokeShape>
                     <VerticalStackLayout Spacing="7">
                         <Grid ColumnDefinitions="*,Auto">
                             <VerticalStackLayout Spacing="0">
-                                <Label Text="إرسال وسائط" FontSize="12" FontAttributes="Bold" TextColor="#2B2235" />
-                                <Label Text="اختر ما تريد إرساله" FontSize="9.5" TextColor="#94A3B8" />
+                                <Label Text="إرسال وسائط" FontSize="12" FontAttributes="Bold" TextColor="#FBF6FF" />
+                                <Label Text="اختر ما تريد إرساله" FontSize="9.5" TextColor="#9D86B8" />
                             </VerticalStackLayout>
                             <BoxView Grid.Column="1" WidthRequest="28" HeightRequest="2" CornerRadius="1" Color="#E7E2EF" VerticalOptions="Center" />
                         </Grid>
                         <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8" HeightRequest="76">
                         <VerticalStackLayout Grid.Column="0" Spacing="4" HorizontalOptions="Center">
                             <ImageButton Source="himo_icon_camera.png" WidthRequest="42" HeightRequest="42" Padding="9"
-                                         BackgroundColor="#F2EBFA" CornerRadius="21" Clicked="CameraPanelClicked" />
-                            <Label Text="الكاميرا" FontSize="10" TextColor="#526273" HorizontalTextAlignment="Center" />
+                                         BackgroundColor="#291440" CornerRadius="21" Clicked="CameraPanelClicked" />
+                            <Label Text="الكاميرا" FontSize="10" TextColor="#C2ACD8" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="1" Spacing="4" HorizontalOptions="Center">
                             <ImageButton Source="himo_ui_gallery.png" WidthRequest="42" HeightRequest="42" Padding="10"
-                                         BackgroundColor="#F2EBFA" CornerRadius="21" Clicked="PickPhotoClicked" />
-                            <Label Text="الصور" FontSize="10" TextColor="#526273" HorizontalTextAlignment="Center" />
+                                         BackgroundColor="#291440" CornerRadius="21" Clicked="PickPhotoClicked" />
+                            <Label Text="الصور" FontSize="10" TextColor="#C2ACD8" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="2" Spacing="4" HorizontalOptions="Center">
                             <ImageButton Source="himo_ui_video.png" WidthRequest="42" HeightRequest="42" Padding="10"
-                                         BackgroundColor="#F2EBFA" CornerRadius="21" Clicked="PickVideoClicked" />
-                            <Label Text="الفيديو" FontSize="10" TextColor="#526273" HorizontalTextAlignment="Center" />
+                                         BackgroundColor="#291440" CornerRadius="21" Clicked="PickVideoClicked" />
+                            <Label Text="الفيديو" FontSize="10" TextColor="#C2ACD8" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="3" Spacing="4" HorizontalOptions="Center">
                             <ImageButton Source="himo_icon_attachment.png" WidthRequest="42" HeightRequest="42" Padding="9"
-                                         BackgroundColor="#F2EBFA" CornerRadius="21" Clicked="PickFileClicked" />
-                            <Label Text="ملف" FontSize="10" TextColor="#526273" HorizontalTextAlignment="Center" />
+                                         BackgroundColor="#291440" CornerRadius="21" Clicked="PickFileClicked" />
+                            <Label Text="ملف" FontSize="10" TextColor="#C2ACD8" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                         </Grid>
                     </VerticalStackLayout>
