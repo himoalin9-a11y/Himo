@@ -2,7 +2,6 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:models="clr-namespace:Himo.Models"
-             xmlns:behaviors="clr-namespace:Himo.Behaviors"
              x:Class="Himo.Views.HomePage"
              x:Name="HomeRoot"
              Title="Himo"
@@ -98,41 +97,6 @@
                 <Border.GestureRecognizers><TapGestureRecognizer Tapped="ProfileClicked" /></Border.GestureRecognizers>
             </Border>
         </Grid>
-
-        <!-- Conversation-selection toolbar replaces the normal header while one or more chats are selected. -->
-        <Border x:Name="SelectionActionBar" Grid.Row="0" IsVisible="False"
-                Margin="10,6" Padding="7,4" HeightRequest="52"
-                BackgroundColor="#32213F" Stroke="#A95CDA" StrokeThickness="1.3" ZIndex="20">
-            <Border.StrokeShape><RoundRectangle CornerRadius="19" /></Border.StrokeShape>
-            <Border.Shadow><Shadow Brush="#B85BFF" Offset="0,2" Radius="8" Opacity="0.18" /></Border.Shadow>
-            <Grid x:Name="SelectionActionsGrid" ColumnDefinitions="Auto,*,34,34,34,34,34" ColumnSpacing="5"
-                  FlowDirection="RightToLeft" VerticalOptions="Center">
-                <Label x:Name="SelectedConversationCountLabel" Grid.Column="0"
-                       Text="تم تحديد 1" FontSize="12" FontAttributes="Bold"
-                       TextColor="#F5DFFF" VerticalTextAlignment="Center" Margin="5,0" />
-                <ImageButton x:Name="DeleteSelectedButton" Grid.Column="2" Source="selection_delete.png"
-                             BackgroundColor="Transparent" Padding="5" Aspect="AspectFit"
-                             Clicked="DeleteSelectedConversationsClicked"
-                             SemanticProperties.Description="حذف المحادثات المحددة" />
-                <ImageButton x:Name="MuteSelectedButton" Grid.Column="3" Source="selection_bell_off.png"
-                             BackgroundColor="Transparent" Padding="5" Aspect="AspectFit"
-                             Clicked="MuteSelectedConversationsClicked"
-                             SemanticProperties.Description="كتم إشعارات المحادثات المحددة" />
-                <ImageButton x:Name="ArchiveSelectedButton" Grid.Column="4" Source="selection_archive.png"
-                             BackgroundColor="Transparent" Padding="5" Aspect="AspectFit"
-                             Clicked="ArchiveSelectedConversationsClicked"
-                             SemanticProperties.Description="أرشفة المحادثات المحددة" />
-                <ImageButton x:Name="BlockSelectedButton" Grid.Column="5" Source="selection_block.png"
-                             BackgroundColor="Transparent" Padding="5" Aspect="AspectFit"
-                             Clicked="BlockSelectedConversationClicked"
-                             SemanticProperties.Description="حظر الشخص المحدد" />
-                <ImageButton x:Name="CancelSelectionButton" Grid.Column="6" Source="selection_cancel.png"
-                             BackgroundColor="Transparent" Padding="5" Aspect="AspectFit"
-                             Clicked="CancelConversationSelectionClicked"
-                             SemanticProperties.Description="إلغاء التحديد" />
-            </Grid>
-        </Border>
-
         <!-- Local chat filter; hidden when the calls/phone-search section is selected -->
         <Border x:Name="ChatSearchCard" Grid.Row="1" Margin="15,0,15,7" Padding="10,0"
                 HeightRequest="46" BackgroundColor="#2C2038"
@@ -166,7 +130,7 @@
                         <Button x:Name="RetryButton" IsVisible="False" Clicked="RetryClicked" />
                     </Grid>
                     <RefreshView x:Name="ConversationRefresh" Refreshing="ConversationRefresh_Refreshing" Margin="10,0,10,0">
-                        <CollectionView x:Name="ConversationsCollection" ItemsSource="{Binding FilteredConversations}" SelectionMode="Single" SelectionChanged="ConversationsCollection_SelectionChanged"
+                        <CollectionView x:Name="ConversationsCollection" ItemsSource="{Binding FilteredConversations}" SelectionMode="None"
                                         ItemSizingStrategy="MeasureAllItems"
                                         BackgroundColor="Transparent" FlowDirection="RightToLeft"
                                         VerticalScrollBarVisibility="Never">
@@ -187,20 +151,10 @@
                                 <DataTemplate x:DataType="models:Conversation">
                                     <Border Margin="2,5" Padding="10,9" BackgroundColor="#392848" Stroke="#7F5A99" StrokeThickness="1.05">
                                         <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="ConversationTapped" />
+                                        </Border.GestureRecognizers>
                                         <Border.Shadow><Shadow Brush="#B56BFA" Offset="0,2" Radius="8" Opacity="0.11" /></Border.Shadow>
-                                        <Border.Triggers>
-                                            <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
-                                                <Setter Property="BackgroundColor" Value="#54356D" />
-                                                <Setter Property="Stroke" Value="#D18AFF" />
-                                                <Setter Property="StrokeThickness" Value="1.8" />
-                                            </DataTrigger>
-                                        </Border.Triggers>
-                                        
-                                        <!-- Native Android long-press behavior for conversation multi-select. -->
-                                        <Border.Behaviors>
-                                            <behaviors:LongPressBehavior Command="{Binding Source={x:Reference HomeRoot}, Path=ConversationLongPressCommand}"
-                                                                         CommandParameter="{Binding .}" />
-                                        </Border.Behaviors>
                                         <Grid FlowDirection="LeftToRight" ColumnDefinitions="60,*,74" ColumnSpacing="11" Padding="2,2" MinimumHeightRequest="74">
                                             <Grid Grid.Column="0" WidthRequest="56" HeightRequest="56" HorizontalOptions="Start" VerticalOptions="Center">
                                                 <Border WidthRequest="54" HeightRequest="54" BackgroundColor="#50345F" Stroke="#BD86E8" StrokeThickness="1.35">
@@ -210,14 +164,7 @@
                                                         <Image Source="{Binding ProfilePhotoPath}" IsVisible="{Binding HasLocalProfilePhoto}" Aspect="AspectFill" WidthRequest="54" HeightRequest="54">
                                                             <Image.Clip><EllipseGeometry Center="27,27" RadiusX="27" RadiusY="27" /></Image.Clip>
                                                         </Image>
-                                                        <Border IsVisible="{Binding IsSelected}" WidthRequest="22" HeightRequest="22"
-                                                                HorizontalOptions="Start" VerticalOptions="End" Margin="-2,0,0,-2"
-                                                                BackgroundColor="#B34CFA" Stroke="#FFE8FF" StrokeThickness="1.3" ZIndex="5">
-                                                            <Border.StrokeShape><RoundRectangle CornerRadius="11" /></Border.StrokeShape>
-                                                            <Label Text="✓" TextColor="White" FontSize="13" FontAttributes="Bold"
-                                                                   HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
-                                                        </Border>
-                                                    </Grid>
+</Grid>
                                                 </Border>
                                             </Grid>
                                             <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4" FlowDirection="RightToLeft">
@@ -316,15 +263,15 @@
             <Grid x:Name="PhoneSearchSection" IsVisible="False" RowDefinitions="Auto,Auto,*" Padding="15,7,15,0" RowSpacing="11" BackgroundColor="Transparent">
                 <VerticalStackLayout Grid.Row="0" Spacing="4" Padding="4,3">
                     <Label Text="ابحث عن الأشخاص" FontSize="22" FontAttributes="Bold" TextColor="#FFF9FF" />
-                    <Label Text="ابحث بالاسم أو رقم الهاتف أو البريد الإلكتروني من حقل واحد." FontSize="12.5" TextColor="#D0C3E1" />
+                    <Label Text="استخدم رقم الهاتف أو البريد الإلكتروني في حقل بحث واحد." FontSize="12.5" TextColor="#D0C3E1" />
                 </VerticalStackLayout>
 
                 <Border Grid.Row="1" Padding="12" BackgroundColor="#2B1E3B" Stroke="#614577" StrokeThickness="1.2">
                     <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
                     <VerticalStackLayout Spacing="10">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                            <Entry x:Name="PhoneSearchEntry" Placeholder="الاسم أو رقم الهاتف أو البريد الإلكتروني" Keyboard="Text"
-                                   FlowDirection="LeftToRight" MaxLength="254"
+                            <Entry x:Name="PhoneSearchEntry" Placeholder="رقم الهاتف أو البريد الإلكتروني" Keyboard="Text"
+                                   FlowDirection="LeftToRight" MaxLength="22"
                                    PlaceholderColor="#B09DC9" TextColor="#FFF9FF" BackgroundColor="#21182D"
                                    ClearButtonVisibility="WhileEditing" ReturnType="Search" Completed="PhoneSearchCompleted"
                                    Margin="0" />
@@ -344,12 +291,12 @@
                             <ActivityIndicator IsRunning="True" Color="#E07AFF" WidthRequest="20" HeightRequest="20" />
                             <Label Text="جارٍ البحث..." TextColor="#D1B2EA" FontSize="12" VerticalTextAlignment="Center" />
                         </HorizontalStackLayout>
-                        <Label Text="لرؤية قائمة جهات الاتصال كاملة، اضغط أيقونة البحث أعلى الشاشة. نتائج البحث برقم الهاتف تظهر فقط إذا فعّل صاحب الحساب خيار العثور عليه." FontSize="10.5" TextColor="#B09DC9" />
+                        <Label Text="لرؤية قائمة جهات الاتصال كاملة، اضغط أيقونة البحث أعلى الشاشة. الحسابات بالرقم تظهر فقط عند تفعيل صاحبها خيار العثور عليه." FontSize="10.5" TextColor="#B09DC9" />
                     </VerticalStackLayout>
                 </Border>
 
                 <Grid Grid.Row="2" RowDefinitions="Auto,*" RowSpacing="5">
-                    <Label x:Name="PhoneSearchStatusLabel" Grid.Row="0" Text="أدخل الاسم أو رقم الهاتف أو البريد الإلكتروني للبدء." FontSize="12" TextColor="#D1B2EA" Margin="4,0" />
+                    <Label x:Name="PhoneSearchStatusLabel" Grid.Row="0" Text="أدخل رقم الهاتف أو البريد الإلكتروني للبدء." FontSize="12" TextColor="#D1B2EA" Margin="4,0" />
                     <CollectionView Grid.Row="1" x:Name="PhoneSearchResults" SelectionMode="Single"
                                     SelectionChanged="PhoneSearchResults_SelectionChanged" VerticalScrollBarVisibility="Never">
                         <CollectionView.EmptyView>

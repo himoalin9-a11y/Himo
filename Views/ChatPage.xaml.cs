@@ -659,24 +659,67 @@ public partial class ChatPage : ContentPage
 
 
 
+    private bool IsCurrentConversationGroup()
+    {
+        if (string.IsNullOrWhiteSpace(_remoteConversationId)) return false;
+        return _chat.Conversations.Any(conversation =>
+            conversation.IsGroup && string.Equals(
+                conversation.RemoteId,
+                _remoteConversationId,
+                StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task OpenAddGroupMembersPageAsync()
+    {
+        if (!Guid.TryParse(_remoteConversationId, out var groupId) || groupId == Guid.Empty)
+        {
+            await DisplayAlertAsync("المجموعة", "تعذر تحديد معرّف المجموعة. ارجع إلى قائمة المحادثات ثم افتحها مجددًا.", "حسنًا");
+            return;
+        }
+
+        var conversation = _chat.Conversations.FirstOrDefault(item =>
+            string.Equals(item.RemoteId, _remoteConversationId, StringComparison.OrdinalIgnoreCase));
+        var groupName = conversation?.Name;
+        if (string.IsNullOrWhiteSpace(groupName)) groupName = NameLabel?.Text;
+        if (string.IsNullOrWhiteSpace(groupName)) groupName = "المجموعة";
+
+        var route = $"CreateGroupPage?groupId={groupId:D}&groupName={Uri.EscapeDataString(groupName)}";
+        var shell = Shell.Current;
+        if (shell is null)
+        {
+            await DisplayAlertAsync("المجموعة", "تعذر فتح شاشة إضافة الأعضاء.", "حسنًا");
+            return;
+        }
+
+        await shell.GoToAsync(route, false);
+    }
+
     private async void ConversationOptionsClicked(object? sender, EventArgs e)
     {
+        var options = new List<string>();
+        if (IsCurrentConversationGroup())
+            options.Add("إضافة أعضاء للمجموعة");
+
+        options.Add("البحث في المحادثة");
+        options.Add(IsConversationMuted ? "إلغاء كتم الإشعارات" : "كتم الإشعارات");
+        options.Add("الرسائل ذاتية الاختفاء");
+        options.Add("خلفية الدردشة");
+        options.Add("الإبلاغ عن المحادثة");
+        options.Add(IsConversationBlocked ? "إلغاء حظر المحادثة" : "حظر المحادثة");
+        options.Add(IsConversationArchived ? "إلغاء أرشفة المحادثة" : "أرشفة المحادثة");
+
         var selected = await DisplayActionSheetAsync(
             "خيارات المحادثة",
             "إلغاء",
             null,
-            "البحث في المحادثة",
-            IsConversationMuted ? "إلغاء كتم الإشعارات" : "كتم الإشعارات",
-            "الرسائل ذاتية الاختفاء",
-            "خلفية الدردشة",
-            "الإبلاغ عن المحادثة",
-            IsConversationBlocked ? "إلغاء حظر المحادثة" : "حظر المحادثة",
-            IsConversationArchived ? "إلغاء أرشفة المحادثة" : "أرشفة المحادثة");
+            options.ToArray());
 
         if (string.IsNullOrWhiteSpace(selected) || selected == "إلغاء")
             return;
 
-        if (selected == "البحث في المحادثة")
+        if (selected == "إضافة أعضاء للمجموعة")
+            await OpenAddGroupMembersPageAsync();
+        else if (selected == "البحث في المحادثة")
             SearchMessagesClicked(sender, e);
         else if (selected == "كتم الإشعارات" || selected == "إلغاء كتم الإشعارات")
             MuteConversationClicked(sender, e);

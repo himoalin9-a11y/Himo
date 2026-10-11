@@ -2,9 +2,12 @@ using System.Collections.ObjectModel;
 using Himo.Models;
 using Himo.Services;
 using Himo.ViewModels;
+using Microsoft.Maui.Controls;
 
 namespace Himo.Views;
 
+[QueryProperty(nameof(ExistingGroupId), "groupId")]
+[QueryProperty(nameof(ExistingGroupName), "groupName")]
 public partial class CreateGroupPage : ContentPage
 {
     private readonly ObservableCollection<GroupMemberDraft> _members = new();
@@ -12,6 +15,31 @@ public partial class CreateGroupPage : ContentPage
     private readonly HomeViewModel _home;
     private bool _searching;
     private bool _creating;
+    private string? _existingGroupId;
+    private string? _existingGroupName;
+
+    public string ExistingGroupId
+    {
+        get => _existingGroupId ?? string.Empty;
+        set
+        {
+            _existingGroupId = value?.Trim();
+            UpdateModeUi();
+        }
+    }
+
+    public string ExistingGroupName
+    {
+        get => _existingGroupName ?? string.Empty;
+        set
+        {
+            _existingGroupName = value?.Trim();
+            UpdateModeUi();
+        }
+    }
+
+    private bool IsAddingToExistingGroup =>
+        Guid.TryParse(_existingGroupId, out var id) && id != Guid.Empty;
 
     public CreateGroupPage(HimoApiClient api, HomeViewModel home)
     {
@@ -19,7 +47,27 @@ public partial class CreateGroupPage : ContentPage
         _api = api;
         _home = home;
         MembersView.ItemsSource = _members;
+        UpdateModeUi();
         UpdateMembersCount();
+    }
+
+    private void UpdateModeUi()
+    {
+        // Query properties are assigned by Shell after the page constructor.
+        if (GroupNameContainer is null || GroupTitleLabel is null || GroupSubtitleLabel is null ||
+            MemberLookupEntry is null || CreateGroupButton is null)
+            return;
+
+        var adding = IsAddingToExistingGroup;
+        GroupNameContainer.IsVisible = !adding;
+        GroupTitleLabel.Text = adding ? "إضافة أعضاء للمجموعة" : "إنشاء مجموعة";
+        GroupSubtitleLabel.Text = adding
+            ? (string.IsNullOrWhiteSpace(_existingGroupName)
+                ? "أضف أشخاصًا إلى المجموعة الحالية"
+                : $"إضافة أشخاص إلى {_existingGroupName}")
+            : "ابدأ محادثة جماعية مع أصدقائك";
+        MemberLookupEntry.Placeholder = "الاسم أو البريد الإلكتروني أو رقم الهاتف";
+        CreateGroupButton.Text = adding ? "إضافة الأعضاء" : "إنشاء المجموعة";
     }
 
     private async void BackClicked(object? sender, EventArgs e)
@@ -41,7 +89,7 @@ public partial class CreateGroupPage : ContentPage
         var query = MemberLookupEntry.Text?.Trim() ?? string.Empty;
         if (query.Length < 3)
         {
-            await DisplayAlertAsync("إضافة عضو", "أدخل بريدًا إلكترونيًا أو رقم هاتف صحيحًا.", "حسنًا");
+            await DisplayAlertAsync("إضافة عضو", "أدخل ثلاثة أحرف على الأقل من الاسم، أو بريدًا إلكترونيًا أو رقم هاتف صحيحًا.", "حسنًا");
             return;
         }
 
@@ -73,7 +121,9 @@ public partial class CreateGroupPage : ContentPage
             }
             else
             {
-                var labels = newMatches.Select(u => $"{u.Name} — {u.Email}").ToArray();
+                var labels = newMatches.Select(u => string.IsNullOrWhiteSpace(u.Email)
+                    ? u.Name
+                    : $"{u.Name} — {u.Email}").ToArray();
                 var choice = await DisplayActionSheetAsync("اختر العضو", "إلغاء", null, labels);
                 var index = choice is null ? -1 : Array.IndexOf(labels, choice);
                 selected = index >= 0 ? newMatches[index] : null;
@@ -126,15 +176,17 @@ public partial class CreateGroupPage : ContentPage
     {
         if (_creating) return;
 
+        var addingToExisting = IsAddingToExistingGroup;
         var name = GroupNameEntry.Text?.Trim() ?? string.Empty;
-        if (name.Length is < 2 or > 60)
+        if (!addingToExisting && (name.Length is < 2 or > 60))
         {
             await DisplayAlertAsync("المجموعة", "اكتب اسمًا من حرفين إلى 60 حرفًا.", "حسنًا");
             return;
         }
         if (_members.Count == 0)
         {
-            await DisplayAlertAsync("المجموعة", "أضف عضوًا واحدًا على الأقل قبل إنشاء المجموعة.", "حسنًا");
+            await DisplayAlertAsync(addingToExisting ? "إضافة أعضاء" : "المجموعة",
+                "أضف شخصًا واحدًا على الأقل قبل المتابعة.", "حسنًا");
             return;
         }
 
@@ -145,16 +197,41 @@ public partial class CreateGroupPage : ContentPage
             FindMemberButton.IsEnabled = false;
             GroupBusyIndicator.IsVisible = true;
             GroupBusyIndicator.IsRunning = true;
-            CreateGroupButton.Text = "جارٍ إنشاء المجموعة...";
+            CreateGroupButton.Text = addingToExisting ? "جارٍ إضافة الأعضاء..." : "جارٍ إنشاء المجموعة...";
 
-            var group = await _api.CreateGroupAsync(name, _members.Select(member => member.UserId).ToArray());
+            var userIds = _members.Select(member => member.UserId).Distinct().ToArray();
+            if (addingToExisting)
+            {
+                if (!Guid.TryParse(_existingGroupId, out var existingGroupId) || existingGroupId == Guid.Empty)
+                    throw new InvalidOperationException("معرّف المجموعة الحالية غير صالح.");
 
-            // Reload the server conversation list to seed the local cache before opening ChatPage.
-            await _home.RefreshFromServerAsync();
+                var result = await _api.AddGroupMembersAsync(existingGroupId, userIds);
+                try { await _home.RefreshFromServerAsync(); }
+                catch (Exception refreshError)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Himo Groups] Refresh after adding members failed: {refreshError}");
+                }
+
+                var resultMessage = result.AddedCount > 0
+                    ? $"تمت إضافة {result.AddedCount} عضو إلى المجموعة."
+                    : "الأشخاص المحددون أعضاء في المجموعة بالفعل؛ لم تتم إضافة أعضاء جدد.";
+                await DisplayAlertAsync("إضافة أعضاء", resultMessage, "حسنًا");
+                if (Shell.Current is { } existingShell)
+                    await existingShell.GoToAsync("..", false);
+                return;
+            }
+
+            var group = await _api.CreateGroupAsync(name, userIds);
+            try { await _home.RefreshFromServerAsync(); }
+            catch (Exception refreshError)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo Groups] Refresh after group creation failed: {refreshError}");
+            }
+
             var shell = Shell.Current;
             if (shell is null)
             {
-                await DisplayAlertAsync("المجموعة", "تم إنشاء المجموعة، لكن تعذر فتح المحادثة الآن. ستظهر في قائمة المحادثات بعد التحديث.", "حسنًا");
+                await DisplayAlertAsync("المجموعة", "تم إنشاء المجموعة بنجاح، لكن تعذر فتح المحادثة الآن. ارجع إلى قائمة المحادثات وحدّثها.", "حسنًا");
                 return;
             }
 
@@ -162,16 +239,18 @@ public partial class CreateGroupPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذر إنشاء المجموعة", ex.Message, "حسنًا");
+            System.Diagnostics.Debug.WriteLine($"[Himo Groups] Create/add failed: {ex}");
+            await DisplayAlertAsync(addingToExisting ? "تعذرت إضافة الأعضاء" : "تعذر إنشاء المجموعة", ex.Message, "حسنًا");
         }
         finally
         {
             _creating = false;
             GroupBusyIndicator.IsRunning = false;
             GroupBusyIndicator.IsVisible = false;
-            CreateGroupButton.Text = "إنشاء المجموعة";
             FindMemberButton.IsEnabled = true;
+            UpdateModeUi();
             UpdateMembersCount();
         }
     }
+
 }

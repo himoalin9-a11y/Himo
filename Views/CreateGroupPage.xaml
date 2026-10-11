@@ -10,12 +10,12 @@
         <Grid Grid.Row="0" ColumnDefinitions="48,*,48">
             <Button Grid.Column="0" Text="‹" Style="{StaticResource HimoBackButton}" Clicked="BackClicked" />
             <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="2">
-                <Label Text="إنشاء مجموعة" FontSize="22" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
-                <Label Text="ابدأ محادثة جماعية مع أصدقائك" FontSize="12" TextColor="{DynamicResource HimoMuted}" HorizontalTextAlignment="Center" />
+                <Label x:Name="GroupTitleLabel" Text="إنشاء مجموعة" FontSize="22" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
+                <Label x:Name="GroupSubtitleLabel" Text="ابدأ محادثة جماعية مع أصدقائك" FontSize="12" TextColor="{DynamicResource HimoMuted}" HorizontalTextAlignment="Center" />
             </VerticalStackLayout>
         </Grid>
 
-        <Border Grid.Row="1" Padding="14,3" Style="{StaticResource HimoInputBorder}">
+        <Border x:Name="GroupNameContainer" Grid.Row="1" Padding="14,3" Style="{StaticResource HimoInputBorder}">
             <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
             <Entry x:Name="GroupNameEntry" Placeholder="اسم المجموعة" MaxLength="60" FontSize="16" ReturnType="Next" />
         </Border>
@@ -23,7 +23,7 @@
         <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="8">
             <Border Grid.Column="0" Padding="12,2" Style="{StaticResource HimoInputBorder}">
                 <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
-                <Entry x:Name="MemberLookupEntry" Placeholder="البريد الإلكتروني أو رقم الهاتف" FontSize="14" Keyboard="Text" ReturnType="Search" Completed="MemberLookupCompleted" ClearButtonVisibility="WhileEditing" />
+                <Entry x:Name="MemberLookupEntry" Placeholder="الاسم أو البريد الإلكتروني أو رقم الهاتف" MaxLength="254" FontSize="14" Keyboard="Text" ReturnType="Search" Completed="MemberLookupCompleted" ClearButtonVisibility="WhileEditing" />
             </Border>
             <Button Grid.Column="1" x:Name="FindMemberButton" Text="إضافة" Style="{StaticResource HimoOutlineButton}" Clicked="FindMemberClicked" />
         </Grid>
@@ -41,7 +41,7 @@
                     <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="8" Padding="22">
                         <Label Text="👥" FontSize="42" HorizontalTextAlignment="Center" />
                         <Label Text="أضف أعضاء إلى مجموعتك" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
-                        <Label Text="اكتب البريد الإلكتروني أو رقم الهاتف المسجل في Himo، ثم اضغط إضافة." FontSize="12" TextColor="{DynamicResource HimoMuted}" HorizontalTextAlignment="Center" MaximumWidthRequest="300" />
+                        <Label Text="اكتب الاسم أو البريد الإلكتروني أو رقم الهاتف المسجل في Himo، ثم اضغط إضافة." FontSize="12" TextColor="{DynamicResource HimoMuted}" HorizontalTextAlignment="Center" MaximumWidthRequest="300" />
                     </VerticalStackLayout>
                 </CollectionView.EmptyView>
                 <CollectionView.ItemTemplate>

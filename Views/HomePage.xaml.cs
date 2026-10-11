@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Windows.Input;
 using Himo.Models;
 using Himo.Services;
 using Himo.ViewModels;
@@ -24,17 +23,10 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private bool _openingConversation;
     private string _currentSection = "chats";
     private bool _sectionTransitioning;
-    private bool _selectionMode;
-    private Conversation? _suppressTapConversation;
-    private DateTime _suppressTapUntilUtc = DateTime.MinValue;
-    private readonly HashSet<Conversation> _selectedConversations = new();
-
-    public ICommand ConversationLongPressCommand { get; }
 
     public HomePage(HomeViewModel vm, HimoApiClient api, ProfileService profile, CallHistoryService callHistory)
     {
         InitializeComponent();
-        ConversationLongPressCommand = new Command<Conversation>(BeginConversationSelection);
         _vm = vm;
         _api = api;
         _profile = profile;
@@ -53,66 +45,14 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         UpdateEmptyState();
     }
 
-    private void BeginConversationSelection(Conversation? conversation)
+
+    // A normal tap opens a conversation. Multi-select and long-press selection are disabled.
+    private async void ConversationTapped(object? sender, TappedEventArgs e)
     {
-        if (conversation is null || _currentSection != "chats") return;
-
-        if (!_selectionMode)
-        {
-            _selectionMode = true;
-            _selectedConversations.Clear();
-            foreach (var item in _vm.FilteredConversations) item.IsSelected = false;
-        }
-
-        if (_selectedConversations.Add(conversation))
-            conversation.IsSelected = true;
-
-        // Suppress the tap that some Android builds emit after a native long-press.
-        _suppressTapConversation = conversation;
-        _suppressTapUntilUtc = DateTime.UtcNow.AddMilliseconds(550);
-        UpdateSelectionToolbar();
-    }
-
-    // Use CollectionView native selection instead of a TapGestureRecognizer on each
-    // Border. This ensures taps are delivered by the native Android RecyclerView
-    // and avoids gesture conflicts with the long-press multi-select behavior.
-    private async void ConversationsCollection_SelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (sender is not CollectionView collection)
+        if (sender is not BindableObject element || element.BindingContext is not Conversation conversation)
             return;
 
-        var conversation = e.CurrentSelection?.OfType<Conversation>().FirstOrDefault();
-        if (conversation is null)
-            return;
-
-        // Clear selection immediately so the same row can be opened again later.
-        collection.SelectedItem = null;
-
-        if (ReferenceEquals(_suppressTapConversation, conversation) && DateTime.UtcNow <= _suppressTapUntilUtc)
-        {
-            _suppressTapConversation = null;
-            System.Diagnostics.Debug.WriteLine($"[Himo ChatNav] Suppressed post-long-press selection id={conversation.Id} remote={conversation.RemoteId}");
-            return;
-        }
-
-        if (_selectionMode)
-        {
-            if (_selectedConversations.Remove(conversation))
-                conversation.IsSelected = false;
-            else
-            {
-                _selectedConversations.Add(conversation);
-                conversation.IsSelected = true;
-            }
-
-            if (_selectedConversations.Count == 0)
-                ClearConversationSelection();
-            else
-                UpdateSelectionToolbar();
-            return;
-        }
-
-        System.Diagnostics.Debug.WriteLine($"[Himo ChatNav] Row selected id={conversation.Id} remote={conversation.RemoteId ?? "(null)"} name={conversation.Name}");
+        System.Diagnostics.Debug.WriteLine($"[Himo ChatTap] Conversation tapped id={conversation.Id} remote={conversation.RemoteId ?? "(null)"} name={conversation.Name}");
         await OpenConversationAsync(conversation);
     }
 
@@ -163,64 +103,6 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         finally
         {
             _openingConversation = false;
-        }
-    }
-
-    private void ClearConversationSelection()
-    {
-        foreach (var conversation in _selectedConversations)
-            conversation.IsSelected = false;
-        _selectedConversations.Clear();
-        _selectionMode = false;
-        _suppressTapConversation = null;
-        UpdateSelectionToolbar();
-    }
-
-    private void UpdateSelectionToolbar()
-    {
-        if (SelectionActionBar is null) return;
-        var selected = _selectedConversations.ToList();
-        var active = _selectionMode && _currentSection == "chats" && selected.Count > 0;
-        HomeHeader.IsVisible = !active;
-        SelectionActionBar.IsVisible = active;
-        SelectedConversationCountLabel.Text = selected.Count == 1
-            ? "محادثة واحدة"
-            : $"تم تحديد {selected.Count}";
-
-        var allMuted = selected.Count > 0 && selected.All(item => item.IsMuted);
-        MuteSelectedButton.Source = allMuted ? "selection_bell_on.png" : "selection_bell_off.png";
-        SemanticProperties.SetDescription(MuteSelectedButton, allMuted ? "تفعيل إشعارات المحادثات المحددة" : "كتم إشعارات المحادثات المحددة");
-
-        var showingArchive = _vm.ShowArchived;
-        ArchiveSelectedButton.Source = showingArchive ? "selection_unarchive.png" : "selection_archive.png";
-        SemanticProperties.SetDescription(ArchiveSelectedButton, showingArchive ? "إخراج المحادثات من الأرشيف" : "أرشفة المحادثات المحددة");
-
-        var canBlock = selected.Count == 1 && !selected[0].IsGroup;
-        BlockSelectedButton.IsVisible = canBlock;
-        if (canBlock)
-        {
-            BlockSelectedButton.Source = selected[0].IsBlocked ? "selection_unblock.png" : "selection_block.png";
-            SemanticProperties.SetDescription(BlockSelectedButton, selected[0].IsBlocked ? "إلغاء حظر الشخص" : "حظر الشخص المحدد");
-        }
-
-        // Collapse the block-icon slot entirely when multiple chats are selected.
-        SelectionActionsGrid.ColumnDefinitions.Clear();
-        SelectionActionsGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
-        SelectionActionsGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-        var iconColumns = canBlock ? 5 : 4;
-        for (var i = 0; i < iconColumns; i++)
-            SelectionActionsGrid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(34)));
-        Grid.SetColumn(DeleteSelectedButton, 2);
-        Grid.SetColumn(MuteSelectedButton, 3);
-        Grid.SetColumn(ArchiveSelectedButton, 4);
-        if (canBlock)
-        {
-            Grid.SetColumn(BlockSelectedButton, 5);
-            Grid.SetColumn(CancelSelectionButton, 6);
-        }
-        else
-        {
-            Grid.SetColumn(CancelSelectionButton, 5);
         }
     }
 
@@ -479,9 +361,6 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     {
         if (_sectionTransitioning || string.IsNullOrWhiteSpace(section))
             return;
-        if (section != "chats" && _selectionMode)
-            ClearConversationSelection();
-
         if (section == _currentSection)
         {
             UpdateSectionChrome(section);
@@ -553,12 +432,11 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private void UpdateSectionChrome(string section)
     {
         ChatSearchCard.IsVisible = section == "chats";
-        HomeCreateGroupButton.IsVisible = section == "chats" && !_vm.ShowArchived && !_selectionMode;
+        HomeCreateGroupButton.IsVisible = section == "chats" && !_vm.ShowArchived;
         OverflowMenu.IsVisible = false;
         Search.Placeholder = _vm.ShowArchived ? "البحث في المحادثات المؤرشفة" : "البحث في محادثاتك";
         ArchiveListButton.Source = _vm.ShowArchived ? "selection_unarchive.png" : "selection_archive.png";
         ArchiveListButton.BackgroundColor = _vm.ShowArchived ? Color.FromArgb("#4C2E60") : Colors.Transparent;
-        UpdateSelectionToolbar();
 
         var selected = Color.FromArgb("#3A1755");
         var idle = Color.FromArgb("#160A24");
@@ -577,77 +455,32 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
 
     private void ArchiveListClicked(object? sender, EventArgs e)
     {
-        ClearConversationSelection();
         _vm.ToggleArchiveView();
         UpdateSectionChrome(_currentSection);
         UpdateEmptyState();
     }
 
-    private async void PhoneSearchCompleted(object? sender, EventArgs e) => await SearchPeopleAsync();
-    private async void PhoneSearchClicked(object? sender, EventArgs e) => await SearchPeopleAsync();
+    private async void PhoneSearchCompleted(object? sender, EventArgs e) => await SearchPhoneNumberAsync();
+    private async void PhoneSearchClicked(object? sender, EventArgs e) => await SearchPhoneNumberAsync();
 
-    /// <summary>
-    /// Unified people search. Email, phone, and name queries must be routed to
-    /// the matching API instead of validating every input as a phone number.
-    /// </summary>
-    private async Task SearchPeopleAsync()
+    private async Task SearchPhoneNumberAsync()
     {
         if (_phoneSearchBusy || _contactSearchBusy) return;
-
-        var query = PhoneSearchEntry.Text?.Trim() ?? string.Empty;
-        if (query.Length == 0)
+        var enteredPhone = PhoneSearchEntry.Text?.Trim() ?? string.Empty;
+        var digits = PhoneNumberUtils.Normalize(enteredPhone);
+        if (digits.Length is < 7 or > 15)
         {
-            _phoneMatches.Clear();
-            PhoneSearchStatusLabel.Text = "أدخل الاسم أو رقم الهاتف أو البريد الإلكتروني للبحث.";
+            PhoneSearchStatusLabel.Text = "أدخل رقم هاتف صحيحًا من 7 إلى 15 رقمًا مع مفتاح الدولة عند الحاجة.";
             PhoneSearchStatusLabel.TextColor = Color.FromArgb("#FF8AB7");
             return;
         }
 
-        var isEmailQuery = query.Contains('@');
-        var isPhoneQuery = !isEmailQuery && IsPhoneSearchQuery(query);
-        string? normalizedPhone = null;
-
-        if (isEmailQuery)
-        {
-            if (!LooksLikeEmailAddress(query))
-            {
-                _phoneMatches.Clear();
-                PhoneSearchStatusLabel.Text = "أدخل بريدًا إلكترونيًا صحيحًا.";
-                PhoneSearchStatusLabel.TextColor = Color.FromArgb("#FF8AB7");
-                return;
-            }
-        }
-        else if (isPhoneQuery)
-        {
-            normalizedPhone = NormalizeContactNumber(query);
-            if (normalizedPhone is null)
-            {
-                _phoneMatches.Clear();
-                PhoneSearchStatusLabel.Text = "أدخل رقم هاتف صحيحًا من 7 إلى 15 رقمًا مع مفتاح الدولة عند الحاجة.";
-                PhoneSearchStatusLabel.TextColor = Color.FromArgb("#FF8AB7");
-                return;
-            }
-        }
-        else if (query.Length < 3)
-        {
-            _phoneMatches.Clear();
-            PhoneSearchStatusLabel.Text = "اكتب ثلاثة أحرف على الأقل للبحث بالاسم.";
-            PhoneSearchStatusLabel.TextColor = Color.FromArgb("#FF8AB7");
-            return;
-        }
-
-        var searchKind = isEmailQuery ? "email" : isPhoneQuery ? "phone" : "name";
         _phoneSearchBusy = true;
         PhoneSearchButton.IsEnabled = false;
         FindContactsButton.IsEnabled = false;
         PhoneSearchButton.Text = "جارٍ البحث...";
         PhoneSearchProgress.IsVisible = true;
-        PhoneSearchStatusLabel.Text = searchKind switch
-        {
-            "email" => "جارٍ البحث بالبريد الإلكتروني...",
-            "phone" => "يتم البحث عن الحسابات التي تسمح بالعثور عليها...",
-            _ => "جارٍ البحث بالاسم..."
-        };
+        PhoneSearchStatusLabel.Text = "يتم البحث عن الحسابات التي تسمح بالعثور عليها...";
         PhoneSearchStatusLabel.TextColor = Color.FromArgb("#C59BE8");
         _phoneMatches.Clear();
 
@@ -660,80 +493,35 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
                 return;
             }
 
-            // Use one server route so email, direct phone search and display-name
-            // search share the same authentication and visibility rules.
-            // Phone queries are canonicalized before sending, including Arabic digits,
-            // Saudi local 05… and 5… formats, and 00-prefixed international numbers.
-            var apiQuery = isPhoneQuery ? normalizedPhone! : query;
-            var users = await _api.SearchGroupMembersAsync(apiQuery);
-            IReadOnlyList<ContactMatchDto> matches = users
-                .Where(user => user.Id != Guid.Empty)
-                .Select(user => new ContactMatchDto(user.Id, user.Name)
-                {
-                    Email = isEmailQuery ? user.Email : null,
-                    MatchedPhoneNumber = isPhoneQuery ? user.Email : null
-                })
-                .ToArray();
-
-            var uniqueMatches = matches
-                .Where(match => match.Id != Guid.Empty)
-                .GroupBy(match => match.Id)
-                .Select(group => group.First())
-                .OrderBy(match => match.Name, StringComparer.CurrentCultureIgnoreCase)
-                .ToArray();
-
-            foreach (var match in uniqueMatches)
+            var matches = await _api.FindUsersByPhoneNumbersAsync(new[] { enteredPhone });
+            foreach (var match in matches)
                 _phoneMatches.Add(match);
 
-            PhoneSearchStatusLabel.Text = uniqueMatches.Length == 0
-                ? searchKind == "phone"
-                    ? "لم نعثر على حساب يطابق هذا الرقم. قد لا يكون الرقم مضافًا أو البحث عنه غير مفعّل لدى صاحبه."
-                    : "لم نعثر على حساب مطابق. تحقق من الكتابة أو جرّب جزءًا آخر من الاسم."
-                : uniqueMatches.Length == 1
+            if (matches.Count == 0)
+            {
+                PhoneSearchStatusLabel.Text = "لم نعثر على حساب يطابق هذا الرقم. قد لا يكون الرقم مضافًا أو البحث عنه غير مفعّل.";
+            }
+            else
+            {
+                PhoneSearchStatusLabel.Text = matches.Count == 1
                     ? "عثرنا على حساب واحد. اضغط عليه لبدء محادثة."
-                    : $"عثرنا على {uniqueMatches.Length} حسابات. اختر حسابًا لبدء محادثة.";
-        }
-        catch (ArgumentException ex)
-        {
-            PhoneSearchStatusLabel.Text = ex.Message;
-            PhoneSearchStatusLabel.TextColor = Color.FromArgb("#FF8AB7");
-            System.Diagnostics.Debug.WriteLine($"[Himo Search] Invalid {searchKind} query: {ex.Message}");
+                    : $"عثرنا على {matches.Count} حسابات. اختر حسابًا لبدء محادثة.";
+            }
         }
         catch (Exception ex)
         {
-            PhoneSearchStatusLabel.Text = "تعذر البحث الآن. تحقق من اتصال الخادم ثم حاول مجددًا.";
-            PhoneSearchStatusLabel.TextColor = Color.FromArgb("#FF8AB7");
-            System.Diagnostics.Debug.WriteLine($"[Himo Search] {searchKind} lookup failed: {ex}");
-            await DisplayAlertAsync("البحث عن الأشخاص", PhoneSearchStatusLabel.Text, "حسنًا");
+            PhoneSearchStatusLabel.Text = "تعذر البحث الآن. تحقق من الاتصال بالخادم ثم حاول مجددًا.";
+            System.Diagnostics.Debug.WriteLine($"[Himo Home] Phone lookup failed: {ex}");
+            await DisplayAlertAsync("البحث برقم الهاتف", ex.Message, "حسنًا");
         }
         finally
         {
             _phoneSearchBusy = false;
             PhoneSearchButton.IsEnabled = true;
             FindContactsButton.IsEnabled = true;
-            PhoneSearchButton.Text = "بحث";
+            PhoneSearchButton.Text = "بحث عن الرقم";
             PhoneSearchProgress.IsVisible = false;
         }
-    }
-
-    private static bool LooksLikeEmailAddress(string value)
-    {
-        var email = value.Trim();
-        if (email.Length is < 5 or > 254 || email.Contains(' ') || email.Any(char.IsWhiteSpace))
-            return false;
-
-        var at = email.LastIndexOf('@');
-        return at > 0 && at < email.Length - 1 && email[(at + 1)..].Contains('.');
-    }
-
-    private static bool IsPhoneSearchQuery(string value)
-    {
-        if (PhoneNumberUtils.Normalize(value).Length == 0)
-            return false;
-
-        return value.All(character =>
-            char.IsDigit(character) || char.IsWhiteSpace(character) ||
-            character is '+' or '-' or '(' or ')');
     }
 
     private async void FindContactsClicked(object? sender, EventArgs e) => await SearchDeviceContactsAsync();
@@ -886,156 +674,6 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         {
             _openingMatchedConversation = false;
         }
-    }
-
-    private void CancelConversationSelectionClicked(object? sender, EventArgs e) => ClearConversationSelection();
-
-    private async void DeleteSelectedConversationsClicked(object? sender, EventArgs e)
-    {
-        if (_selectedConversations.Count == 0) return;
-        var selected = _selectedConversations.ToList();
-        var confirmed = await DisplayAlertAsync(
-            "حذف المحادثات",
-            selected.Count == 1
-                ? $"حذف محادثة {selected[0].Name} من قائمتك؟ يمكنك البحث عن الشخص وبدء محادثة معه لاحقًا."
-                : $"حذف {selected.Count} محادثات من قائمتك؟ يمكنك البحث عن الأشخاص وبدء محادثات جديدة لاحقًا.",
-            "حذف", "إلغاء");
-        if (!confirmed) return;
-        await ApplyConversationActionAsync("delete", selected);
-    }
-
-    private async void MuteSelectedConversationsClicked(object? sender, EventArgs e)
-    {
-        if (_selectedConversations.Count == 0) return;
-        var selected = _selectedConversations.ToList();
-        var action = selected.All(item => item.IsMuted) ? "unmute" : "mute";
-        await ApplyConversationActionAsync(action, selected);
-    }
-
-    private async void ArchiveSelectedConversationsClicked(object? sender, EventArgs e)
-    {
-        if (_selectedConversations.Count == 0) return;
-        var action = _vm.ShowArchived ? "unarchive" : "archive";
-        await ApplyConversationActionAsync(action, _selectedConversations.ToList());
-    }
-
-    private async void BlockSelectedConversationClicked(object? sender, EventArgs e)
-    {
-        if (_selectedConversations.Count != 1) return;
-        var selected = _selectedConversations.Single();
-        if (selected.IsGroup)
-        {
-            await DisplayAlertAsync("الحظر", "يمكن حظر حساب فردي فقط، وليس مجموعة كاملة.", "حسنًا");
-            return;
-        }
-
-        var action = selected.IsBlocked ? "unblock" : "block";
-        if (action == "block")
-        {
-            var confirmed = await DisplayAlertAsync(
-                "حظر الحساب",
-                $"هل تريد حظر {selected.Name}؟ لن تتمكن الحسابات المحظورة من إرسال رسائل أو بدء مكالمات مباشرة بينكما.",
-                "حظر", "إلغاء");
-            if (!confirmed) return;
-        }
-        await ApplyConversationActionAsync(action, new[] { selected });
-    }
-
-    private async Task ApplyConversationActionAsync(string action, IReadOnlyCollection<Conversation> selected)
-    {
-        var succeeded = new List<Conversation>();
-        var failures = new List<string>();
-        await _api.TokenInitialization;
-
-        foreach (var conversation in selected)
-        {
-            try
-            {
-                if (Guid.TryParse(conversation.RemoteId, out var remoteId) && remoteId != Guid.Empty)
-                {
-                    if (!_api.HasToken)
-                        throw new InvalidOperationException("سجّل الدخول مجددًا لتنفيذ هذا الإجراء.");
-                    await _api.SetConversationActionAsync(remoteId, action);
-                }
-                else if (action is "block" or "unblock")
-                {
-                    throw new InvalidOperationException("الحظر متاح للمحادثات المرتبطة بحساب على الخادم فقط.");
-                }
-
-                switch (action)
-                {
-                    case "delete":
-                        _vm.Conversations.Remove(conversation);
-                        UpdateLegacyArchiveList(conversation, archived: false);
-                        break;
-                    case "archive":
-                        conversation.IsArchived = true;
-                        UpdateLegacyArchiveList(conversation, archived: true);
-                        break;
-                    case "unarchive":
-                        conversation.IsArchived = false;
-                        UpdateLegacyArchiveList(conversation, archived: false);
-                        break;
-                    case "mute":
-                        conversation.IsMuted = true;
-                        break;
-                    case "unmute":
-                        conversation.IsMuted = false;
-                        break;
-                    case "block":
-                        conversation.IsBlocked = true;
-                        break;
-                    case "unblock":
-                        conversation.IsBlocked = false;
-                        break;
-                }
-                succeeded.Add(conversation);
-            }
-            catch (Exception ex)
-            {
-                failures.Add($"{conversation.Name}: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"[Himo Home] Conversation action '{action}' failed: {ex}");
-            }
-        }
-
-        ClearConversationSelection();
-        _vm.Filter();
-        UpdateEmptyState();
-
-        // Refresh the flags from the server after persisting per-account actions.
-        if (succeeded.Count > 0 && _api.HasToken)
-            await _vm.RefreshFromServerAsync();
-
-        if (failures.Count > 0)
-        {
-            var summary = failures.Count == 1 ? failures[0] : $"تعذر تنفيذ الإجراء على {failures.Count} محادثات.";
-            await DisplayAlertAsync("تعذر إكمال بعض الإجراءات", summary, "حسنًا");
-            return;
-        }
-
-        var resultMessage = action switch
-        {
-            "delete" => succeeded.Count == 1 ? "تم حذف المحادثة من قائمتك. يمكنك البحث عن الشخص لبدء محادثة مجددًا." : $"تم حذف {succeeded.Count} محادثات من قائمتك.",
-            "archive" => "تمت أرشفة المحادثات المحددة. افتح رمز الأرشيف بجانب البحث لعرضها لاحقًا.",
-            "unarchive" => "تمت إعادة المحادثات إلى القائمة الرئيسية.",
-            "mute" => "تم كتم إشعارات المحادثات المحددة.",
-            "unmute" => "تم تفعيل إشعارات المحادثات المحددة.",
-            "block" => "تم حظر الحساب. لن يتمكن من إرسال رسائل أو بدء مكالمات مباشرة معك.",
-            "unblock" => "تم إلغاء الحظر.",
-            _ => "تم تحديث المحادثات المحددة."
-        };
-        await DisplayAlertAsync("Himo", resultMessage, "حسنًا");
-    }
-
-    private static void UpdateLegacyArchiveList(Conversation conversation, bool archived)
-    {
-        if (string.IsNullOrWhiteSpace(conversation.RemoteId)) return;
-        var existing = Preferences.Default.Get("himo_archived_conversations", string.Empty)
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (archived) existing.Add(conversation.RemoteId);
-        else existing.Remove(conversation.RemoteId);
-        Preferences.Default.Set("himo_archived_conversations", string.Join(',', existing));
     }
 
     private async void CallAudioAgainClicked(object? sender, EventArgs e) => await OpenCallAgainAsync(sender, "audio");

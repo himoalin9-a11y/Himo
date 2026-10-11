@@ -976,6 +976,34 @@ public sealed class HimoApiClient
             ?? throw new InvalidOperationException("استجابة الخادم لإنشاء المجموعة غير صالحة.");
     }
 
+    public async Task<GroupMembersAddedResponse> AddGroupMembersAsync(
+        Guid groupId,
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (groupId == Guid.Empty)
+            throw new ArgumentException("معرّف المجموعة غير صالح.", nameof(groupId));
+
+        var members = (userIds ?? Array.Empty<Guid>())
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToArray();
+        if (members.Length == 0)
+            throw new ArgumentException("اختر شخصًا واحدًا على الأقل لإضافته.", nameof(userIds));
+        if (members.Length > 100)
+            throw new ArgumentException("يمكن إضافة 100 عضو كحد أقصى في كل طلب.", nameof(userIds));
+
+        using var response = await _http.PostAsJsonAsync(
+            $"api/groups/{groupId:D}/members",
+            new { userIds = members },
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        return await response.Content.ReadFromJsonAsync<GroupMembersAddedResponse>(
+            cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("استجابة الخادم لإضافة أعضاء المجموعة غير صالحة.");
+    }
+
     public async Task<IReadOnlyList<MessageDto>>
         GetMessagesAsync(
             Guid conversationId,
@@ -1421,6 +1449,8 @@ public sealed class HimoApiClient
             return null;
         }
     }
+
+    public sealed record GroupMembersAddedResponse(Guid ConversationId, int AddedCount);
 
     public sealed record ConversationDto(
         Guid Id,
