@@ -375,6 +375,37 @@ webApp.MapDelete("/api/me/photo", (HttpRequest http, PostgresStore store) =>
     return Results.NoContent();
 });
 
+webApp.MapGet("/api/users/group-search", (HttpRequest http, string? query, PostgresStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+
+    var value = (query ?? string.Empty).Trim();
+    if (value.Length < 3 || value.Length > 254)
+        return Results.BadRequest(new { message = "أدخل ثلاثة أحرف على الأقل للبحث بالاسم، أو بريدًا إلكترونيًا أو رقم هاتف صحيحًا." });
+
+    // Email searches are exact to avoid returning accounts whose address merely
+    // starts with the supplied text. This app stores verified email in Users.PhoneNumber.
+    if (value.Contains('@'))
+    {
+        var email = NormalizeEmail(value);
+        if (!IsValidEmail(email))
+            return Results.BadRequest(new { message = "صيغة البريد الإلكتروني غير صحيحة." });
+        return Results.Ok(store.SearchGroupMembers(email, null, session.UserId));
+    }
+
+    // Only strings consisting of phone-like characters are treated as phone
+    // queries. Anything else is searched against the display name.
+    if (IsPhoneLookupQuery(value))
+    {
+        var normalizedPhone = NormalizeContactPhoneForMatching(value);
+        if (normalizedPhone.Error is not null || normalizedPhone.Value is null)
+            return Results.BadRequest(new { message = normalizedPhone.Error ?? "أدخل رقم هاتف صحيحًا." });
+        return Results.Ok(store.SearchGroupMembers(null, normalizedPhone.Value, session.UserId));
+    }
+
+    return Results.Ok(store.SearchUsersByName(value, session.UserId));
+});
+
 webApp.MapGet("/api/users/search", (HttpRequest http, string? email, PostgresStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
@@ -453,6 +484,22 @@ webApp.MapGet("/api/conversations", (HttpRequest http, PostgresStore store) =>
     return Results.Ok(store.GetConversations(session.UserId));
 });
 
+webApp.MapPost("/api/conversations/{id:guid}/actions", (Guid id, HttpRequest http, ConversationActionRequest request, PostgresStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    if (!store.ExistsConversation(id, session.UserId)) return Results.NotFound();
+    var action = request.Action?.Trim().ToLowerInvariant() ?? string.Empty;
+    try
+    {
+        store.ApplyConversationAction(id, session.UserId, action);
+        return Results.Ok(new { conversationId = id, action });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 webApp.MapPost("/api/conversations/{id:guid}/read", async (Guid id, HttpRequest http, PostgresStore store, IHubContext<HimoChatHub> hub) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
@@ -506,6 +553,35 @@ webApp.MapPost("/api/conversations", (HttpRequest http, CreateConversationReques
     }
 });
 
+webApp.MapPost("/api/groups", (HttpRequest http, CreateGroupRequest request, PostgresStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+
+    var name = request.Name?.Trim() ?? string.Empty;
+    if (name.Length is < 2 or > 60)
+        return Results.BadRequest(new { message = "اسم المجموعة يجب أن يتراوح بين حرفين و60 حرفًا." });
+
+    var memberIds = (request.UserIds ?? Array.Empty<Guid>())
+        .Where(id => id != Guid.Empty && id != session.UserId)
+        .Distinct()
+        .ToArray();
+
+    if (memberIds.Length == 0)
+        return Results.BadRequest(new { message = "أضف عضوًا واحدًا على الأقل قبل إنشاء المجموعة." });
+    if (memberIds.Length > 100)
+        return Results.BadRequest(new { message = "يمكن إضافة 100 عضو كحد أقصى إلى المجموعة." });
+
+    try
+    {
+        var group = store.CreateGroup(session.UserId, name, memberIds);
+        return Results.Created($"/api/conversations/{group.Id}", group);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 webApp.MapGet("/api/conversations/{id:guid}/messages", (Guid id, HttpRequest http, PostgresStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
@@ -547,6 +623,8 @@ webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequ
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
     if (!store.ExistsConversation(id, session.UserId)) return Results.NotFound();
+    if (store.IsConversationBlockedForUser(id, session.UserId))
+        return Results.Conflict(new { message = "لا يمكن إرسال رسائل في هذه المحادثة لأن أحد الطرفين حظر الآخر." });
     var text = request.Text?.Trim() ?? string.Empty;
     if (string.IsNullOrWhiteSpace(text)) return Results.BadRequest(new { message = "نص الرسالة مطلوب." });
     if (text.Length > 4000) return Results.BadRequest(new { message = "الرسالة طويلة جدًا. الحد الأقصى 4000 حرف." });
@@ -583,7 +661,7 @@ webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequ
 
         try
         {
-            var tokens = store.GetPushTokens(recipientIds);
+            var tokens = store.GetPushTokens(store.GetUnmutedNotificationRecipients(id, recipientIds));
             var push = webApp.Services.GetRequiredService<FcmPushService>();
             var acceptedTokens = await push.SendMessageAsync(
                 tokens,
@@ -655,6 +733,8 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
     if (!store.ExistsConversation(id, session.UserId)) return Results.NotFound();
+    if (store.IsConversationBlockedForUser(id, session.UserId))
+        return Results.Conflict(new { message = "لا يمكن إرسال مرفقات في هذه المحادثة لأن أحد الطرفين حظر الآخر." });
     if (!http.HasFormContentType) return Results.BadRequest(new { message = "صيغة الملف غير صحيحة." });
 
     var form = await http.ReadFormAsync(http.HttpContext.RequestAborted);
@@ -735,7 +815,7 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
         var recipientIds = store.GetOtherParticipantUserIds(id, session.UserId);
         await hub.Clients.Groups(recipientIds.Select(userId => HimoChatHub.UserGroup(userId)))
             .SendAsync("MessageReceived", message, http.HttpContext.RequestAborted);
-        var tokens = store.GetPushTokens(recipientIds);
+        var tokens = store.GetPushTokens(store.GetUnmutedNotificationRecipients(id, recipientIds));
         if (tokens.Count > 0)
         {
             var push = webApp.Services.GetRequiredService<FcmPushService>();
@@ -861,6 +941,12 @@ static (string? Value, string? Error) NormalizeOptionalContactPhone(string? inpu
     return (value, null);
 }
 
+static bool IsPhoneLookupQuery(string query)
+{
+    return query.Any(char.IsDigit) && query.All(ch =>
+        char.IsDigit(ch) || char.IsWhiteSpace(ch) || ch is '+' or '-' or '(' or ')');
+}
+
 static (string? Value, string? Error) NormalizeContactPhoneForMatching(string? input)
 {
     var validated = NormalizeOptionalContactPhone(input);
@@ -938,7 +1024,7 @@ WHERE table_schema = 'public'
       (lower(table_name) = 'pushtokens' AND lower(column_name) IN ('userid','token','updatedat')) OR
       (lower(table_name) = 'otpcodes' AND lower(column_name) IN ('phonenumber','code','expiresat','failedattempts','lastsentat')) OR
       (lower(table_name) = 'sessions' AND lower(column_name) IN ('token','userid','expiresat')) OR
-      (lower(table_name) = 'conversations' AND lower(column_name) IN ('id','owneruserid','name','lastmessage','updatedat')) OR
+      (lower(table_name) = 'conversations' AND lower(column_name) IN ('id','owneruserid','name','lastmessage','updatedat','isgroup')) OR
       (lower(table_name) = 'messages' AND lower(column_name) IN ('id','conversationid','senderuserid','senderphonenumber','text','sentat','clientmessageid','attachmentfilename','attachmentcontenttype','attachmentsize')) OR
       (lower(table_name) = 'conversationparticipants' AND lower(column_name) IN ('conversationid','userid','joinedat','lastreadat'))
   );";
@@ -948,7 +1034,7 @@ WHERE table_schema = 'public'
             "pushtokens.userid","pushtokens.token","pushtokens.updatedat",
             "otpcodes.phonenumber","otpcodes.code","otpcodes.expiresat","otpcodes.failedattempts","otpcodes.lastsentat",
             "sessions.token","sessions.userid","sessions.expiresat",
-            "conversations.id","conversations.owneruserid","conversations.name","conversations.lastmessage","conversations.updatedat",
+            "conversations.id","conversations.owneruserid","conversations.name","conversations.lastmessage","conversations.updatedat","conversations.isgroup",
             "messages.id","messages.conversationid","messages.senderuserid","messages.senderphonenumber","messages.text","messages.sentat","messages.clientmessageid","messages.attachmentfilename","messages.attachmentcontenttype","messages.attachmentsize",
             "conversationparticipants.conversationid","conversationparticipants.userid","conversationparticipants.joinedat","conversationparticipants.lastreadat"
         };
@@ -1215,8 +1301,10 @@ CREATE TABLE IF NOT EXISTS Conversations (
     Name TEXT NOT NULL,
     LastMessage TEXT NOT NULL DEFAULT '',
     UpdatedAt TEXT NOT NULL,
+    IsGroup BOOLEAN NOT NULL DEFAULT FALSE,
     FOREIGN KEY(OwnerUserId) REFERENCES Users(Id) ON DELETE CASCADE
 );
+ALTER TABLE Conversations ADD COLUMN IF NOT EXISTS IsGroup BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE TABLE IF NOT EXISTS Messages (
     Id TEXT PRIMARY KEY NOT NULL,
     ConversationId TEXT NOT NULL,
@@ -1244,6 +1332,28 @@ CREATE TABLE IF NOT EXISTS ConversationParticipants (
     FOREIGN KEY(ConversationId) REFERENCES Conversations(Id) ON DELETE CASCADE,
     FOREIGN KEY(UserId) REFERENCES Users(Id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS ConversationUserStates (
+    ConversationId TEXT NOT NULL,
+    UserId TEXT NOT NULL,
+    IsArchived BOOLEAN NOT NULL DEFAULT FALSE,
+    IsMuted BOOLEAN NOT NULL DEFAULT FALSE,
+    IsDeleted BOOLEAN NOT NULL DEFAULT FALSE,
+    UpdatedAt TEXT NOT NULL,
+    PRIMARY KEY(ConversationId, UserId),
+    FOREIGN KEY(ConversationId) REFERENCES Conversations(Id) ON DELETE CASCADE,
+    FOREIGN KEY(UserId) REFERENCES Users(Id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS IX_ConversationUserStates_User ON ConversationUserStates(UserId, IsArchived, IsDeleted);
+CREATE TABLE IF NOT EXISTS BlockedUsers (
+    BlockerUserId TEXT NOT NULL,
+    BlockedUserId TEXT NOT NULL,
+    CreatedAt TEXT NOT NULL,
+    PRIMARY KEY(BlockerUserId, BlockedUserId),
+    FOREIGN KEY(BlockerUserId) REFERENCES Users(Id) ON DELETE CASCADE,
+    FOREIGN KEY(BlockedUserId) REFERENCES Users(Id) ON DELETE CASCADE,
+    CHECK (BlockerUserId <> BlockedUserId)
+);
+CREATE INDEX IF NOT EXISTS IX_BlockedUsers_Blocked ON BlockedUsers(BlockedUserId);
 CREATE INDEX IF NOT EXISTS IX_Conversations_Owner_Updated ON Conversations(OwnerUserId, UpdatedAt DESC);
 CREATE INDEX IF NOT EXISTS IX_Sessions_Expires ON Sessions(ExpiresAt);
 CREATE INDEX IF NOT EXISTS IX_Participants_User ON ConversationParticipants(UserId, JoinedAt);
@@ -2150,6 +2260,132 @@ WHERE ConversationId=@conversation AND UserId<>@user;";
         }
     }
 
+    public void ApplyConversationAction(Guid conversationId, Guid userId, string action)
+    {
+        action = action?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (action is not ("delete" or "archive" or "unarchive" or "mute" or "unmute" or "block" or "unblock"))
+            throw new InvalidOperationException("إجراء المحادثة غير صالح.");
+
+        lock (_sync)
+        {
+            using var connection = Open();
+            if (action is "block" or "unblock")
+            {
+                Guid peerId;
+                using (var peer = connection.CreateCommand())
+                {
+                    peer.CommandText = @"
+SELECT cp.UserId
+FROM Conversations c
+JOIN ConversationParticipants cp ON cp.ConversationId=c.Id
+WHERE c.Id=@conversation AND cp.UserId<>@user AND COALESCE(c.IsGroup,FALSE)=FALSE
+  AND (SELECT COUNT(*) FROM ConversationParticipants cpCount WHERE cpCount.ConversationId=c.Id)=2
+LIMIT 1;";
+                    peer.Parameters.AddWithValue("@conversation", conversationId.ToString());
+                    peer.Parameters.AddWithValue("@user", userId.ToString());
+                    var value = peer.ExecuteScalar()?.ToString();
+                    if (!Guid.TryParse(value, out peerId))
+                        throw new InvalidOperationException("يمكن حظر شخص واحد فقط من محادثة فردية، ولا يمكن حظر مجموعة كاملة.");
+                }
+
+                using var block = connection.CreateCommand();
+                if (action == "block")
+                {
+                    block.CommandText = @"INSERT INTO BlockedUsers(BlockerUserId,BlockedUserId,CreatedAt)
+VALUES(@user,@peer,@now) ON CONFLICT(BlockerUserId,BlockedUserId) DO NOTHING;";
+                    block.Parameters.AddWithValue("@now", DateTimeOffset.UtcNow.ToString("O"));
+                }
+                else
+                {
+                    block.CommandText = "DELETE FROM BlockedUsers WHERE BlockerUserId=@user AND BlockedUserId=@peer;";
+                }
+                block.Parameters.AddWithValue("@user", userId.ToString());
+                block.Parameters.AddWithValue("@peer", peerId.ToString());
+                block.ExecuteNonQuery();
+                return;
+            }
+
+            var updateArchive = action is "archive" or "unarchive";
+            var updateMute = action is "mute" or "unmute";
+            var updateDelete = action == "delete";
+            var archived = action == "archive";
+            var muted = action == "mute";
+            var deleted = action == "delete";
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+INSERT INTO ConversationUserStates(ConversationId,UserId,IsArchived,IsMuted,IsDeleted,UpdatedAt)
+VALUES(@conversation,@user,@archived,@muted,@deleted,@now)
+ON CONFLICT(ConversationId,UserId) DO UPDATE SET
+    IsArchived=CASE WHEN @updateArchive THEN @archived ELSE ConversationUserStates.IsArchived END,
+    IsMuted=CASE WHEN @updateMute THEN @muted ELSE ConversationUserStates.IsMuted END,
+    IsDeleted=CASE WHEN @updateDelete THEN @deleted ELSE ConversationUserStates.IsDeleted END,
+    UpdatedAt=EXCLUDED.UpdatedAt;";
+            command.Parameters.AddWithValue("@conversation", conversationId.ToString());
+            command.Parameters.AddWithValue("@user", userId.ToString());
+            command.Parameters.AddWithValue("@archived", archived);
+            command.Parameters.AddWithValue("@muted", muted);
+            command.Parameters.AddWithValue("@deleted", deleted);
+            command.Parameters.AddWithValue("@updateArchive", updateArchive);
+            command.Parameters.AddWithValue("@updateMute", updateMute);
+            command.Parameters.AddWithValue("@updateDelete", updateDelete);
+            command.Parameters.AddWithValue("@now", DateTimeOffset.UtcNow.ToString("O"));
+            command.ExecuteNonQuery();
+        }
+    }
+
+    public bool IsConversationBlockedForUser(Guid conversationId, Guid currentUserId)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+SELECT EXISTS (
+    SELECT 1
+    FROM Conversations c
+    JOIN ConversationParticipants self ON self.ConversationId=c.Id AND self.UserId=@user
+    JOIN ConversationParticipants peer ON peer.ConversationId=c.Id AND peer.UserId<>@user
+    JOIN BlockedUsers b ON (b.BlockerUserId=@user AND b.BlockedUserId=peer.UserId)
+                       OR (b.BlockerUserId=peer.UserId AND b.BlockedUserId=@user)
+    WHERE c.Id=@conversation AND COALESCE(c.IsGroup,FALSE)=FALSE
+      AND (SELECT COUNT(*) FROM ConversationParticipants cpCount WHERE cpCount.ConversationId=c.Id)=2
+);";
+            command.Parameters.AddWithValue("@conversation", conversationId.ToString());
+            command.Parameters.AddWithValue("@user", currentUserId.ToString());
+            return command.ExecuteScalar() is bool blocked && blocked;
+        }
+    }
+
+    public IReadOnlyList<Guid> GetUnmutedNotificationRecipients(Guid conversationId, IReadOnlyList<Guid> candidateUserIds)
+    {
+        if (candidateUserIds.Count == 0) return Array.Empty<Guid>();
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            var parameters = new List<string>();
+            for (var i = 0; i < candidateUserIds.Count; i++)
+            {
+                var name = "@recipient" + i.ToString(CultureInfo.InvariantCulture);
+                parameters.Add(name);
+                command.Parameters.AddWithValue(name, candidateUserIds[i].ToString());
+            }
+            command.CommandText = $@"
+SELECT cp.UserId
+FROM ConversationParticipants cp
+LEFT JOIN ConversationUserStates s ON s.ConversationId=cp.ConversationId AND s.UserId=cp.UserId
+WHERE cp.ConversationId=@conversation
+  AND cp.UserId IN ({string.Join(",", parameters)})
+  AND COALESCE(s.IsMuted,FALSE)=FALSE;";
+            command.Parameters.AddWithValue("@conversation", conversationId.ToString());
+            using var reader = command.ExecuteReader();
+            var result = new List<Guid>();
+            while (reader.Read())
+                if (!reader.IsDBNull(0) && Guid.TryParse(reader.GetString(0), out var id)) result.Add(id);
+            return result;
+        }
+    }
+
     public IReadOnlyList<ConversationDto> GetConversations(Guid userId)
     {
         lock (_sync)
@@ -2159,7 +2395,8 @@ WHERE ConversationId=@conversation AND UserId<>@user;";
         command.CommandText = @"
 SELECT c.Id,
        CASE
-           WHEN (SELECT COUNT(*) FROM ConversationParticipants cp WHERE cp.ConversationId=c.Id)=2
+           WHEN COALESCE(c.IsGroup,FALSE)=FALSE
+                AND (SELECT COUNT(*) FROM ConversationParticipants cp WHERE cp.ConversationId=c.Id)=2
                 THEN COALESCE((SELECT u.Name
                                FROM ConversationParticipants cp2
                                JOIN Users u ON u.Id=cp2.UserId
@@ -2176,9 +2413,18 @@ SELECT c.Id,
           AND m.SentAt > COALESCE(p.LastReadAt, p.JoinedAt)) AS UnreadCount,
        other.ParticipantUserId AS OtherParticipantUserId,
        COALESCE(other.HasProfilePhoto,FALSE) AS HasProfilePhoto,
-       COALESCE(other.ProfilePhotoVersion,0) AS ProfilePhotoVersion
+       COALESCE(other.ProfilePhotoVersion,0) AS ProfilePhotoVersion,
+       COALESCE(state.IsArchived,FALSE) AS IsArchived,
+       COALESCE(state.IsMuted,FALSE) AS IsMuted,
+       EXISTS (
+          SELECT 1 FROM ConversationParticipants peer
+          JOIN BlockedUsers b ON b.BlockerUserId=@user AND b.BlockedUserId=peer.UserId
+          WHERE peer.ConversationId=c.Id AND peer.UserId<>@user
+       ) AS IsBlocked,
+       COALESCE(c.IsGroup,FALSE) AS IsGroup
 FROM Conversations c
 JOIN ConversationParticipants p ON p.ConversationId=c.Id
+LEFT JOIN ConversationUserStates state ON state.ConversationId=c.Id AND state.UserId=@user
 LEFT JOIN LATERAL (
     SELECT cp2.UserId AS ParticipantUserId,
            (u.ProfilePhoto IS NOT NULL) AS HasProfilePhoto,
@@ -2187,8 +2433,9 @@ LEFT JOIN LATERAL (
     JOIN Users u ON u.Id=cp2.UserId
     WHERE cp2.ConversationId=c.Id AND cp2.UserId<>@user
     LIMIT 1
-) other ON (SELECT COUNT(*) FROM ConversationParticipants cpCount WHERE cpCount.ConversationId=c.Id)=2
-WHERE p.UserId=@user
+) other ON COALESCE(c.IsGroup,FALSE)=FALSE
+          AND (SELECT COUNT(*) FROM ConversationParticipants cpCount WHERE cpCount.ConversationId=c.Id)=2
+WHERE p.UserId=@user AND COALESCE(state.IsDeleted,FALSE)=FALSE
 ORDER BY c.UpdatedAt DESC;";
             command.Parameters.AddWithValue("@user", userId.ToString());
             using var reader = command.ExecuteReader();
@@ -2213,7 +2460,11 @@ ORDER BY c.UpdatedAt DESC;";
                     reader.GetInt32(4),
                     otherParticipantUserId,
                     hasProfilePhoto,
-                    profilePhotoVersion));
+                    profilePhotoVersion,
+                    !reader.IsDBNull(8) && reader.GetBoolean(8),
+                    !reader.IsDBNull(9) && reader.GetBoolean(9),
+                    !reader.IsDBNull(10) && reader.GetBoolean(10),
+                    !reader.IsDBNull(11) && reader.GetBoolean(11)));
             }
             return result;
         }
@@ -2225,7 +2476,7 @@ ORDER BY c.UpdatedAt DESC;";
         {
             using var connection = Open();
         using var command = connection.CreateCommand();
-            command.CommandText = "SELECT Id,PhoneNumber,Name FROM Users WHERE lower(PhoneNumber) LIKE lower(@email) || '%' AND Id <> @current ORDER BY PhoneNumber LIMIT 20;";
+            command.CommandText = "SELECT Id,PhoneNumber,Name FROM Users WHERE lower(PhoneNumber)=lower(@email) AND Id <> @current ORDER BY PhoneNumber LIMIT 20;";
             command.Parameters.AddWithValue("@email", email);
             command.Parameters.AddWithValue("@current", currentUserId.ToString());
             using var reader = command.ExecuteReader();
@@ -2236,6 +2487,99 @@ ORDER BY c.UpdatedAt DESC;";
                     reader.IsDBNull(1) || reader.IsDBNull(2))
                     continue;
 
+                result.Add(new UserSearchDto(userId, reader.GetString(1), reader.GetString(2)));
+            }
+            return result;
+        }
+    }
+
+    public IReadOnlyList<UserSearchDto> SearchUsersByName(string query, Guid currentUserId)
+    {
+        query = query?.Trim() ?? string.Empty;
+        if (query.Length < 3 || query.Length > 254)
+            return Array.Empty<UserSearchDto>();
+
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"SELECT Id, ''::text AS Email, COALESCE(Name,'')
+FROM Users
+WHERE Id <> @current
+  AND COALESCE(Name,'') <> ''
+  AND POSITION(LOWER(@query) IN LOWER(Name)) > 0
+ORDER BY Name
+LIMIT 50;";
+            command.Parameters.AddWithValue("@query", query);
+            command.Parameters.AddWithValue("@current", currentUserId.ToString());
+
+            using var reader = command.ExecuteReader();
+            var result = new List<UserSearchDto>();
+            while (reader.Read())
+            {
+                if (reader.IsDBNull(0) || !Guid.TryParse(reader.GetString(0), out var userId))
+                    continue;
+
+                var email = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
+                var name = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                result.Add(new UserSearchDto(userId, email, name));
+            }
+            return result;
+        }
+    }
+
+    public IReadOnlyList<UserSearchDto> SearchGroupMembers(string? email, string? normalizedPhone, Guid currentUserId)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                // In this account model the verified email is stored in Users.PhoneNumber.
+                // Match exactly to avoid exposing a directory through prefix enumeration.
+                command.CommandText = @"SELECT Id,PhoneNumber,Name FROM Users
+WHERE lower(PhoneNumber)=lower(@email) AND Id<>@current LIMIT 10;";
+                command.Parameters.AddWithValue("@email", email.Trim());
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(normalizedPhone)) return Array.Empty<UserSearchDto>();
+                var digits = new string(normalizedPhone.Where(ch => ch >= '0' && ch <= '9').ToArray());
+                if (digits.Length is < 7 or > 15) return Array.Empty<UserSearchDto>();
+                var localMobile = digits.StartsWith("9665", StringComparison.Ordinal) && digits.Length == 12
+                    ? "0" + digits[3..]
+                    : digits;
+                var nationalMobile = digits.StartsWith("966", StringComparison.Ordinal) && digits.Length > 10
+                    ? digits[3..]
+                    : digits;
+                command.CommandText = @"SELECT DISTINCT Id,
+       CASE WHEN regexp_replace(COALESCE(ContactPhoneNumber,''), '[^0-9]', '', 'g') IN (@digits,@local,@national)
+                 AND COALESCE(PhoneDiscoverable,FALSE)=TRUE
+            THEN ContactPhoneNumber ELSE PhoneNumber END AS MatchedContact,
+       Name
+FROM Users
+WHERE Id<>@current
+  AND COALESCE(PhoneDiscoverable,FALSE)=TRUE
+  AND (
+    regexp_replace(COALESCE(PhoneNumber,''), '[^0-9]', '', 'g') IN (@digits,@local,@national)
+    OR regexp_replace(COALESCE(ContactPhoneNumber,''), '[^0-9]', '', 'g') IN (@digits,@local,@national)
+  )
+ORDER BY Name LIMIT 10;";
+                command.Parameters.AddWithValue("@digits", digits);
+                command.Parameters.AddWithValue("@local", localMobile);
+                command.Parameters.AddWithValue("@national", nationalMobile);
+            }
+
+            command.Parameters.AddWithValue("@current", currentUserId.ToString());
+            using var reader = command.ExecuteReader();
+            var result = new List<UserSearchDto>();
+            while (reader.Read())
+            {
+                if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2) ||
+                    !Guid.TryParse(reader.GetString(0), out var userId))
+                    continue;
                 result.Add(new UserSearchDto(userId, reader.GetString(1), reader.GetString(2)));
             }
             return result;
@@ -2259,6 +2603,26 @@ ORDER BY c.UpdatedAt DESC;";
                 if (existsUser.ExecuteScalar() is null)
                     throw new InvalidOperationException("المستخدم غير موجود.");
 
+                // When the current user starts a conversation again from search after deleting
+                // or archiving it, make the existing direct conversation visible in their list.
+                using (var restoreState = connection.CreateCommand())
+                {
+                    restoreState.CommandText = @"
+UPDATE ConversationUserStates
+SET IsDeleted=FALSE, IsArchived=FALSE, UpdatedAt=@now
+WHERE UserId=@owner AND ConversationId IN (
+    SELECT c.Id FROM Conversations c
+    JOIN ConversationParticipants a ON a.ConversationId=c.Id AND a.UserId=@owner
+    JOIN ConversationParticipants b ON b.ConversationId=c.Id AND b.UserId=@participant
+    WHERE COALESCE(c.IsGroup,FALSE)=FALSE
+      AND (SELECT COUNT(*) FROM ConversationParticipants cpCount WHERE cpCount.ConversationId=c.Id)=2
+);";
+                    restoreState.Parameters.AddWithValue("@now", DateTimeOffset.UtcNow.ToString("O"));
+                    restoreState.Parameters.AddWithValue("@owner", userId.ToString());
+                    restoreState.Parameters.AddWithValue("@participant", participantUserId.Value.ToString());
+                    restoreState.ExecuteNonQuery();
+                }
+
                 using var existing = connection.CreateCommand();
                 existing.CommandText = @"
 SELECT c.Id,
@@ -2273,7 +2637,8 @@ SELECT c.Id,
 FROM Conversations c
 JOIN ConversationParticipants pOwner
   ON pOwner.ConversationId=c.Id AND pOwner.UserId=@owner
-WHERE EXISTS (SELECT 1 FROM ConversationParticipants p1 WHERE p1.ConversationId=c.Id AND p1.UserId=@owner)
+WHERE COALESCE(c.IsGroup,FALSE)=FALSE
+  AND EXISTS (SELECT 1 FROM ConversationParticipants p1 WHERE p1.ConversationId=c.Id AND p1.UserId=@owner)
   AND EXISTS (SELECT 1 FROM ConversationParticipants p2 WHERE p2.ConversationId=c.Id AND p2.UserId=@participant)
   AND (SELECT COUNT(*) FROM ConversationParticipants p3 WHERE p3.ConversationId=c.Id)=2
 ORDER BY c.UpdatedAt DESC
@@ -2328,6 +2693,67 @@ LIMIT 1;";
             }
             transaction.Commit();
             return conversation;
+        }
+    }
+
+    public ConversationDto CreateGroup(Guid ownerUserId, string name, IReadOnlyCollection<Guid> memberUserIds)
+    {
+        var members = memberUserIds.Where(id => id != Guid.Empty && id != ownerUserId).Distinct().ToArray();
+        if (members.Length == 0) throw new InvalidOperationException("أضف عضوًا واحدًا على الأقل قبل إنشاء المجموعة.");
+        if (members.Length > 100) throw new InvalidOperationException("يمكن إضافة 100 عضو كحد أقصى إلى المجموعة.");
+
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var transaction = connection.BeginTransaction();
+
+            // Validate all users within the same transaction before creating anything.
+            using (var verify = connection.CreateCommand())
+            {
+                verify.Transaction = transaction;
+                var parameterNames = new List<string>(members.Length);
+                for (var i = 0; i < members.Length; i++)
+                {
+                    var parameterName = "@member" + i;
+                    parameterNames.Add(parameterName);
+                    verify.Parameters.AddWithValue(parameterName, members[i].ToString());
+                }
+                verify.CommandText = $"SELECT COUNT(*) FROM Users WHERE Id IN ({string.Join(",", parameterNames)});";
+                var count = Convert.ToInt32(verify.ExecuteScalar(), CultureInfo.InvariantCulture);
+                if (count != members.Length)
+                    throw new InvalidOperationException("أحد الأعضاء المحددين غير موجود أو لم يعد متاحًا.");
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var group = new ConversationDto(Guid.NewGuid(), name.Trim(), string.Empty, now, 0);
+            using (var insert = connection.CreateCommand())
+            {
+                insert.Transaction = transaction;
+                insert.CommandText = @"INSERT INTO Conversations(Id,OwnerUserId,Name,LastMessage,UpdatedAt,IsGroup)
+VALUES(@id,@owner,@name,'',@updated,TRUE);";
+                insert.Parameters.AddWithValue("@id", group.Id.ToString());
+                insert.Parameters.AddWithValue("@owner", ownerUserId.ToString());
+                insert.Parameters.AddWithValue("@name", group.Name);
+                insert.Parameters.AddWithValue("@updated", now.ToString("O"));
+                insert.ExecuteNonQuery();
+            }
+
+            var participantIds = new[] { ownerUserId }.Concat(members);
+            foreach (var participantId in participantIds)
+            {
+                using var participant = connection.CreateCommand();
+                participant.Transaction = transaction;
+                participant.CommandText = @"INSERT INTO ConversationParticipants(ConversationId,UserId,JoinedAt,LastReadAt)
+VALUES(@conversation,@user,@joined,@read) ON CONFLICT(ConversationId,UserId) DO NOTHING;";
+                participant.Parameters.AddWithValue("@conversation", group.Id.ToString());
+                participant.Parameters.AddWithValue("@user", participantId.ToString());
+                participant.Parameters.AddWithValue("@joined", now.ToString("O"));
+                participant.Parameters.AddWithValue("@read", now.ToString("O"));
+                participant.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+            return group;
         }
     }
 
@@ -2880,7 +3306,8 @@ sealed class HimoChatHub : Hub
         if (session is null || string.IsNullOrWhiteSpace(type) || type.Length > 32)
             return;
 
-        if (!_store.ExistsConversation(conversationId, session.UserId))
+        if (!_store.ExistsConversation(conversationId, session.UserId) ||
+            _store.IsConversationBlockedForUser(conversationId, session.UserId))
             return;
 
         var normalizedType = type.Trim();
@@ -3020,9 +3447,11 @@ record ContactLookupRequest(string[]? PhoneNumbers);
 record ContactMatchResponse(Guid Id, string Name, string MatchedPhoneNumber);
 record ProfilePhotoUploadRequest(string? Base64Data, string? ContentType);
 record CreateConversationRequest(string? Name, Guid? UserId);
+record CreateGroupRequest(string? Name, Guid[]? UserIds);
 record CallSignalMessage(Guid ConversationId, Guid SenderUserId, string Type, string? Payload);
 record SendMessageRequest(string? Text, string? ClientMessageId, Guid? ReplyToMessageId);
 record ReportConversationRequest(string? Reason);
+record ConversationActionRequest(string? Action);
 record AuthResponse(string Token, Guid UserId, string Email, string Name);
 record UserRecord(Guid Id, string PhoneNumber, string Name);
 record EmailVerificationPending(string Email, string Name, string PasswordHash, DateTimeOffset ExpiresAt, int FailedAttempts, string? ContactPhoneNumber = null);
@@ -3037,6 +3466,10 @@ sealed class ConversationDto
     public Guid? OtherParticipantUserId { get; init; }
     public bool HasProfilePhoto { get; init; }
     public long ProfilePhotoVersion { get; init; }
+    public bool IsArchived { get; init; }
+    public bool IsMuted { get; init; }
+    public bool IsBlocked { get; init; }
+    public bool IsGroup { get; init; }
 
     public ConversationDto()
     {
@@ -3052,7 +3485,11 @@ sealed class ConversationDto
         int unreadCount,
         Guid? otherParticipantUserId = null,
         bool hasProfilePhoto = false,
-        long profilePhotoVersion = 0)
+        long profilePhotoVersion = 0,
+        bool isArchived = false,
+        bool isMuted = false,
+        bool isBlocked = false,
+        bool isGroup = false)
     {
         Id = id;
         Name = name ?? string.Empty;
@@ -3062,6 +3499,10 @@ sealed class ConversationDto
         OtherParticipantUserId = otherParticipantUserId;
         HasProfilePhoto = hasProfilePhoto;
         ProfilePhotoVersion = profilePhotoVersion;
+        IsArchived = isArchived;
+        IsMuted = isMuted;
+        IsBlocked = isBlocked;
+        IsGroup = isGroup;
     }
 }
 record MessageDto(Guid Id, Guid ConversationId, Guid SenderUserId, string SenderPhoneNumber, string Text, DateTimeOffset SentAt, string? AttachmentFileName = null, string? AttachmentContentType = null, long? AttachmentSize = null, string Status = "sent", Guid? ReplyToMessageId = null, string? ReplyToText = null, bool IsEdited = false, string? EditedAt = null, bool IsDeleted = false);

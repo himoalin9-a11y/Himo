@@ -783,6 +783,25 @@ public sealed class HimoApiClient
             ?? new List<ConversationDto>();
     }
 
+    public async Task SetConversationActionAsync(
+        Guid conversationId,
+        string action,
+        CancellationToken cancellationToken = default)
+    {
+        if (conversationId == Guid.Empty)
+            throw new ArgumentException("معرّف المحادثة غير صالح.", nameof(conversationId));
+
+        action = action?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (action is not ("delete" or "archive" or "unarchive" or "mute" or "unmute" or "block" or "unblock"))
+            throw new ArgumentException("إجراء المحادثة غير معروف.", nameof(action));
+
+        using var response = await _http.PostAsJsonAsync(
+            $"api/conversations/{conversationId:D}/actions",
+            new { action },
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
     public async Task ReportConversationAsync(
         Guid conversationId,
         string reason,
@@ -882,6 +901,24 @@ public sealed class HimoApiClient
             ?? new List<UserSearchDto>();
     }
 
+    public async Task<IReadOnlyList<UserSearchDto>>
+        SearchGroupMembersAsync(
+            string query,
+            CancellationToken cancellationToken = default)
+    {
+        query = query?.Trim() ?? string.Empty;
+        if (query.Length < 3 || query.Length > 254)
+            throw new ArgumentException("أدخل ثلاثة أحرف على الأقل للبحث بالاسم، أو بريدًا إلكترونيًا أو رقم هاتف صحيحًا.", nameof(query));
+
+        var encoded = Uri.EscapeDataString(query);
+        using var response = await _http.GetAsync(
+            $"api/users/group-search?query={encoded}", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        return await response.Content.ReadFromJsonAsync<List<UserSearchDto>>(
+            cancellationToken: cancellationToken) ?? new List<UserSearchDto>();
+    }
+
     public async Task<ConversationDto>
         CreateConversationAsync(
             string name,
@@ -907,6 +944,36 @@ public sealed class HimoApiClient
                 cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException(
                 "استجابة الخادم غير صالحة.");
+    }
+
+    public async Task<ConversationDto>
+        CreateGroupAsync(
+            string name,
+            IReadOnlyCollection<Guid> userIds,
+            CancellationToken cancellationToken = default)
+    {
+        name = name?.Trim() ?? string.Empty;
+        var members = (userIds ?? Array.Empty<Guid>())
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToArray();
+
+        if (name.Length is < 2 or > 60)
+            throw new ArgumentException("اسم المجموعة يجب أن يتراوح بين حرفين و60 حرفًا.", nameof(name));
+        if (members.Length == 0)
+            throw new ArgumentException("أضف عضوًا واحدًا على الأقل قبل إنشاء المجموعة.", nameof(userIds));
+        if (members.Length > 100)
+            throw new ArgumentException("يمكن إضافة 100 عضو كحد أقصى إلى المجموعة.", nameof(userIds));
+
+        using var response = await _http.PostAsJsonAsync(
+            "api/groups",
+            new { name, userIds = members },
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        return await response.Content.ReadFromJsonAsync<ConversationDto>(
+            cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("استجابة الخادم لإنشاء المجموعة غير صالحة.");
     }
 
     public async Task<IReadOnlyList<MessageDto>>
@@ -1363,7 +1430,11 @@ public sealed class HimoApiClient
         int UnreadCount,
         Guid? OtherParticipantUserId = null,
         bool HasProfilePhoto = false,
-        long ProfilePhotoVersion = 0);
+        long ProfilePhotoVersion = 0,
+        bool IsArchived = false,
+        bool IsMuted = false,
+        bool IsBlocked = false,
+        bool IsGroup = false);
 
     public sealed record MessageDto(
         Guid Id,

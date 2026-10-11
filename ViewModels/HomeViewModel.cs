@@ -3,6 +3,7 @@ using System.Windows.Input;
 using Himo.Models;
 using Himo.Services;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Storage;
 
 namespace Himo.ViewModels;
 
@@ -15,6 +16,13 @@ public sealed class HomeViewModel
     public string SearchText { get; set; } = "";
     public ICommand SearchCommand { get; }
     public bool HasServerSession => _api.HasToken;
+    public bool ShowArchived { get; private set; }
+
+    public void ToggleArchiveView()
+    {
+        ShowArchived = !ShowArchived;
+        Filter();
+    }
 
     public HomeViewModel(ChatService chat, HimoApiClient api)
     {
@@ -37,25 +45,29 @@ public sealed class HomeViewModel
             {
                 var remoteId = x.Id.ToString();
                 var existing = existingByRemoteId.TryGetValue(remoteId, out var current) ? current : null;
-                return new Conversation
-                {
-                    // Keep the local ID stable across refreshes so cached messages remain
-                    // attached to the same conversation even when server ordering changes.
-                    Id = existing?.Id ?? nextLocalId++,
-                    RemoteId = remoteId,
-                    Name = x.Name,
-                    Initial = GetInitial(x.Name),
-                    OtherParticipantUserId = x.OtherParticipantUserId,
-                    HasRemoteProfilePhoto = x.HasProfilePhoto,
-                    ProfilePhotoVersion = x.ProfilePhotoVersion,
-                    ProfilePhotoPath = x.OtherParticipantUserId is Guid photoUserId && x.HasProfilePhoto
-                        ? ProfilePhotoCache.Find(photoUserId, x.ProfilePhotoVersion)
-                        : null,
-                    LastMessage = x.LastMessage,
-                    Time = x.UpdatedAt.LocalDateTime.ToString("HH:mm"),
-                    UpdatedAt = x.UpdatedAt.LocalDateTime,
-                    UnreadCount = x.UnreadCount
-                };
+                // Reuse existing conversation objects across polling refreshes. This is
+                // important for multi-select: selected item references must remain valid
+                // while background refreshes update the visible list.
+                var item = existing ?? new Conversation { Id = nextLocalId++ };
+                item.RemoteId = remoteId;
+                item.Name = x.Name;
+                item.Initial = GetInitial(x.Name);
+                item.OtherParticipantUserId = x.OtherParticipantUserId;
+                item.HasRemoteProfilePhoto = x.HasProfilePhoto;
+                item.ProfilePhotoVersion = x.ProfilePhotoVersion;
+                item.ProfilePhotoPath = x.OtherParticipantUserId is Guid photoUserId && x.HasProfilePhoto
+                    ? ProfilePhotoCache.Find(photoUserId, x.ProfilePhotoVersion)
+                    : null;
+                item.IsSelected = existing?.IsSelected ?? item.IsSelected;
+                item.IsArchived = x.IsArchived;
+                item.IsMuted = x.IsMuted;
+                item.IsBlocked = x.IsBlocked;
+                item.IsGroup = x.IsGroup;
+                item.LastMessage = x.LastMessage;
+                item.Time = x.UpdatedAt.LocalDateTime.ToString("HH:mm");
+                item.UpdatedAt = x.UpdatedAt.LocalDateTime;
+                item.UnreadCount = x.UnreadCount;
+                return item;
             }).ToList();
             _chat.ReplaceConversations(mapped);
             Filter();
@@ -107,6 +119,10 @@ public sealed class HomeViewModel
         local.ProfilePhotoPath = remote.OtherParticipantUserId is Guid photoUserId && remote.HasProfilePhoto
             ? ProfilePhotoCache.Find(photoUserId, remote.ProfilePhotoVersion)
             : null;
+        local.IsArchived = remote.IsArchived;
+        local.IsMuted = remote.IsMuted;
+        local.IsBlocked = remote.IsBlocked;
+        local.IsGroup = remote.IsGroup;
         local.LastMessage = remote.LastMessage;
         local.Time = remote.UpdatedAt.LocalDateTime.ToString("HH:mm");
         _ = LoadConversationPhotosAsync(new[] { local });
@@ -157,10 +173,12 @@ public sealed class HomeViewModel
     {
         FilteredConversations.Clear();
         var term = SearchText?.Trim() ?? "";
-        var archived = Preferences.Default.Get("himo_archived_conversations", string.Empty)
+        var legacyArchived = Preferences.Default.Get("himo_archived_conversations", string.Empty)
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         foreach (var item in Conversations.OrderByDescending(x => x.UpdatedAt)
-                     .Where(x => string.IsNullOrWhiteSpace(x.RemoteId) || !archived.Contains(x.RemoteId, StringComparer.OrdinalIgnoreCase))
+                     .Where(x => ShowArchived
+                         ? (x.IsArchived || (!string.IsNullOrWhiteSpace(x.RemoteId) && legacyArchived.Contains(x.RemoteId, StringComparer.OrdinalIgnoreCase)))
+                         : (!x.IsArchived && (string.IsNullOrWhiteSpace(x.RemoteId) || !legacyArchived.Contains(x.RemoteId, StringComparer.OrdinalIgnoreCase))))
                      .Where(x => string.IsNullOrWhiteSpace(term) || x.Name.Contains(term, StringComparison.OrdinalIgnoreCase) || x.LastMessage.Contains(term, StringComparison.OrdinalIgnoreCase)))
             FilteredConversations.Add(item);
     }

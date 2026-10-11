@@ -56,8 +56,8 @@ public static class SwipePageTransition
             {
                 var exitX = direction == SwipeDirection.Left ? -34d : 34d;
                 await Task.WhenAll(
-                    content.TranslateTo(exitX, 0, 145, Easing.CubicIn),
-                    content.FadeTo(0.80, 145, Easing.CubicIn));
+                    content.TranslateToAsync(exitX, 0, 145, Easing.CubicIn),
+                    content.FadeToAsync(0.80, 145, Easing.CubicIn));
             }
 
             lock (StateLock)
@@ -118,8 +118,8 @@ public static class SwipePageTransition
         try
         {
             await Task.WhenAll(
-                content.TranslateTo(0, 0, 190, Easing.CubicOut),
-                content.FadeTo(1, 190, Easing.CubicOut));
+                content.TranslateToAsync(0, 0, 190, Easing.CubicOut),
+                content.FadeToAsync(1, 190, Easing.CubicOut));
         }
         catch (Exception ex)
         {

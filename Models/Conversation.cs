@@ -13,8 +13,20 @@ public sealed class Conversation : INotifyPropertyChanged
 
     public int Id { get; init; }
     public string? RemoteId { get; set; }
-    public string Name { get; init; } = "";
-    public string Initial { get; init; } = "";
+
+    private string _name = "";
+    public string Name
+    {
+        get => _name;
+        set => SetField(ref _name, value ?? string.Empty);
+    }
+
+    private string _initial = "";
+    public string Initial
+    {
+        get => _initial;
+        set => SetField(ref _initial, value ?? string.Empty);
+    }
 
     private Guid? _otherParticipantUserId;
     public Guid? OtherParticipantUserId
@@ -69,6 +81,41 @@ public sealed class Conversation : INotifyPropertyChanged
     public bool HasLocalProfilePhoto =>
         !string.IsNullOrWhiteSpace(ProfilePhotoPath) && File.Exists(ProfilePhotoPath);
     public bool ShowProfileInitial => !HasLocalProfilePhoto;
+
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => SetField(ref _isSelected, value);
+    }
+
+    private bool _isArchived;
+    public bool IsArchived
+    {
+        get => _isArchived;
+        set => SetField(ref _isArchived, value);
+    }
+
+    private bool _isMuted;
+    public bool IsMuted
+    {
+        get => _isMuted;
+        set => SetField(ref _isMuted, value);
+    }
+
+    private bool _isBlocked;
+    public bool IsBlocked
+    {
+        get => _isBlocked;
+        set => SetField(ref _isBlocked, value);
+    }
+
+    private bool _isGroup;
+    public bool IsGroup
+    {
+        get => _isGroup;
+        set => SetField(ref _isGroup, value);
+    }
 
     public DateTime UpdatedAt
     {

@@ -23,6 +23,9 @@ public class MainActivity : MauiAppCompatActivity
     private static string? _pendingCallId;
     private static int _navigationInProgress;
     private static int _callNavigationInProgress;
+    // A cold-start notification and the SignalR Invite may arrive for the same
+    // call. Keep the last successfully opened CallId to avoid stacking two pages.
+    private static string? _lastNavigatedCallKey;
     private const string PendingConversationPreferenceKey = "himo_pending_conversation_id";
     private const string PendingCallConversationPreferenceKey = "himo_pending_call_conversation_id";
     private const string PendingCallModePreferenceKey = "himo_pending_call_mode";
@@ -117,10 +120,24 @@ public class MainActivity : MauiAppCompatActivity
                 mode = _pendingCallMode ?? "audio";
                 var callId = _pendingCallId ?? string.Empty;
                 if (string.IsNullOrWhiteSpace(conversationId)) return;
+                var callKey = Guid.TryParse(callId, out var parsedCallId) && parsedCallId != Guid.Empty
+                    ? $"{conversationId}:{parsedCallId:D}"
+                    : string.Empty;
+
+                // FCM may launch the call page first, then the same Invite reaches
+                // SignalR after startup. Do not put a second (stale) answer screen
+                // on top of the active call page.
+                if (callKey.Length > 0 && string.Equals(_lastNavigatedCallKey, callKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    ClearPendingCall();
+                    return;
+                }
+
                 var callIdQuery = string.IsNullOrWhiteSpace(callId)
                     ? string.Empty
                     : $"&callId={Uri.EscapeDataString(callId)}";
-                await shell.GoToAsync($"///CallPage?id={Uri.EscapeDataString(conversationId)}&mode={Uri.EscapeDataString(mode)}&incoming=true{callIdQuery}");
+                await shell.GoToAsync($"CallPage?id={Uri.EscapeDataString(conversationId)}&mode={Uri.EscapeDataString(mode)}&incoming=true{callIdQuery}");
+                if (callKey.Length > 0) _lastNavigatedCallKey = callKey;
                 ClearPendingCall();
             }
             catch
@@ -306,16 +323,19 @@ public class MainActivity : MauiAppCompatActivity
         manager.CreateNotificationChannel(channel);
 
         var calls = new global::Android.App.NotificationChannel(
-            "himo_calls_v2",
+            Platforms.Android.Services.NotificationService.CallsChannelId,
             "مكالمات Himo",
             global::Android.App.NotificationImportance.High)
         {
             Description = "المكالمات الصوتية والمرئية الواردة"
         };
-        var ringtoneUri = global::Android.Media.RingtoneManager.GetDefaultUri(
-            global::Android.Media.RingtoneType.Ringtone);
-        if (ringtoneUri is not null)
-            calls.SetSound(ringtoneUri, null);
+        var ringtoneAudioAttributes = new global::Android.Media.AudioAttributes.Builder()
+            .SetUsage(global::Android.Media.AudioUsageKind.NotificationRingtone)
+            .SetContentType(global::Android.Media.AudioContentType.Sonification)
+            .Build();
+        calls.SetSound(
+            global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone),
+            ringtoneAudioAttributes);
         manager.CreateNotificationChannel(calls);
         FirebaseCloudMessagingImplementation.ChannelId = Platforms.Android.Services.NotificationService.MessageChannelId;
     }

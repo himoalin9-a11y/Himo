@@ -20,5 +20,7 @@ public sealed record ContactMatchDto(Guid Id, string Name)
 
     public string DetailText => !string.IsNullOrWhiteSpace(Email)
         ? Email
-        : "حساب Himo متاح للبحث";
+        : !string.IsNullOrWhiteSpace(MatchedPhoneNumber)
+            ? MatchedPhoneNumber
+            : "حساب Himo متاح للبحث";
 }

@@ -13,6 +13,7 @@ public partial class AppShell : Shell
         Routing.RegisterRoute("settings", new SettingsPageRouteFactory());
         Routing.RegisterRoute("profile", new ProfilePageRouteFactory());
         Routing.RegisterRoute("search", typeof(SearchPage));
+        Routing.RegisterRoute("CreateGroupPage", new CreateGroupPageRouteFactory());
     }
 
     public AppShell()
@@ -63,4 +64,17 @@ internal sealed class ProfilePageRouteFactory : RouteFactory
 
     public override Element GetOrCreate(IServiceProvider services) =>
         services.GetRequiredService<ProfilePage>();
+}
+
+internal sealed class CreateGroupPageRouteFactory : RouteFactory
+{
+    public override Element GetOrCreate()
+    {
+        var services = Application.Current?.Handler?.MauiContext?.Services
+            ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق.");
+        return services.GetRequiredService<CreateGroupPage>();
+    }
+
+    public override Element GetOrCreate(IServiceProvider services) =>
+        services.GetRequiredService<CreateGroupPage>();
 }

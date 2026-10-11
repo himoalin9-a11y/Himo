@@ -1,4 +1,5 @@
 using Himo.Services;
+using Himo.Models;
 #if ANDROID
 using Himo.Platforms.Android.Services;
 #endif
@@ -16,8 +17,8 @@ public partial class CallPage : ContentPage
     private readonly HimoRealtimeService _realtime;
     private readonly WebRtcNegotiationCoordinator _negotiation;
     private readonly ChatService _chat;
-    private readonly CallHistoryService _callHistory;
-    private Guid _historyEntryId;
+    private readonly HimoApiClient _api;
+    private CancellationTokenSource? _avatarLoadCts;
     private Guid _conversationId;
     private CallMode _mode = CallMode.Audio;
     private DateTimeOffset? _connectedAt;
@@ -73,6 +74,7 @@ public partial class CallPage : ContentPage
             if (NameLabel is not null) NameLabel.Text = _peerName;
             if (VideoCallNameLabel is not null) VideoCallNameLabel.Text = _peerName;
             if (InitialLabel is not null) InitialLabel.Text = FirstTextElement(_peerName);
+            if (VideoPeerInitialLabel is not null) VideoPeerInitialLabel.Text = FirstTextElement(_peerName);
         }
     }
 
@@ -82,16 +84,155 @@ public partial class CallPage : ContentPage
         return string.IsNullOrEmpty(trimmed) ? "H" : trimmed.Substring(0, 1);
     }
 
-    public CallPage(ICallService calls, HimoRealtimeService realtime, WebRtcNegotiationCoordinator negotiation, ChatService chat, CallHistoryService callHistory)
+    public CallPage(ICallService calls, HimoRealtimeService realtime, WebRtcNegotiationCoordinator negotiation, ChatService chat, HimoApiClient api)
     {
         InitializeComponent();
         _calls = calls;
         _realtime = realtime;
         _negotiation = negotiation;
         _chat = chat;
-        _callHistory = callHistory;
+        _api = api;
         _calls.StateChanged += CallsStateChanged;
         _calls.CallEnded += CallsEnded;
+    }
+
+    private Conversation? FindLocalCallConversation() =>
+        _chat.Conversations.FirstOrDefault(c =>
+            Guid.TryParse(c.RemoteId, out var remoteId) && remoteId == _conversationId);
+
+    private void PrepareCachedPeerAvatar()
+    {
+        var conversation = FindLocalCallConversation();
+        if (conversation is null)
+        {
+            ApplyPeerAvatar(null);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(conversation.Name))
+            PeerName = conversation.Name;
+
+        string? cachedPath = null;
+        if (conversation.OtherParticipantUserId is Guid userId && conversation.HasRemoteProfilePhoto)
+        {
+            cachedPath = conversation.ProfilePhotoPath;
+            if (string.IsNullOrWhiteSpace(cachedPath) || !File.Exists(cachedPath))
+                cachedPath = ProfilePhotoCache.Find(userId, conversation.ProfilePhotoVersion);
+            if (!string.IsNullOrWhiteSpace(cachedPath) && File.Exists(cachedPath))
+                conversation.ProfilePhotoPath = cachedPath;
+        }
+
+        ApplyPeerAvatar(cachedPath);
+    }
+
+    private async Task LoadPeerAvatarAsync(CancellationToken cancellationToken)
+    {
+        var localConversation = FindLocalCallConversation();
+        var fallbackUserId = localConversation?.OtherParticipantUserId;
+        var fallbackHasPhoto = localConversation?.HasRemoteProfilePhoto == true;
+        var fallbackVersion = localConversation?.ProfilePhotoVersion ?? 0;
+
+        try
+        {
+            // During a cold-start incoming call, token restoration may still be in
+            // progress. Await it without blocking the ringtone or call setup.
+            await _api.TokenInitialization;
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // The API's current conversation metadata supplies the peer's user id
+            // and photo version without putting personal photo URLs into navigation.
+            if (_api.HasToken)
+            {
+                var conversations = await _api.GetConversationsAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                var remote = conversations.FirstOrDefault(c => c.Id == _conversationId);
+                if (remote is not null)
+                {
+                    if (!string.IsNullOrWhiteSpace(remote.Name))
+                        _peerName = remote.Name.Trim();
+
+                    fallbackUserId = remote.OtherParticipantUserId;
+                    fallbackHasPhoto = remote.HasProfilePhoto;
+                    fallbackVersion = remote.ProfilePhotoVersion;
+
+                    if (localConversation is not null)
+                    {
+                        localConversation.OtherParticipantUserId = remote.OtherParticipantUserId;
+                        localConversation.HasRemoteProfilePhoto = remote.HasProfilePhoto;
+                        localConversation.ProfilePhotoVersion = remote.ProfilePhotoVersion;
+                    }
+                }
+            }
+
+            string? photoPath = null;
+            if (fallbackUserId is Guid peerUserId)
+            {
+                photoPath = await ProfilePhotoCache.GetPathAsync(
+                    _api,
+                    peerUserId,
+                    fallbackHasPhoto,
+                    fallbackVersion,
+                    cancellationToken);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                if (cancellationToken.IsCancellationRequested) return;
+                if (!string.IsNullOrWhiteSpace(_peerName))
+                {
+                    NameLabel.Text = _peerName;
+                    VideoCallNameLabel.Text = _peerName;
+                    InitialLabel.Text = FirstTextElement(_peerName);
+                    VideoPeerInitialLabel.Text = FirstTextElement(_peerName);
+                }
+                if (localConversation is not null)
+                    localConversation.ProfilePhotoPath = photoPath;
+                ApplyPeerAvatar(photoPath);
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // The call screen has been closed; a canceled photo request is normal.
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Peer avatar load failed: {ex.Message}");
+            // Try the locally cached conversation information if the network lookup
+            // failed; photo availability must never delay or break call setup.
+            try
+            {
+                if (fallbackUserId is Guid peerUserId && fallbackHasPhoto)
+                {
+                    var path = await ProfilePhotoCache.GetPathAsync(
+                        _api, peerUserId, true, fallbackVersion, cancellationToken);
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        if (!cancellationToken.IsCancellationRequested)
+                            ApplyPeerAvatar(path);
+                    });
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception fallbackEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Cached peer avatar load failed: {fallbackEx.Message}");
+            }
+        }
+    }
+
+    private void ApplyPeerAvatar(string? path)
+    {
+        var hasPhoto = !string.IsNullOrWhiteSpace(path) && File.Exists(path);
+        var source = hasPhoto ? ImageSource.FromFile(path!) : null;
+
+        ProfilePhotoImage.Source = source;
+        ProfilePhotoImage.IsVisible = hasPhoto;
+        InitialLabel.IsVisible = !hasPhoto;
+
+        VideoPeerPhotoImage.Source = source;
+        VideoPeerPhotoImage.IsVisible = hasPhoto;
+        VideoPeerInitialLabel.IsVisible = !hasPhoto;
     }
 
     private void CallsStateChanged(object? sender, CallState state)
@@ -109,7 +250,6 @@ public partial class CallPage : ContentPage
 #endif
                 _incomingAnswered = _incoming || _incomingAnswered;
                 _connectedAt = DateTimeOffset.UtcNow;
-                if (_historyEntryId != Guid.Empty) _callHistory.MarkConnected(_historyEntryId);
                 StartTimer();
             }
 #if ANDROID
@@ -157,10 +297,10 @@ public partial class CallPage : ContentPage
 #if ANDROID
             if (_mode == CallMode.Video && state.IsConnected) _ = AttachVideoWithRetryAsync();
 #endif
-            RemoteAudioButton.Source = state.IsRemoteAudioEnabled ? "call_speaker_white.png" : "call_speaker_off_white.png";
+            RemoteAudioButton.Source = state.IsRemoteAudioEnabled ? "himo_call_speaker.png" : "himo_call_speaker_off.png";
             RemoteAudioButton.IsEnabled = state.IsConnected && !_remoteAudioToggleInProgress;
-            MuteButton.Source = state.IsMuted ? "call_mic_off_white.png" : "call_mic_white.png";
-            SpeakerButton.Source = state.IsSpeakerOn ? "call_speaker_white.png" : "call_speaker_off_white.png";
+            MuteButton.Source = state.IsMuted ? "himo_call_mic_off.png" : "himo_call_mic.png";
+            SpeakerButton.Source = state.IsSpeakerOn ? "himo_call_speaker.png" : "himo_call_speaker_off.png";
         });
     }
 
@@ -170,6 +310,9 @@ public partial class CallPage : ContentPage
         _calls.StateChanged -= CallsStateChanged;
         _calls.CallEnded -= CallsEnded;
         _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
+        _avatarLoadCts?.Cancel();
+        _avatarLoadCts?.Dispose();
+        _avatarLoadCts = null;
         StopTimer();
 #if ANDROID
         StopOutgoingRingback();
@@ -191,35 +334,25 @@ public partial class CallPage : ContentPage
         _incomingAnswered = false;
         _connectedAt = _calls.Current?.IsConnected == true ? DateTimeOffset.UtcNow : null;
         _navigationStarted = false;
-
-        var linkedConversation = _chat.Conversations.FirstOrDefault(item =>
-            string.Equals(item.RemoteId, _conversationId.ToString("D"), StringComparison.OrdinalIgnoreCase));
-        if ((_peerName == "جهة اتصال" || string.IsNullOrWhiteSpace(_peerName)) && linkedConversation is not null)
-            PeerName = linkedConversation.Name;
-
-        if (_historyEntryId == Guid.Empty && _conversationId != Guid.Empty)
-        {
-            _historyEntryId = _callHistory.Begin(
-                _conversationId.ToString("D"),
-                _peerName,
-                _incoming,
-                _mode == CallMode.Video ? "video" : "audio");
-            if (_calls.Current?.IsConnected == true && _historyEntryId != Guid.Empty)
-                _callHistory.MarkConnected(_historyEntryId);
-        }
+        _avatarLoadCts?.Cancel();
+        _avatarLoadCts?.Dispose();
+        _avatarLoadCts = new CancellationTokenSource();
+        var avatarToken = _avatarLoadCts.Token;
+        PrepareCachedPeerAvatar();
+        _ = LoadPeerAvatarAsync(avatarToken);
         VideoSurface.IsVisible = false;
         VideoWaitingOverlay.IsVisible = true;
         ProfilePanel.IsVisible = true;
         _cameraEnabled = _mode == CallMode.Video;
         CameraButton.IsEnabled = false;
         CameraButton.Opacity = _mode == CallMode.Video ? 1.0 : 0.42;
-        CameraButton.Source = _cameraEnabled ? "call_camera_white.png" : "call_camera_off_white.png";
+        CameraButton.Source = _cameraEnabled ? "himo_call_camera.png" : "himo_call_camera_off.png";
         CameraButton.BackgroundColor = _mode == CallMode.Video
             ? Color.FromArgb("#35164E")
             : Color.FromArgb("#20102F");
-        MuteButton.Source = "call_mic_white.png";
-        SpeakerButton.Source = "call_speaker_off_white.png";
-        RemoteAudioButton.Source = "call_speaker_off_white.png";
+        MuteButton.Source = "himo_call_mic.png";
+        SpeakerButton.Source = "himo_call_speaker_off.png";
+        RemoteAudioButton.Source = "himo_call_speaker_off.png";
         CameraActionLabel.Text = _mode == CallMode.Video
             ? (_cameraEnabled ? "إيقاف الكاميرا" : "تشغيل الكاميرا")
             : "فيديو غير متاح";
@@ -261,7 +394,6 @@ public partial class CallPage : ContentPage
 #endif
                 StatusLabel.Text = "تعذر استقبال المكالمة.";
                 VideoStatusLabel.Text = StatusLabel.Text;
-                if (_historyEntryId != Guid.Empty) _callHistory.Finish(_historyEntryId, "تعذر الاستقبال");
                 System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Incoming call setup failed: {ex}");
             }
             return;
@@ -297,7 +429,6 @@ public partial class CallPage : ContentPage
             StopOutgoingRingback();
 #endif
             StatusLabel.Text = "تعذر تجهيز المكالمة. تحقق من الاتصال ثم حاول مرة أخرى.";
-            if (_historyEntryId != Guid.Empty) _callHistory.Finish(_historyEntryId, "تعذر الاتصال");
             System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Start failed: {ex}");
         }
         finally
@@ -366,7 +497,6 @@ public partial class CallPage : ContentPage
 #if ANDROID
         StopIncomingRingtone();
 #endif
-        if (_historyEntryId != Guid.Empty) _callHistory.Finish(_historyEntryId, "مرفوضة");
         try { await _calls.RejectAsync(); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Reject failed: {ex}"); }
         await NavigateBackFromCallAsync();
@@ -406,7 +536,6 @@ public partial class CallPage : ContentPage
 
     private async void CallsEnded(object? sender, EventArgs e)
     {
-        if (_historyEntryId != Guid.Empty) _callHistory.Finish(_historyEntryId);
         Interlocked.Increment(ref _callUiStateVersion);
         _remoteAudioToggleInProgress = false;
         StopTimer();
@@ -418,7 +547,7 @@ public partial class CallPage : ContentPage
         {
             StatusLabel.Text = "انتهت المكالمة";
             RemoteAudioButton.IsEnabled = false;
-            RemoteAudioButton.Source = "call_speaker_off_white.png";
+            RemoteAudioButton.Source = "himo_call_speaker_off.png";
         });
 
         if (_navigationStarted) return;
@@ -650,7 +779,7 @@ public partial class CallPage : ContentPage
         if (engine is null) return;
         _cameraEnabled = !_cameraEnabled;
         await engine.SetCameraEnabledAsync(_cameraEnabled);
-        CameraButton.Source = _cameraEnabled ? "call_camera_white.png" : "call_camera_off_white.png";
+        CameraButton.Source = _cameraEnabled ? "himo_call_camera.png" : "himo_call_camera_off.png";
         CameraActionLabel.Text = _cameraEnabled ? "إيقاف الكاميرا" : "تشغيل الكاميرا";
         CameraButton.BackgroundColor = _cameraEnabled ? Color.FromArgb("#35174F") : Color.FromArgb("#702B3A");
         CameraActionLabel.TextColor = _cameraEnabled ? Color.FromArgb("#EADFFF") : Color.FromArgb("#FFD4DB");
@@ -668,8 +797,6 @@ public partial class CallPage : ContentPage
     private async void EndClicked(object? sender, EventArgs e)
     {
         if (_navigationStarted) return;
-        if (_historyEntryId != Guid.Empty)
-            _callHistory.Finish(_historyEntryId, _calls.Current?.IsConnected == true ? "مكتملة" : (_incoming && !_incomingAnswered ? "مرفوضة" : "تم الإلغاء"));
         try
         {
             if (_incoming && !_incomingAnswered)
@@ -738,7 +865,7 @@ public partial class CallPage : ContentPage
         await _calls.SetMutedAsync(muted);
         MuteActionLabel.Text = muted ? "إلغاء الكتم" : "كتم الصوت";
         MuteButton.BackgroundColor = muted ? Color.FromArgb("#702B3A") : Color.FromArgb("#35174F");
-        MuteButton.Source = muted ? "call_mic_off_white.png" : "call_mic_white.png";
+        MuteButton.Source = muted ? "himo_call_mic_off.png" : "himo_call_mic.png";
         MuteActionLabel.TextColor = muted ? Color.FromArgb("#FFD4DB") : Color.FromArgb("#EADFFF");
     }
 
@@ -754,7 +881,7 @@ public partial class CallPage : ContentPage
         {
             var enabled = !_calls.IsRemoteAudioEnabled;
             await _calls.SetRemoteAudioEnabledAsync(enabled);
-            RemoteAudioButton.Source = enabled ? "call_speaker_white.png" : "call_speaker_off_white.png";
+            RemoteAudioButton.Source = enabled ? "himo_call_speaker.png" : "himo_call_speaker_off.png";
             RemoteAudioActionLabel.Text = enabled ? "كتم الوارد" : "تشغيل الوارد";
             RemoteAudioButton.BackgroundColor = enabled ? Color.FromArgb("#17563E") : Color.FromArgb("#35174F");
             RemoteAudioActionLabel.TextColor = enabled ? Color.FromArgb("#B7F5D1") : Color.FromArgb("#EADFFF");
@@ -771,7 +898,7 @@ public partial class CallPage : ContentPage
     {
         var enabled = !(_calls.Current?.IsSpeakerOn ?? false);
         await _calls.SetSpeakerAsync(enabled);
-        SpeakerButton.Source = enabled ? "call_speaker_white.png" : "call_speaker_off_white.png";
+        SpeakerButton.Source = enabled ? "himo_call_speaker.png" : "himo_call_speaker_off.png";
         SpeakerActionLabel.Text = enabled ? "إيقاف المكبر" : "مكبر الصوت";
         SpeakerButton.BackgroundColor = enabled ? Color.FromArgb("#17563E") : Color.FromArgb("#35174F");
         SpeakerActionLabel.TextColor = enabled ? Color.FromArgb("#B7F5D1") : Color.FromArgb("#EADFFF");
