@@ -236,26 +236,33 @@ public sealed class CallService : ICallService, IDisposable
         cancellationToken.ThrowIfCancellationRequested();
         if (request.CallId != Guid.Empty && IsFinishedCall(request.CallId))
             throw new InvalidOperationException("هذه المكالمة انتهت بالفعل.");
-        Interlocked.Increment(ref _operationVersion);
-        Interlocked.Exchange(ref _outgoingWebRtcStartup, null)?.TrySetResult(false);
 
         // Preserve an existing incoming call's authoritative ID when an FCM deep link
         // omits callId but the matching SignalR Invite has already arrived. Do not
         // manufacture a new GUID before comparing with the active incoming state.
         var incomingCallId = request.CallId != Guid.Empty ? request.CallId : _pendingIncomingCallId;
-        CancelCallTimeout();
         var current = _current;
         if (current is not null)
         {
-            if (current.ConversationId == request.ConversationId && current.Mode == request.Mode &&
-                (incomingCallId == Guid.Empty || current.CallId == incomingCallId))
+            // An identical call page can reappear while AcceptAsync is starting native
+            // media. Return without touching operationVersion, the startup gate, or its
+            // timeout; otherwise that harmless reappearance aborts the answer.
+            if (incomingCallId != Guid.Empty &&
+                current.ConversationId == request.ConversationId &&
+                current.Mode == request.Mode && current.CallId == incomingCallId)
                 return;
 
+            // A different call must not invalidate the existing active call's startup.
             if (current.IsConnected || _lifecycle == CallLifecycleState.Calling)
                 throw new InvalidOperationException("يوجد اتصال نشط أو جارٍ لمكالمة أخرى.");
-
-            await StopCallResourcesQuietlyAsync();
         }
+
+        // Only after duplicate/busy-call checks do we invalidate stale startup work.
+        Interlocked.Increment(ref _operationVersion);
+        Interlocked.Exchange(ref _outgoingWebRtcStartup, null)?.TrySetResult(false);
+        CancelCallTimeout();
+        if (current is not null)
+            await StopCallResourcesQuietlyAsync();
 
         if (incomingCallId == Guid.Empty) incomingCallId = Guid.NewGuid();
         request = request with { CallId = incomingCallId };
@@ -288,12 +295,21 @@ public sealed class CallService : ICallService, IDisposable
             RaiseState();
             _lifecycle = CallLifecycleState.Calling;
             await _media.StartAsync(current.Mode, cancellationToken);
+            if (operationVersion != Volatile.Read(ref _operationVersion) ||
+                Volatile.Read(ref _ending) != 0 || _current?.CallId != current.CallId)
+            {
+                // A terminal event can arrive while Android initializes audio. Do not
+                // restore a stale call state after the remote hangup has cleared it.
+                await StopCallResourcesQuietlyAsync();
+                return;
+            }
             _current = current = current with { IsSpeakerOn = _media.IsSpeakerEnabled };
 
             try
             {
                 await _webRtc.StartAsync(current.Mode, cancellationToken);
-                if (operationVersion != Volatile.Read(ref _operationVersion) || Volatile.Read(ref _ending) != 0)
+                if (operationVersion != Volatile.Read(ref _operationVersion) ||
+                    Volatile.Read(ref _ending) != 0 || _current?.CallId != current.CallId)
                 {
                     await StopCallResourcesQuietlyAsync();
                     return;

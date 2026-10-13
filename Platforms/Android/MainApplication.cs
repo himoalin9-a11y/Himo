@@ -53,16 +53,20 @@ public class MainApplication : MauiApplication
                             callId ?? string.Empty);
                     }
                     else if (string.Equals(callType, "answering", StringComparison.OrdinalIgnoreCase) ||
-                             string.Equals(callType, "accept", StringComparison.OrdinalIgnoreCase) ||
-                             string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(callType, "accept", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _ = service.ClearIncomingCallAsync(
+                            conversationId ?? string.Empty, callId ?? string.Empty, suppressFurtherRinging: true);
+                        Platforms.Android.Services.NotificationService.NotifyIncomingCallAnsweredByPush(
+                            conversationId ?? string.Empty, callId ?? string.Empty, callType);
+                    }
+                    else if (string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) ||
                              string.Equals(callType, "end", StringComparison.OrdinalIgnoreCase))
                     {
                         _ = service.ClearIncomingCallAsync(
                             conversationId ?? string.Empty, callId ?? string.Empty, suppressFurtherRinging: true);
-                        if (string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(callType, "end", StringComparison.OrdinalIgnoreCase))
-                            Platforms.Android.Services.NotificationService.NotifyIncomingCallTerminatedByPush(
-                                conversationId ?? string.Empty, callId ?? string.Empty);
+                        Platforms.Android.Services.NotificationService.NotifyIncomingCallTerminatedByPush(
+                            conversationId ?? string.Empty, callId ?? string.Empty);
                     }
                     else if (!string.IsNullOrWhiteSpace(conversationId))
                     {

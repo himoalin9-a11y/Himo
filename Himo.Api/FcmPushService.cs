@@ -271,9 +271,9 @@ sealed class FcmPushService
                     Android = new AndroidConfig
                     {
                         Priority = Priority.High,
-                        // Collapse pending call events so an old ringing invite cannot
-                        // be delivered after a newer accept/end event.
-                        CollapseKey = "himo-call",
+                        // Do not assign per-call collapse keys: FCM only retains up to
+                        // four different collapse keys per device. Call IDs are validated
+                        // and terminal states are tombstoned on the client instead.
                         TimeToLive = TimeSpan.FromSeconds(45)
                     }
                 };
@@ -332,12 +332,20 @@ sealed class FcmPushService
                     Android = new AndroidConfig
                     {
                         Priority = Priority.High,
-                        CollapseKey = "himo-call",
-                        TimeToLive = TimeSpan.FromSeconds(15)
+                        // Keep state events non-collapsible: FCM does not guarantee ordering.
+                        // A terminal cancellation must outlive the 45-second Invite TTL;
+                        // otherwise an offline receiver could get the Invite but lose End/Reject.
+                        TimeToLive = normalizedState is "end" or "reject"
+                            ? TimeSpan.FromMinutes(2)
+                            : TimeSpan.FromSeconds(45)
                     }
                 };
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeout.CancelAfter(TimeSpan.FromSeconds(5));
+                // Terminal states run off the SignalR request path, so allow Firebase longer
+                // to accept them; this cannot hold the caller's End/Reject UI open.
+                timeout.CancelAfter(normalizedState is "end" or "reject"
+                    ? TimeSpan.FromSeconds(10)
+                    : TimeSpan.FromSeconds(5));
                 var response = await _messaging.SendEachForMulticastAsync(message, timeout.Token);
                 _logger.LogInformation(
                     "FCM call state result. State={State}, ConversationId={ConversationId}, CallId={CallId}, Success={Success}, Failure={Failure}",

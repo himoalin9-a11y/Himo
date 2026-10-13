@@ -179,8 +179,16 @@ public sealed class PushNotificationManager
                         RememberFinishedIncomingCall(normalizedCallId);
                     _ = _notifications.ClearIncomingCallAsync(
                         callConversationId ?? string.Empty, normalizedCallId, suppressFurtherRinging: true);
-                    if (string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(callType, "end", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(callType, "answering", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(callType, "accept", StringComparison.OrdinalIgnoreCase))
+                    {
+#if ANDROID
+                        Platforms.Android.Services.NotificationService.NotifyIncomingCallAnsweredByPush(
+                            callConversationId ?? string.Empty, normalizedCallId, callType);
+#endif
+                    }
+                    else if (string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(callType, "end", StringComparison.OrdinalIgnoreCase))
                     {
                         if (Guid.TryParse(normalizedCallId, out var remoteEndedCallId) && remoteEndedCallId != Guid.Empty)
                         {

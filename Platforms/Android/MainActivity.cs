@@ -32,6 +32,8 @@ public class MainActivity : MauiAppCompatActivity
     private const string PendingCallConversationPreferenceKey = "himo_pending_call_conversation_id";
     private const string PendingCallModePreferenceKey = "himo_pending_call_mode";
     private const string PendingCallIdPreferenceKey = "himo_pending_call_id";
+    private const string FullScreenIntentPromptPreferenceKey = "himo_full_screen_intent_prompted_v1";
+    private static int _fullScreenIntentPromptInProgress;
 
     public static string? PendingConversationId => _pendingConversationId;
 
@@ -84,6 +86,7 @@ public class MainActivity : MauiAppCompatActivity
     {
         base.OnResume();
         Volatile.Write(ref _isAppForeground, 1);
+        PromptForFullScreenIntentAccessIfNeeded();
     }
 
     protected override void OnPause()
@@ -324,6 +327,96 @@ public class MainActivity : MauiAppCompatActivity
             catch { }
         }
         return (null, null, null, null);
+    }
+
+    private void PromptForFullScreenIntentAccessIfNeeded()
+    {
+        // Android 14+ makes full-screen call UI a special app-access setting. Merely
+        // declaring USE_FULL_SCREEN_INTENT in the manifest does not guarantee access.
+        if (!OperatingSystem.IsAndroidVersionAtLeast(34)) return;
+
+        try
+        {
+            var manager = GetSystemService(global::Android.Content.Context.NotificationService)
+                as global::Android.App.NotificationManager;
+            if (manager is null || manager.CanUseFullScreenIntent()) return;
+            if (global::Microsoft.Maui.Storage.Preferences.Default.Get(
+                    FullScreenIntentPromptPreferenceKey, false)) return;
+            if (Interlocked.Exchange(ref _fullScreenIntentPromptInProgress, 1) != 0) return;
+
+            global::Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                try
+                {
+                    // Let MAUI finish attaching the activity content before presenting
+                    // a system-access explanation over the splash/startup transition.
+                    await Task.Delay(650);
+                    if (IsFinishing || IsDestroyed) return;
+
+                    var dialog = new global::Android.App.AlertDialog.Builder(this)
+                        .SetTitle("السماح بواجهة المكالمات")
+                        .SetMessage("لكي تظهر واجهة المكالمة الواردة بملء الشاشة عندما يكون Himo بالخلفية أو مغلقًا، فعّل السماح بعرض الإشعارات بملء الشاشة من إعدادات Himo. إذا لم تفعّله، فقد تظهر المكالمة كإشعار فقط.")
+                        .SetPositiveButton("فتح الإعدادات", (sender, args) =>
+                        {
+                            try
+                            {
+                                var settingsIntent = new global::Android.Content.Intent(
+                                    "android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT");
+                                settingsIntent.SetData(global::Android.Net.Uri.Parse("package:" + PackageName));
+                                StartActivity(settingsIntent);
+                            }
+                            catch (Exception settingsEx)
+                            {
+                                System.Diagnostics.Debug.WriteLine(
+                                    $"[Himo Call] Could not open full-screen access settings: {settingsEx.Message}");
+                            }
+                        })
+                        .SetNegativeButton("لاحقًا", (sender, args) => { })
+                        .SetCancelable(true)
+                        .Create();
+
+                    dialog.Show();
+                    // Ask only once automatically; users can still enable it later in
+                    // Android Settings > Apps > Special app access > Full-screen intents.
+                    global::Microsoft.Maui.Storage.Preferences.Default.Set(
+                        FullScreenIntentPromptPreferenceKey, true);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[Himo Call] Full-screen access prompt failed: {ex.Message}");
+                }
+                finally
+                {
+                    Interlocked.Exchange(ref _fullScreenIntentPromptInProgress, 0);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo Call] Could not inspect full-screen access: {ex.Message}");
+            Interlocked.Exchange(ref _fullScreenIntentPromptInProgress, 0);
+        }
+    }
+
+    public static void OpenFullScreenIntentSettings()
+    {
+        if (!OperatingSystem.IsAndroidVersionAtLeast(34)) return;
+        try
+        {
+            var context = global::Android.App.Application.Context;
+            var intent = new global::Android.Content.Intent(
+                "android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT");
+            intent.SetData(global::Android.Net.Uri.Parse("package:" + context.PackageName));
+            intent.AddFlags(global::Android.Content.ActivityFlags.NewTask);
+            context.StartActivity(intent);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo Call] Could not open full-screen access settings: {ex.Message}");
+        }
     }
 
     private void EnableIncomingCallWindowIfNeeded(global::Android.Content.Intent? intent)

@@ -16,11 +16,18 @@ public sealed class NotificationService : INotificationService
     private static readonly object FinishedCallIdsGate = new();
     private static readonly HashSet<string> ActiveCallNotificationIds = new(StringComparer.OrdinalIgnoreCase);
     public static event Action<string, string>? IncomingCallTerminatedByPush;
+    public static event Action<string, string, string>? IncomingCallAnsweredByPush;
 
     public static void NotifyIncomingCallTerminatedByPush(string conversationId, string callId)
     {
         try { IncomingCallTerminatedByPush?.Invoke(conversationId ?? string.Empty, callId ?? string.Empty); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo Push] Call termination listener failed: {ex.Message}"); }
+    }
+
+    public static void NotifyIncomingCallAnsweredByPush(string conversationId, string callId, string state)
+    {
+        try { IncomingCallAnsweredByPush?.Invoke(conversationId ?? string.Empty, callId ?? string.Empty, state ?? string.Empty); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo Push] Call-answer listener failed: {ex.Message}"); }
     }
 
     public bool IsEnabled => Preferences.Default.Get(EnabledPreferenceKey, true);
@@ -124,8 +131,9 @@ public sealed class NotificationService : INotificationService
             ? parsedCallId.ToString("D")
             : string.Empty;
 
-        // End/accept can reach the phone before an older invite. Remember those IDs so
-        // a reordered FCM delivery cannot restart ringing for an already handled call.
+        // End/accept can reach the phone before an older invite. The initial check is
+        // only a fast path; the authoritative check is repeated while holding the same
+        // lock used to post the notification, so a late invite cannot win a race with End.
         if (IsCallRingingSuppressed(normalizedCallId))
             return Task.CompletedTask;
 
@@ -147,6 +155,11 @@ public sealed class NotificationService : INotificationService
         var dedupeKey = string.IsNullOrWhiteSpace(normalizedCallId) ? conversationId : normalizedCallId;
         lock (FinishedCallIdsGate)
         {
+            // Make suppression + de-duplication atomic. A terminal state may arrive
+            // between the fast-path check above and this point.
+            if (IsCallRingingSuppressed(normalizedCallId))
+                return Task.CompletedTask;
+
             // NotificationReceived and the plugin's local-notification callback may
             // both observe the same data-only message. Post only once per active call.
             if (!ActiveCallNotificationIds.Add(dedupeKey))
@@ -192,15 +205,46 @@ public sealed class NotificationService : INotificationService
             builder.SetAutoCancel(false);
             builder.SetOnlyAlertOnce(true);
             builder.SetContentIntent(pendingIntent);
-            builder.SetFullScreenIntent(pendingIntent, true);
+
+            // Android 14+ can revoke full-screen-intent access independently of the
+            // manifest declaration. Do not assume SetFullScreenIntent means Android
+            // will launch MainActivity; retain a normal high-priority call notification
+            // as a graceful fallback when the user has not granted special access.
+            var platformNotificationManager = context.GetSystemService(
+                global::Android.Content.Context.NotificationService)
+                as global::Android.App.NotificationManager;
+            var canUseFullScreenIntent = !OperatingSystem.IsAndroidVersionAtLeast(34) ||
+                (platformNotificationManager?.CanUseFullScreenIntent() == true);
+            if (canUseFullScreenIntent)
+            {
+                builder.SetFullScreenIntent(pendingIntent, true);
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "[Himo Push] Full-screen call access is disabled; posting a high-priority call notification instead.");
+            }
             builder.SetTimeoutAfter(45_000);
 
             var notification = builder.Build();
-            if (notification is not null)
-                notificationManager.Notify(notificationId, notification);
-            else
+            if (notification is null)
             {
                 lock (FinishedCallIdsGate) ActiveCallNotificationIds.Remove(dedupeKey);
+                return Task.CompletedTask;
+            }
+
+            // IMPORTANT: posting and terminal cancellation share FinishedCallIdsGate.
+            // If End/Reject wins first, this re-check drops the old invite. If Notify
+            // wins first, ClearIncomingCallAsync waits for the lock and cancels it after
+            // Notify completes. There is no window in which a stale invite can re-post
+            // the notification after the terminal event has cancelled it.
+            lock (FinishedCallIdsGate)
+            {
+                if (IsCallRingingSuppressed(normalizedCallId) ||
+                    !ActiveCallNotificationIds.Contains(dedupeKey))
+                    return Task.CompletedTask;
+
+                notificationManager.Notify(notificationId, notification);
             }
         }
         catch (Exception ex)
@@ -219,23 +263,32 @@ public sealed class NotificationService : INotificationService
             : string.Empty;
         var dedupeKey = string.IsNullOrWhiteSpace(normalizedCallId) ? conversationId : normalizedCallId;
 
-        if (suppressFurtherRinging && !string.IsNullOrWhiteSpace(normalizedCallId))
-            RememberCallAsFinished(normalizedCallId);
-
-        lock (FinishedCallIdsGate) ActiveCallNotificationIds.Remove(dedupeKey);
-
         try
         {
             var context = global::Android.App.Application.Context;
-            if (context is null) return Task.CompletedTask;
-            var manager = global::AndroidX.Core.App.NotificationManagerCompat.From(context);
-            if (manager is null) return Task.CompletedTask;
-            manager.Cancel(GetCallNotificationId(normalizedCallId, conversationId));
+            var manager = context is null
+                ? null
+                : global::AndroidX.Core.App.NotificationManagerCompat.From(context);
 
-            // Cancel legacy FCM-generated notifications from app versions that sent
-            // notification+data payloads, not only our current local notification.
-            if (!string.IsNullOrWhiteSpace(conversationId))
-                manager.Cancel($"himo-call-{conversationId}", 0);
+            // The terminal tombstone, active marker removal and Android notification
+            // cancellation share the same lock as ShowIncomingCallAsync's final Notify.
+            // This prevents an older Invite callback from re-posting after End/Reject.
+            lock (FinishedCallIdsGate)
+            {
+                if (suppressFurtherRinging && !string.IsNullOrWhiteSpace(normalizedCallId))
+                    RememberCallAsFinished(normalizedCallId);
+
+                ActiveCallNotificationIds.Remove(dedupeKey);
+                if (manager is not null)
+                {
+                    manager.Cancel(GetCallNotificationId(normalizedCallId, conversationId));
+
+                    // Cancel legacy FCM-generated notifications from app versions that
+                    // sent notification+data payloads, not only our current local notification.
+                    if (!string.IsNullOrWhiteSpace(conversationId))
+                        manager.Cancel($"himo-call-{conversationId}", 0);
+                }
+            }
         }
         catch (Exception ex)
         {
