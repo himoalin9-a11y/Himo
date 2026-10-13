@@ -3316,49 +3316,75 @@ sealed class HimoChatHub : Hub
         foreach (var recipientId in recipientIds)
             await Clients.Group(UserGroup(recipientId)).SendAsync("CallSignalReceived", message);
 
-        // SignalR handles foreground delivery. Data-only FCM is also sent for call
-        // state changes so a terminated/background phone can dismiss its full-screen
-        // incoming-call notification immediately and cannot keep ringing after hangup.
+        // Do not await FCM inside the SignalR hub invocation. The caller uses a short
+        // signaling timeout, so awaiting Firebase here can cancel End/Reject before
+        // the remote phone receives the cancellation; it also adds several seconds
+        // to Invite/Answering/Accept and delays WebRTC negotiation.
         if (string.Equals(normalizedType, "Invite", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(normalizedType, "Answering", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(normalizedType, "Accept", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(normalizedType, "Reject", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(normalizedType, "End", StringComparison.OrdinalIgnoreCase))
         {
-            try
-            {
-                var tokens = _store.GetPushTokens(recipientIds);
-                if (tokens.Count > 0)
-                {
-                    var mode = "audio";
-                    var callId = Guid.Empty;
-                    if (!string.IsNullOrWhiteSpace(payload))
-                    {
-                        try
-                        {
-                            using var callDoc = System.Text.Json.JsonDocument.Parse(payload);
-                            var root = callDoc.RootElement;
-                            if (root.TryGetProperty("mode", out var modeValue) &&
-                                string.Equals(modeValue.GetString(), "video", StringComparison.OrdinalIgnoreCase))
-                                mode = "video";
-                            if (root.TryGetProperty("callId", out var callIdValue) &&
-                                Guid.TryParse(callIdValue.GetString(), out var parsedCallId))
-                                callId = parsedCallId;
-                        }
-                        catch { }
-                    }
+            var recipientsSnapshot = recipientIds.ToArray();
+            var callerNameSnapshot = session.Name ?? string.Empty;
+            var typeSnapshot = normalizedType;
+            var payloadSnapshot = payload;
+            _ = Task.Run(() => DispatchCallPushAsync(
+                recipientsSnapshot, callerNameSnapshot, conversationId, typeSnapshot, payloadSnapshot));
+        }
+    }
 
-                    if (string.Equals(normalizedType, "Invite", StringComparison.OrdinalIgnoreCase))
-                        await _push.SendCallInviteAsync(tokens, session.Name, conversationId, mode, callId, Context.ConnectionAborted);
-                    else if (callId != Guid.Empty)
-                        await _push.SendCallStateAsync(tokens, conversationId, callId, normalizedType, Context.ConnectionAborted);
+    private async Task DispatchCallPushAsync(
+        Guid[] recipientIds,
+        string callerName,
+        Guid conversationId,
+        string normalizedType,
+        string? payload)
+    {
+        try
+        {
+            var tokens = _store.GetPushTokens(recipientIds);
+            if (tokens.Count == 0) return;
+
+            var mode = "audio";
+            var callId = Guid.Empty;
+            if (!string.IsNullOrWhiteSpace(payload))
+            {
+                try
+                {
+                    using var callDoc = System.Text.Json.JsonDocument.Parse(payload);
+                    var root = callDoc.RootElement;
+                    if (root.TryGetProperty("mode", out var modeValue) &&
+                        string.Equals(modeValue.GetString(), "video", StringComparison.OrdinalIgnoreCase))
+                        mode = "video";
+                    if (root.TryGetProperty("callId", out var callIdValue) &&
+                        Guid.TryParse(callIdValue.GetString(), out var parsedCallId))
+                        callId = parsedCallId;
+                }
+                catch (Exception parseEx)
+                {
+                    Console.Error.WriteLine($"Call push payload parse failed; type={normalizedType}; error={parseEx.Message}");
                 }
             }
-            catch (Exception ex)
+
+            if (string.Equals(normalizedType, "Invite", StringComparison.OrdinalIgnoreCase))
             {
-                // Push is best-effort. Never break the live SignalR call path.
-                Console.Error.WriteLine($"Call push failed; type={normalizedType}; error={ex.Message}");
+                await _push.SendCallInviteAsync(
+                    tokens, callerName, conversationId, mode, callId, CancellationToken.None);
             }
+            else if (callId != Guid.Empty)
+            {
+                await _push.SendCallStateAsync(
+                    tokens, conversationId, callId, normalizedType, CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Push is best-effort and runs independently. It must not block or fail
+            // the real-time signaling operation that controls audio and navigation.
+            Console.Error.WriteLine(
+                $"Background call push failed; type={normalizedType}; conversation={conversationId:D}; error={ex}");
         }
     }
 
