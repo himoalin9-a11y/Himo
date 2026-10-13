@@ -267,6 +267,9 @@ sealed class FcmPushService
                     Android = new AndroidConfig
                     {
                         Priority = Priority.High,
+                        // Call invites are transient. Never deliver a stale ringing alert
+                        // after a device reconnects minutes later.
+                        TimeToLive = TimeSpan.FromSeconds(30),
                         CollapseKey = $"himo-call-{conversationId:D}",
                         Notification = new AndroidNotification
                         {
@@ -282,7 +285,10 @@ sealed class FcmPushService
 
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeout.CancelAfter(TimeSpan.FromSeconds(10));
-                await _messaging.SendEachForMulticastAsync(message, timeout.Token);
+                var response = await _messaging.SendEachForMulticastAsync(message, timeout.Token);
+                _logger.LogInformation(
+                    "[Himo FCM] Call invite submitted. ConversationId={ConversationId}, CallId={CallId}, Success={SuccessCount}, Failure={FailureCount}.",
+                    conversationId, callId, response.SuccessCount, response.FailureCount);
             }
             catch (Exception ex)
             {

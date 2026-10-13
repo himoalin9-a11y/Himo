@@ -126,7 +126,19 @@ public class MainActivity : MauiAppCompatActivity
 
                 // FCM may launch the call page first, then the same Invite reaches
                 // SignalR after startup. Do not put a second (stale) answer screen
-                // on top of the active call page.
+                // on top of the active call page. Also compare the active page because
+                // an FCM deep link can omit callId while the SignalR Invite has it.
+                if (shell.CurrentPage is Himo.Views.CallPage activeCallPage &&
+                    string.Equals(activeCallPage.ConversationId, conversationId, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(activeCallPage.Incoming, "true", StringComparison.OrdinalIgnoreCase) &&
+                    (string.IsNullOrWhiteSpace(callId) ||
+                     string.IsNullOrWhiteSpace(activeCallPage.CallId) ||
+                     string.Equals(activeCallPage.CallId, callId, StringComparison.OrdinalIgnoreCase)))
+                {
+                    ClearPendingCall();
+                    return;
+                }
+
                 if (callKey.Length > 0 && string.Equals(_lastNavigatedCallKey, callKey, StringComparison.OrdinalIgnoreCase))
                 {
                     ClearPendingCall();

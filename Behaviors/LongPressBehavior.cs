@@ -4,9 +4,9 @@ using Microsoft.Maui.Controls;
 namespace Himo.Behaviors;
 
 /// <summary>
-/// Android-native long-press behavior used by conversation rows.
-/// This avoids CommunityToolkit.Maui TouchBehavior's platform access failure
-/// seen with the project's MAUI 10 runtime.
+/// Android-native long-press behavior for selecting conversation rows.
+/// Does not use CommunityToolkit TouchBehavior, which crashed on the observed
+/// MAUI 10 Android build with MethodAccessException in ViewExtensions.GetParentOfType.
 /// </summary>
 public sealed class LongPressBehavior : Behavior<VisualElement>
 {
@@ -17,7 +17,9 @@ public sealed class LongPressBehavior : Behavior<VisualElement>
         nameof(CommandParameter), typeof(object), typeof(LongPressBehavior));
 
     private VisualElement? _associatedElement;
+#if ANDROID
     private Android.Views.View? _nativeView;
+#endif
 
     public ICommand? Command
     {
@@ -35,17 +37,21 @@ public sealed class LongPressBehavior : Behavior<VisualElement>
     {
         base.OnAttachedTo(bindable);
         _associatedElement = bindable;
-        bindable.HandlerChanged += OnHandlerChanged;
         bindable.BindingContextChanged += OnAssociatedBindingContextChanged;
-        BindingContext = bindable.BindingContext;
+#if ANDROID
+        bindable.HandlerChanged += OnHandlerChanged;
         AttachNativeView();
+#endif
+        BindingContext = bindable.BindingContext;
     }
 
     protected override void OnDetachingFrom(VisualElement bindable)
     {
-        bindable.HandlerChanged -= OnHandlerChanged;
         bindable.BindingContextChanged -= OnAssociatedBindingContextChanged;
+#if ANDROID
+        bindable.HandlerChanged -= OnHandlerChanged;
         DetachNativeView();
+#endif
         _associatedElement = null;
         BindingContext = null;
         base.OnDetachingFrom(bindable);
@@ -57,6 +63,7 @@ public sealed class LongPressBehavior : Behavior<VisualElement>
             BindingContext = _associatedElement.BindingContext;
     }
 
+#if ANDROID
     private void OnHandlerChanged(object? sender, EventArgs e) => AttachNativeView();
 
     private void AttachNativeView()
@@ -90,4 +97,5 @@ public sealed class LongPressBehavior : Behavior<VisualElement>
             e.Handled = true;
         }
     }
+#endif
 }

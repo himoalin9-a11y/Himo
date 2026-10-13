@@ -1,3 +1,6 @@
+using System.Collections.ObjectModel;
+using System.Threading;
+using System.Threading.Tasks;
 using Himo.Services;
 using Himo.Models;
 using Himo.ViewModels;
@@ -8,6 +11,7 @@ namespace Himo.Views;
 
 public partial class SettingsPage : ContentPage
 {
+
     private const string PushTokenKey = "himo_registered_fcm_token";
     private readonly HimoApiClient _api;
     private readonly AccountService _account;
@@ -19,16 +23,25 @@ public partial class SettingsPage : ContentPage
     private bool _initializingNotificationsSwitch;
     private bool _initializingThemeSwitch;
     private int _accountActionInProgress;
-    private bool _loadingContactPhoneSettings;
-    private bool _savedPhoneDiscoverable;
     private bool _contactLookupBusy;
     private bool _contactMatchBusy;
+    private double _appliedSettingsFontScale = 1.0;
+    private static int _accountRouteRegistered;
+    private static int _privacyRoutesRegistered;
 
     public SettingsPage(HimoApiClient api, AccountService account, ChatService chat, INotificationService notifications, AppLockService appLock, HomeViewModel home)
     {
         InitializeComponent();
+        RegisterPrivacyRoutes();
         _api = api;
         _account = account;
+        var currentAccount = _account.CurrentAccount;
+        var currentAccountName = currentAccount?.Name;
+        var currentAccountEmail = currentAccount?.Email;
+        if (SettingsAccountNameLabel is not null)
+            SettingsAccountNameLabel.Text = string.IsNullOrWhiteSpace(currentAccountName) ? "حسابك في Himo" : currentAccountName;
+        if (SettingsAccountEmailLabel is not null)
+            SettingsAccountEmailLabel.Text = string.IsNullOrWhiteSpace(currentAccountEmail) ? "إدارة حسابك وتفضيلاتك" : currentAccountEmail;
         _chat = chat;
         _notifications = notifications;
         _appLock = appLock;
@@ -48,14 +61,35 @@ public partial class SettingsPage : ContentPage
         if (AppLockSwitch is not null) AppLockSwitch.IsToggled = _appLock.IsEnabled;
         _initializingAppLockSwitch = false;
         UpdateAppLockUi();
+
+        var savedFontScale = Preferences.Default.Get("himo_settings_font_scale", 1.0);
+        if (savedFontScale < 0.85 || savedFontScale > 1.25)
+            savedFontScale = 1.0;
+        ApplySettingsFontScale(savedFontScale);
+        UpdateFontSizeButtonText(savedFontScale);
     }
 
-    private async void ProfileClicked(object sender, EventArgs e)
+    private void AccountCardTapped(object? sender, TappedEventArgs e) =>
+        _ = NavigateToAccountManagementAsync();
+
+    private void AccountManagementRowTapped(object? sender, TappedEventArgs e) =>
+        _ = NavigateToAccountManagementAsync();
+
+    private async Task NavigateToAccountManagementAsync()
     {
-        if (SwipePageTransition.SettingsWasEnteredFromProfile)
-            await SwipePageTransition.GoBackAsync(this, SwipeDirection.Right);
-        else
-            await SwipePageTransition.NavigateAsync(this, "profile", SwipeDirection.Right);
+        try
+        {
+            if (Interlocked.Exchange(ref _accountRouteRegistered, 1) == 0)
+                Routing.RegisterRoute("account-management", typeof(AccountManagementPage));
+            var shell = Shell.Current;
+            if (shell is not null)
+                await shell.GoToAsync("account-management", false);
+        }
+        catch (Exception ex)
+        {
+            Interlocked.Exchange(ref _accountRouteRegistered, 0);
+            await DisplayAlertAsync("إدارة الحساب", "تعذر فتح صفحة الحساب: " + ex.Message, "حسنًا");
+        }
     }
 
     private async void PageSwiped(object? sender, SwipedEventArgs e)
@@ -67,6 +101,183 @@ public partial class SettingsPage : ContentPage
             await SwipePageTransition.GoBackAsync(this, SwipeDirection.Right);
         else
             await SwipePageTransition.NavigateAsync(this, "profile", SwipeDirection.Right);
+    }
+
+    private static void RegisterPrivacyRoutes()
+    {
+        if (Interlocked.Exchange(ref _privacyRoutesRegistered, 1) != 0)
+            return;
+
+        Routing.RegisterRoute("privacy-settings", typeof(PrivacySettingsPage));
+        Routing.RegisterRoute("privacy-last-seen", typeof(PrivacyLastSeenPage));
+        Routing.RegisterRoute("privacy-profile-photo", typeof(PrivacyProfilePhotoPage));
+        Routing.RegisterRoute("privacy-status", typeof(PrivacyStatusPage));
+        Routing.RegisterRoute("privacy-groups", typeof(PrivacyGroupsPage));
+        Routing.RegisterRoute("privacy-calls", typeof(PrivacyCallsPage));
+        Routing.RegisterRoute("privacy-contacts", typeof(PrivacyContactsPage));
+        Routing.RegisterRoute("privacy-checkup", typeof(PrivacyCheckupPage));
+        Routing.RegisterRoute("notification-settings", typeof(NotificationSettingsPage));
+    }
+
+    private async void PrivacyDetailsRowTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            var shell = Shell.Current;
+            if (shell is not null)
+                await shell.GoToAsync("privacy-settings", false);
+            else
+                await Navigation.PushAsync(new PrivacySettingsPage());
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("الخصوصية", "تعذر فتح إعدادات الخصوصية: " + ex.Message, "حسنًا");
+        }
+    }
+
+    private async void ChatSettingsClicked(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            await Navigation.PushAsync(new ChatSettingsPage(_chat));
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("إعدادات الدردشات", "تعذر فتح إعدادات الدردشات: " + ex.Message, "حسنًا");
+        }
+    }
+
+    private static int _storageDataRouteRegistered;
+
+    private async void StorageDataRowTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            var shell = Shell.Current;
+            if (shell is not null)
+            {
+                if (Interlocked.Exchange(ref _storageDataRouteRegistered, 1) == 0)
+                    Routing.RegisterRoute("storage-data", typeof(StorageDataSettingsPage));
+                await shell.GoToAsync("storage-data", false);
+            }
+            else
+            {
+                await Navigation.PushAsync(new StorageDataSettingsPage(_chat));
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("التخزين والبيانات", "تعذر فتح صفحة التخزين والبيانات: " + ex.Message, "حسنًا");
+        }
+    }
+
+    private async void NotificationDetailsRowTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            var shell = Shell.Current;
+            if (shell is not null)
+                await shell.GoToAsync("notification-settings", false);
+            else
+                await Navigation.PushAsync(new NotificationSettingsPage(_notifications));
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("الإشعارات", "تعذر فتح إعدادات الإشعارات: " + ex.Message, "حسنًا");
+        }
+    }
+
+    private async void ProfileNavTapped(object? sender, TappedEventArgs e)
+    {
+        if (SwipePageTransition.SettingsWasEnteredFromProfile)
+            await SwipePageTransition.GoBackAsync(this, SwipeDirection.Right);
+        else
+            await SwipePageTransition.NavigateAsync(this, "profile", SwipeDirection.Right);
+    }
+
+    private async void PeopleNavTapped(object? sender, TappedEventArgs e) =>
+        await SwipePageTransition.NavigateToHomeSectionAsync(this, "phone", SwipeDirection.Right);
+
+    private async void CallsNavTapped(object? sender, TappedEventArgs e) =>
+        await SwipePageTransition.NavigateToHomeSectionAsync(this, "calls", SwipeDirection.Right);
+
+    private async void ChatsNavTapped(object? sender, TappedEventArgs e) =>
+        await SwipePageTransition.NavigateToHomeSectionAsync(this, "chats", SwipeDirection.Right);
+
+    private void DeleteAccountRowTapped(object? sender, TappedEventArgs e) =>
+        DeleteAccountClicked(sender, EventArgs.Empty);
+
+    private async void FontSizeRowClicked(object? sender, EventArgs e)
+    {
+        var selected = await DisplayActionSheetAsync(
+            "حجم الخط في صفحة الإعدادات", "إلغاء", null,
+            "صغير", "متوسط", "كبير");
+        var scale = selected switch
+        {
+            "صغير" => 0.9,
+            "كبير" => 1.15,
+            "متوسط" => 1.0,
+            _ => _appliedSettingsFontScale
+        };
+        if (selected is not ("صغير" or "متوسط" or "كبير")) return;
+
+        Preferences.Default.Set("himo_settings_font_scale", scale);
+        ApplySettingsFontScale(scale);
+        UpdateFontSizeButtonText(scale);
+    }
+
+    private void UpdateFontSizeButtonText(double scale)
+    {
+        if (FontSizeValueButton is null) return;
+        FontSizeValueButton.Text = scale < 0.95 ? "صغير" : scale > 1.05 ? "كبير" : "متوسط";
+    }
+
+    private void ApplySettingsFontScale(double scale)
+    {
+        if (Content is null || scale <= 0) return;
+        var ratio = scale / _appliedSettingsFontScale;
+        foreach (var element in EnumerateVisualElements(Content))
+        {
+            switch (element)
+            {
+                case Label label when label.FontSize > 0:
+                    label.FontSize = Math.Clamp(label.FontSize * ratio, 8, 40);
+                    break;
+                case Button button when button.FontSize > 0:
+                    button.FontSize = Math.Clamp(button.FontSize * ratio, 8, 40);
+                    break;
+                case Entry entry when entry.FontSize > 0:
+                    entry.FontSize = Math.Clamp(entry.FontSize * ratio, 8, 40);
+                    break;
+            }
+        }
+        _appliedSettingsFontScale = scale;
+    }
+
+    private static IEnumerable<VisualElement> EnumerateVisualElements(VisualElement root)
+    {
+        yield return root;
+        if (root is Layout layout)
+        {
+            foreach (var child in layout.Children)
+            {
+                if (child is VisualElement visual)
+                {
+                    foreach (var descendant in EnumerateVisualElements(visual))
+                        yield return descendant;
+                }
+            }
+        }
+        else if (root is Border border && border.Content is VisualElement borderContent)
+        {
+            foreach (var descendant in EnumerateVisualElements(borderContent))
+                yield return descendant;
+        }
+        else if (root is ContentView contentView && contentView.Content is VisualElement content)
+        {
+            foreach (var descendant in EnumerateVisualElements(content))
+                yield return descendant;
+        }
     }
 
     private void NotificationPreviewToggled(object sender, ToggledEventArgs e)
@@ -134,7 +345,18 @@ public partial class SettingsPage : ContentPage
         base.OnAppearing();
         _ = SwipePageTransition.AnimateIncomingAsync(this);
         UpdateNotificationPermissionStatus();
-        _ = LoadContactPhoneSettingsAsync();
+        UpdateAccountCard();
+    }
+
+    private void UpdateAccountCard()
+    {
+        var current = _account.CurrentAccount;
+        var currentName = current?.Name;
+        var currentEmail = current?.Email;
+        if (SettingsAccountNameLabel is not null)
+            SettingsAccountNameLabel.Text = string.IsNullOrWhiteSpace(currentName) ? "حسابك في Himo" : currentName;
+        if (SettingsAccountEmailLabel is not null)
+            SettingsAccountEmailLabel.Text = string.IsNullOrWhiteSpace(currentEmail) ? "إدارة حسابك وتفضيلاتك" : currentEmail;
     }
 
     private void UpdateNotificationPermissionStatus()
@@ -206,95 +428,6 @@ public partial class SettingsPage : ContentPage
         }
     }
 
-    private async Task LoadContactPhoneSettingsAsync()
-    {
-        if (!_api.HasToken || _loadingContactPhoneSettings) return;
-        _loadingContactPhoneSettings = true;
-        try
-        {
-            var profile = await _api.GetMyProfileAsync();
-            if (ContactPhoneEntry is not null)
-                ContactPhoneEntry.Text = profile.ContactPhoneNumber ?? string.Empty;
-            _savedPhoneDiscoverable = profile.PhoneDiscoverable;
-            if (PhoneDiscoverySwitch is not null)
-                PhoneDiscoverySwitch.IsToggled = profile.PhoneDiscoverable;
-            if (ContactsMatchStatusLabel is not null)
-                ContactsMatchStatusLabel.Text = profile.PhoneDiscoverable
-                    ? "تم تفعيل إمكانية العثور على حسابك برقم الهاتف."
-                    : "رقم الهاتف اختياري، ويمكنك إيقاف إمكانية العثور على حسابك متى شئت.";
-        }
-        catch (Exception ex)
-        {
-            if (ContactsMatchStatusLabel is not null)
-                ContactsMatchStatusLabel.Text = "تعذر تحميل إعداد الهاتف: " + ex.Message;
-        }
-        finally
-        {
-            _loadingContactPhoneSettings = false;
-        }
-    }
-
-    private async void SaveContactPhoneClicked(object sender, EventArgs e)
-    {
-        if (SaveContactPhoneButton is null || SaveContactPhoneButton.IsEnabled == false) return;
-        if (!_api.HasToken)
-        {
-            await DisplayAlertAsync("رقم الهاتف", "سجّل الدخول أولًا لحفظ رقم الهاتف.", "حسنًا");
-            return;
-        }
-
-        var phone = ContactPhoneEntry?.Text?.Trim();
-        var discoverable = PhoneDiscoverySwitch?.IsToggled == true;
-        if (discoverable && string.IsNullOrWhiteSpace(phone))
-        {
-            await DisplayAlertAsync("رقم الهاتف", "أدخل رقم هاتف أولًا قبل تفعيل العثور على حسابك.", "حسنًا");
-            return;
-        }
-
-        if (discoverable && !_savedPhoneDiscoverable)
-        {
-            var approved = await DisplayAlertAsync(
-                "السماح بالعثور على حسابك",
-                "عند تفعيل هذا الخيار، يستطيع الأشخاص الذين لديهم رقمك في جهات اتصالهم العثور على حساب Himo. لن نعرض رقم هاتفك لهم، بل اسم حسابك فقط.",
-                "تفعيل",
-                "إلغاء");
-            if (!approved)
-            {
-                if (PhoneDiscoverySwitch is not null)
-                    PhoneDiscoverySwitch.IsToggled = false;
-                return;
-            }
-        }
-
-        try
-        {
-            SaveContactPhoneButton.IsEnabled = false;
-            SaveContactPhoneButton.Text = "جارٍ الحفظ...";
-            var saved = await _api.UpdateMyContactPhoneAsync(phone, discoverable);
-            if (ContactPhoneEntry is not null)
-                ContactPhoneEntry.Text = saved.ContactPhoneNumber ?? string.Empty;
-            if (PhoneDiscoverySwitch is not null)
-                PhoneDiscoverySwitch.IsToggled = saved.PhoneDiscoverable;
-            _savedPhoneDiscoverable = saved.PhoneDiscoverable;
-            if (ContactsMatchStatusLabel is not null)
-                ContactsMatchStatusLabel.Text = saved.ContactPhoneNumber is null
-                    ? "تم حذف رقم الهاتف من حسابك."
-                    : saved.PhoneDiscoverable
-                        ? "تم حفظ الرقم وتفعيل العثور على حسابك عبر الهاتف."
-                        : "تم حفظ الرقم. العثور على حسابك عبر الهاتف متوقف.";
-            await DisplayAlertAsync("تم الحفظ", "تم تحديث إعدادات رقم الهاتف بنجاح.", "حسنًا");
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlertAsync("تعذر حفظ رقم الهاتف", ex.Message, "حسنًا");
-        }
-        finally
-        {
-            SaveContactPhoneButton.IsEnabled = true;
-            SaveContactPhoneButton.Text = "حفظ رقم الهاتف";
-        }
-    }
-
     private async void FindContactsClicked(object sender, EventArgs e)
     {
         if (_contactLookupBusy) return;
@@ -314,6 +447,9 @@ public partial class SettingsPage : ContentPage
             if (!consent) return;
             Preferences.Default.Set("himo_contacts_lookup_consent", true);
         }
+
+        if (ContactsResultsPanel is not null)
+            ContactsResultsPanel.IsVisible = true;
 
 #if ANDROID
         try
@@ -460,7 +596,7 @@ public partial class SettingsPage : ContentPage
         }
     }
 
-    private async void DeleteAccountClicked(object sender, EventArgs e)
+    private async void DeleteAccountClicked(object? sender, EventArgs e)
     {
         if (Interlocked.Exchange(ref _accountActionInProgress, 1) != 0) return;
         try
@@ -575,36 +711,6 @@ public partial class SettingsPage : ContentPage
         finally
         {
             Interlocked.Exchange(ref _accountActionInProgress, 0);
-        }
-    }
-
-    private async void ServerSettingsClicked(object sender, EventArgs e)
-    {
-        var current = _api.BaseUrl;
-        var value = await DisplayPromptAsync(
-            "إعداد الخادم",
-            "أدخل عنوان الخادم لاستخدامه في التطبيق.",
-            "حفظ واختبار",
-            "إلغاء",
-            "عنوان الخادم",
-            180,
-            Keyboard.Url,
-            current);
-
-        if (string.IsNullOrWhiteSpace(value)) return;
-
-        try
-        {
-            await _api.SetBaseUrlAsync(value);
-            var connected = await _api.HealthAsync();
-            await DisplayAlertAsync(
-                "اتصال الخادم",
-                connected ? "تم الاتصال بالخادم بنجاح ✓" : "تم حفظ العنوان، لكن الخادم لم يستجب.",
-                "حسنًا");
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlertAsync("إعداد الخادم", ex.Message, "حسنًا");
         }
     }
 

@@ -396,6 +396,21 @@ public sealed class CallService : ICallService, IDisposable
 
     private async void OnSignalReceived(object? sender, CallSignalMessage signal)
     {
+        try
+        {
+            await HandleSignalReceivedAsync(sender, signal).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // SignalR callbacks must never let an async-void exception terminate the app.
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo CallService] Signal handler failed; type={signal?.Type ?? "unknown"}; " +
+                $"conversation={signal?.ConversationId.ToString("D") ?? "unknown"}; error={ex}");
+        }
+    }
+
+    private async Task HandleSignalReceivedAsync(object? sender, CallSignalMessage signal)
+    {
         if (string.Equals(signal.Type, CallSignalType.Invite.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             var mode = CallMode.Audio;

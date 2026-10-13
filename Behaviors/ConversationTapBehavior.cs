@@ -17,7 +17,9 @@ public sealed class ConversationTapBehavior : Behavior<VisualElement>
         nameof(CommandParameter), typeof(object), typeof(ConversationTapBehavior));
 
     private VisualElement? _associatedElement;
+#if !ANDROID
     private TapGestureRecognizer? _fallbackTap;
+#endif
 #if ANDROID
     private Android.Views.View? _nativeView;
     private bool _wasClickable;
@@ -80,9 +82,10 @@ public sealed class ConversationTapBehavior : Behavior<VisualElement>
             System.Diagnostics.Debug.WriteLine("[Himo ChatTap] Native row click handler attached");
         }
 #else
-        _fallbackTap = new TapGestureRecognizer();
-        _fallbackTap.Tapped += OnFallbackTapped;
-        element.GestureRecognizers.Add(_fallbackTap);
+        var fallbackTap = new TapGestureRecognizer();
+        fallbackTap.Tapped += OnFallbackTapped;
+        _fallbackTap = fallbackTap;
+        element.GestureRecognizers.Add(fallbackTap);
 #endif
     }
 
@@ -96,10 +99,13 @@ public sealed class ConversationTapBehavior : Behavior<VisualElement>
             _nativeView = null;
         }
 #else
-        if (_associatedElement is not null && _fallbackTap is not null)
-            _associatedElement.GestureRecognizers.Remove(_fallbackTap);
-        if (_fallbackTap is not null)
-            _fallbackTap.Tapped -= OnFallbackTapped;
+        var associatedElement = _associatedElement;
+        var fallbackTap = _fallbackTap;
+        if (associatedElement is not null && fallbackTap is not null)
+        {
+            associatedElement.GestureRecognizers.Remove(fallbackTap);
+            fallbackTap.Tapped -= OnFallbackTapped;
+        }
         _fallbackTap = null;
 #endif
     }

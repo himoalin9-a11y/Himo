@@ -1,4 +1,5 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
+using System.Windows.Input;
 using Himo.Models;
 using Himo.Services;
 using Himo.ViewModels;
@@ -23,9 +24,23 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private bool _openingConversation;
     private string _currentSection = "chats";
     private bool _sectionTransitioning;
+    private bool _selectionMode;
+    private Conversation? _suppressTapConversation;
+    private DateTime _suppressTapUntilUtc = DateTime.MinValue;
+    private readonly HashSet<Conversation> _selectedConversations = new();
+
+    public ICommand ConversationTapCommand { get; }
+    public ICommand ConversationLongPressCommand { get; }
 
     public HomePage(HomeViewModel vm, HimoApiClient api, ProfileService profile, CallHistoryService callHistory)
     {
+        // Commands used through x:Reference bindings must exist before InitializeComponent
+        // evaluates the Behavior bindings in the conversation-row DataTemplate.
+        ConversationTapCommand = new Command<Conversation>(async conversation =>
+        {
+            await HandleConversationTapAsync(conversation);
+        });
+        ConversationLongPressCommand = new Command<Conversation>(BeginConversationSelection);
         InitializeComponent();
         _vm = vm;
         _api = api;
@@ -45,14 +60,57 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         UpdateEmptyState();
     }
 
-
-    // A normal tap opens a conversation. Multi-select and long-press selection are disabled.
-    private async void ConversationTapped(object? sender, TappedEventArgs e)
+    private void BeginConversationSelection(Conversation? conversation)
     {
-        if (sender is not BindableObject element || element.BindingContext is not Conversation conversation)
+        if (conversation is null || _currentSection != "chats") return;
+
+        if (!_selectionMode)
+        {
+            _selectionMode = true;
+            _selectedConversations.Clear();
+            foreach (var item in _vm.FilteredConversations) item.IsSelected = false;
+        }
+
+        if (_selectedConversations.Add(conversation))
+            conversation.IsSelected = true;
+
+        // Suppress the tap that some Android builds emit after a native long-press.
+        _suppressTapConversation = conversation;
+        _suppressTapUntilUtc = DateTime.UtcNow.AddMilliseconds(550);
+        UpdateSelectionToolbar();
+    }
+
+    private async Task HandleConversationTapAsync(Conversation? conversation)
+    {
+        if (conversation is null || _currentSection != "chats")
             return;
 
-        System.Diagnostics.Debug.WriteLine($"[Himo ChatTap] Conversation tapped id={conversation.Id} remote={conversation.RemoteId ?? "(null)"} name={conversation.Name}");
+        // A native long-press can be followed by a tap on some Android builds.
+        if (ReferenceEquals(_suppressTapConversation, conversation) && DateTime.UtcNow <= _suppressTapUntilUtc)
+        {
+            _suppressTapConversation = null;
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatTap] Suppressed tap after long-press id={conversation.Id}");
+            return;
+        }
+
+        if (_selectionMode)
+        {
+            if (_selectedConversations.Remove(conversation))
+                conversation.IsSelected = false;
+            else
+            {
+                _selectedConversations.Add(conversation);
+                conversation.IsSelected = true;
+            }
+
+            if (_selectedConversations.Count == 0)
+                ClearConversationSelection();
+            else
+                UpdateSelectionToolbar();
+            return;
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[Himo ChatNav] Opening tapped row id={conversation.Id} remote={conversation.RemoteId ?? "(null)"} name={conversation.Name}");
         await OpenConversationAsync(conversation);
     }
 
@@ -66,7 +124,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         var shell = Shell.Current;
         if (shell is null)
         {
-            await DisplayAlert("تعذر فتح المحادثة", "واجهة التنقل غير جاهزة. أغلق الصفحة وافتحها مجددًا.", "موافق");
+            await DisplayAlertAsync("تعذر فتح المحادثة", "واجهة التنقل غير جاهزة. أغلق الصفحة وافتحها مجددًا.", "موافق");
             return;
         }
 
@@ -83,7 +141,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         }
         else
         {
-            await DisplayAlert("تعذر فتح المحادثة", "معرّف المحادثة غير صالح. حدّث قائمة المحادثات ثم أعد المحاولة.", "موافق");
+            await DisplayAlertAsync("تعذر فتح المحادثة", "معرّف المحادثة غير صالح. حدّث قائمة المحادثات ثم أعد المحاولة.", "موافق");
             return;
         }
 
@@ -98,11 +156,69 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo] Open conversation failed (id={routeId}): {ex}");
-            await DisplayAlert("تعذر فتح المحادثة", "حدث خطأ أثناء فتح المحادثة. أعد المحاولة؛ إذا تكرر الخطأ فراجع سجل التطبيق.", "موافق");
+            await DisplayAlertAsync("تعذر فتح المحادثة", "حدث خطأ أثناء فتح المحادثة. أعد المحاولة؛ إذا تكرر الخطأ فراجع سجل التطبيق.", "موافق");
         }
         finally
         {
             _openingConversation = false;
+        }
+    }
+
+    private void ClearConversationSelection()
+    {
+        foreach (var conversation in _selectedConversations)
+            conversation.IsSelected = false;
+        _selectedConversations.Clear();
+        _selectionMode = false;
+        _suppressTapConversation = null;
+        UpdateSelectionToolbar();
+    }
+
+    private void UpdateSelectionToolbar()
+    {
+        if (SelectionActionBar is null) return;
+        var selected = _selectedConversations.ToList();
+        var active = _selectionMode && _currentSection == "chats" && selected.Count > 0;
+        HomeHeader.IsVisible = !active;
+        SelectionActionBar.IsVisible = active;
+        SelectedConversationCountLabel.Text = selected.Count == 1
+            ? "محادثة واحدة"
+            : $"تم تحديد {selected.Count}";
+
+        var allMuted = selected.Count > 0 && selected.All(item => item.IsMuted);
+        MuteSelectedButton.Source = allMuted ? "selection_bell_on.png" : "selection_bell_off.png";
+        SemanticProperties.SetDescription(MuteSelectedButton, allMuted ? "تفعيل إشعارات المحادثات المحددة" : "كتم إشعارات المحادثات المحددة");
+
+        var showingArchive = _vm.ShowArchived;
+        ArchiveSelectedButton.Source = showingArchive ? "selection_unarchive.png" : "selection_archive.png";
+        SemanticProperties.SetDescription(ArchiveSelectedButton, showingArchive ? "إخراج المحادثات من الأرشيف" : "أرشفة المحادثات المحددة");
+
+        var canBlock = selected.Count == 1 && !selected[0].IsGroup;
+        BlockSelectedButton.IsVisible = canBlock;
+        if (canBlock)
+        {
+            BlockSelectedButton.Source = selected[0].IsBlocked ? "selection_unblock.png" : "selection_block.png";
+            SemanticProperties.SetDescription(BlockSelectedButton, selected[0].IsBlocked ? "إلغاء حظر الشخص" : "حظر الشخص المحدد");
+        }
+
+        // Collapse the block-icon slot entirely when multiple chats are selected.
+        SelectionActionsGrid.ColumnDefinitions.Clear();
+        SelectionActionsGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        SelectionActionsGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+        var iconColumns = canBlock ? 5 : 4;
+        for (var i = 0; i < iconColumns; i++)
+            SelectionActionsGrid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(34)));
+        Grid.SetColumn(DeleteSelectedButton, 2);
+        Grid.SetColumn(MuteSelectedButton, 3);
+        Grid.SetColumn(ArchiveSelectedButton, 4);
+        if (canBlock)
+        {
+            Grid.SetColumn(BlockSelectedButton, 5);
+            Grid.SetColumn(CancelSelectionButton, 6);
+        }
+        else
+        {
+            Grid.SetColumn(CancelSelectionButton, 5);
         }
     }
 
@@ -361,6 +477,9 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     {
         if (_sectionTransitioning || string.IsNullOrWhiteSpace(section))
             return;
+        if (section != "chats" && _selectionMode)
+            ClearConversationSelection();
+
         if (section == _currentSection)
         {
             UpdateSectionChrome(section);
@@ -432,11 +551,12 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private void UpdateSectionChrome(string section)
     {
         ChatSearchCard.IsVisible = section == "chats";
-        HomeCreateGroupButton.IsVisible = section == "chats" && !_vm.ShowArchived;
+        HomeCreateGroupButton.IsVisible = section == "chats" && !_vm.ShowArchived && !_selectionMode;
         OverflowMenu.IsVisible = false;
         Search.Placeholder = _vm.ShowArchived ? "البحث في المحادثات المؤرشفة" : "البحث في محادثاتك";
         ArchiveListButton.Source = _vm.ShowArchived ? "selection_unarchive.png" : "selection_archive.png";
         ArchiveListButton.BackgroundColor = _vm.ShowArchived ? Color.FromArgb("#4C2E60") : Colors.Transparent;
+        UpdateSelectionToolbar();
 
         var selected = Color.FromArgb("#3A1755");
         var idle = Color.FromArgb("#160A24");
@@ -455,6 +575,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
 
     private void ArchiveListClicked(object? sender, EventArgs e)
     {
+        ClearConversationSelection();
         _vm.ToggleArchiveView();
         UpdateSectionChrome(_currentSection);
         UpdateEmptyState();
@@ -674,6 +795,156 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         {
             _openingMatchedConversation = false;
         }
+    }
+
+    private void CancelConversationSelectionClicked(object? sender, EventArgs e) => ClearConversationSelection();
+
+    private async void DeleteSelectedConversationsClicked(object? sender, EventArgs e)
+    {
+        if (_selectedConversations.Count == 0) return;
+        var selected = _selectedConversations.ToList();
+        var confirmed = await DisplayAlertAsync(
+            "حذف المحادثات",
+            selected.Count == 1
+                ? $"حذف محادثة {selected[0].Name} من قائمتك؟ يمكنك البحث عن الشخص وبدء محادثة معه لاحقًا."
+                : $"حذف {selected.Count} محادثات من قائمتك؟ يمكنك البحث عن الأشخاص وبدء محادثات جديدة لاحقًا.",
+            "حذف", "إلغاء");
+        if (!confirmed) return;
+        await ApplyConversationActionAsync("delete", selected);
+    }
+
+    private async void MuteSelectedConversationsClicked(object? sender, EventArgs e)
+    {
+        if (_selectedConversations.Count == 0) return;
+        var selected = _selectedConversations.ToList();
+        var action = selected.All(item => item.IsMuted) ? "unmute" : "mute";
+        await ApplyConversationActionAsync(action, selected);
+    }
+
+    private async void ArchiveSelectedConversationsClicked(object? sender, EventArgs e)
+    {
+        if (_selectedConversations.Count == 0) return;
+        var action = _vm.ShowArchived ? "unarchive" : "archive";
+        await ApplyConversationActionAsync(action, _selectedConversations.ToList());
+    }
+
+    private async void BlockSelectedConversationClicked(object? sender, EventArgs e)
+    {
+        if (_selectedConversations.Count != 1) return;
+        var selected = _selectedConversations.Single();
+        if (selected.IsGroup)
+        {
+            await DisplayAlertAsync("الحظر", "يمكن حظر حساب فردي فقط، وليس مجموعة كاملة.", "حسنًا");
+            return;
+        }
+
+        var action = selected.IsBlocked ? "unblock" : "block";
+        if (action == "block")
+        {
+            var confirmed = await DisplayAlertAsync(
+                "حظر الحساب",
+                $"هل تريد حظر {selected.Name}؟ لن تتمكن الحسابات المحظورة من إرسال رسائل أو بدء مكالمات مباشرة بينكما.",
+                "حظر", "إلغاء");
+            if (!confirmed) return;
+        }
+        await ApplyConversationActionAsync(action, new[] { selected });
+    }
+
+    private async Task ApplyConversationActionAsync(string action, IReadOnlyCollection<Conversation> selected)
+    {
+        var succeeded = new List<Conversation>();
+        var failures = new List<string>();
+        await _api.TokenInitialization;
+
+        foreach (var conversation in selected)
+        {
+            try
+            {
+                if (Guid.TryParse(conversation.RemoteId, out var remoteId) && remoteId != Guid.Empty)
+                {
+                    if (!_api.HasToken)
+                        throw new InvalidOperationException("سجّل الدخول مجددًا لتنفيذ هذا الإجراء.");
+                    await _api.SetConversationActionAsync(remoteId, action);
+                }
+                else if (action is "block" or "unblock")
+                {
+                    throw new InvalidOperationException("الحظر متاح للمحادثات المرتبطة بحساب على الخادم فقط.");
+                }
+
+                switch (action)
+                {
+                    case "delete":
+                        _vm.Conversations.Remove(conversation);
+                        UpdateLegacyArchiveList(conversation, archived: false);
+                        break;
+                    case "archive":
+                        conversation.IsArchived = true;
+                        UpdateLegacyArchiveList(conversation, archived: true);
+                        break;
+                    case "unarchive":
+                        conversation.IsArchived = false;
+                        UpdateLegacyArchiveList(conversation, archived: false);
+                        break;
+                    case "mute":
+                        conversation.IsMuted = true;
+                        break;
+                    case "unmute":
+                        conversation.IsMuted = false;
+                        break;
+                    case "block":
+                        conversation.IsBlocked = true;
+                        break;
+                    case "unblock":
+                        conversation.IsBlocked = false;
+                        break;
+                }
+                succeeded.Add(conversation);
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{conversation.Name}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[Himo Home] Conversation action '{action}' failed: {ex}");
+            }
+        }
+
+        ClearConversationSelection();
+        _vm.Filter();
+        UpdateEmptyState();
+
+        // Refresh the flags from the server after persisting per-account actions.
+        if (succeeded.Count > 0 && _api.HasToken)
+            await _vm.RefreshFromServerAsync();
+
+        if (failures.Count > 0)
+        {
+            var summary = failures.Count == 1 ? failures[0] : $"تعذر تنفيذ الإجراء على {failures.Count} محادثات.";
+            await DisplayAlertAsync("تعذر إكمال بعض الإجراءات", summary, "حسنًا");
+            return;
+        }
+
+        var resultMessage = action switch
+        {
+            "delete" => succeeded.Count == 1 ? "تم حذف المحادثة من قائمتك. يمكنك البحث عن الشخص لبدء محادثة مجددًا." : $"تم حذف {succeeded.Count} محادثات من قائمتك.",
+            "archive" => "تمت أرشفة المحادثات المحددة. افتح رمز الأرشيف بجانب البحث لعرضها لاحقًا.",
+            "unarchive" => "تمت إعادة المحادثات إلى القائمة الرئيسية.",
+            "mute" => "تم كتم إشعارات المحادثات المحددة.",
+            "unmute" => "تم تفعيل إشعارات المحادثات المحددة.",
+            "block" => "تم حظر الحساب. لن يتمكن من إرسال رسائل أو بدء مكالمات مباشرة معك.",
+            "unblock" => "تم إلغاء الحظر.",
+            _ => "تم تحديث المحادثات المحددة."
+        };
+        await DisplayAlertAsync("Himo", resultMessage, "حسنًا");
+    }
+
+    private static void UpdateLegacyArchiveList(Conversation conversation, bool archived)
+    {
+        if (string.IsNullOrWhiteSpace(conversation.RemoteId)) return;
+        var existing = Preferences.Default.Get("himo_archived_conversations", string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (archived) existing.Add(conversation.RemoteId);
+        else existing.Remove(conversation.RemoteId);
+        Preferences.Default.Set("himo_archived_conversations", string.Join(',', existing));
     }
 
     private async void CallAudioAgainClicked(object? sender, EventArgs e) => await OpenCallAgainAsync(sender, "audio");

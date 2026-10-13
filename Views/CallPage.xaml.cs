@@ -330,10 +330,28 @@ public partial class CallPage : ContentPage
         _calls.CallEnded += CallsEnded;
         _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
         _realtime.CallSignalReceived += OnRealtimeCallSignalReceived;
-        _remoteAccepted = false;
-        _incomingAnswered = false;
-        _connectedAt = _calls.Current?.IsConnected == true ? DateTimeOffset.UtcNow : null;
-        _navigationStarted = false;
+        var activeCall = _calls.Current;
+        var sameActiveCall = activeCall is not null &&
+            activeCall.ConversationId == _conversationId &&
+            (_callId == Guid.Empty || activeCall.CallId == _callId) &&
+            activeCall.Mode == _mode;
+
+        if (sameActiveCall && activeCall is not null)
+        {
+            // Reappearing for the same call must not resurrect the incoming screen
+            // or reset Accept/connected UI state.
+            _callId = activeCall.CallId;
+            _connectedAt = activeCall.IsConnected
+                ? (_connectedAt ?? DateTimeOffset.UtcNow)
+                : _connectedAt;
+        }
+        else
+        {
+            _remoteAccepted = false;
+            _incomingAnswered = false;
+            _navigationStarted = false;
+            _connectedAt = null;
+        }
         _avatarLoadCts?.Cancel();
         _avatarLoadCts?.Dispose();
         _avatarLoadCts = new CancellationTokenSource();
@@ -368,9 +386,25 @@ public partial class CallPage : ContentPage
         WaitingCallTitle.Text = _incoming ? "جارٍ الاتصال..." : "جاري الاتصال بالطرف الآخر";
         WaitingCallSubtitle.Text = _incoming ? "يجري إعداد الصوت والصورة" : "بانتظار رد الطرف الآخر...";
         RemoteAudioButton.IsEnabled = false;
-        IncomingActions.IsVisible = _incoming;
-        OutgoingActions.IsVisible = !_incoming;
-        CallControls.IsVisible = false;
+        var currentCall = _calls.Current;
+        var matchingCurrentCall = currentCall is not null &&
+            currentCall.ConversationId == _conversationId &&
+            (_callId == Guid.Empty || currentCall.CallId == _callId) &&
+            currentCall.Mode == _mode;
+        var callAlreadyAccepted = matchingCurrentCall &&
+            (currentCall!.IsConnected || _incomingAnswered || _remoteAccepted);
+        var callConnected = matchingCurrentCall && currentCall!.IsConnected;
+
+        IncomingActions.IsVisible = _incoming && !callAlreadyAccepted;
+        OutgoingActions.IsVisible = !_incoming && !callAlreadyAccepted;
+        CallControls.IsVisible = callConnected;
+
+        if (matchingCurrentCall && currentCall is not null)
+        {
+            MuteButton.Source = currentCall.IsMuted ? "himo_call_mic_off.png" : "himo_call_mic.png";
+            SpeakerButton.Source = currentCall.IsSpeakerOn ? "himo_call_speaker.png" : "himo_call_speaker_off.png";
+            RemoteAudioButton.Source = currentCall.IsRemoteAudioEnabled ? "himo_call_speaker.png" : "himo_call_speaker_off.png";
+        }
 
         // Incoming calls must ring immediately even when the app was opened from a
         // cold-start FCM notification and SignalR has not connected yet. Do not
@@ -378,6 +412,21 @@ public partial class CallPage : ContentPage
         // the green answer button.
         if (_incoming)
         {
+            if (callAlreadyAccepted)
+            {
+#if ANDROID
+                StopIncomingRingtone();
+#endif
+                StatusLabel.Text = callConnected ? "المكالمة متصلة" : "تم الرد، جارٍ الاتصال...";
+                VideoStatusLabel.Text = StatusLabel.Text;
+                if (callConnected)
+                {
+                    IncomingActions.IsVisible = false;
+                    CallControls.IsVisible = true;
+                }
+                return;
+            }
+
             try
             {
                 await _calls.PrepareIncomingAsync(new CallRequest(_conversationId, _mode, _callId));

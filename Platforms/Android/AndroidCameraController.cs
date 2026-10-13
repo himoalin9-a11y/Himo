@@ -67,6 +67,18 @@ internal sealed class AndroidCameraController : Java.Lang.Object, ICameraPreview
     public bool IsRecording => _recording;
     public bool IsRecordingPaused => _recordingPaused;
     public float PhotoAspectRatio => _photoAspectRatio;
+
+    // Used to keep the live preview consistent with the saved front-camera image.
+    public bool IsFrontCamera
+    {
+        get
+        {
+            if (_cameraId < 0) return false;
+            var info = new ACamera.CameraInfo();
+            ACamera.GetCameraInfo(_cameraId, info);
+            return info.Facing == ACameraFacing.Front;
+        }
+    }
     public bool HasFlash => _hasFlash;
     public bool IsFlashOn => _flashOn;
     public float MaxZoomFactor => _maxZoomFactor;
@@ -146,9 +158,11 @@ internal sealed class AndroidCameraController : Java.Lang.Object, ICameraPreview
                 {
                     try
                     {
+                        var isFrontCamera = IsFrontCamera;
                         var normalizedData = NormalizeCapturedJpeg(
                             data,
-                            captureRotationDegrees);
+                            captureRotationDegrees,
+                            mirrorHorizontally: isFrontCamera);
 
                         await File.WriteAllBytesAsync(path, normalizedData).ConfigureAwait(false);
 
@@ -697,6 +711,9 @@ internal sealed class AndroidCameraController : Java.Lang.Object, ICameraPreview
                 : 1f;
 
             camera.SetDisplayOrientation(GetDisplayOrientation());
+            // Some Camera1 devices mirror the front preview internally. Undo
+            // that preview mirror so the live view matches the saved photo.
+            _surfaceView.ScaleX = IsFrontCamera ? -1f : 1f;
 
             var surface = _surfaceHolder.Surface;
             if (surface is null || !surface.IsValid)
@@ -1057,18 +1074,21 @@ internal sealed class AndroidCameraController : Java.Lang.Object, ICameraPreview
         // orientation unless Parameters.Rotation is explicitly set. We
         // normalize the pixels here so the saved file itself is upright and
         // no later screen/image control has to interpret EXIF orientation.
+        // JPEG orientation differs from the mirrored preview orientation.
+        // Using the preview compensation here can rotate front-camera photos
+        // by 180 degrees, making them appear upside down on some devices.
         if (info.Facing == ACameraFacing.Front)
-        {
-            var front = (info.Orientation + rotation) % 360;
-            return (360 - front) % 360;
-        }
+            return (info.Orientation + rotation) % 360;
 
         return (info.Orientation - rotation + 360) % 360;
     }
 
-    private static byte[] NormalizeCapturedJpeg(byte[] data, int rotationDegrees)
+    private static byte[] NormalizeCapturedJpeg(
+        byte[] data,
+        int rotationDegrees,
+        bool mirrorHorizontally = false)
     {
-        if (data.Length == 0 || rotationDegrees % 360 == 0)
+        if (data.Length == 0 || (rotationDegrees % 360 == 0 && !mirrorHorizontally))
             return data;
 
         try
@@ -1078,9 +1098,12 @@ internal sealed class AndroidCameraController : Java.Lang.Object, ICameraPreview
                 return data;
 
             using var matrix = new AMatrix();
-            matrix.PostRotate(rotationDegrees);
+            if (rotationDegrees % 360 != 0)
+                matrix.PostRotate(rotationDegrees);
+            if (mirrorHorizontally)
+                matrix.PostScale(-1f, 1f);
 
-            using var rotated = ABitmap.CreateBitmap(
+            using var transformed = ABitmap.CreateBitmap(
                 source,
                 0,
                 0,
@@ -1089,11 +1112,11 @@ internal sealed class AndroidCameraController : Java.Lang.Object, ICameraPreview
                 matrix,
                 true);
 
-            if (rotated is null)
+            if (transformed is null)
                 return data;
 
             using var output = new MemoryStream();
-            if (!rotated.Compress(ABitmap.CompressFormat.Jpeg!, 100, output))
+            if (!transformed.Compress(ABitmap.CompressFormat.Jpeg!, 100, output))
                 return data;
 
             return output.ToArray();

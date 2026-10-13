@@ -155,6 +155,17 @@ public sealed class ChatMessage : INotifyPropertyChanged
 {
     public int Id { get; init; }
     public string? RemoteId { get; set; }
+    private double _messageFontSize = 16;
+    public double MessageFontSize
+    {
+        get => _messageFontSize;
+        set
+        {
+            if (Math.Abs(_messageFontSize - value) < 0.1) return;
+            _messageFontSize = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MessageFontSize)));
+        }
+    }
     public int ConversationId { get; init; }
     private string _text = "";
     public string Text

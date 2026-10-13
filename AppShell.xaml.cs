@@ -8,7 +8,7 @@ public partial class AppShell : Shell
 {
     static AppShell()
     {
-        Routing.RegisterRoute("chat", typeof(ChatPage));
+        Routing.RegisterRoute("chat", new ChatPageRouteFactory());
         Routing.RegisterRoute("CallPage", new CallPageRouteFactory());
         Routing.RegisterRoute("settings", new SettingsPageRouteFactory());
         Routing.RegisterRoute("profile", new ProfilePageRouteFactory());
@@ -24,6 +24,25 @@ public partial class AppShell : Shell
             ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق.");
 
         HomeContent.Content = services.GetRequiredService<HomePage>();
+    }
+}
+
+internal sealed class ChatPageRouteFactory : RouteFactory
+{
+    public override Element GetOrCreate()
+    {
+        var services = Application.Current?.Handler?.MauiContext?.Services
+            ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق عند إنشاء واجهة المحادثة.");
+        var page = services.GetRequiredService<ChatPage>();
+        System.Diagnostics.Debug.WriteLine("[Himo ChatNav] ChatPage was created through the app service provider.");
+        return page;
+    }
+
+    public override Element GetOrCreate(IServiceProvider services)
+    {
+        var page = services.GetRequiredService<ChatPage>();
+        System.Diagnostics.Debug.WriteLine("[Himo ChatNav] ChatPage was resolved from Shell route services.");
+        return page;
     }
 }
 

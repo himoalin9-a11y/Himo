@@ -180,7 +180,10 @@ public sealed class HimoRealtimeService
                     $"sender={signal.SenderUserId:D}; payloadLength={signal.Payload?.Length ?? 0}; " +
                     $"envelope={hasEnvelope}; envelopeCallId={(hasEnvelope ? envelope.CallId.ToString("D") : "raw")}");
 
-                MainThread.BeginInvokeOnMainThread(() =>
+                // Keep SDP/ICE signaling off the UI thread. Posting every call signal
+                // through MainThread can queue negotiation behind page rendering and make
+                // audio appear to connect seconds late on slower Android devices.
+                try
                 {
                     System.Diagnostics.Debug.WriteLine(
                         $"[Himo Realtime] Dispatch RX {signal.Type} to call handlers; " +
@@ -188,7 +191,13 @@ public sealed class HimoRealtimeService
                         $"payloadLength={signal.Payload?.Length ?? 0}; " +
                         $"envelopeCallId={(hasEnvelope ? envelope.CallId.ToString("D") : "raw")}");
                     CallSignalReceived?.Invoke(this, signal);
-                });
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[Himo Realtime] Call signal dispatch failed; type={signal.Type}; " +
+                        $"conversation={signal.ConversationId:D}; error={ex}");
+                }
             });
 
         connection.On<Guid, Guid, string>(

@@ -77,8 +77,12 @@ public partial class ChatPage : ContentPage
     private bool _inlineVideoSliderUpdating;
     private bool _inlineVideoIsPlaying;
     private bool _inlineVideoIsMuted;
+    private bool _inlineVideoWasPlayingBeforeBackground;
 #endif
     private readonly HashSet<string> _videoPreviewInFlight = new(StringComparer.OrdinalIgnoreCase);
+    private MediaElement? _chatAnimatedWallpaperElement;
+    private Window? _wallpaperLifecycleWindow;
+    private bool _isAppInBackground;
 
     public string ConversationId
     {
@@ -140,7 +144,9 @@ public partial class ChatPage : ContentPage
 
     public ChatPage(ChatService chat, HimoApiClient api, AccountService account, INotificationService notifications, HimoRealtimeService realtime, ICallService calls)
     {
+        System.Diagnostics.Debug.WriteLine("[Himo ChatPage] Constructor started.");
         InitializeComponent();
+        System.Diagnostics.Debug.WriteLine("[Himo ChatPage] XAML initialized successfully.");
         Messages.ItemsSource = _visibleMessages;
         _chat = chat; _api = api; _account = account; _notifications = notifications; _realtime = realtime; _calls = calls;
         _realtime.MessageReceived += OnRealtimeMessageReceived;
@@ -172,7 +178,10 @@ public partial class ChatPage : ContentPage
 
     protected override void OnAppearing()
     {
+        System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] OnAppearing id={_conversationId} remote={_remoteConversationId ?? "(null)"}.");
         base.OnAppearing();
+        _isAppInBackground = false;
+        AttachWallpaperLifecycleHandlers();
         Connectivity.Current.ConnectivityChanged -= OnConnectivityChanged;
         Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
         Volatile.Write(ref _conversationVisible, 1);
@@ -186,6 +195,7 @@ public partial class ChatPage : ContentPage
         _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
         _realtime.CallSignalReceived += OnRealtimeCallSignalReceived;
         _ = ApplySavedChatWallpaperAsync();
+        ApplySavedChatBubbleColors();
         StartPollingFallback();
 
         // Do not execute the first message bind while Shell is still performing
@@ -659,67 +669,24 @@ public partial class ChatPage : ContentPage
 
 
 
-    private bool IsCurrentConversationGroup()
-    {
-        if (string.IsNullOrWhiteSpace(_remoteConversationId)) return false;
-        return _chat.Conversations.Any(conversation =>
-            conversation.IsGroup && string.Equals(
-                conversation.RemoteId,
-                _remoteConversationId,
-                StringComparison.OrdinalIgnoreCase));
-    }
-
-    private async Task OpenAddGroupMembersPageAsync()
-    {
-        if (!Guid.TryParse(_remoteConversationId, out var groupId) || groupId == Guid.Empty)
-        {
-            await DisplayAlertAsync("المجموعة", "تعذر تحديد معرّف المجموعة. ارجع إلى قائمة المحادثات ثم افتحها مجددًا.", "حسنًا");
-            return;
-        }
-
-        var conversation = _chat.Conversations.FirstOrDefault(item =>
-            string.Equals(item.RemoteId, _remoteConversationId, StringComparison.OrdinalIgnoreCase));
-        var groupName = conversation?.Name;
-        if (string.IsNullOrWhiteSpace(groupName)) groupName = NameLabel?.Text;
-        if (string.IsNullOrWhiteSpace(groupName)) groupName = "المجموعة";
-
-        var route = $"CreateGroupPage?groupId={groupId:D}&groupName={Uri.EscapeDataString(groupName)}";
-        var shell = Shell.Current;
-        if (shell is null)
-        {
-            await DisplayAlertAsync("المجموعة", "تعذر فتح شاشة إضافة الأعضاء.", "حسنًا");
-            return;
-        }
-
-        await shell.GoToAsync(route, false);
-    }
-
     private async void ConversationOptionsClicked(object? sender, EventArgs e)
     {
-        var options = new List<string>();
-        if (IsCurrentConversationGroup())
-            options.Add("إضافة أعضاء للمجموعة");
-
-        options.Add("البحث في المحادثة");
-        options.Add(IsConversationMuted ? "إلغاء كتم الإشعارات" : "كتم الإشعارات");
-        options.Add("الرسائل ذاتية الاختفاء");
-        options.Add("خلفية الدردشة");
-        options.Add("الإبلاغ عن المحادثة");
-        options.Add(IsConversationBlocked ? "إلغاء حظر المحادثة" : "حظر المحادثة");
-        options.Add(IsConversationArchived ? "إلغاء أرشفة المحادثة" : "أرشفة المحادثة");
-
         var selected = await DisplayActionSheetAsync(
             "خيارات المحادثة",
             "إلغاء",
             null,
-            options.ToArray());
+            "البحث في المحادثة",
+            IsConversationMuted ? "إلغاء كتم الإشعارات" : "كتم الإشعارات",
+            "الرسائل ذاتية الاختفاء",
+            "خلفية الدردشة",
+            "الإبلاغ عن المحادثة",
+            IsConversationBlocked ? "إلغاء حظر المحادثة" : "حظر المحادثة",
+            IsConversationArchived ? "إلغاء أرشفة المحادثة" : "أرشفة المحادثة");
 
         if (string.IsNullOrWhiteSpace(selected) || selected == "إلغاء")
             return;
 
-        if (selected == "إضافة أعضاء للمجموعة")
-            await OpenAddGroupMembersPageAsync();
-        else if (selected == "البحث في المحادثة")
+        if (selected == "البحث في المحادثة")
             SearchMessagesClicked(sender, e);
         else if (selected == "كتم الإشعارات" || selected == "إلغاء كتم الإشعارات")
             MuteConversationClicked(sender, e);
@@ -802,19 +769,34 @@ public partial class ChatPage : ContentPage
             null,
             "🌸 الأزهار البنفسجية",
             "🌄 غروب الجبال",
-            "🌙 ليلة القمر",
+            "🌙 بحيرة القمر",
             "🌺 أزهار قريبة",
             "🌊 بحيرة هادئة",
-            "〰️ تموجات بنفسجية");
+            "〰️ تموجات بحرية",
+            "🌲 غابة زمردية",
+            "🌃 مدينة مضيئة",
+            "🌸 مدينة ساكورا",
+            "🏜️ غروب ذهبي",
+            "🖼️ اختيار صورة من المعرض");
+
+        if (selected == "🖼️ اختيار صورة من المعرض")
+        {
+            await PickConversationWallpaperFromGalleryAsync();
+            return;
+        }
 
         var wallpaper = selected switch
         {
             "🌸 الأزهار البنفسجية" => "himo_wallpaper_purple_flowers.jpg",
             "🌄 غروب الجبال" => "himo_wallpaper_mountain_sunset.jpg",
-            "🌙 ليلة القمر" => "himo_wallpaper_moon_lake.jpg",
+            "🌙 بحيرة القمر" => "himo_wallpaper_moon_lake.jpg",
             "🌺 أزهار قريبة" => "himo_wallpaper_close_flowers.jpg",
             "🌊 بحيرة هادئة" => "himo_wallpaper_quiet_lake.jpg",
-            "〰️ تموجات بنفسجية" => "himo_wallpaper_purple_water.jpg",
+            "〰️ تموجات بحرية" => "himo_wallpaper_purple_water.jpg",
+            "🌲 غابة زمردية" => "himo_wallpaper_emerald_forest.jpg",
+            "🌃 مدينة مضيئة" => "himo_wallpaper_city_lights.jpg",
+            "🌸 مدينة ساكورا" => "himo_wallpaper_sakura_city.jpg",
+            "🏜️ غروب ذهبي" => "himo_wallpaper_golden_desert.jpg",
             _ => null
         };
 
@@ -824,14 +806,209 @@ public partial class ChatPage : ContentPage
         await ApplyChatWallpaperAsync(wallpaper, persist: true);
     }
 
+    private async Task PickConversationWallpaperFromGalleryAsync()
+    {
+        try
+        {
+            var picked = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "اختر صورة لخلفية هذه المحادثة",
+                FileTypes = FilePickerFileType.Images
+            });
+            if (picked is null) return;
+
+            var extension = Path.GetExtension(picked.FileName);
+            if (string.IsNullOrWhiteSpace(extension) || extension.Length > 8 || !extension.StartsWith('.')) extension = ".img";
+            var destination = Path.Combine(FileSystem.Current.AppDataDirectory, $"himo_chat_wallpaper_{Guid.NewGuid():N}{extension.ToLowerInvariant()}");
+            await using (var input = await picked.OpenReadAsync())
+            await using (var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                await input.CopyToAsync(output);
+
+            await ApplyChatWallpaperAsync("local:" + destination, persist: true);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("خلفية الدردشة", "تعذر استخدام الصورة: " + ex.Message, "حسنًا");
+        }
+    }
+
     private async Task ApplySavedChatWallpaperAsync()
     {
         var key = !string.IsNullOrWhiteSpace(_remoteConversationId)
             ? $"himo_chat_background_{_remoteConversationId}"
             : $"himo_chat_background_local_{_conversationId}";
 
-        var saved = Preferences.Default.Get(key, "himo_wallpaper_purple_flowers.jpg");
+        // A wallpaper selected for this specific conversation keeps priority over
+        // the global animated/photo/theme choice.
+        var saved = Preferences.Default.Get(key, string.Empty);
+        if (!string.IsNullOrWhiteSpace(saved))
+        {
+            await ApplyChatWallpaperAsync(saved, persist: false);
+            return;
+        }
+
+        var mode = Preferences.Default.Get(ChatThemePage.BackgroundModeKey, "photo");
+        if (string.Equals(mode, "animated", StringComparison.OrdinalIgnoreCase))
+        {
+            var animated = Preferences.Default.Get(ChatAnimatedWallpaperPage.GlobalAnimatedWallpaperKey, "url:https://videos.pexels.com/video-files/5138001/5138001-hd_1280_720_30fps.mp4");
+            await ApplyChatAnimatedWallpaperAsync(animated);
+            return;
+        }
+
+        saved = string.Equals(mode, "theme", StringComparison.OrdinalIgnoreCase)
+            ? Preferences.Default.Get(ChatThemePage.ThemeBackgroundKey, "himo_theme_purple_flow.png")
+            : Preferences.Default.Get(ChatWallpaperSettingsPage.GlobalWallpaperKey, "himo_wallpaper_purple_flowers.jpg");
         await ApplyChatWallpaperAsync(saved, persist: false);
+    }
+
+    private async Task ApplyChatAnimatedWallpaperAsync(string animatedValue)
+    {
+        if (ChatAnimatedWallpaperHost is null || ChatWallpaper is null) return;
+
+        try
+        {
+            StopChatAnimatedWallpaper();
+            var mediaPath = await ChatAnimatedWallpaperPage.ResolveVideoPathAsync(animatedValue);
+            var media = new MediaElement
+            {
+                Aspect = Aspect.AspectFill,
+                // Never start playback while the app's window is in the background.
+                ShouldAutoPlay = !_isAppInBackground,
+                ShouldLoopPlayback = true,
+                ShouldShowPlaybackControls = false,
+                ShouldKeepScreenOn = false,
+                ShouldMute = true,
+                Volume = 0,
+                InputTransparent = true,
+                HorizontalOptions = LayoutOptions.Fill,
+                VerticalOptions = LayoutOptions.Fill
+            };
+
+            media.MediaFailed += (_, args) => MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo AnimatedWallpaper] Playback failed: {args?.ErrorMessage}");
+                await ApplyStaticWallpaperFallbackAsync();
+            });
+
+            ChatAnimatedWallpaperHost.Content = media;
+            ChatAnimatedWallpaperHost.IsVisible = true;
+            ChatWallpaper.IsVisible = false;
+            _chatAnimatedWallpaperElement = media;
+            media.Source = MediaSource.FromFile(mediaPath);
+            if (_isAppInBackground)
+            {
+                try { media.Pause(); } catch { }
+            }
+            System.Diagnostics.Debug.WriteLine($"[Himo AnimatedWallpaper] Loaded real video file {Path.GetFileName(mediaPath)}; appBackground={_isAppInBackground}.");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo AnimatedWallpaper] Could not load wallpaper: {ex}");
+            await ApplyStaticWallpaperFallbackAsync();
+        }
+    }
+
+    private async Task ApplyStaticWallpaperFallbackAsync()
+    {
+        var previousMode = Preferences.Default.Get(ChatAnimatedWallpaperPage.PreviousBackgroundModeKey, "photo");
+        previousMode = string.Equals(previousMode, "theme", StringComparison.OrdinalIgnoreCase) ? "theme" : "photo";
+        // If the device cannot decode the chosen clip, stop retrying it on every chat open.
+        Preferences.Default.Set(ChatThemePage.BackgroundModeKey, previousMode);
+        var fallback = previousMode == "theme"
+            ? Preferences.Default.Get(ChatThemePage.ThemeBackgroundKey, "himo_theme_purple_flow.png")
+            : Preferences.Default.Get(ChatWallpaperSettingsPage.GlobalWallpaperKey, "himo_wallpaper_purple_flowers.jpg");
+        await ApplyChatWallpaperAsync(fallback, persist: false);
+    }
+
+    private void AttachWallpaperLifecycleHandlers()
+    {
+        var currentWindow = Window;
+        if (currentWindow is null || ReferenceEquals(currentWindow, _wallpaperLifecycleWindow))
+            return;
+
+        DetachWallpaperLifecycleHandlers();
+        _wallpaperLifecycleWindow = currentWindow;
+        _wallpaperLifecycleWindow.Stopped += OnWallpaperWindowStopped;
+        _wallpaperLifecycleWindow.Resumed += OnWallpaperWindowResumed;
+    }
+
+    private void DetachWallpaperLifecycleHandlers()
+    {
+        if (_wallpaperLifecycleWindow is null)
+            return;
+
+        _wallpaperLifecycleWindow.Stopped -= OnWallpaperWindowStopped;
+        _wallpaperLifecycleWindow.Resumed -= OnWallpaperWindowResumed;
+        _wallpaperLifecycleWindow = null;
+    }
+
+    private void OnWallpaperWindowStopped(object? sender, EventArgs e)
+    {
+        _isAppInBackground = true;
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            // Pause, rather than remove, so the live wallpaper resumes at the same frame.
+            try { _chatAnimatedWallpaperElement?.Pause(); }
+            catch (Exception ex) { Debug.WriteLine($"[Himo AnimatedWallpaper] Pause on background failed: {ex.Message}"); }
+#if ANDROID
+            _inlineVideoWasPlayingBeforeBackground = _inlineVideoIsPlaying;
+            try { _inlineVideoElement?.Pause(); }
+            catch (Exception ex) { Debug.WriteLine($"[Himo InlineVideo] Pause on background failed: {ex.Message}"); }
+            if (_inlineVideoWasPlayingBeforeBackground)
+            {
+                _inlineVideoIsPlaying = false;
+                SetInlineVideoPlaybackVisual(false);
+                StopInlineVideoProgressLoop();
+            }
+#endif
+        });
+    }
+
+    private void OnWallpaperWindowResumed(object? sender, EventArgs e)
+    {
+        _isAppInBackground = false;
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (!IsConversationVisible)
+            {
+#if ANDROID
+                _inlineVideoWasPlayingBeforeBackground = false;
+#endif
+                return;
+            }
+
+            if (ChatAnimatedWallpaperHost?.IsVisible == true)
+            {
+                try { _chatAnimatedWallpaperElement?.Play(); }
+                catch (Exception ex) { Debug.WriteLine($"[Himo AnimatedWallpaper] Resume playback failed: {ex.Message}"); }
+            }
+#if ANDROID
+            if (_inlineVideoWasPlayingBeforeBackground &&
+                _inlineVideoElement is not null && InlineVideoOverlay?.IsVisible == true)
+            {
+                try
+                {
+                    _inlineVideoElement.Play();
+                    _inlineVideoIsPlaying = true;
+                    SetInlineVideoPlaybackVisual(true);
+                    StartInlineVideoProgressLoop();
+                }
+                catch (Exception ex) { Debug.WriteLine($"[Himo InlineVideo] Resume playback failed: {ex.Message}"); }
+            }
+            _inlineVideoWasPlayingBeforeBackground = false;
+#endif
+        });
+    }
+
+    private void StopChatAnimatedWallpaper()
+    {
+        try { _chatAnimatedWallpaperElement?.Stop(); } catch { }
+        _chatAnimatedWallpaperElement = null;
+        if (ChatAnimatedWallpaperHost is not null)
+        {
+            ChatAnimatedWallpaperHost.Content = null;
+            ChatAnimatedWallpaperHost.IsVisible = false;
+        }
     }
 
     private static string NormalizeChatWallpaperFile(string? value)
@@ -851,6 +1028,18 @@ public partial class ChatPage : ContentPage
             "himo_wallpaper_close_flowers.jpg" => "himo_wallpaper_close_flowers.jpg",
             "himo_wallpaper_quiet_lake.jpg" => "himo_wallpaper_quiet_lake.jpg",
             "himo_wallpaper_purple_water.jpg" => "himo_wallpaper_purple_water.jpg",
+            "himo_wallpaper_emerald_forest.jpg" => "himo_wallpaper_emerald_forest.jpg",
+            "himo_wallpaper_city_lights.jpg" => "himo_wallpaper_city_lights.jpg",
+            "himo_wallpaper_sakura_city.jpg" => "himo_wallpaper_sakura_city.jpg",
+            "himo_wallpaper_golden_desert.jpg" => "himo_wallpaper_golden_desert.jpg",
+            "himo_theme_purple_flow.png" => "himo_theme_purple_flow.png",
+            "himo_theme_blue_ocean.png" => "himo_theme_blue_ocean.png",
+            "himo_theme_emerald_flow.png" => "himo_theme_emerald_flow.png",
+            "himo_theme_rose_glass.png" => "himo_theme_rose_glass.png",
+            "himo_theme_sunset_silk.png" => "himo_theme_sunset_silk.png",
+            "himo_theme_neon_orbit.png" => "himo_theme_neon_orbit.png",
+            "himo_theme_gold_glow.png" => "himo_theme_gold_glow.png",
+            "himo_theme_aurora.png" => "himo_theme_aurora.png",
             _ => "himo_wallpaper_purple_flowers.jpg"
         };
     }
@@ -860,21 +1049,34 @@ public partial class ChatPage : ContentPage
         if (ChatWallpaper is null)
             return;
 
-        var normalizedFile = NormalizeChatWallpaperFile(fileName);
+        StopChatAnimatedWallpaper();
+        ChatWallpaper.IsVisible = true;
+
+        var isLocalFile = fileName.StartsWith("local:", StringComparison.OrdinalIgnoreCase);
+        var normalizedFile = isLocalFile ? fileName : NormalizeChatWallpaperFile(fileName);
 
         try
         {
-            // Wallpapers are packaged as MAUI app-package assets under Resources/Raw.
-            // Loading the bytes explicitly avoids relying on platform-specific FileImageSource
-            // lookup for Resources/Images, which can silently render nothing on Android.
-            await using var sourceStream = await FileSystem.Current.OpenAppPackageFileAsync(normalizedFile);
-            using var memory = new MemoryStream();
-            await sourceStream.CopyToAsync(memory);
-            var imageBytes = memory.ToArray();
+            byte[] imageBytes;
+            if (isLocalFile)
+            {
+                var localPath = fileName.Substring("local:".Length);
+                if (!File.Exists(localPath))
+                    throw new FileNotFoundException("The selected wallpaper file was not found.", localPath);
+                imageBytes = await File.ReadAllBytesAsync(localPath);
+            }
+            else
+            {
+                // MAUI includes files under Resources/Raw in the application package.
+                await using var sourceStream = await FileSystem.Current.OpenAppPackageFileAsync(normalizedFile);
+                using var memory = new MemoryStream();
+                await sourceStream.CopyToAsync(memory);
+                imageBytes = memory.ToArray();
+            }
 
             ChatWallpaper.Source = ImageSource.FromStream(() => new MemoryStream(imageBytes, writable: false));
             ChatWallpaper.Aspect = Aspect.AspectFill;
-            ChatWallpaper.Opacity = 0.98;
+            ChatWallpaper.Opacity = 1.0;
 
             if (persist)
             {
@@ -890,6 +1092,38 @@ public partial class ChatPage : ContentPage
             ChatWallpaper.Source = null;
             ChatWallpaper.BackgroundColor = Color.FromArgb("#24103D");
             System.Diagnostics.Debug.WriteLine($"[Himo ChatWallpaper] Failed to load {normalizedFile}: {ex}");
+        }
+    }
+
+    private void ApplySavedChatBubbleColors()
+    {
+        var outgoingStart = SafePreferenceColor(ChatBubbleSettingsPage.OutgoingStartKey, "#D34DFF");
+        var outgoingEnd = SafePreferenceColor(ChatBubbleSettingsPage.OutgoingEndKey, "#6814C7");
+        var incomingStart = SafePreferenceColor(ChatBubbleSettingsPage.IncomingStartKey, "#2F1946");
+        var incomingEnd = SafePreferenceColor(ChatBubbleSettingsPage.IncomingEndKey, "#1A0D29");
+        ApplyGradientColors("SenderBubbleBrush", outgoingStart, outgoingEnd);
+        ApplyGradientColors("ReceiverBubbleBrush", incomingStart, incomingEnd);
+    }
+
+    private static Color SafePreferenceColor(string key, string defaultValue)
+    {
+        try { return Color.FromArgb(Preferences.Default.Get(key, defaultValue)); }
+        catch { return Color.FromArgb(defaultValue); }
+    }
+
+    private void ApplyGradientColors(string resourceKey, Color start, Color end)
+    {
+        if (!Resources.TryGetValue(resourceKey, out var value) || value is not LinearGradientBrush gradient || gradient.GradientStops.Count == 0)
+            return;
+
+        foreach (var stop in gradient.GradientStops)
+        {
+            var t = Math.Clamp(stop.Offset, 0f, 1f);
+            stop.Color = new Color(
+                start.Red + ((end.Red - start.Red) * t),
+                start.Green + ((end.Green - start.Green) * t),
+                start.Blue + ((end.Blue - start.Blue) * t),
+                start.Alpha + ((end.Alpha - start.Alpha) * t));
         }
     }
 
@@ -989,6 +1223,8 @@ public partial class ChatPage : ContentPage
     protected override void OnDisappearing()
     {
         Volatile.Write(ref _conversationVisible, 0);
+        DetachWallpaperLifecycleHandlers();
+        StopChatAnimatedWallpaper();
 #if ANDROID
         if (_isRecordingAudio) CleanupAudioRecorder();
         StopAudioPlayback();
@@ -1463,6 +1699,15 @@ public partial class ChatPage : ContentPage
         var conversation = _chat.Conversations.FirstOrDefault(x =>
             string.Equals(x.RemoteId, message.ConversationId.ToString("D"), StringComparison.OrdinalIgnoreCase));
         if (conversation is null) return;
+
+        if (!Preferences.Default.Get(ChatSettingsPage.KeepArchivedKey, true))
+        {
+            var archived = Preferences.Default.Get("himo_archived_conversations", string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(x => !string.Equals(x, conversation.RemoteId, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            Preferences.Default.Set("himo_archived_conversations", string.Join(',', archived));
+        }
 
         var myUserId = _account.CurrentAccount?.UserId ?? Guid.Empty;
         var isMine = myUserId != Guid.Empty && message.SenderUserId == myUserId;
@@ -2754,7 +2999,9 @@ public partial class ChatPage : ContentPage
             var media = new MediaElement
             {
                 Aspect = Aspect.AspectFit,
-                ShouldAutoPlay = true,
+                // Do not auto-start an attachment video if the app was backgrounded
+                // while the file/player was still being prepared.
+                ShouldAutoPlay = !_isAppInBackground,
                 ShouldShowPlaybackControls = false,
                 ShouldKeepScreenOn = true,
                 ShouldMute = false,
@@ -2778,10 +3025,20 @@ public partial class ChatPage : ContentPage
                         InlineVideoSlider.Value = 0;
                         _inlineVideoSliderUpdating = false;
                     }
-                    _inlineVideoIsPlaying = true;
-                    SetInlineVideoPlaybackVisual(true);
+                    if (_isAppInBackground)
+                    {
+                        try { media.Pause(); } catch { }
+                        _inlineVideoIsPlaying = false;
+                        SetInlineVideoPlaybackVisual(false);
+                    }
+                    else
+                    {
+                        _inlineVideoIsPlaying = true;
+                        SetInlineVideoPlaybackVisual(true);
+                    }
                 });
-                StartInlineVideoProgressLoop();
+                if (!_isAppInBackground)
+                    StartInlineVideoProgressLoop();
             };
 
             media.MediaFailed += (_, args) =>
@@ -3418,6 +3675,10 @@ public partial class ChatPage : ContentPage
 
     private async void SendClicked(object? sender, EventArgs e)
     {
+        // Entry.Completed is raised by the keyboard Enter key; the explicit Send button remains usable.
+        if (ReferenceEquals(sender, MessageEntry) && !Preferences.Default.Get(ChatSettingsPage.EnterToSendKey, true))
+            return;
+
         if (Interlocked.Exchange(ref _sending, 1) != 0)
             return;
 
@@ -3642,10 +3903,15 @@ public partial class ChatPage : ContentPage
             return;
         }
 
+        var fontChoice = Preferences.Default.Get(ChatSettingsPage.ChatFontSizeKey, "متوسط");
+        var fontSize = fontChoice switch { "صغير" => 14d, "كبير" => 18d, _ => 16d };
+        var showMedia = Preferences.Default.Get(ChatSettingsPage.ShowMediaKey, true);
         var orderedMessages = messages
+            .Where(x => showMedia || (string.IsNullOrWhiteSpace(x.AttachmentFileName) && string.IsNullOrWhiteSpace(x.AttachmentContentType)))
             .OrderBy(x => x.SentAt)
             .ThenBy(x => x.Id)
             .ToList();
+        foreach (var item in orderedMessages) item.MessageFontSize = fontSize;
 
         UpdateMessageDateSeparators(orderedMessages);
 

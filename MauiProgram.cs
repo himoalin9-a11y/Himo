@@ -69,6 +69,12 @@ public static class MauiProgram
         builder.Services.AddTransient<Views.LoginPage>();
         builder.Services.AddTransient<Views.ChatPage>();
         builder.Services.AddSingleton<Views.SettingsPage>();
+        builder.Services.AddTransient<Views.AccountManagementPage>();
+        builder.Services.AddTransient<Views.AccountUsernamePage>();
+        builder.Services.AddTransient<Views.AccountPhonePage>();
+        builder.Services.AddTransient<Views.AccountLoginDetailsPage>();
+        builder.Services.AddTransient<Views.AccountPasswordPage>();
+        builder.Services.AddTransient<Views.AddAccountPage>();
         builder.Services.AddSingleton<Views.ProfilePage>();
         builder.Services.AddTransient<Views.SearchPage>();
         builder.Services.AddTransient<Views.CallPage>();

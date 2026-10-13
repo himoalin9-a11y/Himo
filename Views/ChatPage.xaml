@@ -169,7 +169,7 @@
                         <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
                         <VerticalStackLayout Spacing="5">
                             <Border IsVisible="{Binding HasReply}" Padding="9,6" BackgroundColor="#5B2A90" Stroke="#D6B4FF" StrokeThickness="0.8"><Border.StrokeShape><shapes:RoundRectangle CornerRadius="10" /></Border.StrokeShape><Label Text="{Binding ReplyToText}" FontSize="10.5" TextColor="#F3E7FF" MaxLines="2" LineBreakMode="TailTruncation" /></Border>
-                            <Label Text="{Binding Text}" FontSize="16" LineHeight="1.16" TextColor="#FFFFFF" LineBreakMode="WordWrap" Margin="1,1,1,0"><Label.Triggers><DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True"><Setter Property="TextColor" Value="#FFFFFF" /></DataTrigger></Label.Triggers></Label>
+                            <Label Text="{Binding Text}" FontSize="{Binding MessageFontSize}" LineHeight="1.16" TextColor="#FFFFFF" LineBreakMode="WordWrap" Margin="1,1,1,0"><Label.Triggers><DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True"><Setter Property="TextColor" Value="#FFFFFF" /></DataTrigger></Label.Triggers></Label>
                             <HorizontalStackLayout HorizontalOptions="End" Spacing="4">
                                 <Label Text="{Binding EditedLabel}" Style="{StaticResource ChatMeta}" />
                                 <Label Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" />
@@ -562,25 +562,20 @@
 
         <!-- MESSAGES -->
         <!-- MESSAGES -->
-        <Grid Grid.Row="2" Padding="0" BackgroundColor="#140A24">
-            <!-- Photographic wallpaper. The selected image is changed from the three-dots menu. -->
+        <Grid Grid.Row="2" Padding="0" BackgroundColor="Transparent">
+            <!-- Keep the selected photograph fully visible: no dimming/veil layer above it. -->
             <Image x:Name="ChatWallpaper"
                    HorizontalOptions="Fill"
                    VerticalOptions="Fill"
                    InputTransparent="True"
                    Aspect="AspectFill"
-                   Opacity="0.98"
+                   Opacity="1.0"
                    ZIndex="0" />
 
-            <Border HorizontalOptions="Fill" VerticalOptions="Fill" InputTransparent="True" Opacity="0.14" ZIndex="1">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#180B1024" Offset="0" />
-                        <GradientStop Color="#100A0D1F" Offset="0.52" />
-                        <GradientStop Color="#30070418" Offset="1" />
-                    </LinearGradientBrush>
-                </Border.Background>
-            </Border>
+            <!-- Filled at runtime by CommunityToolkit MediaElement when an animated wallpaper is selected. -->
+            <ContentView x:Name="ChatAnimatedWallpaperHost"
+                         HorizontalOptions="Fill" VerticalOptions="Fill"
+                         InputTransparent="True" IsVisible="False" ZIndex="0" />
 
             <Border x:Name="UnreadDivider" IsVisible="False" ZIndex="3" HorizontalOptions="Center"
                     VerticalOptions="Start" Margin="0,4,0,0" Padding="14,6"
