@@ -23,6 +23,8 @@ public class MainActivity : MauiAppCompatActivity
     private static string? _pendingCallId;
     private static int _navigationInProgress;
     private static int _callNavigationInProgress;
+    private static int _isAppForeground;
+    public static bool IsAppForeground => Volatile.Read(ref _isAppForeground) != 0;
     // A cold-start notification and the SignalR Invite may arrive for the same
     // call. Keep the last successfully opened CallId to avoid stacking two pages.
     private static string? _lastNavigatedCallKey;
@@ -51,6 +53,9 @@ public class MainActivity : MauiAppCompatActivity
     public static void SetPendingCall(string conversationId, string mode, string? callId = null)
     {
         if (string.IsNullOrWhiteSpace(conversationId)) return;
+        // A call intent takes precedence over a stale chat-notification intent;
+        // running both navigation retries was one source of stacked call screens.
+        ClearPendingConversation();
         _pendingCallConversationId = conversationId;
         _pendingCallMode = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio";
         _pendingCallId = Guid.TryParse(callId, out var parsedCallId) && parsedCallId != Guid.Empty
@@ -75,11 +80,24 @@ public class MainActivity : MauiAppCompatActivity
         Preferences.Default.Remove(PendingCallIdPreferenceKey);
     }
 
+    protected override void OnResume()
+    {
+        base.OnResume();
+        Volatile.Write(ref _isAppForeground, 1);
+    }
+
+    protected override void OnPause()
+    {
+        Volatile.Write(ref _isAppForeground, 0);
+        base.OnPause();
+    }
+
     protected override void OnCreate(global::Android.OS.Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
         try { FirebaseCloudMessagingImplementation.OnNewIntent(Intent); } catch { }
         CreateNotificationChannel();
+        EnableIncomingCallWindowIfNeeded(Intent);
         CaptureNotificationIntent(Intent);
         RestorePendingConversation();
         RestorePendingCall();
@@ -95,6 +113,7 @@ public class MainActivity : MauiAppCompatActivity
         if (intent is null) return;
         Intent = intent;
         try { FirebaseCloudMessagingImplementation.OnNewIntent(intent); } catch { }
+        EnableIncomingCallWindowIfNeeded(intent);
         CaptureNotificationIntent(intent);
         RestorePendingConversation();
         RestorePendingCall();
@@ -124,21 +143,21 @@ public class MainActivity : MauiAppCompatActivity
                     ? $"{conversationId}:{parsedCallId:D}"
                     : string.Empty;
 
-                // FCM may launch the call page first, then the same Invite reaches
-                // SignalR after startup. Do not put a second (stale) answer screen
-                // on top of the active call page. Also compare the active page because
-                // an FCM deep link can omit callId while the SignalR Invite has it.
-                if (shell.CurrentPage is Himo.Views.CallPage activeCallPage &&
-                    string.Equals(activeCallPage.ConversationId, conversationId, StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(activeCallPage.Incoming, "true", StringComparison.OrdinalIgnoreCase) &&
-                    (string.IsNullOrWhiteSpace(callId) ||
-                     string.IsNullOrWhiteSpace(activeCallPage.CallId) ||
-                     string.Equals(activeCallPage.CallId, callId, StringComparison.OrdinalIgnoreCase)))
+                // If an incoming-call page for this call is already on the Shell stack,
+                // don't push another transient page when FCM and SignalR race.
+                var existingCallPage = shell.Navigation.NavigationStack
+                    .OfType<Himo.Views.CallPage>()
+                    .FirstOrDefault(page => page.IsForCall(conversationId, callId));
+                if (existingCallPage is not null)
                 {
+                    if (callKey.Length > 0) _lastNavigatedCallKey = callKey;
                     ClearPendingCall();
                     return;
                 }
 
+                // FCM may launch the call page first, then the same Invite reaches
+                // SignalR after startup. Do not put a second (stale) answer screen
+                // on top of the active call page.
                 if (callKey.Length > 0 && string.Equals(_lastNavigatedCallKey, callKey, StringComparison.OrdinalIgnoreCase))
                 {
                     ClearPendingCall();
@@ -305,6 +324,35 @@ public class MainActivity : MauiAppCompatActivity
             catch { }
         }
         return (null, null, null, null);
+    }
+
+    private void EnableIncomingCallWindowIfNeeded(global::Android.Content.Intent? intent)
+    {
+        var isIncomingCall = string.Equals(
+            intent?.GetStringExtra("call_type"), "invite", StringComparison.OrdinalIgnoreCase);
+        if (!isIncomingCall) return;
+        try
+        {
+            Window?.AddFlags(
+                global::Android.Views.WindowManagerFlags.ShowWhenLocked |
+                global::Android.Views.WindowManagerFlags.TurnScreenOn);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo Call] Could not enable incoming-call window flags: {ex.Message}");
+        }
+    }
+
+    public static void ClearIncomingCallWindowFlags()
+    {
+        try
+        {
+            var activity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity;
+            activity?.Window?.ClearFlags(
+                global::Android.Views.WindowManagerFlags.ShowWhenLocked |
+                global::Android.Views.WindowManagerFlags.TurnScreenOn);
+        }
+        catch { }
     }
 
     public static void ConfigureFirebaseMessagingChannel()

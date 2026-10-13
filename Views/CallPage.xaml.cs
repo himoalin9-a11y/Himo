@@ -18,6 +18,7 @@ public partial class CallPage : ContentPage
     private readonly WebRtcNegotiationCoordinator _negotiation;
     private readonly ChatService _chat;
     private readonly HimoApiClient _api;
+    private readonly INotificationService _notifications;
     private CancellationTokenSource? _avatarLoadCts;
     private Guid _conversationId;
     private CallMode _mode = CallMode.Audio;
@@ -31,6 +32,9 @@ public partial class CallPage : ContentPage
     private bool _callSetupInProgress;
     private Guid _callId;
     private bool _navigationStarted;
+    private CancellationTokenSource? _incomingRingTimeoutCts;
+    private Guid _incomingRingTimeoutCallId;
+    private int _remoteEndHandling;
 #if ANDROID
     private global::Android.Media.ToneGenerator? _outgoingRingback;
     private global::Android.Media.Ringtone? _incomingRingtone;
@@ -78,13 +82,29 @@ public partial class CallPage : ContentPage
         }
     }
 
+    public bool IsForCall(string conversationId, string callId)
+    {
+        if (!Guid.TryParse(conversationId, out var parsedConversationId) || parsedConversationId != _conversationId)
+            return false;
+        if (!Guid.TryParse(callId, out var parsedCallId) || parsedCallId == Guid.Empty)
+            return true;
+        if (_callId == parsedCallId)
+            return true;
+        // A page with no bound CallId is a match only if CallService already owns
+        // exactly the target call. Do not mistake an unrelated in-progress/outgoing
+        // page in the same conversation for a duplicate incoming call.
+        var active = _calls.Current;
+        return _callId == Guid.Empty && active is not null &&
+               active.ConversationId == parsedConversationId && active.CallId == parsedCallId;
+    }
+
     private static string FirstTextElement(string value)
     {
         var trimmed = value?.Trim();
         return string.IsNullOrEmpty(trimmed) ? "H" : trimmed.Substring(0, 1);
     }
 
-    public CallPage(ICallService calls, HimoRealtimeService realtime, WebRtcNegotiationCoordinator negotiation, ChatService chat, HimoApiClient api)
+    public CallPage(ICallService calls, HimoRealtimeService realtime, WebRtcNegotiationCoordinator negotiation, ChatService chat, HimoApiClient api, INotificationService notifications)
     {
         InitializeComponent();
         _calls = calls;
@@ -92,6 +112,7 @@ public partial class CallPage : ContentPage
         _negotiation = negotiation;
         _chat = chat;
         _api = api;
+        _notifications = notifications;
         _calls.StateChanged += CallsStateChanged;
         _calls.CallEnded += CallsEnded;
     }
@@ -310,6 +331,9 @@ public partial class CallPage : ContentPage
         _calls.StateChanged -= CallsStateChanged;
         _calls.CallEnded -= CallsEnded;
         _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
+#if ANDROID
+        NotificationService.IncomingCallTerminatedByPush -= OnIncomingCallTerminatedByPush;
+#endif
         _avatarLoadCts?.Cancel();
         _avatarLoadCts?.Dispose();
         _avatarLoadCts = null;
@@ -330,34 +354,28 @@ public partial class CallPage : ContentPage
         _calls.CallEnded += CallsEnded;
         _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
         _realtime.CallSignalReceived += OnRealtimeCallSignalReceived;
-        var activeCall = _calls.Current;
-        var sameActiveCall = activeCall is not null &&
-            activeCall.ConversationId == _conversationId &&
-            (_callId == Guid.Empty || activeCall.CallId == _callId) &&
-            activeCall.Mode == _mode;
-
-        if (sameActiveCall && activeCall is not null)
-        {
-            // Reappearing for the same call must not resurrect the incoming screen
-            // or reset Accept/connected UI state.
-            _callId = activeCall.CallId;
-            _connectedAt = activeCall.IsConnected
-                ? (_connectedAt ?? DateTimeOffset.UtcNow)
-                : _connectedAt;
-        }
-        else
-        {
-            _remoteAccepted = false;
-            _incomingAnswered = false;
-            _navigationStarted = false;
-            _connectedAt = null;
-        }
+#if ANDROID
+        NotificationService.IncomingCallTerminatedByPush -= OnIncomingCallTerminatedByPush;
+        NotificationService.IncomingCallTerminatedByPush += OnIncomingCallTerminatedByPush;
+#endif
+        var activeState = _calls.Current;
+        var activeSameCall = activeState is not null && activeState.ConversationId == _conversationId &&
+                             (_callId == Guid.Empty || activeState.CallId == _callId);
+        _remoteAccepted = activeSameCall && activeState!.IsAccepted && !_incoming;
+        _incomingAnswered = _incoming && activeSameCall && (activeState!.IsAccepted || activeState.IsConnected);
+        _connectedAt = activeSameCall && activeState!.IsConnected ? DateTimeOffset.UtcNow : _connectedAt;
+        if (!activeSameCall) _navigationStarted = false;
         _avatarLoadCts?.Cancel();
         _avatarLoadCts?.Dispose();
         _avatarLoadCts = new CancellationTokenSource();
         var avatarToken = _avatarLoadCts.Token;
         PrepareCachedPeerAvatar();
         _ = LoadPeerAvatarAsync(avatarToken);
+#if ANDROID
+        // Start the expensive factory initialization while this screen is preparing,
+        // before the user answers (incoming) or while the outgoing screen is connecting.
+        _ = WarmMediaFactoryAsync();
+#endif
         VideoSurface.IsVisible = false;
         VideoWaitingOverlay.IsVisible = true;
         ProfilePanel.IsVisible = true;
@@ -386,25 +404,9 @@ public partial class CallPage : ContentPage
         WaitingCallTitle.Text = _incoming ? "جارٍ الاتصال..." : "جاري الاتصال بالطرف الآخر";
         WaitingCallSubtitle.Text = _incoming ? "يجري إعداد الصوت والصورة" : "بانتظار رد الطرف الآخر...";
         RemoteAudioButton.IsEnabled = false;
-        var currentCall = _calls.Current;
-        var matchingCurrentCall = currentCall is not null &&
-            currentCall.ConversationId == _conversationId &&
-            (_callId == Guid.Empty || currentCall.CallId == _callId) &&
-            currentCall.Mode == _mode;
-        var callAlreadyAccepted = matchingCurrentCall &&
-            (currentCall!.IsConnected || _incomingAnswered || _remoteAccepted);
-        var callConnected = matchingCurrentCall && currentCall!.IsConnected;
-
-        IncomingActions.IsVisible = _incoming && !callAlreadyAccepted;
-        OutgoingActions.IsVisible = !_incoming && !callAlreadyAccepted;
-        CallControls.IsVisible = callConnected;
-
-        if (matchingCurrentCall && currentCall is not null)
-        {
-            MuteButton.Source = currentCall.IsMuted ? "himo_call_mic_off.png" : "himo_call_mic.png";
-            SpeakerButton.Source = currentCall.IsSpeakerOn ? "himo_call_speaker.png" : "himo_call_speaker_off.png";
-            RemoteAudioButton.Source = currentCall.IsRemoteAudioEnabled ? "himo_call_speaker.png" : "himo_call_speaker_off.png";
-        }
+        IncomingActions.IsVisible = _incoming && !_incomingAnswered;
+        OutgoingActions.IsVisible = !_incoming || _incomingAnswered;
+        CallControls.IsVisible = activeSameCall && activeState!.IsConnected;
 
         // Incoming calls must ring immediately even when the app was opened from a
         // cold-start FCM notification and SignalR has not connected yet. Do not
@@ -412,29 +414,61 @@ public partial class CallPage : ContentPage
         // the green answer button.
         if (_incoming)
         {
-            if (callAlreadyAccepted)
+            if (_callId != Guid.Empty && _notifications.IsIncomingCallSuppressed(_callId.ToString("D")))
             {
-#if ANDROID
                 StopIncomingRingtone();
-#endif
-                StatusLabel.Text = callConnected ? "المكالمة متصلة" : "تم الرد، جارٍ الاتصال...";
-                VideoStatusLabel.Text = StatusLabel.Text;
-                if (callConnected)
+                if (_calls.Current is { } suppressedState &&
+                    suppressedState.ConversationId == _conversationId && suppressedState.CallId == _callId)
                 {
-                    IncomingActions.IsVisible = false;
-                    CallControls.IsVisible = true;
+                    try { await _calls.RejectAsync(); } catch { }
                 }
+                await _notifications.ClearIncomingCallAsync(_conversationId.ToString("D"), _callId.ToString("D"));
+                await NavigateBackFromCallAsync();
                 return;
             }
 
+            // Once the full-screen activity owns the incoming call, remove its tray
+            // notification without marking the still-ringing call as ended.
+            _ = _notifications.ClearIncomingCallAsync(
+                _conversationId.ToString("D"), _callId.ToString("D"), suppressFurtherRinging: false);
+
+            // Warm SignalR while the incoming call is ringing, instead of waiting
+            // until the answer button is pressed (cold starts used to cost several seconds).
+            _ = WarmIncomingSignalChannelAsync();
             try
             {
                 await _calls.PrepareIncomingAsync(new CallRequest(_conversationId, _mode, _callId));
+                var preparedState = _calls.Current;
+                if (preparedState is null || preparedState.ConversationId != _conversationId ||
+                    (_callId != Guid.Empty && preparedState.CallId != _callId))
+                {
 #if ANDROID
-                StartIncomingRingtone();
+                    StopIncomingRingtone();
 #endif
-                StatusLabel.Text = "مكالمة واردة — اضغط رد للبدء";
+                    await _notifications.ClearIncomingCallAsync(_conversationId.ToString("D"), _callId.ToString("D"));
+                    await NavigateBackFromCallAsync();
+                    return;
+                }
+                if (_callId == Guid.Empty) _callId = preparedState.CallId;
+                if (_notifications.IsIncomingCallSuppressed(_callId.ToString("D")))
+                {
+#if ANDROID
+                    StopIncomingRingtone();
+#endif
+                    try { await _calls.RejectAsync(); } catch { }
+                    await _notifications.ClearIncomingCallAsync(_conversationId.ToString("D"), _callId.ToString("D"));
+                    await NavigateBackFromCallAsync();
+                    return;
+                }
+#if ANDROID
+                if (!_incomingAnswered && !preparedState.IsAccepted && !preparedState.IsConnected)
+                    StartIncomingRingtone();
+#endif
+                StatusLabel.Text = (_incomingAnswered || preparedState.IsAccepted) ? "تم الرد، جارٍ الاتصال..." : "مكالمة واردة — اضغط رد للبدء";
                 VideoStatusLabel.Text = StatusLabel.Text;
+                _incomingAnswered = _incomingAnswered || preparedState.IsAccepted || preparedState.IsConnected;
+                IncomingActions.IsVisible = !_incomingAnswered;
+                OutgoingActions.IsVisible = _incomingAnswered;
             }
             catch (Exception ex)
             {
@@ -444,6 +478,22 @@ public partial class CallPage : ContentPage
                 StatusLabel.Text = "تعذر استقبال المكالمة.";
                 VideoStatusLabel.Text = StatusLabel.Text;
                 System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Incoming call setup failed: {ex}");
+            }
+            return;
+        }
+
+        if (!_incoming && activeSameCall)
+        {
+            // Navigation / activity resume can call OnAppearing again. Reuse the active
+            // call instead of sending a second Invite and starting another call screen.
+            _callId = activeState!.CallId;
+            StatusLabel.Text = activeState.IsAccepted ? "تم الرد، جارٍ الاتصال..." : "بانتظار قبول المكالمة...";
+            VideoStatusLabel.Text = StatusLabel.Text;
+            if (activeState.IsAccepted)
+            {
+#if ANDROID
+                StopOutgoingRingback();
+#endif
             }
             return;
         }
@@ -486,12 +536,57 @@ public partial class CallPage : ContentPage
         }
     }
 
+    private async Task WarmIncomingSignalChannelAsync()
+    {
+        try
+        {
+            await _api.TokenInitialization.WaitAsync(TimeSpan.FromSeconds(8));
+            if (_api.HasToken)
+                await _realtime.EnsureConnectedAsync().WaitAsync(TimeSpan.FromSeconds(8));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Incoming SignalR warm-up skipped: {ex.Message}");
+        }
+    }
+
+    private async Task WarmMediaFactoryAsync()
+    {
+#if ANDROID
+        try
+        {
+            var engine = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services
+                .GetService<IWebRtcMediaEngine>() as AndroidWebRtcMediaEngine;
+            if (engine is not null)
+                await engine.WarmUpFactoryAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // A warm-up failure must not prevent a normal call startup; StartAsync
+            // still performs the regular initialization path and reports real failures.
+            System.Diagnostics.Debug.WriteLine($"[Himo CallPage] WebRTC factory warm-up skipped: {ex.Message}");
+        }
+#else
+        await Task.CompletedTask;
+#endif
+    }
+
     private async void AcceptIncomingClicked(object? sender, EventArgs e)
     {
         if (!_incoming || _incomingAnswered || _navigationStarted) return;
 
         AnswerIncomingButton.IsEnabled = false;
         RejectIncomingButton.IsEnabled = false;
+#if ANDROID
+        StopIncomingRingtone();
+#endif
+        _incomingAnswered = true;
+        IncomingActions.IsVisible = false;
+        OutgoingActions.IsVisible = true;
+        StatusLabel.Text = "جارٍ الاتصال...";
+        VideoStatusLabel.Text = StatusLabel.Text;
+        WaitingCallTitle.Text = "جارٍ الاتصال...";
+        WaitingCallSubtitle.Text = "يجري تجهيز الصوت";
         try
         {
             var granted = await _calls.RequestPermissionsAsync(_mode);
@@ -499,22 +594,27 @@ public partial class CallPage : ContentPage
             {
                 StatusLabel.Text = "يلزم السماح بالميكروفون لقبول المكالمة";
                 await _calls.RejectAsync();
+                await _notifications.ClearIncomingCallAsync(_conversationId.ToString("D"), _callId.ToString("D"));
                 await NavigateBackFromCallAsync();
                 return;
             }
 
             await _realtime.EnsureConnectedAsync();
-#if ANDROID
-            StopIncomingRingtone();
-#endif
-            _incomingAnswered = true;
-            IncomingActions.IsVisible = false;
-            OutgoingActions.IsVisible = true;
+            if (_callId != Guid.Empty)
+            {
+                // Tell the caller immediately that the user accepted so its ringback
+                // stops, while native WebRTC media initializes on this device. This
+                // control signal does not start SDP negotiation.
+                await _realtime.SendCallSignalAsync(
+                    _conversationId, CallSignalType.Answering.ToString(),
+                    CallSignalEnvelope.Serialize(_callId, _mode));
+            }
             CallControls.IsVisible = _calls.Current?.IsConnected == true;
             WaitingCallTitle.Text = "جارٍ الاتصال...";
             WaitingCallSubtitle.Text = "يجري إعداد الصوت والصورة";
             StatusLabel.Text = "جارٍ الاتصال...";
             await _calls.AcceptAsync();
+            await _notifications.ClearIncomingCallAsync(_conversationId.ToString("D"), _callId.ToString("D"));
 #if ANDROID
             if (_mode == CallMode.Video)
                 await AttachVideoWithRetryAsync();
@@ -548,6 +648,7 @@ public partial class CallPage : ContentPage
 #endif
         try { await _calls.RejectAsync(); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Reject failed: {ex}"); }
+        await _notifications.ClearIncomingCallAsync(_conversationId.ToString("D"), _callId.ToString("D"));
         await NavigateBackFromCallAsync();
     }
 
@@ -567,6 +668,7 @@ public partial class CallPage : ContentPage
             if (global::Android.OS.Build.VERSION.SdkInt >= global::Android.OS.BuildVersionCodes.P)
                 ringtone.Looping = true;
             ringtone.Play();
+            StartIncomingRingTimeout(_callId);
         }
         catch (Exception ex)
         {
@@ -575,11 +677,68 @@ public partial class CallPage : ContentPage
         }
     }
 
+    private void StartIncomingRingTimeout(Guid callId)
+    {
+        if (callId == Guid.Empty) return;
+        if (_incomingRingTimeoutCts is not null && _incomingRingTimeoutCallId == callId &&
+            !_incomingRingTimeoutCts.IsCancellationRequested)
+            return;
+
+        CancelIncomingRingTimeout();
+        _incomingRingTimeoutCallId = callId;
+        var cts = _incomingRingTimeoutCts = new CancellationTokenSource();
+        _ = ExpireIncomingRingtoneAsync(callId, cts.Token);
+    }
+
+    private async Task ExpireIncomingRingtoneAsync(Guid callId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Failsafe when the remote cancel push cannot be delivered. Normal End/Reject
+            // signals cancel the ringtone immediately; this cap prevents infinite ringing.
+            await Task.Delay(TimeSpan.FromSeconds(45), cancellationToken).ConfigureAwait(false);
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                if (cancellationToken.IsCancellationRequested || !_incoming || _incomingAnswered ||
+                    _navigationStarted || _callId != callId)
+                    return;
+                StopIncomingRingtone();
+                try
+                {
+                    if (_calls.Current is { } current && current.CallId == callId)
+                        await _calls.RejectAsync();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Ring timeout cleanup failed: {ex.Message}");
+                }
+                await _notifications.ClearIncomingCallAsync(_conversationId.ToString("D"), callId.ToString("D"));
+                await NavigateBackFromCallAsync();
+            });
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Ring timeout handler failed: {ex.Message}");
+        }
+    }
+
+    private void CancelIncomingRingTimeout()
+    {
+        var cts = _incomingRingTimeoutCts;
+        _incomingRingTimeoutCts = null;
+        _incomingRingTimeoutCallId = Guid.Empty;
+        if (cts is null) return;
+        try { cts.Cancel(); } catch { }
+        cts.Dispose();
+    }
+
     private void StopIncomingRingtone()
     {
         try { _incomingRingtone?.Stop(); } catch { }
         try { _incomingRingtone?.Dispose(); } catch { }
         _incomingRingtone = null;
+        CancelIncomingRingTimeout();
     }
 #endif
 
@@ -591,7 +750,9 @@ public partial class CallPage : ContentPage
 #if ANDROID
         StopOutgoingRingback();
         StopIncomingRingtone();
+        MainActivity.ClearIncomingCallWindowFlags();
 #endif
+        _ = _notifications.ClearIncomingCallAsync(_conversationId.ToString("D"), _callId.ToString("D"));
         MainThread.BeginInvokeOnMainThread(() =>
         {
             StatusLabel.Text = "انتهت المكالمة";
@@ -755,15 +916,57 @@ public partial class CallPage : ContentPage
     }
 #endif
 
+#if ANDROID
+    private void OnIncomingCallTerminatedByPush(string conversationId, string callId)
+    {
+        if (_navigationStarted ||
+            !Guid.TryParse(conversationId, out var incomingConversationId) ||
+            incomingConversationId != _conversationId)
+            return;
+
+        var parsedCallId = Guid.Empty;
+        if (Guid.TryParse(callId, out var parsed) && parsed != Guid.Empty)
+            parsedCallId = parsed;
+        if (_callId != Guid.Empty && parsedCallId != Guid.Empty && _callId != parsedCallId)
+            return;
+        if (Interlocked.Exchange(ref _remoteEndHandling, 1) != 0)
+            return;
+
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            try
+            {
+                if (_navigationStarted) return;
+                StopIncomingRingtone();
+                StopOutgoingRingback();
+                var targetCallId = parsedCallId != Guid.Empty ? parsedCallId : _callId;
+                if (targetCallId != Guid.Empty)
+                {
+                    try { await _calls.TerminateFromRemoteAsync(targetCallId); }
+                    catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Remote-push termination cleanup failed: {ex.Message}"); }
+                }
+                await _notifications.ClearIncomingCallAsync(
+                    _conversationId.ToString("D"), targetCallId.ToString("D"), suppressFurtherRinging: true);
+                await NavigateBackFromCallAsync();
+            }
+            finally
+            {
+                Volatile.Write(ref _remoteEndHandling, 0);
+            }
+        });
+    }
+#endif
+
     private void OnRealtimeCallSignalReceived(object? sender, CallSignalMessage signal)
     {
         if (_incoming || signal.ConversationId != _conversationId)
             return;
 
+        var isAnswering = string.Equals(signal.Type, CallSignalType.Answering.ToString(), StringComparison.OrdinalIgnoreCase);
         var isAccept = string.Equals(signal.Type, CallSignalType.Accept.ToString(), StringComparison.OrdinalIgnoreCase);
         var isReject = string.Equals(signal.Type, CallSignalType.Reject.ToString(), StringComparison.OrdinalIgnoreCase);
         var isEnd = string.Equals(signal.Type, CallSignalType.End.ToString(), StringComparison.OrdinalIgnoreCase);
-        if (!isAccept && !isReject && !isEnd)
+        if (!isAnswering && !isAccept && !isReject && !isEnd)
             return;
 
         // Ignore delayed signals from an earlier call in the same conversation.
@@ -777,10 +980,10 @@ public partial class CallPage : ContentPage
             return;
         }
 
-        if (isAccept)
+        if (isAnswering || isAccept)
         {
             _remoteAccepted = true;
-            System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Remote accepted callId={expectedCallId:D}; stopping ringback.");
+            System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Remote {(isAnswering ? "is answering" : "accepted")} callId={expectedCallId:D}; stopping ringback.");
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 if (!_navigationStarted && _calls.Current?.IsConnected != true)
@@ -793,6 +996,8 @@ public partial class CallPage : ContentPage
 #if ANDROID
         StopOutgoingRingback();
 #endif
+        if (isAnswering || isAccept || isReject || isEnd)
+            _ = _notifications.ClearIncomingCallAsync(_conversationId.ToString("D"), expectedCallId.ToString("D"));
     }
 
     private async void MoreClicked(object? sender, EventArgs e)
@@ -861,7 +1066,9 @@ public partial class CallPage : ContentPage
         {
 #if ANDROID
             StopIncomingRingtone();
+            MainActivity.ClearIncomingCallWindowFlags();
 #endif
+            await _notifications.ClearIncomingCallAsync(_conversationId.ToString("D"), _callId.ToString("D"));
             await NavigateBackFromCallAsync();
         }
     }
@@ -880,7 +1087,9 @@ public partial class CallPage : ContentPage
             }
 #if ANDROID
             StopIncomingRingtone();
+            MainActivity.ClearIncomingCallWindowFlags();
 #endif
+            await _notifications.ClearIncomingCallAsync(_conversationId.ToString("D"), _callId.ToString("D"));
         }
         catch (Exception ex)
         {
@@ -896,6 +1105,10 @@ public partial class CallPage : ContentPage
     {
         if (_navigationStarted) return;
         _navigationStarted = true;
+#if ANDROID
+        MainActivity.ClearIncomingCallWindowFlags();
+#endif
+        _ = _notifications.ClearIncomingCallAsync(_conversationId.ToString("D"), _callId.ToString("D"));
         try
         {
             var shell = Shell.Current;

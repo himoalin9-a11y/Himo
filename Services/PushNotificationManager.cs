@@ -22,6 +22,7 @@ public sealed class PushNotificationManager
     private readonly HimoApiClient _api;
     private readonly ChatService _chat;
     private readonly HimoRealtimeService _realtime;
+    private readonly ICallService _calls;
     private readonly INotificationService _notifications;
     private readonly object _dedupeGate = new();
     private readonly HashSet<string> _shownMessageIds = new(StringComparer.OrdinalIgnoreCase);
@@ -29,23 +30,29 @@ public sealed class PushNotificationManager
     private readonly object _callDedupeGate = new();
     private readonly HashSet<string> _handledIncomingCalls = new(StringComparer.OrdinalIgnoreCase);
     private readonly Queue<string> _handledIncomingCallOrder = new();
+    private readonly HashSet<string> _finishedIncomingCalls = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Queue<string> _finishedIncomingCallOrder = new();
 
     private int _fcmHandlersRegistered;
     private int _tokenRegistrationInProgress;
     private readonly SemaphoreSlim _tokenGate = new(1, 1);
-    private bool _appInForeground = true;
+    // Default to background; App.OnStart/OnResume explicitly marks the UI active.
+    // This matters when Firebase starts the process solely to handle a data-only call push.
+    private bool _appInForeground;
 
     public PushNotificationManager(
         AccountService account,
         HimoApiClient api,
         ChatService chat,
         HimoRealtimeService realtime,
+        ICallService calls,
         INotificationService notifications)
     {
         _account = account;
         _api = api;
         _chat = chat;
         _realtime = realtime;
+        _calls = calls;
         _notifications = notifications;
 
         _realtime.MessageReceived += OnRealtimeMessageReceived;
@@ -133,27 +140,64 @@ public sealed class PushNotificationManager
     {
         try
         {
-            // Background/killed notifications are displayed by the FCM plugin itself.
-            // We only create a local notification while the app is visible.
-            if (!_appInForeground)
-                return;
-
+            // Call push must be handled even when the app is backgrounded. The
+            // MainApplication local-notification action displays a full-screen call
+            // notification from the plugin service when no UI is running.
             var notification = e?.Notification;
             if (notification is null || notification.Data is null)
                 return;
 
-            if (notification.Data.TryGetValue("call_type", out var callType) &&
-                string.Equals(callType, "invite", StringComparison.OrdinalIgnoreCase))
+            if (notification.Data.TryGetValue("call_type", out var callType))
             {
-                if (notification.Data.TryGetValue("conversation_id", out var callConversationId) &&
-                    !string.IsNullOrWhiteSpace(callConversationId))
+                notification.Data.TryGetValue("conversation_id", out var callConversationId);
+                notification.Data.TryGetValue("call_mode", out var callMode);
+                notification.Data.TryGetValue("call_id", out var callId);
+                notification.Data.TryGetValue("caller_name", out var callerName);
+
+                if (string.Equals(callType, "invite", StringComparison.OrdinalIgnoreCase))
                 {
-                    notification.Data.TryGetValue("call_mode", out var callMode);
-                    notification.Data.TryGetValue("call_id", out var callId);
-                    RouteIncomingCall(callConversationId, callMode, callId);
+                    if (!string.IsNullOrWhiteSpace(callConversationId))
+                    {
+                        if (_appInForeground)
+                            RouteIncomingCall(callConversationId, callMode, callId);
+                        else
+                            _ = _notifications.ShowIncomingCallAsync(
+                                string.IsNullOrWhiteSpace(callerName) ? notification.Title ?? "مكالمة واردة" : callerName,
+                                callConversationId, callMode ?? "audio", callId ?? string.Empty);
+                    }
+                    return;
                 }
-                return;
+
+                if (string.Equals(callType, "answering", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(callType, "accept", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(callType, "end", StringComparison.OrdinalIgnoreCase))
+                {
+                    var normalizedCallId = Guid.TryParse(callId, out var parsedStateCallId) && parsedStateCallId != Guid.Empty
+                        ? parsedStateCallId.ToString("D") : string.Empty;
+                    if (normalizedCallId.Length > 0)
+                        RememberFinishedIncomingCall(normalizedCallId);
+                    _ = _notifications.ClearIncomingCallAsync(
+                        callConversationId ?? string.Empty, normalizedCallId, suppressFurtherRinging: true);
+                    if (string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(callType, "end", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (Guid.TryParse(normalizedCallId, out var remoteEndedCallId) && remoteEndedCallId != Guid.Empty)
+                        {
+                            try { await _calls.TerminateFromRemoteAsync(remoteEndedCallId); }
+                            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo Push] Remote call teardown failed: {ex.Message}"); }
+                        }
+#if ANDROID
+                        Platforms.Android.Services.NotificationService.NotifyIncomingCallTerminatedByPush(
+                            callConversationId ?? string.Empty, normalizedCallId);
+#endif
+                    }
+                    return;
+                }
             }
+
+            if (!_appInForeground)
+                return;
 
             if (!notification.Data.TryGetValue("conversation_id", out var conversationId) ||
                 string.IsNullOrWhiteSpace(conversationId))
@@ -186,32 +230,45 @@ public sealed class PushNotificationManager
 
     private void OnRealtimeCallSignalReceived(object? sender, CallSignalMessage signal)
     {
-        if (!_appInForeground || !_account.IsSignedIn ||
-            !string.Equals(signal.Type, CallSignalType.Invite.ToString(), StringComparison.OrdinalIgnoreCase))
-            return;
+        if (!_account.IsSignedIn) return;
 
-        var mode = "audio";
         var callId = string.Empty;
+        var mode = "audio";
         if (CallSignalEnvelope.TryParse(signal.Payload, out var envelope))
         {
             callId = envelope.CallId == Guid.Empty ? string.Empty : envelope.CallId.ToString("D");
             if (envelope.Mode == CallMode.Video) mode = "video";
         }
-        else if (!string.IsNullOrWhiteSpace(signal.Payload))
+
+        if (string.Equals(signal.Type, CallSignalType.Invite.ToString(), StringComparison.OrdinalIgnoreCase))
         {
-            try
-            {
-                using var doc = System.Text.Json.JsonDocument.Parse(signal.Payload);
-                if (doc.RootElement.TryGetProperty("mode", out var modeValue) &&
-                    string.Equals(modeValue.GetString(), "video", StringComparison.OrdinalIgnoreCase))
-                    mode = "video";
-                if (doc.RootElement.TryGetProperty("callId", out var idValue))
-                    callId = idValue.GetString() ?? string.Empty;
-            }
-            catch { }
+            if (!_appInForeground) return; // background call UI is delivered by the full-screen FCM notification.
+            RouteIncomingCall(signal.ConversationId.ToString("D"), mode, callId);
+            return;
         }
 
-        RouteIncomingCall(signal.ConversationId.ToString("D"), mode, callId);
+        if (string.Equals(signal.Type, "Answering", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(signal.Type, CallSignalType.Accept.ToString(), StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(signal.Type, CallSignalType.Reject.ToString(), StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(signal.Type, CallSignalType.End.ToString(), StringComparison.OrdinalIgnoreCase))
+        {
+            if (!string.IsNullOrWhiteSpace(callId))
+                RememberFinishedIncomingCall(callId);
+            _ = _notifications.ClearIncomingCallAsync(
+                signal.ConversationId.ToString("D"), callId, suppressFurtherRinging: true);
+        }
+    }
+
+    private void RememberFinishedIncomingCall(string callId)
+    {
+        if (string.IsNullOrWhiteSpace(callId)) return;
+        lock (_callDedupeGate)
+        {
+            if (!_finishedIncomingCalls.Add(callId)) return;
+            _finishedIncomingCallOrder.Enqueue(callId);
+            while (_finishedIncomingCallOrder.Count > MaxRememberedCallIds)
+                _finishedIncomingCalls.Remove(_finishedIncomingCallOrder.Dequeue());
+        }
     }
 
     private void RouteIncomingCall(string conversationId, string? mode, string? callId)
@@ -229,6 +286,11 @@ public sealed class PushNotificationManager
 
         lock (_callDedupeGate)
         {
+            if (normalizedCallId.Length > 0 && _finishedIncomingCalls.Contains(normalizedCallId))
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo Push] Ignored stale invite for completed callId={normalizedCallId}");
+                return;
+            }
             if (!_handledIncomingCalls.Add(dedupeKey))
                 return;
             _handledIncomingCallOrder.Enqueue(dedupeKey);

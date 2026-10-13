@@ -91,6 +91,9 @@ internal sealed class NoOpNotificationService : INotificationService
     public Task InitializeAsync() => Task.CompletedTask;
     public Task SetEnabledAsync(bool enabled) => Task.CompletedTask;
     public Task ShowMessageAsync(string senderName, string message, string conversationId) => Task.CompletedTask;
+    public Task ShowIncomingCallAsync(string callerName, string conversationId, string mode, string callId) => Task.CompletedTask;
+    public Task ClearIncomingCallAsync(string conversationId, string callId, bool suppressFurtherRinging = true) => Task.CompletedTask;
+    public bool IsIncomingCallSuppressed(string callId) => false;
     public Task ClearConversationAsync(string conversationId) => Task.CompletedTask;
     public Task ClearAllAsync() => Task.CompletedTask;
 }

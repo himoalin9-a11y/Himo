@@ -20,6 +20,9 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
 
     private Assembly? _assembly;
 
+    // Serialize PeerConnectionFactory creation between pre-warm and call startup.
+    private readonly SemaphoreSlim _factoryGate = new(1, 1);
+
     private object? _factory;
     private object? _peerConnection;
     private PeerConnectionObserverBridge? _peerConnectionObserver;
@@ -115,6 +118,44 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
     public bool IsConnectionEstablished =>
         IsIceConnected && IsPeerConnectionConnected;
 
+    /// <summary>
+    /// Loads the WebRTC binding and initializes only PeerConnectionFactory.
+    /// This intentionally does not create audio tracks, request microphone capture,
+    /// or create a PeerConnection. Running it while the incoming call is ringing
+    /// removes the expensive one-time factory creation from the answer critical path.
+    /// </summary>
+    public async Task WarmUpFactoryAsync(CancellationToken cancellationToken = default)
+    {
+        if (_started || _factory is not null)
+            return;
+
+        await _factoryGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_started || _factory is not null)
+                return;
+
+            await Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                WebRtcJavaBindingKeepAlive.Ensure();
+                _assembly = LoadBinding();
+                InitializeFactory(RequiredType("Org.Webrtc.PeerConnectionFactory"));
+            }, cancellationToken).ConfigureAwait(false);
+
+            System.Diagnostics.Debug.WriteLine("[Himo WebRTC] PeerConnectionFactory warmed before answer.");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo WebRTC] Factory warm-up skipped: {ex.Message}");
+            throw;
+        }
+        finally
+        {
+            _factoryGate.Release();
+        }
+    }
+
     public async Task StartAsync(
         CallMode mode,
         CancellationToken cancellationToken = default)
@@ -127,9 +168,7 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                 return;
 
             _started = false;
-
             DisposeNativeObjects();
-
             _cameraEnabled = false;
             _microphoneEnabled = false;
             _speakerEnabled = false;
@@ -137,105 +176,84 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
         }
 
         var hadConnectionState = _lastConnectionEstablished;
-
         var sessionGeneration = ++_sessionGeneration;
-
         _remoteAudioEnabled = true;
-
         ResetConnectionState();
-
         if (hadConnectionState)
-        {
-            ConnectionEstablishedChanged?.Invoke(
-                this,
-                false);
-        }
+            ConnectionEstablishedChanged?.Invoke(this, false);
 
-        await Task.Run(
-            () =>
+        await _factoryGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            // StopAsync can invalidate this start while it waits for the same gate.
+            if (sessionGeneration != _sessionGeneration)
+                return;
+
+            await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-
-                // Explicitly root the Java WebRTC binding before any reflective
-                // lookup. This protects the org.webrtc classes required at runtime.
                 WebRtcJavaBindingKeepAlive.Ensure();
                 _assembly = LoadBinding();
-
                 try
                 {
                     InitializeAudio();
-
                     if (mode == CallMode.Video)
                         InitializeVideo();
-
                     cancellationToken.ThrowIfCancellationRequested();
-
-                    InitializePeerConnection(
-                        sessionGeneration);
+                    InitializePeerConnection(sessionGeneration);
                 }
                 catch
                 {
                     DisposeNativeObjects();
                     throw;
                 }
-            },
-            cancellationToken)
-            .ConfigureAwait(false);
+            }, cancellationToken).ConfigureAwait(false);
 
-        cancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
+            if (sessionGeneration != _sessionGeneration)
+            {
+                DisposeNativeObjects();
+                return;
+            }
 
-        if (sessionGeneration != _sessionGeneration)
-        {
-            DisposeNativeObjects();
-            return;
+            _mode = mode;
+            _started = true;
+            _cameraEnabled = mode == CallMode.Video;
+            _microphoneEnabled = true;
+            _speakerEnabled = false;
         }
-
-        _mode = mode;
-
-        _started = true;
-
-        _cameraEnabled =
-            mode == CallMode.Video;
-
-        _microphoneEnabled = true;
-
-        _speakerEnabled = false;
+        finally
+        {
+            _factoryGate.Release();
+        }
     }
 
-    public Task StopAsync(
-        CancellationToken cancellationToken = default)
+    public async Task StopAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-
+        // Invalidate an in-progress startup before waiting for the initialization gate.
         ++_sessionGeneration;
-
-        _started = false;
-
-        var wasConnectionEstablished =
-            _lastConnectionEstablished;
-
-        _lastIceConnectionState = null;
-
-        _lastPeerConnectionState = null;
-
-        _lastConnectionEstablished = false;
-
-        if (wasConnectionEstablished)
+        await _factoryGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            ConnectionEstablishedChanged?.Invoke(
-                this,
-                false);
+            _started = false;
+            var wasConnectionEstablished = _lastConnectionEstablished;
+            _lastIceConnectionState = null;
+            _lastPeerConnectionState = null;
+            _lastConnectionEstablished = false;
+            if (wasConnectionEstablished)
+                ConnectionEstablishedChanged?.Invoke(this, false);
+
+            DisposeNativeObjects();
+            _cameraEnabled = false;
+            _microphoneEnabled = false;
+            _speakerEnabled = false;
+            _mode = null;
         }
-
-        DisposeNativeObjects();
-
-        _cameraEnabled = false;
-        _microphoneEnabled = false;
-        _speakerEnabled = false;
-
-        _mode = null;
-
-        return Task.CompletedTask;
+        finally
+        {
+            _factoryGate.Release();
+        }
     }
 
     public Task SetMicrophoneEnabledAsync(
@@ -1841,6 +1859,9 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
     private void InitializeFactory(
         Type factoryType)
     {
+        if (_factory is not null)
+            return;
+
         EnsurePeerConnectionFactoryInitialized(
             factoryType);
 

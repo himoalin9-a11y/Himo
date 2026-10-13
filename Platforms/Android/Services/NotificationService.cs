@@ -10,7 +10,18 @@ public sealed class NotificationService : INotificationService
     private const string ChannelName = "رسائل Himo";
     private const string ChannelDescription = "إشعارات الرسائل الجديدة في Himo";
     private const int NotificationIdBase = 12000;
+    private const int CallNotificationIdBase = 240000;
     private const string EnabledPreferenceKey = "himo_notifications_enabled";
+    private const string FinishedCallIdsPreferenceKey = "himo_finished_call_ids";
+    private static readonly object FinishedCallIdsGate = new();
+    private static readonly HashSet<string> ActiveCallNotificationIds = new(StringComparer.OrdinalIgnoreCase);
+    public static event Action<string, string>? IncomingCallTerminatedByPush;
+
+    public static void NotifyIncomingCallTerminatedByPush(string conversationId, string callId)
+    {
+        try { IncomingCallTerminatedByPush?.Invoke(conversationId ?? string.Empty, callId ?? string.Empty); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo Push] Call termination listener failed: {ex.Message}"); }
+    }
 
     public bool IsEnabled => Preferences.Default.Get(EnabledPreferenceKey, true);
 
@@ -103,6 +114,175 @@ public sealed class NotificationService : INotificationService
         return Task.CompletedTask;
     }
 
+    public Task ShowIncomingCallAsync(string callerName, string conversationId, string mode, string callId)
+    {
+        if (!IsEnabled || string.IsNullOrWhiteSpace(conversationId))
+            return Task.CompletedTask;
+
+        var normalizedMode = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio";
+        var normalizedCallId = Guid.TryParse(callId, out var parsedCallId) && parsedCallId != Guid.Empty
+            ? parsedCallId.ToString("D")
+            : string.Empty;
+
+        // End/accept can reach the phone before an older invite. Remember those IDs so
+        // a reordered FCM delivery cannot restart ringing for an already handled call.
+        if (IsCallRingingSuppressed(normalizedCallId))
+            return Task.CompletedTask;
+
+        var context = global::Android.App.Application.Context;
+        if (context is null)
+            return Task.CompletedTask;
+
+        if (OperatingSystem.IsAndroidVersionAtLeast(33) &&
+            global::AndroidX.Core.Content.ContextCompat.CheckSelfPermission(
+                context, global::Android.Manifest.Permission.PostNotifications) != global::Android.Content.PM.Permission.Granted)
+            return Task.CompletedTask;
+
+        EnsureChannels();
+        var notificationManager = global::AndroidX.Core.App.NotificationManagerCompat.From(context);
+        if (notificationManager is null || !notificationManager.AreNotificationsEnabled())
+            return Task.CompletedTask;
+
+        var notificationId = GetCallNotificationId(normalizedCallId, conversationId);
+        var dedupeKey = string.IsNullOrWhiteSpace(normalizedCallId) ? conversationId : normalizedCallId;
+        lock (FinishedCallIdsGate)
+        {
+            // NotificationReceived and the plugin's local-notification callback may
+            // both observe the same data-only message. Post only once per active call.
+            if (!ActiveCallNotificationIds.Add(dedupeKey))
+                return Task.CompletedTask;
+        }
+
+        try
+        {
+            var title = string.IsNullOrWhiteSpace(callerName) ? "مكالمة واردة" : callerName.Trim();
+            var body = normalizedMode == "video" ? "مكالمة فيديو واردة" : "مكالمة صوتية واردة";
+            var intent = new global::Android.Content.Intent(context, typeof(global::Himo.MainActivity));
+            intent.SetAction($"{context.PackageName}.incoming_call.{dedupeKey}");
+            intent.SetFlags(global::Android.Content.ActivityFlags.NewTask |
+                            global::Android.Content.ActivityFlags.ClearTop |
+                            global::Android.Content.ActivityFlags.SingleTop);
+            intent.PutExtra("call_type", "invite");
+            intent.PutExtra("conversation_id", conversationId);
+            intent.PutExtra("call_id", normalizedCallId);
+            intent.PutExtra("call_mode", normalizedMode);
+            intent.PutExtra("caller_name", title);
+
+            var pendingIntentFlags = global::Android.App.PendingIntentFlags.UpdateCurrent;
+            if (global::Android.OS.Build.VERSION.SdkInt >= global::Android.OS.BuildVersionCodes.M)
+                pendingIntentFlags |= global::Android.App.PendingIntentFlags.Immutable;
+
+            var pendingIntent = global::Android.App.PendingIntent.GetActivity(
+                context, notificationId, intent, pendingIntentFlags);
+            if (pendingIntent is null)
+            {
+                lock (FinishedCallIdsGate) ActiveCallNotificationIds.Remove(dedupeKey);
+                return Task.CompletedTask;
+            }
+
+            var builder = new global::AndroidX.Core.App.NotificationCompat.Builder(context, CallsChannelId);
+            builder.SetSmallIcon(Resource.Drawable.himo_notification);
+            builder.SetContentTitle(title);
+            builder.SetContentText(body);
+            builder.SetStyle(new global::AndroidX.Core.App.NotificationCompat.BigTextStyle().BigText(body));
+            builder.SetCategory(global::AndroidX.Core.App.NotificationCompat.CategoryCall);
+            builder.SetPriority(global::AndroidX.Core.App.NotificationCompat.PriorityMax);
+            builder.SetVisibility(global::AndroidX.Core.App.NotificationCompat.VisibilityPublic);
+            builder.SetOngoing(true);
+            builder.SetAutoCancel(false);
+            builder.SetOnlyAlertOnce(true);
+            builder.SetContentIntent(pendingIntent);
+            builder.SetFullScreenIntent(pendingIntent, true);
+            builder.SetTimeoutAfter(45_000);
+
+            var notification = builder.Build();
+            if (notification is not null)
+                notificationManager.Notify(notificationId, notification);
+            else
+            {
+                lock (FinishedCallIdsGate) ActiveCallNotificationIds.Remove(dedupeKey);
+            }
+        }
+        catch (Exception ex)
+        {
+            lock (FinishedCallIdsGate) ActiveCallNotificationIds.Remove(dedupeKey);
+            System.Diagnostics.Debug.WriteLine($"[Himo Push] Full-screen incoming-call notification failed: {ex}");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task ClearIncomingCallAsync(string conversationId, string callId, bool suppressFurtherRinging = true)
+    {
+        var normalizedCallId = Guid.TryParse(callId, out var parsedCallId) && parsedCallId != Guid.Empty
+            ? parsedCallId.ToString("D")
+            : string.Empty;
+        var dedupeKey = string.IsNullOrWhiteSpace(normalizedCallId) ? conversationId : normalizedCallId;
+
+        if (suppressFurtherRinging && !string.IsNullOrWhiteSpace(normalizedCallId))
+            RememberCallAsFinished(normalizedCallId);
+
+        lock (FinishedCallIdsGate) ActiveCallNotificationIds.Remove(dedupeKey);
+
+        try
+        {
+            var context = global::Android.App.Application.Context;
+            if (context is null) return Task.CompletedTask;
+            var manager = global::AndroidX.Core.App.NotificationManagerCompat.From(context);
+            if (manager is null) return Task.CompletedTask;
+            manager.Cancel(GetCallNotificationId(normalizedCallId, conversationId));
+
+            // Cancel legacy FCM-generated notifications from app versions that sent
+            // notification+data payloads, not only our current local notification.
+            if (!string.IsNullOrWhiteSpace(conversationId))
+                manager.Cancel($"himo-call-{conversationId}", 0);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo Push] Clearing incoming-call notification failed: {ex.Message}");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public bool IsIncomingCallSuppressed(string callId) => IsCallRingingSuppressed(callId);
+
+    private static bool IsCallRingingSuppressed(string callId)
+    {
+        if (string.IsNullOrWhiteSpace(callId)) return false;
+        lock (FinishedCallIdsGate)
+        {
+            return Preferences.Default.Get(FinishedCallIdsPreferenceKey, string.Empty)
+                .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Contains(callId, StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private static void RememberCallAsFinished(string callId)
+    {
+        if (string.IsNullOrWhiteSpace(callId)) return;
+        lock (FinishedCallIdsGate)
+        {
+            var values = Preferences.Default.Get(FinishedCallIdsPreferenceKey, string.Empty)
+                .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(x => !string.Equals(x, callId, StringComparison.OrdinalIgnoreCase))
+                .Append(callId)
+                .TakeLast(64);
+            Preferences.Default.Set(FinishedCallIdsPreferenceKey, string.Join('|', values));
+        }
+    }
+
+    private static int GetCallNotificationId(string callId, string conversationId)
+    {
+        unchecked
+        {
+            var source = !string.IsNullOrWhiteSpace(callId) ? callId : conversationId;
+            var hash = 23;
+            foreach (var ch in source) hash = (hash * 31) + ch;
+            return CallNotificationIdBase + (hash & 0x3fffffff);
+        }
+    }
+
     public Task ClearConversationAsync(string conversationId)
     {
         if (string.IsNullOrWhiteSpace(conversationId))
@@ -131,6 +311,7 @@ public sealed class NotificationService : INotificationService
             return Task.CompletedTask;
 
         notificationManager.CancelAll();
+        lock (FinishedCallIdsGate) ActiveCallNotificationIds.Clear();
         return Task.CompletedTask;
     }
 

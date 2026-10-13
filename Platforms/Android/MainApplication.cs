@@ -16,9 +16,71 @@ public class MainApplication : MauiApplication
     {
         FirebaseCloudMessagingImplementation.ChannelId = Platforms.Android.Services.NotificationService.MessageChannelId;
         EnsureNotificationChannels();
+        ConfigureFcmLocalNotificationAction();
     }
 
     protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
+
+    private static void ConfigureFcmLocalNotificationAction()
+    {
+        // Plugin.Firebase's FirebaseMessagingService also runs when Android starts
+        // the app process for a data-only FCM message. The callback is configured
+        // here (Application lifetime), so it does not depend on MainActivity having
+        // been created yet. Call invites become call-category full-screen intents;
+        // terminal call states remove the same notification by call ID.
+        FirebaseCloudMessagingImplementation.ShowLocalNotificationAction = notification =>
+        {
+            try
+            {
+                var data = notification?.Data;
+                if (data is not null && data.TryGetValue("call_type", out var callType))
+                {
+                    data.TryGetValue("conversation_id", out var conversationId);
+                    data.TryGetValue("call_id", out var callId);
+                    data.TryGetValue("call_mode", out var callMode);
+                    data.TryGetValue("caller_name", out var callerName);
+                    var service = new Platforms.Android.Services.NotificationService();
+
+                    if (string.Equals(callType, "invite", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // The foreground notification event routes to CallPage. Only
+                        // create a full-screen system notification when app is backgrounded.
+                        if (MainActivity.IsAppForeground) return;
+                        _ = service.ShowIncomingCallAsync(
+                            string.IsNullOrWhiteSpace(callerName) ? notification.Title ?? "مكالمة واردة" : callerName,
+                            conversationId ?? string.Empty,
+                            callMode ?? "audio",
+                            callId ?? string.Empty);
+                    }
+                    else if (string.Equals(callType, "answering", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(callType, "accept", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(callType, "end", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _ = service.ClearIncomingCallAsync(
+                            conversationId ?? string.Empty, callId ?? string.Empty, suppressFurtherRinging: true);
+                        if (string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(callType, "end", StringComparison.OrdinalIgnoreCase))
+                            Platforms.Android.Services.NotificationService.NotifyIncomingCallTerminatedByPush(
+                                conversationId ?? string.Empty, callId ?? string.Empty);
+                    }
+                    else if (!string.IsNullOrWhiteSpace(conversationId))
+                    {
+                        _ = service.ShowMessageAsync(
+                            notification.Title ?? "رسالة جديدة", notification.Body ?? "لديك رسالة جديدة", conversationId);
+                    }
+                    return;
+                }
+
+                // Generic message pushes are handled by the existing foreground
+                // manager / system tray. Don't manufacture an unrouteable notification.
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo Push] FCM local notification action failed: {ex}");
+            }
+        };
+    }
 
     private static void EnsureNotificationChannels()
     {
@@ -46,7 +108,7 @@ public class MainApplication : MauiApplication
             manager.CreateNotificationChannel(messageChannel);
 
             var callChannel = new global::Android.App.NotificationChannel(
-                "himo_calls_v2",
+                Platforms.Android.Services.NotificationService.CallsChannelId,
                 "مكالمات Himo",
                 global::Android.App.NotificationImportance.High)
             {

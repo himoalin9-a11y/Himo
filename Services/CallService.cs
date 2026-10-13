@@ -11,6 +11,7 @@ public enum CallMode
 public enum CallSignalType
 {
     Invite,
+    Answering,
     Accept,
     Reject,
     End,
@@ -29,7 +30,7 @@ public enum CallLifecycleState
     Ended
 }
 
-public sealed record CallState(Guid ConversationId, Guid CallId, CallMode Mode, bool IsConnected, bool IsMuted, bool IsSpeakerOn, bool IsRemoteAudioEnabled);
+public sealed record CallState(Guid ConversationId, Guid CallId, CallMode Mode, bool IsConnected, bool IsMuted, bool IsSpeakerOn, bool IsRemoteAudioEnabled, bool IsAccepted = false);
 
 public sealed record CallSignalEnvelope(Guid CallId, CallMode? Mode, string? Data)
 {
@@ -89,6 +90,7 @@ public interface ICallService
     Task AcceptAsync(CancellationToken cancellationToken = default);
     Task RejectAsync(CancellationToken cancellationToken = default);
     Task EndAsync(CancellationToken cancellationToken = default);
+    Task TerminateFromRemoteAsync(Guid callId, CancellationToken cancellationToken = default);
     Task SetMutedAsync(bool muted, CancellationToken cancellationToken = default);
     Task SetSpeakerAsync(bool enabled, CancellationToken cancellationToken = default);
     bool IsRemoteAudioEnabled { get; }
@@ -105,6 +107,10 @@ public sealed class CallService : ICallService, IDisposable
     private readonly IWebRtcMediaEngine _webRtc;
     private CallState? _current;
     private readonly SemaphoreSlim _remoteAudioGate = new(1, 1);
+    private readonly object _finishedCallsGate = new();
+    private readonly HashSet<Guid> _finishedCallIds = new();
+    private readonly Queue<Guid> _finishedCallOrder = new();
+    private const int MaxFinishedCallIds = 64;
     private int _ending;
     private long _operationVersion;
     private CallLifecycleState _lifecycle = CallLifecycleState.Idle;
@@ -228,6 +234,8 @@ public sealed class CallService : ICallService, IDisposable
     public async Task PrepareIncomingAsync(CallRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (request.CallId != Guid.Empty && IsFinishedCall(request.CallId))
+            throw new InvalidOperationException("هذه المكالمة انتهت بالفعل.");
         Interlocked.Increment(ref _operationVersion);
         Interlocked.Exchange(ref _outgoingWebRtcStartup, null)?.TrySetResult(false);
 
@@ -273,6 +281,11 @@ public sealed class CallService : ICallService, IDisposable
             var current = _current;
             if (current is null || Volatile.Read(ref _ending) != 0) return;
 
+            // Persist the user's answer intent before native media/WebRTC startup. If
+            // this page briefly reappears during setup, it must not render a second
+            // incoming-call screen or restart its ringtone.
+            _current = current = current with { IsAccepted = true };
+            RaiseState();
             _lifecycle = CallLifecycleState.Calling;
             await _media.StartAsync(current.Mode, cancellationToken);
             _current = current = current with { IsSpeakerOn = _media.IsSpeakerEnabled };
@@ -345,6 +358,25 @@ public sealed class CallService : ICallService, IDisposable
             await SendCallSignalBestEffortAsync(state, CallSignalType.End, cancellationToken);
     }
 
+    public async Task TerminateFromRemoteAsync(Guid callId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (callId == Guid.Empty) return;
+        RememberFinishedCall(callId);
+        if (_current is null || _current.CallId != callId) return;
+
+        if (Interlocked.Exchange(ref _ending, 1) != 0)
+            return; // SignalR and FCM may report the same remote end almost simultaneously.
+        Interlocked.Increment(ref _operationVersion);
+        _outgoingWebRtcStartup?.TrySetResult(false);
+        CancelCallTimeout();
+        _lifecycle = CallLifecycleState.Disconnecting;
+        await StopCallResourcesQuietlyAsync();
+        if (_current?.CallId == callId)
+            Clear();
+        _lifecycle = CallLifecycleState.Ended;
+    }
+
     public async Task SetMutedAsync(bool muted, CancellationToken cancellationToken = default)
     {
         if (_current is null) return;
@@ -396,21 +428,18 @@ public sealed class CallService : ICallService, IDisposable
 
     private async void OnSignalReceived(object? sender, CallSignalMessage signal)
     {
-        try
+        var isTerminalSignal =
+            string.Equals(signal.Type, CallSignalType.End.ToString(), StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(signal.Type, CallSignalType.Reject.ToString(), StringComparison.OrdinalIgnoreCase);
+        if (isTerminalSignal &&
+            CallSignalEnvelope.TryParse(signal.Payload, out var terminalEnvelope) &&
+            terminalEnvelope.CallId != Guid.Empty)
         {
-            await HandleSignalReceivedAsync(sender, signal).ConfigureAwait(false);
+            // A terminal message can arrive before the UI/CallState exists. Keep a tombstone
+            // anyway so a delayed/reordered Invite for this CallId cannot start ringing again.
+            RememberFinishedCall(terminalEnvelope.CallId);
         }
-        catch (Exception ex)
-        {
-            // SignalR callbacks must never let an async-void exception terminate the app.
-            System.Diagnostics.Debug.WriteLine(
-                $"[Himo CallService] Signal handler failed; type={signal?.Type ?? "unknown"}; " +
-                $"conversation={signal?.ConversationId.ToString("D") ?? "unknown"}; error={ex}");
-        }
-    }
 
-    private async Task HandleSignalReceivedAsync(object? sender, CallSignalMessage signal)
-    {
         if (string.Equals(signal.Type, CallSignalType.Invite.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             var mode = CallMode.Audio;
@@ -429,6 +458,12 @@ public sealed class CallService : ICallService, IDisposable
                         mode = CallMode.Video;
                 } catch { }
             }
+            if (callId != Guid.Empty && IsFinishedCall(callId))
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo CallService] Ignore stale Invite for finished callId={callId:D}");
+                return;
+            }
+
             _pendingIncomingCallId = callId;
             if (_current is not null)
             {
@@ -467,6 +502,8 @@ public sealed class CallService : ICallService, IDisposable
             }
             if (string.Equals(signal.Type, CallSignalType.Accept.ToString(), StringComparison.OrdinalIgnoreCase))
             {
+                _current = _current with { IsAccepted = true };
+                RaiseState();
                 // The Invite is sent before local WebRTC startup so the receiver can
                 // ring promptly. If their answer arrives during startup, hold it until
                 // the local PeerConnection is ready instead of silently dropping it.
@@ -499,9 +536,15 @@ public sealed class CallService : ICallService, IDisposable
             else if (string.Equals(signal.Type, CallSignalType.End.ToString(), StringComparison.OrdinalIgnoreCase) ||
                      string.Equals(signal.Type, CallSignalType.Reject.ToString(), StringComparison.OrdinalIgnoreCase))
             {
-                Interlocked.Increment(ref _operationVersion);
-                _outgoingWebRtcStartup?.TrySetResult(false);
-                await ClearAsync();
+                // Ignore duplicate teardown if the same end was already handled by the
+                // foreground FCM path; SignalR and FCM can race on a warm process.
+                if (Interlocked.Exchange(ref _ending, 1) == 0)
+                {
+                    Interlocked.Increment(ref _operationVersion);
+                    _outgoingWebRtcStartup?.TrySetResult(false);
+                    await ClearAsync();
+                    _lifecycle = CallLifecycleState.Ended;
+                }
             }
         }
 
@@ -537,6 +580,7 @@ public sealed class CallService : ICallService, IDisposable
         Interlocked.Exchange(ref _outgoingWebRtcStartup, null)?.TrySetResult(false);
         _pendingIncomingCallId = Guid.Empty;
         if (_current is null) return;
+        RememberFinishedCall(_current.CallId);
         _current = null;
         CallEnded?.Invoke(this, EventArgs.Empty);
     }
@@ -558,6 +602,23 @@ public sealed class CallService : ICallService, IDisposable
         try { await _webRtc.StopAsync(CancellationToken.None); } catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo CallService] WebRTC cleanup failed: {ex}");
+        }
+    }
+
+    private bool IsFinishedCall(Guid callId)
+    {
+        lock (_finishedCallsGate) return _finishedCallIds.Contains(callId);
+    }
+
+    private void RememberFinishedCall(Guid callId)
+    {
+        if (callId == Guid.Empty) return;
+        lock (_finishedCallsGate)
+        {
+            if (!_finishedCallIds.Add(callId)) return;
+            _finishedCallOrder.Enqueue(callId);
+            while (_finishedCallOrder.Count > MaxFinishedCallIds)
+                _finishedCallIds.Remove(_finishedCallOrder.Dequeue());
         }
     }
 

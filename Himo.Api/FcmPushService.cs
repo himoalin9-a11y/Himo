@@ -240,13 +240,22 @@ sealed class FcmPushService
         var cleanTokens = tokens.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.Ordinal).ToList();
         if (cleanTokens.Count == 0) return;
 
+        var normalizedMode = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio";
+        var title = string.IsNullOrWhiteSpace(callerName) ? "مكالمة واردة" : callerName.Trim();
+        var body = normalizedMode == "video" ? "مكالمة فيديو واردة" : "مكالمة صوتية واردة";
         var data = new Dictionary<string, string>
         {
+            // Important: do not set FirebaseAdmin.Messaging.Message.Notification here.
+            // Notification+data is auto-posted by Android while the app is backgrounded,
+            // which cannot carry Himo's FullScreenIntent/notification cancellation logic.
             ["call_type"] = "invite",
             ["conversation_id"] = conversationId.ToString("D"),
             ["call_id"] = callId.ToString("D"),
-            ["call_mode"] = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio",
-            ["is_silent_in_foreground"] = "true"
+            ["call_mode"] = normalizedMode,
+            ["caller_name"] = title,
+            ["title"] = title,
+            ["body"] = body,
+            ["is_silent_in_foreground"] = "false"
         };
 
         foreach (var batch in cleanTokens.Chunk(500))
@@ -258,28 +267,14 @@ sealed class FcmPushService
 #pragma warning disable CS0618
                     Tokens = batch.ToList(),
 #pragma warning restore CS0618
-                    Notification = new Notification
-                    {
-                        Title = string.IsNullOrWhiteSpace(callerName) ? "مكالمة واردة" : callerName,
-                        Body = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "مكالمة فيديو واردة" : "مكالمة صوتية واردة"
-                    },
                     Data = data,
                     Android = new AndroidConfig
                     {
                         Priority = Priority.High,
-                        // Call invites are transient. Never deliver a stale ringing alert
-                        // after a device reconnects minutes later.
-                        TimeToLive = TimeSpan.FromSeconds(30),
-                        CollapseKey = $"himo-call-{conversationId:D}",
-                        Notification = new AndroidNotification
-                        {
-                            ChannelId = "himo_calls_v3",
-                            Priority = NotificationPriority.HIGH,
-                            DefaultSound = true,
-                            DefaultVibrateTimings = true,
-                            Tag = $"himo-call-{conversationId:D}",
-                            Sticky = true
-                        }
+                        // Collapse pending call events so an old ringing invite cannot
+                        // be delivered after a newer accept/end event.
+                        CollapseKey = "himo-call",
+                        TimeToLive = TimeSpan.FromSeconds(45)
                     }
                 };
 
@@ -287,12 +282,71 @@ sealed class FcmPushService
                 timeout.CancelAfter(TimeSpan.FromSeconds(10));
                 var response = await _messaging.SendEachForMulticastAsync(message, timeout.Token);
                 _logger.LogInformation(
-                    "[Himo FCM] Call invite submitted. ConversationId={ConversationId}, CallId={CallId}, Success={SuccessCount}, Failure={FailureCount}.",
+                    "FCM call invite result. ConversationId={ConversationId}, CallId={CallId}, Success={Success}, Failure={Failure}",
                     conversationId, callId, response.SuccessCount, response.FailureCount);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "FCM call invite delivery failed. ConversationId={ConversationId}", conversationId);
+                _logger.LogWarning(ex, "FCM call invite delivery failed. ConversationId={ConversationId}; CallId={CallId}", conversationId, callId);
+            }
+        }
+    }
+
+    public async Task SendCallStateAsync(
+        IReadOnlyList<string> tokens,
+        Guid conversationId,
+        Guid callId,
+        string state,
+        CancellationToken cancellationToken = default)
+    {
+        if (_messaging is null || tokens.Count == 0 || callId == Guid.Empty) return;
+        var normalizedState = (state ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalizedState is not ("answering" or "accept" or "reject" or "end")) return;
+
+        var cleanTokens = tokens.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.Ordinal).ToList();
+        if (cleanTokens.Count == 0) return;
+
+        // title/body intentionally cause the plugin's custom local-notification action
+        // to run in a cold process; MainApplication intercepts these state events and
+        // cancels the ringing notification instead of displaying a notification.
+        var data = new Dictionary<string, string>
+        {
+            ["call_type"] = normalizedState,
+            ["conversation_id"] = conversationId.ToString("D"),
+            ["call_id"] = callId.ToString("D"),
+            ["title"] = "__HIMO_CALL_STATE__",
+            ["body"] = "__HIMO_CALL_STATE__",
+            ["is_silent_in_foreground"] = "false"
+        };
+
+        foreach (var batch in cleanTokens.Chunk(500))
+        {
+            try
+            {
+                var message = new MulticastMessage
+                {
+#pragma warning disable CS0618
+                    Tokens = batch.ToList(),
+#pragma warning restore CS0618
+                    Data = data,
+                    Android = new AndroidConfig
+                    {
+                        Priority = Priority.High,
+                        CollapseKey = "himo-call",
+                        TimeToLive = TimeSpan.FromSeconds(15)
+                    }
+                };
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeout.CancelAfter(TimeSpan.FromSeconds(5));
+                var response = await _messaging.SendEachForMulticastAsync(message, timeout.Token);
+                _logger.LogInformation(
+                    "FCM call state result. State={State}, ConversationId={ConversationId}, CallId={CallId}, Success={Success}, Failure={Failure}",
+                    normalizedState, conversationId, callId, response.SuccessCount, response.FailureCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "FCM call-state delivery failed. State={State}, ConversationId={ConversationId}, CallId={CallId}",
+                    normalizedState, conversationId, callId);
             }
         }
     }

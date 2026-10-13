@@ -3316,9 +3316,14 @@ sealed class HimoChatHub : Hub
         foreach (var recipientId in recipientIds)
             await Clients.Group(UserGroup(recipientId)).SendAsync("CallSignalReceived", message);
 
-        // SignalR handles foreground/realtime delivery. FCM is the wake-up path
-        // for background/killed devices; only INVITE generates a push.
-        if (string.Equals(normalizedType, "Invite", StringComparison.OrdinalIgnoreCase))
+        // SignalR handles foreground delivery. Data-only FCM is also sent for call
+        // state changes so a terminated/background phone can dismiss its full-screen
+        // incoming-call notification immediately and cannot keep ringing after hangup.
+        if (string.Equals(normalizedType, "Invite", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalizedType, "Answering", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalizedType, "Accept", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalizedType, "Reject", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalizedType, "End", StringComparison.OrdinalIgnoreCase))
         {
             try
             {
@@ -3326,37 +3331,33 @@ sealed class HimoChatHub : Hub
                 if (tokens.Count > 0)
                 {
                     var mode = "audio";
-                    if (!string.IsNullOrWhiteSpace(payload))
-                    {
-                        try
-                        {
-                            using var doc = System.Text.Json.JsonDocument.Parse(payload);
-                            if (doc.RootElement.TryGetProperty("mode", out var modeValue) &&
-                                string.Equals(modeValue.GetString(), "video", StringComparison.OrdinalIgnoreCase))
-                                mode = "video";
-                        }
-                        catch { }
-                    }
                     var callId = Guid.Empty;
                     if (!string.IsNullOrWhiteSpace(payload))
                     {
                         try
                         {
                             using var callDoc = System.Text.Json.JsonDocument.Parse(payload);
-                            if (callDoc.RootElement.TryGetProperty("callId", out var callIdValue) &&
+                            var root = callDoc.RootElement;
+                            if (root.TryGetProperty("mode", out var modeValue) &&
+                                string.Equals(modeValue.GetString(), "video", StringComparison.OrdinalIgnoreCase))
+                                mode = "video";
+                            if (root.TryGetProperty("callId", out var callIdValue) &&
                                 Guid.TryParse(callIdValue.GetString(), out var parsedCallId))
                                 callId = parsedCallId;
                         }
                         catch { }
                     }
 
-                    await _push.SendCallInviteAsync(tokens, session.Name, conversationId, mode, callId, Context.ConnectionAborted);
+                    if (string.Equals(normalizedType, "Invite", StringComparison.OrdinalIgnoreCase))
+                        await _push.SendCallInviteAsync(tokens, session.Name, conversationId, mode, callId, Context.ConnectionAborted);
+                    else if (callId != Guid.Empty)
+                        await _push.SendCallStateAsync(tokens, conversationId, callId, normalizedType, Context.ConnectionAborted);
                 }
             }
             catch (Exception ex)
             {
                 // Push is best-effort. Never break the live SignalR call path.
-                Console.Error.WriteLine($"Call invite push failed: {ex.Message}");
+                Console.Error.WriteLine($"Call push failed; type={normalizedType}; error={ex.Message}");
             }
         }
     }
