@@ -1,0 +1,24 @@
+Himo LAN Server setup
+=====================
+
+1) On the server PC run ipconfig and note its IPv4 address, for example:
+   192.168.8.85
+
+2) The API listens on TCP port 5080 on all network interfaces.
+
+3) The Android app must use:
+   http://SERVER-IP:5080/
+   Example: http://192.168.8.85:5080/
+
+4) Test from another PC/phone on the same Wi-Fi/LAN:
+   http://SERVER-IP:5080/health
+
+5) Keep the server PC powered on and connected to the same network.
+   For a stable address, reserve its IPv4 address in the router (DHCP reservation).
+
+6) The SQLite database and uploaded files are stored under:
+   C:\HimoServer\App_Data\
+
+Security note:
+This LAN setup uses HTTP for the current development/testing phase. Before exposing
+Himo to the Internet, use HTTPS with a proper certificate and a production domain.

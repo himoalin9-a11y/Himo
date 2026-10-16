@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Himo.Views.LoginPage"
+             Title="Himo"
+             FlowDirection="RightToLeft"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{DynamicResource HimoBackground}">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Color x:Key="LoginBackgroundColor">#080018</Color>
+            <Color x:Key="LoginPanelColor">#18092F</Color>
+            <Color x:Key="LoginAccentColor">#A832FF</Color>
+            <Color x:Key="LoginAccentCyan">#F15CFF</Color>
+            <Color x:Key="LoginTextColor">#F7FAFF</Color>
+            <Color x:Key="LoginSecondaryTextColor">#BBA1E4</Color>
+            <Color x:Key="LoginPlaceholderColor">#A98BD2</Color>
+            <Color x:Key="LoginBorderColor">#6929A4</Color>
+
+            <LinearGradientBrush x:Key="LoginBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#080018" Offset="0" />
+                <GradientStop Color="#12002A" Offset="0.52" />
+                <GradientStop Color="#090018" Offset="1" />
+            </LinearGradientBrush>
+
+            <LinearGradientBrush x:Key="LoginInputFillBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#552B0F4A" Offset="0" />
+                <GradientStop Color="#33150831" Offset="0.52" />
+                <GradientStop Color="#661D0A3A" Offset="1" />
+            </LinearGradientBrush>
+
+            <LinearGradientBrush x:Key="LoginInputStrokeBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#8E35FF" Offset="0" />
+                <GradientStop Color="#F58BFF" Offset="0.48" />
+                <GradientStop Color="#7628FF" Offset="1" />
+            </LinearGradientBrush>
+
+            <LinearGradientBrush x:Key="LoginButtonBrush" StartPoint="0,0" EndPoint="1,0">
+                <GradientStop Color="#F58BFF" Offset="0" />
+                <GradientStop Color="#C435FF" Offset="0.22" />
+                <GradientStop Color="#921BFF" Offset="0.58" />
+                <GradientStop Color="#7218FF" Offset="0.82" />
+                <GradientStop Color="#C844FF" Offset="1" />
+            </LinearGradientBrush>
+
+            <Style x:Key="LoginInputBorderStyle" TargetType="Border">
+                <Setter Property="BackgroundColor" Value="{DynamicResource HimoInput}" />
+                <Setter Property="Stroke" Value="{DynamicResource HimoBorder}" />
+                <Setter Property="StrokeThickness" Value="1.6" />
+                <Setter Property="HeightRequest" Value="63" />
+                <Setter Property="Padding" Value="14,0" />
+                <Setter Property="Margin" Value="0,0,0,13" />
+                <Setter Property="Shadow">
+                    <Setter.Value>
+                        <Shadow Brush="#9D28FF" Offset="0,0" Radius="12" Opacity="0.34" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="LoginFieldLabelStyle" TargetType="Label">
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="FontAttributes" Value="Bold" />
+                <Setter Property="TextColor" Value="{DynamicResource HimoPrimary}" />
+                <Setter Property="HorizontalTextAlignment" Value="Start" />
+                <Setter Property="Margin" Value="4,0,4,7" />
+            </Style>
+
+            <Style x:Key="LoginSecondaryButtonStyle" TargetType="Button">
+                <Setter Property="HeightRequest" Value="52" />
+                <Setter Property="CornerRadius" Value="20" />
+                <Setter Property="BackgroundColor" Value="{DynamicResource HimoBackground}" />
+                <Setter Property="BorderColor" Value="{DynamicResource HimoAccent}" />
+                <Setter Property="BorderWidth" Value="1.2" />
+                <Setter Property="TextColor" Value="{DynamicResource HimoPrimary}" />
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="FontAttributes" Value="Bold" />
+            </Style>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <Grid Background="{DynamicResource HimoBackgroundGradient}">
+        <!-- Glossy violet atmosphere and soft neon lighting -->
+        <Border WidthRequest="340" HeightRequest="340"
+                HorizontalOptions="Start" VerticalOptions="Start"
+                TranslationX="-205" TranslationY="-230"
+                BackgroundColor="{DynamicResource HimoAccent}" Opacity="0.30" StrokeThickness="0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="170" />
+            </Border.StrokeShape>
+        </Border>
+        <Border WidthRequest="310" HeightRequest="310"
+                HorizontalOptions="End" VerticalOptions="End"
+                TranslationX="165" TranslationY="175"
+                BackgroundColor="{DynamicResource HimoAccent}" Opacity="0.24" StrokeThickness="0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="155" />
+            </Border.StrokeShape>
+        </Border>
+        <Border WidthRequest="180" HeightRequest="180"
+                HorizontalOptions="End" VerticalOptions="Start"
+                TranslationX="105" TranslationY="65"
+                BackgroundColor="{DynamicResource HimoAccent}" Opacity="0.075" StrokeThickness="0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="90" />
+            </Border.StrokeShape>
+        </Border>
+
+        <ScrollView x:Name="LoginScroll" VerticalScrollBarVisibility="Never">
+            <VerticalStackLayout Padding="26,22,26,30" Spacing="0">
+                <!-- Brand mark built from Himo's signal bars -->
+                <VerticalStackLayout HorizontalOptions="Center" Spacing="0" Margin="0,10,0,27">
+                    <HorizontalStackLayout HorizontalOptions="Center"
+                                           VerticalOptions="Center"
+                                           Spacing="6"
+                                           HeightRequest="48"
+                                           FlowDirection="LeftToRight">
+                        <Border WidthRequest="8" HeightRequest="25" VerticalOptions="Center"
+                                BackgroundColor="{DynamicResource HimoAccent}" StrokeThickness="0">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                        </Border>
+                        <Border WidthRequest="8" HeightRequest="37" VerticalOptions="Center"
+                                BackgroundColor="{DynamicResource HimoAccent}" StrokeThickness="0">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                        </Border>
+                        <Border WidthRequest="8" HeightRequest="48" VerticalOptions="Center"
+                                BackgroundColor="{DynamicResource HimoAccent}" StrokeThickness="0">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                        </Border>
+                        <Border WidthRequest="8" HeightRequest="31" VerticalOptions="Center"
+                                BackgroundColor="{DynamicResource HimoAccent}" StrokeThickness="0">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                        </Border>
+                    </HorizontalStackLayout>
+                    <Label Text="Himo"
+                           FontSize="43"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource HimoPrimary}"
+                           HorizontalTextAlignment="Center"
+                           Margin="0,3,0,0" />
+                    <Label Text="تواصل بلا حدود"
+                           FontSize="16"
+                           TextColor="{DynamicResource HimoPrimary}"
+                           HorizontalTextAlignment="Center"
+                           Margin="0,0,0,0" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="0">
+                    <Label Text="مرحبًا بعودتك"
+                           FontSize="27"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource HimoPrimary}"
+                           HorizontalTextAlignment="Center"
+                           Margin="0,0,0,7" />
+                    <Label Text="سجّل الدخول إلى حسابك للمتابعة"
+                           FontSize="14"
+                           TextColor="{DynamicResource HimoTextSecondary}"
+                           HorizontalTextAlignment="Center"
+                           Margin="0,0,0,27" />
+
+                    <Label Text="البريد الإلكتروني" Style="{StaticResource LoginFieldLabelStyle}" />
+                    <Border x:Name="EmailBorder" Style="{StaticResource LoginInputBorderStyle}">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
+                        <Grid ColumnDefinitions="*,44" ColumnSpacing="8" FlowDirection="LeftToRight">
+                            <Entry x:Name="EmailEntry"
+                                   Grid.Column="0"
+                                   Keyboard="Email"
+                                   ReturnType="Next"
+                                   Completed="EmailCompleted"
+                                   Placeholder="البريد الإلكتروني"
+                                   ClearButtonVisibility="WhileEditing"
+                                   FontSize="16"
+                                   TextColor="{DynamicResource HimoPrimary}"
+                                   PlaceholderColor="{DynamicResource HimoMuted}"
+                                   BackgroundColor="Transparent"
+                                   HorizontalTextAlignment="Start"
+                                   FlowDirection="RightToLeft"
+                                   VerticalOptions="Center"
+                                   Focused="InputFocused"
+                                   Unfocused="InputUnfocused" />
+                            <Image Grid.Column="1"
+                                   Source="himo_login_icon_mail.png"
+                                   WidthRequest="23" HeightRequest="23"
+                                   HorizontalOptions="Center" VerticalOptions="Center"
+                                   InputTransparent="True" />
+                        </Grid>
+                    </Border>
+
+                    <Label x:Name="NameLabel"
+                           Text="الاسم الظاهر"
+                           Style="{StaticResource LoginFieldLabelStyle}"
+                           IsVisible="False" />
+                    <Border x:Name="NameBorder"
+                            Style="{StaticResource LoginInputBorderStyle}"
+                            IsVisible="False">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
+                        <Grid ColumnDefinitions="*,44" ColumnSpacing="8" FlowDirection="LeftToRight">
+                            <Entry x:Name="NameEntry"
+                                   Grid.Column="0"
+                                   Placeholder="كيف سيظهر اسمك للآخرين؟"
+                                   ReturnType="Next"
+                                   Completed="NameCompleted"
+                                   MaxLength="60"
+                                   FontSize="16"
+                                   TextColor="{DynamicResource HimoPrimary}"
+                                   PlaceholderColor="{DynamicResource HimoMuted}"
+                                   BackgroundColor="Transparent"
+                                   HorizontalTextAlignment="End"
+                                   FlowDirection="RightToLeft"
+                                   VerticalOptions="Center"
+                                   Focused="InputFocused"
+                                   Unfocused="InputUnfocused" />
+                            <Image Grid.Column="1"
+                                   Source="himo_login_icon_user.png"
+                                   WidthRequest="23" HeightRequest="23"
+                                   HorizontalOptions="Center" VerticalOptions="Center"
+                                   InputTransparent="True" />
+                        </Grid>
+                    </Border>
+
+                    <Label x:Name="PhoneLabel"
+                           Text="رقم الهاتف (اختياري)"
+                           Style="{StaticResource LoginFieldLabelStyle}"
+                           IsVisible="False" />
+                    <Border x:Name="PhoneBorder"
+                            Style="{StaticResource LoginInputBorderStyle}"
+                            IsVisible="False">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
+                        <Grid ColumnDefinitions="*,44" ColumnSpacing="8" FlowDirection="LeftToRight">
+                            <Entry x:Name="PhoneEntry"
+                                   Grid.Column="0"
+                                   Keyboard="Telephone"
+                                   ReturnType="Next"
+                                   Completed="PhoneCompleted"
+                                   MaxLength="25"
+                                   Placeholder="05xxxxxxxx أو +966..."
+                                   FontSize="16"
+                                   TextColor="{DynamicResource HimoPrimary}"
+                                   PlaceholderColor="{DynamicResource HimoMuted}"
+                                   BackgroundColor="Transparent"
+                                   HorizontalTextAlignment="Start"
+                                   FlowDirection="LeftToRight"
+                                   VerticalOptions="Center"
+                                   Focused="InputFocused"
+                                   Unfocused="InputUnfocused" />
+                            <Image Grid.Column="1"
+                                   Source="himo_signup_icon_phone.png"
+                                   WidthRequest="23" HeightRequest="23"
+                                   HorizontalOptions="Center" VerticalOptions="Center"
+                                   InputTransparent="True" />
+                        </Grid>
+                    </Border>
+
+                    <Label x:Name="VerificationLabel"
+                           Text="رمز التحقق"
+                           Style="{StaticResource LoginFieldLabelStyle}"
+                           IsVisible="False" />
+                    <Border x:Name="VerificationBorder"
+                            Style="{StaticResource LoginInputBorderStyle}"
+                            IsVisible="False">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
+                        <Grid ColumnDefinitions="*,44" ColumnSpacing="8" FlowDirection="LeftToRight">
+                            <Entry x:Name="VerificationCodeEntry"
+                                   Grid.Column="0"
+                                   Keyboard="Numeric"
+                                   Placeholder="أدخل الرمز المكوّن من 6 أرقام"
+                                   ReturnType="Done"
+                                   Completed="VerificationCompleted"
+                                   MaxLength="6"
+                                   FontSize="16"
+                                   TextColor="{DynamicResource HimoPrimary}"
+                                   PlaceholderColor="{DynamicResource HimoMuted}"
+                                   BackgroundColor="Transparent"
+                                   HorizontalTextAlignment="End"
+                                   FlowDirection="RightToLeft"
+                                   VerticalOptions="Center"
+                                   Focused="InputFocused"
+                                   Unfocused="InputUnfocused" />
+                            <Image Grid.Column="1"
+                                   Source="himo_login_icon_shield.png"
+                                   WidthRequest="23" HeightRequest="23"
+                                   HorizontalOptions="Center" VerticalOptions="Center"
+                                   InputTransparent="True" />
+                        </Grid>
+                    </Border>
+
+                    <Button x:Name="ResendButton"
+                            Text="إعادة إرسال رمز التحقق"
+                            Style="{StaticResource LoginSecondaryButtonStyle}"
+                            Clicked="ResendClicked"
+                            IsVisible="False"
+                            Margin="0,0,0,12" />
+
+                    <Label Text="كلمة المرور" Style="{StaticResource LoginFieldLabelStyle}" />
+                    <Border x:Name="PasswordBorder" Style="{StaticResource LoginInputBorderStyle}">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
+                        <Grid ColumnDefinitions="44,*,44" ColumnSpacing="3" FlowDirection="LeftToRight">
+                            <ImageButton x:Name="PasswordEyeButton"
+                                         Grid.Column="0"
+                                         Source="himo_login_eye_open.png"
+                                         BackgroundColor="Transparent"
+                                         Padding="11"
+                                         WidthRequest="42" HeightRequest="46"
+                                         HorizontalOptions="Center" VerticalOptions="Center"
+                                         Clicked="TogglePasswordClicked"
+                                         AutomationProperties.Name="إظهار أو إخفاء كلمة المرور" />
+                            <Entry x:Name="PasswordEntry"
+                                   Grid.Column="1"
+                                   IsPassword="True"
+                                   Placeholder="كلمة المرور"
+                                   ReturnType="Done"
+                                   Completed="PasswordCompleted"
+                                   MaxLength="128"
+                                   FontSize="16"
+                                   TextColor="{DynamicResource HimoPrimary}"
+                                   PlaceholderColor="{DynamicResource HimoMuted}"
+                                   BackgroundColor="Transparent"
+                                   HorizontalTextAlignment="End"
+                                   FlowDirection="RightToLeft"
+                                   VerticalOptions="Center"
+                                   Focused="InputFocused"
+                                   Unfocused="InputUnfocused" />
+                            <Image Grid.Column="2"
+                                   Source="himo_login_icon_lock.png"
+                                   WidthRequest="22" HeightRequest="22"
+                                   HorizontalOptions="Center" VerticalOptions="Center"
+                                   InputTransparent="True" />
+                        </Grid>
+                    </Border>
+
+                    <Button x:Name="PrimaryButton"
+                            Text="تسجيل الدخول"
+                            HeightRequest="62"
+                            CornerRadius="23"
+                            Background="{DynamicResource HimoAccentGradient}"
+                            BorderColor="{DynamicResource HimoBorder}"
+                            BorderWidth="1.5"
+                            TextColor="{DynamicResource HimoOnAccent}"
+                            FontSize="18"
+                            FontAttributes="Bold"
+                            ImageSource="himo_phase1_icon_login.png"
+                            ContentLayout="Left,10"
+                            Clicked="PrimaryClicked"
+                            Margin="0,7,0,5">
+                        <Button.Shadow>
+                            <Shadow Brush="#D52AFF" Offset="0,8" Radius="27" Opacity="0.82" />
+                        </Button.Shadow>
+                    </Button>
+
+                    <Button x:Name="ForgotPasswordButton"
+                            Text="نسيت كلمة المرور؟"
+                            HeightRequest="43"
+                            Padding="0"
+                            BackgroundColor="Transparent"
+                            TextColor="{DynamicResource HimoAccent}"
+                            FontSize="14"
+                            FontAttributes="Bold"
+                            Clicked="ForgotPasswordClicked"
+                            HorizontalOptions="Center"
+                            Margin="0,0,0,13" />
+
+                    <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="14" Margin="2,0,2,10">
+                        <BoxView Grid.Column="0" HeightRequest="1" BackgroundColor="{DynamicResource HimoSurface}" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="أو" FontSize="13" TextColor="{DynamicResource HimoTextSecondary}" VerticalOptions="Center" />
+                        <BoxView Grid.Column="2" HeightRequest="1" BackgroundColor="{DynamicResource HimoSurface}" VerticalOptions="Center" />
+                    </Grid>
+
+                    <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="4">
+                        <Label x:Name="ModePromptLabel"
+                               Text="ليس لديك حساب؟"
+                               FontSize="14"
+                               TextColor="{DynamicResource HimoTextSecondary}"
+                               VerticalTextAlignment="Center" />
+                        <Button x:Name="ModeButton"
+                                Text="إنشاء حساب جديد"
+                                HeightRequest="42"
+                                Padding="3,5"
+                                BackgroundColor="Transparent"
+                                TextColor="{DynamicResource HimoAccent}"
+                                FontSize="14"
+                                FontAttributes="Bold"
+                                Clicked="ModeClicked" />
+                    </HorizontalStackLayout>
+
+                    <ActivityIndicator x:Name="BusyIndicator"
+                                       IsVisible="False"
+                                       IsRunning="False"
+                                       HorizontalOptions="Center"
+                                       WidthRequest="26"
+                                       HeightRequest="26"
+                                       Color="{DynamicResource HimoFocus}"
+                                       Margin="0,4,0,0" />
+                    <Label x:Name="StatusLabel"
+                           FontSize="12"
+                           TextColor="{DynamicResource HimoTextSecondary}"
+                           HorizontalTextAlignment="Center"
+                           Margin="8,6,8,0" />
+                </VerticalStackLayout>
+
+                <Label Text="Himo  ·  تواصل بلا حدود"
+                       FontSize="11"
+                       TextColor="{DynamicResource HimoTextSecondary}"
+                       HorizontalTextAlignment="Center"
+                       Margin="0,28,0,0" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

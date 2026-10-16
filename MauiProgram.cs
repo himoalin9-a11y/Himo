@@ -1,0 +1,99 @@
+using CommunityToolkit.Maui;
+using Himo.Services;
+using Himo.ViewModels;
+using Microsoft.Maui.Hosting;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.LifecycleEvents;
+#if ANDROID
+using Plugin.Firebase.CloudMessaging;
+using Plugin.Firebase.Core.Platforms.Android;
+#endif
+
+namespace Himo;
+
+public static class MauiProgram
+{
+    public static MauiApp CreateMauiApp()
+    {
+        var builder = MauiApp.CreateBuilder();
+
+        builder
+            .UseMauiApp<App>()
+            .UseMauiCommunityToolkit()
+            .UseMauiCommunityToolkitMediaElement();
+
+#if ANDROID
+        builder.ConfigureMauiHandlers(handlers =>
+        {
+            handlers.AddHandler<Views.CameraPreview, Platforms.Android.CameraPreviewHandler>();
+        });
+
+        builder.ConfigureLifecycleEvents(events =>
+        {
+            events.AddAndroid(android => android.OnCreate((activity, _) =>
+            {
+                FirebaseCloudMessagingImplementation.ChannelId = Platforms.Android.Services.NotificationService.MessageChannelId;
+                CrossFirebase.Initialize(activity, () => activity);
+                MainActivity.ConfigureFirebaseMessagingChannel();
+            }));
+        });
+#endif
+
+        builder.Services.AddSingleton<ChatService>();
+        builder.Services.AddSingleton<AppLockService>();
+        builder.Services.AddSingleton<AccountService>();
+        builder.Services.AddSingleton<ProfileService>();
+        builder.Services.AddSingleton<CallHistoryService>();
+        builder.Services.AddSingleton<HimoApiClient>();
+        builder.Services.AddSingleton<HimoRealtimeService>();
+        builder.Services.AddSingleton<ICallService, CallService>();
+        #if ANDROID
+        builder.Services.AddSingleton<ICallMediaController, Platforms.Android.Services.AndroidCallMediaController>();
+#else
+        builder.Services.AddSingleton<ICallMediaController, NoOpCallMediaController>();
+#endif
+        #if ANDROID
+        builder.Services.AddSingleton<IWebRtcMediaEngine, Platforms.Android.Services.AndroidWebRtcMediaEngine>();
+        builder.Services.AddSingleton<WebRtcNegotiationCoordinator>();
+#else
+        builder.Services.AddSingleton<IWebRtcMediaEngine, NoOpWebRtcMediaEngine>();
+#endif
+#if ANDROID
+        builder.Services.AddSingleton<INotificationService, Platforms.Android.Services.NotificationService>();
+        builder.Services.AddSingleton<PushNotificationManager>();
+#else
+        builder.Services.AddSingleton<INotificationService, NoOpNotificationService>();
+#endif
+        builder.Services.AddTransient<HomeViewModel>();
+        builder.Services.AddTransient<Views.HomePage>();
+        builder.Services.AddTransient<Views.LoginPage>();
+        builder.Services.AddTransient<Views.ChatPage>();
+        builder.Services.AddSingleton<Views.SettingsPage>();
+        builder.Services.AddTransient<Views.AccountManagementPage>();
+        builder.Services.AddTransient<Views.AccountUsernamePage>();
+        builder.Services.AddTransient<Views.AccountPhonePage>();
+        builder.Services.AddTransient<Views.AccountLoginDetailsPage>();
+        builder.Services.AddTransient<Views.AccountPasswordPage>();
+        builder.Services.AddTransient<Views.AddAccountPage>();
+        builder.Services.AddSingleton<Views.ProfilePage>();
+        builder.Services.AddTransient<Views.SearchPage>();
+        builder.Services.AddTransient<Views.CallPage>();
+        builder.Services.AddTransient<Views.CreateGroupPage>();
+
+
+        return builder.Build();
+    }
+}
+
+internal sealed class NoOpNotificationService : INotificationService
+{
+    public bool IsEnabled => false;
+    public Task InitializeAsync() => Task.CompletedTask;
+    public Task SetEnabledAsync(bool enabled) => Task.CompletedTask;
+    public Task ShowMessageAsync(string senderName, string message, string conversationId) => Task.CompletedTask;
+    public Task ShowIncomingCallAsync(string callerName, string conversationId, string mode, string callId) => Task.CompletedTask;
+    public Task ClearIncomingCallAsync(string conversationId, string callId, bool suppressFurtherRinging = true) => Task.CompletedTask;
+    public bool IsIncomingCallSuppressed(string callId) => false;
+    public Task ClearConversationAsync(string conversationId) => Task.CompletedTask;
+    public Task ClearAllAsync() => Task.CompletedTask;
+}

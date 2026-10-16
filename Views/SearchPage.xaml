@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:Himo.Models"
+             x:Class="Himo.Views.SearchPage"
+             Title="جهات الاتصال"
+             FlowDirection="RightToLeft"
+             BackgroundColor="{DynamicResource HimoBackground}"
+             Shell.NavBarIsVisible="False">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" BackgroundColor="{DynamicResource HimoBackground}">
+        <Border Grid.RowSpan="4" WidthRequest="300" HeightRequest="300"
+                HorizontalOptions="End" VerticalOptions="Start"
+                TranslationX="155" TranslationY="-150"
+                BackgroundColor="{DynamicResource HimoAccent}" Opacity="0.12" StrokeThickness="0"
+                InputTransparent="True" ZIndex="-1">
+            <Border.StrokeShape><RoundRectangle CornerRadius="150" /></Border.StrokeShape>
+        </Border>
+
+        <!-- Header: opened by the search icon on HomePage -->
+        <Border Grid.Row="0" Padding="14,14,16,14"
+                BackgroundColor="{DynamicResource HimoBackground}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
+            <Grid ColumnDefinitions="48,*,48" ColumnSpacing="8" FlowDirection="LeftToRight">
+                <Button Grid.Column="0" Text="‹" FontSize="31" Padding="0"
+                        WidthRequest="42" HeightRequest="42" CornerRadius="15"
+                        BackgroundColor="{DynamicResource HimoCard}" TextColor="{DynamicResource HimoOnAccent}"
+                        Clicked="BackClicked" SemanticProperties.Description="رجوع" />
+                <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
+                    <Label Text="جهات الاتصال" FontSize="21" FontAttributes="Bold"
+                           TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
+                    <Label Text="كل الأسماء المحفوظة على هاتفك" FontSize="11.5"
+                           TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+                <Border Grid.Column="2" WidthRequest="42" HeightRequest="42"
+                        BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoAccent}" StrokeThickness="1"
+                        VerticalOptions="Center" HorizontalOptions="Center">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
+                    <Image Source="icon_search.png" WidthRequest="21" HeightRequest="21"
+                           HorizontalOptions="Center" VerticalOptions="Center" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Local filter, it does not send anything to the server -->
+        <Border Grid.Row="1" Margin="14,12,14,7" Padding="9,2"
+                BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
+            <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+            <Grid ColumnDefinitions="38,*,34" FlowDirection="LeftToRight" HeightRequest="47">
+                <Image Grid.Column="0" Source="icon_search.png" WidthRequest="19" HeightRequest="19"
+                       VerticalOptions="Center" HorizontalOptions="Center" />
+                <Entry x:Name="ContactFilterEntry" Grid.Column="1"
+                       Placeholder="البحث في الأسماء والأرقام والبريد..."
+                       PlaceholderColor="{DynamicResource HimoTextSecondary}" TextColor="{DynamicResource HimoPrimary}" FontSize="14"
+                       BackgroundColor="Transparent" ClearButtonVisibility="WhileEditing"
+                       VerticalOptions="Center" TextChanged="ContactFilterTextChanged" />
+                <ActivityIndicator x:Name="ContactsLoadIndicator" Grid.Column="2"
+                                   IsVisible="False" IsRunning="False" Color="{DynamicResource HimoAccent}"
+                                   WidthRequest="21" HeightRequest="21" VerticalOptions="Center" />
+            </Grid>
+        </Border>
+
+        <!-- Matching is a separate explicit action; browsing contacts stays local on-device -->
+        <Grid Grid.Row="2" Margin="14,0,14,8" RowDefinitions="Auto,Auto" RowSpacing="6">
+            <Button x:Name="MatchContactsButton" Grid.Row="0"
+                    Text="مطابقة جهات الاتصال مع Himo" Clicked="MatchContactsClicked"
+                    BackgroundColor="{DynamicResource HimoAccent}" TextColor="{DynamicResource HimoOnAccent}" FontAttributes="Bold"
+                    CornerRadius="16" HeightRequest="44">
+                <Button.Shadow><Shadow Brush="#B72BFF" Offset="0,3" Radius="12" Opacity="0.24" /></Button.Shadow>
+            </Button>
+            <Label Grid.Row="1"
+                   Text="تظهر قائمتك كاملة من الهاتف. لا تُرسل الأرقام للمطابقة إلا بعد موافقتك والضغط على الزر أعلاه."
+                   FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
+        </Grid>
+
+        <Grid Grid.Row="3" Margin="12,0,12,8" RowDefinitions="Auto,*" RowSpacing="5">
+            <Label x:Name="ContactsStatusLabel" Grid.Row="0"
+                   Text="جارٍ تحميل جهات الاتصال..." FontSize="12"
+                   TextColor="{DynamicResource HimoTextSecondary}" Margin="4,0" />
+            <CollectionView x:Name="ContactsList" Grid.Row="1"
+                            ItemsLayout="VerticalList" SelectionMode="None"
+                            VerticalScrollBarVisibility="Never" BackgroundColor="Transparent">
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="9" Padding="26,0">
+                        <Border WidthRequest="74" HeightRequest="74" BackgroundColor="{DynamicResource HimoCard}"
+                                Stroke="{DynamicResource HimoAccent}" StrokeThickness="1.2" HorizontalOptions="Center">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="25" /></Border.StrokeShape>
+                            <Image Source="himo_phase1_icon_user.png" WidthRequest="34" HeightRequest="34"
+                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <Label Text="لا توجد جهات اتصال للعرض" FontSize="17" FontAttributes="Bold"
+                               TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
+                        <Label Text="تأكد من وجود جهات اتصال على هاتفك ومنح Himo الإذن اللازم."
+                               FontSize="12" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:DeviceContactEntry">
+                        <Border Margin="2,4" Padding="10"
+                                BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                            <Grid ColumnDefinitions="47,*,Auto" ColumnSpacing="9" FlowDirection="LeftToRight">
+                                <Border Grid.Column="0" WidthRequest="43" HeightRequest="43"
+                                        BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoAccent}" StrokeThickness="1"
+                                        VerticalOptions="Start">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                                    <Label Text="{Binding Initial}" FontSize="18" FontAttributes="Bold"
+                                           TextColor="{DynamicResource HimoAccent}" HorizontalTextAlignment="Center"
+                                           VerticalTextAlignment="Center" />
+                                </Border>
+                                <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center"
+                                                     FlowDirection="RightToLeft">
+                                    <Label Text="{Binding Name}" FontSize="14.5" FontAttributes="Bold"
+                                           TextColor="{DynamicResource HimoPrimary}" LineBreakMode="TailTruncation" MaxLines="1" />
+                                    <Label Text="{Binding PhoneNumbersDisplay}" FontSize="11.5"
+                                           TextColor="{DynamicResource HimoPrimary}" />
+                                    <Label Text="{Binding EmailAddressesDisplay}" FontSize="10.5"
+                                           TextColor="{DynamicResource HimoTextSecondary}" />
+                                    <Label Text="{Binding AccountStatus}" FontSize="10.5"
+                                           TextColor="{DynamicResource HimoAccent}" LineBreakMode="TailTruncation" MaxLines="1" />
+                                </VerticalStackLayout>
+                                <Button Grid.Column="2" Text="{Binding ActionText}"
+                                        IsEnabled="{Binding HasHimoAccount}"
+                                        Clicked="ContactActionClicked"
+                                        BackgroundColor="{DynamicResource HimoAccent}" TextColor="{DynamicResource HimoOnAccent}"
+                                        FontAttributes="Bold" FontSize="10.5"
+                                        Padding="9,0" HeightRequest="34"
+                                        CornerRadius="12" VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+    </Grid>
+</ContentPage>
