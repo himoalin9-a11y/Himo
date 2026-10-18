@@ -1,0 +1,29 @@
+Himo — clean source package
+===========================
+
+This is the complete source tree from the latest project archive, including the newest Android launcher/debug component fix and the system/glass/professional icon galleries.
+
+Removed from this delivery only:
+- Visual Studio local cache: .vs
+- Generated build output: bin and obj (including Himo.Api build output)
+- Machine-specific Himo.csproj.user
+
+Kept:
+- All app and API source files
+- All UI pages and icon assets
+- AndroidManifest.xml, MainActivity.cs, launcher icon aliases, and icon-selection service
+- The required staged Platforms/Android/Jars/libwebrtc.aar
+- Build and maintenance scripts
+
+Recommended installation:
+1. Keep your current folder as a backup. Close Visual Studio completely.
+2. Extract this archive into a NEW folder, e.g. E:\Downloads\Himo_Clean. The zip includes the top-level Himo folder.
+3. Open Himo.sln from the extracted Himo folder.
+4. Restore NuGet packages and rebuild for net10.0-android36.0.
+5. If Visual Studio still has old component state on the connected phone, deploy the new build first and then run:
+   powershell -ExecutionPolicy Bypass -File .\Tools\Fix-LauncherDebugComponent.ps1
+
+Important:
+- No source files or app data on your device are deleted by this package.
+- The IOException “The directory is not empty” is commonly caused by a build process locking/generated files. Do not delete obj while Visual Studio or Android build tools are active. Use Clean-Build.ps1 only after closing Visual Studio.
+- The Android build was not executed in this environment. This package has source/resource/XML validation only, not a device-tested build.

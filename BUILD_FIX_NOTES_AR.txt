@@ -1,0 +1,17 @@
+إصلاح أخطاء بناء Himo - 16 أكتوبر 2026
+
+ما تم إصلاحه:
+1) استبدال ColorRole.Border بالقيمة الصحيحة ColorRole.Stroke في HimoAppearanceManager.cs.
+2) إصلاح التعامل مع Color في IsResourceColor؛ نوع Color في MAUI مرجع كائني، لذا أزيلت محاولة الوصول إلى value.Value.
+3) إزالة مرجع Microsoft.AspNetCore.SignalR.Common المباشر غير الضروري من مشروعي MAUI وAPI. يبقى SignalR.Client 10.0.13 في تطبيق MAUI، وهو يسحب التبعيات المطلوبة، ويستخدم مشروع API إطار Microsoft.AspNetCore.App. الإصدار 10.0.13 هو الإصدار الذي يصلح التحذير الأمني GHSA-334f-vvp4-7g6p الذي كان يصيب الإصدارات حتى 10.0.12.
+
+خطوات إعادة البناء الموصى بها على Windows:
+1) أغلق Visual Studio بالكامل.
+2) شغّل RESET-ANDROID-BUILD.cmd من مجلد المشروع لحذف ملفات bin/obj/.vs المولّدة القديمة.
+3) افتح Himo.sln في Visual Studio، وانتظر استعادة NuGet.
+4) ابنِ مشروع Himo من جديد. إذا استمر خطأ _Microsoft.Android.Resource.Designer.dll، افتح Developer PowerShell من مجلد Himo وشغّل:
+   dotnet workload restore Himo.sln
+   dotnet restore Himo.csproj
+   dotnet build Himo.csproj -f net10.0-android36.0 -c Debug -m:1
+
+تنبيه: لم يكن .NET SDK مثبتًا في بيئة إعداد هذه الحزمة؛ لذلك أمكن إجراء فحوص الملفات والحزمة، لكن لم يكن ممكنًا تشغيل بناء Android فعلي هنا. تحذيرات Dereference of a possibly null reference هي تحذيرات تحليل nullable؛ لم تُعامل على أنها أخطاء بناء مؤكدة دون سجل يوضح أسماء الملفات والأسطر.

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Himo.Views.MediaCapturePreviewPage"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{DynamicResource HimoBackground}">
+    <Grid BackgroundColor="{DynamicResource HimoBackground}">
+        <!-- Keep the captured media edge-to-edge; controls sit above it. -->
+        <Image x:Name="PreviewImage"
+               Aspect="AspectFit"
+               HorizontalOptions="Fill"
+               VerticalOptions="Fill"
+               BackgroundColor="{DynamicResource HimoBackground}" />
+
+        <Grid RowDefinitions="Auto,*,Auto"
+              HorizontalOptions="Fill"
+              VerticalOptions="Fill">
+            <!-- Balanced top bar: close button, centered title, and a matching spacer. -->
+            <Grid Grid.Row="0"
+                  Margin="16,20,16,12"
+                  Padding="0"
+                  ColumnDefinitions="48,*,48"
+                  ColumnSpacing="8">
+                <Border Grid.Column="0"
+                        WidthRequest="46"
+                        HeightRequest="46"
+                        Padding="2"
+                        BackgroundColor="#880A0712"
+                        Stroke="#38FFFFFF"
+                        StrokeThickness="1"
+                        HorizontalOptions="Start"
+                        VerticalOptions="Center">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="23" />
+                    </Border.StrokeShape>
+                    <ImageButton Source="himo_ui_close_white.png"
+                                 BackgroundColor="Transparent"
+                                 WidthRequest="42"
+                                 HeightRequest="42"
+                                 Padding="11"
+                                 Aspect="AspectFit"
+                                 Clicked="CancelClicked"
+                                 SemanticProperties.Description="إغلاق المعاينة" />
+                </Border>
+
+                <Border Grid.Column="1"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center"
+                        Padding="16,8"
+                        BackgroundColor="#880A0712"
+                        Stroke="#28FFFFFF"
+                        StrokeThickness="1">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="18" />
+                    </Border.StrokeShape>
+                    <Label Text="معاينة الوسائط"
+                           TextColor="#FFFFFFFF"
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           HorizontalTextAlignment="Center"
+                           VerticalTextAlignment="Center" />
+                </Border>
+                <!-- Symmetry spacer prevents the title from shifting toward the close button. -->
+                <BoxView Grid.Column="2"
+                         WidthRequest="46"
+                         HeightRequest="46"
+                         Opacity="0"
+                         InputTransparent="True" />
+            </Grid>
+
+            <!-- A restrained action tray improves legibility without covering much of the photo. -->
+            <Border Grid.Row="2"
+                    Margin="16,0,16,22"
+                    Padding="12"
+                    BackgroundColor="#E0110E18"
+                    Stroke="#36FFFFFF"
+                    StrokeThickness="1"
+                    HorizontalOptions="Fill"
+                    VerticalOptions="End">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="24" />
+                </Border.StrokeShape>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                    <Button Grid.Column="0"
+                            Text="تعديل"
+                            ImageSource="himo_pro_ui_icon_edit.png"
+                            ContentLayout="Left,10"
+                            HeightRequest="54"
+                            MinimumHeightRequest="54"
+                            Padding="12,0"
+                            BackgroundColor="#24FFFFFF"
+                            BorderColor="#48FFFFFF"
+                            BorderWidth="1"
+                            TextColor="#FFFFFFFF"
+                            FontAttributes="Bold"
+                            FontSize="15"
+                            CornerRadius="17"
+                            Clicked="EditClicked"
+                            SemanticProperties.Description="تعديل الصورة قبل إرسالها" />
+
+                    <Button Grid.Column="1"
+                            Text="إرسال"
+                            ImageSource="himo_send_white.png"
+                            ContentLayout="Left,10"
+                            HeightRequest="54"
+                            MinimumHeightRequest="54"
+                            Padding="12,0"
+                            BackgroundColor="{DynamicResource HimoAccent}"
+                            BorderWidth="0"
+                            TextColor="{DynamicResource HimoOnAccent}"
+                            FontAttributes="Bold"
+                            FontSize="15"
+                            CornerRadius="17"
+                            Clicked="SendClicked"
+                            SemanticProperties.Description="إرسال الوسائط إلى المحادثة" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</ContentPage>

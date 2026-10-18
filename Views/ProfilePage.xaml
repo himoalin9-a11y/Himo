@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Himo.Views.ProfilePage"
+             FlowDirection="RightToLeft"
+             BackgroundColor="{DynamicResource HimoBackground}"
+             Title="الملف الشخصي"
+             Shell.NavBarIsVisible="False">
+    <Grid RowDefinitions="Auto,*,Auto" BackgroundColor="{DynamicResource HimoBackground}">
+        <!-- Header -->
+        <Border Grid.Row="0"
+                BackgroundColor="{DynamicResource HimoBackground}"
+                StrokeThickness="0"
+                Padding="18,10">
+            <Grid ColumnDefinitions="46,*,46" ColumnSpacing="8"
+                  HeightRequest="54" FlowDirection="LeftToRight">
+                <ImageButton Grid.Column="0"
+                             Source="himo_icon_arrow_back_purple.png"
+                             WidthRequest="42" HeightRequest="42"
+                             Padding="10"
+                             Aspect="AspectFit"
+                             BackgroundColor="{DynamicResource HimoSoft}"
+                             BorderColor="{DynamicResource HimoBorder}"
+                             BorderWidth="1"
+                             CornerRadius="14"
+                             HorizontalOptions="Start"
+                             VerticalOptions="Center"
+                             SemanticProperties.Description="رجوع"
+                             Clicked="BackClicked" />
+                <VerticalStackLayout Grid.Column="1"
+                                     Spacing="2"
+                                     HorizontalOptions="Center"
+                                     VerticalOptions="Center"
+                                     FlowDirection="RightToLeft">
+                    <Label Text="الملف الشخصي"
+                           FontSize="21"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource HimoPrimary}"
+                           HorizontalTextAlignment="Center" />
+                    <Label Text="إدارة صورتك ومعلوماتك"
+                           FontSize="12"
+                           TextColor="{DynamicResource HimoTextSecondary}"
+                           HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+                <BoxView Grid.Column="2" WidthRequest="42" HeightRequest="42" Opacity="0" />
+            </Grid>
+        </Border>
+
+        <ScrollView Grid.Row="1" VerticalScrollBarVisibility="Never">
+            <VerticalStackLayout Padding="18,8,18,26" Spacing="16">
+                <!-- Profile identity card -->
+                <Border BackgroundColor="{DynamicResource HimoCard}"
+                        Stroke="{DynamicResource HimoBorder}"
+                        StrokeThickness="1"
+                        Padding="16">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="15">
+                        <Grid ColumnDefinitions="*,92" ColumnSpacing="12" FlowDirection="LeftToRight">
+                            <VerticalStackLayout Grid.Column="0"
+                                                 Spacing="5"
+                                                 VerticalOptions="Center"
+                                                 FlowDirection="RightToLeft">
+                                <Label Text="حسابك الشخصي"
+                                       FontSize="11.5"
+                                       TextColor="{DynamicResource HimoTextSecondary}"
+                                       HorizontalTextAlignment="Start" />
+                                <Label x:Name="ProfileNameLabel"
+                                       Text="مستخدم Himo"
+                                       FontSize="21"
+                                       FontAttributes="Bold"
+                                       TextColor="{DynamicResource HimoPrimary}"
+                                       HorizontalTextAlignment="Start"
+                                       LineBreakMode="TailTruncation"
+                                       MaxLines="1" />
+                                <Label Text="صورتك ومعلوماتك على Himo"
+                                       FontSize="12"
+                                       TextColor="{DynamicResource HimoTextSecondary}"
+                                       HorizontalTextAlignment="Start" />
+                                <HorizontalStackLayout Spacing="6" FlowDirection="RightToLeft" HorizontalOptions="Start">
+                                    <Border WidthRequest="8" HeightRequest="8"
+                                            BackgroundColor="#20B486"
+                                            StrokeThickness="0"
+                                            VerticalOptions="Center">
+                                        <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                                    </Border>
+                                    <Label Text="ملفك الشخصي"
+                                           FontSize="10.5"
+                                           TextColor="{DynamicResource HimoTextSecondary}"
+                                           VerticalTextAlignment="Center" />
+                                </HorizontalStackLayout>
+                            </VerticalStackLayout>
+
+                            <Grid Grid.Column="1" WidthRequest="88" HeightRequest="88"
+                                  HorizontalOptions="End" VerticalOptions="Center"
+                                  FlowDirection="LeftToRight">
+                                <Border WidthRequest="82" HeightRequest="82"
+                                        HorizontalOptions="Center" VerticalOptions="Center"
+                                        BackgroundColor="{DynamicResource HimoSoft}"
+                                        Stroke="{DynamicResource HimoBorder}"
+                                        StrokeThickness="1.5"
+                                        Padding="2">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="41" /></Border.StrokeShape>
+                                    <Grid>
+                                        <Image x:Name="ProfilePhotoImage"
+                                               WidthRequest="76" HeightRequest="76"
+                                               Aspect="AspectFill"
+                                               IsVisible="False">
+                                            <Image.Clip>
+                                                <EllipseGeometry Center="38,38" RadiusX="38" RadiusY="38" />
+                                            </Image.Clip>
+                                        </Image>
+                                        <Label x:Name="InitialLabel"
+                                               FontSize="32"
+                                               FontAttributes="Bold"
+                                               TextColor="{DynamicResource HimoAccent}"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center" />
+                                    </Grid>
+                                </Border>
+                                <ImageButton x:Name="CameraPhotoButton"
+                                             Source="settings_icon_camera.png"
+                                             WidthRequest="30" HeightRequest="30"
+                                             Padding="7"
+                                             Aspect="AspectFit"
+                                             CornerRadius="15"
+                                             BackgroundColor="{DynamicResource HimoSoft}"
+                                             BorderColor="{DynamicResource HimoBorder}"
+                                             BorderWidth="2"
+                                             HorizontalOptions="End"
+                                             VerticalOptions="End"
+                                             SemanticProperties.Description="تغيير صورة الملف الشخصي"
+                                             Clicked="ChangePhotoClicked" />
+                            </Grid>
+                        </Grid>
+
+                        <Grid x:Name="PhotoActionsGrid" ColumnDefinitions="*,*" ColumnSpacing="9" FlowDirection="LeftToRight">
+                            <Button x:Name="RemovePhotoButton"
+                                    Grid.Column="0"
+                                    Text="إزالة الصورة"
+                                    Clicked="RemovePhotoClicked"
+                                    HeightRequest="43"
+                                    CornerRadius="14"
+                                    BackgroundColor="{DynamicResource HimoSoft}"
+                                    BorderColor="{DynamicResource HimoBorder}"
+                                    BorderWidth="1"
+                                    TextColor="{DynamicResource HimoPrimary}"
+                                    FontSize="13"
+                                    IsVisible="False" />
+                            <Button x:Name="ChangePhotoButton"
+                                    Grid.Column="1"
+                                    Text="إضافة صورة"
+                                    Clicked="ChangePhotoClicked"
+                                    HeightRequest="43"
+                                    CornerRadius="14"
+                                    BackgroundColor="{DynamicResource HimoAccent}"
+                                    TextColor="{DynamicResource HimoOnAccent}"
+                                    FontAttributes="Bold"
+                                    FontSize="13" />
+                        </Grid>
+                        <Label Text="JPG أو PNG أو WebP أو HEIC · بحد أقصى 4 ميغابايت"
+                               FontSize="10.5"
+                               TextColor="{DynamicResource HimoTextSecondary}"
+                               HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Section title -->
+                <Grid ColumnDefinitions="*,24" ColumnSpacing="8" FlowDirection="LeftToRight" Padding="2,3,2,0">
+                    <Label Grid.Column="0"
+                           Text="معلومات الحساب"
+                           FontSize="15"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource HimoPrimary}"
+                           HorizontalTextAlignment="End"
+                           VerticalTextAlignment="Center" />
+                    <Image Grid.Column="1" Source="settings_icon_user.png"
+                           WidthRequest="21" HeightRequest="21" Aspect="AspectFit"
+                           HorizontalOptions="End" VerticalOptions="Center" />
+                </Grid>
+
+                <!-- Name field -->
+                <Border BackgroundColor="{DynamicResource HimoCard}"
+                        Stroke="{DynamicResource HimoBorder}"
+                        StrokeThickness="1"
+                        Padding="13,12">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                    <Grid ColumnDefinitions="*,44" ColumnSpacing="12" FlowDirection="LeftToRight">
+                        <VerticalStackLayout Grid.Column="0" Spacing="3" FlowDirection="RightToLeft">
+                            <Label Text="الاسم"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{DynamicResource HimoTextSecondary}"
+                                   HorizontalTextAlignment="Start" />
+                            <Entry x:Name="NameEntry"
+                                   TextChanged="ProfileFieldChanged"
+                                   Placeholder="اسمك"
+                                   FontSize="16"
+                                   MaxLength="60"
+                                   BackgroundColor="Transparent"
+                                   TextColor="{DynamicResource HimoPrimary}"
+                                   PlaceholderColor="{DynamicResource HimoTextSecondary}"
+                                   HeightRequest="40"
+                                   ClearButtonVisibility="WhileEditing" />
+                            <Label Text="استخدم اسمًا واضحًا ليسهل على أصدقائك العثور عليك."
+                                   FontSize="10.5"
+                                   TextColor="{DynamicResource HimoTextSecondary}"
+                                   LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                        <Border Grid.Column="1" WidthRequest="42" HeightRequest="42"
+                                BackgroundColor="{DynamicResource HimoSoft}"
+                                StrokeThickness="0"
+                                HorizontalOptions="End" VerticalOptions="Start">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                            <Image Source="settings_icon_user.png" WidthRequest="23" HeightRequest="23"
+                                   Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- Status field -->
+                <Border BackgroundColor="{DynamicResource HimoCard}"
+                        Stroke="{DynamicResource HimoBorder}"
+                        StrokeThickness="1"
+                        Padding="13,12">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                    <Grid ColumnDefinitions="*,44" ColumnSpacing="12" FlowDirection="LeftToRight">
+                        <VerticalStackLayout Grid.Column="0" Spacing="3" FlowDirection="RightToLeft">
+                            <Label Text="الحالة"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{DynamicResource HimoTextSecondary}"
+                                   HorizontalTextAlignment="Start" />
+                            <Entry x:Name="StatusEntry"
+                                   TextChanged="ProfileFieldChanged"
+                                   Placeholder="مثال: متاح الآن"
+                                   FontSize="16"
+                                   MaxLength="100"
+                                   BackgroundColor="Transparent"
+                                   TextColor="{DynamicResource HimoPrimary}"
+                                   PlaceholderColor="{DynamicResource HimoTextSecondary}"
+                                   HeightRequest="40"
+                                   ClearButtonVisibility="WhileEditing" />
+                            <Label Text="اكتب جملة قصيرة تعبّر عن حالتك الآن."
+                                   FontSize="10.5"
+                                   TextColor="{DynamicResource HimoTextSecondary}"
+                                   LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                        <Border Grid.Column="1" WidthRequest="42" HeightRequest="42"
+                                BackgroundColor="{DynamicResource HimoSoft}"
+                                StrokeThickness="0"
+                                HorizontalOptions="End" VerticalOptions="Start">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                            <Image Source="settings_icon_chat.png" WidthRequest="23" HeightRequest="23"
+                                   Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- Save action -->
+                <Button x:Name="SaveButton"
+                        Text="حفظ التغييرات"
+                        HeightRequest="52"
+                        CornerRadius="16"
+                        BackgroundColor="{DynamicResource HimoAccent}"
+                        TextColor="{DynamicResource HimoOnAccent}"
+                        FontSize="15"
+                        FontAttributes="Bold"
+                        Clicked="SaveClicked" />
+
+                <Label Text="تُحفظ صورتك على حسابك وتبقى متاحة عند تسجيل الدخول من جديد."
+                       FontSize="10.5"
+                       TextColor="{DynamicResource HimoTextSecondary}"
+                       HorizontalTextAlignment="Center"
+                       Margin="3,0,3,4" />
+            </VerticalStackLayout>
+        </ScrollView>
+        <!-- Unified five-item navigation: the profile tab is the active destination. -->
+        <Border Grid.Row="2" Margin="9,7,9,9"
+                BackgroundColor="{DynamicResource HimoCard}"
+                Stroke="{DynamicResource HimoBorder}"
+                StrokeThickness="1.1"
+                Padding="3,4">
+            <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
+            <Grid ColumnDefinitions="*,*,*,*,*" FlowDirection="RightToLeft">
+                <Border Grid.Column="0" Margin="2,0" Padding="2,5"
+                        BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                        <Image Source="settings_icon_chat.png" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" />
+                        <Label Text="المحادثات" FontSize="9.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                    <Border.GestureRecognizers><TapGestureRecognizer Tapped="ChatsNavTapped" /></Border.GestureRecognizers>
+                </Border>
+                <Border Grid.Column="1" Margin="2,0" Padding="2,5"
+                        BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                        <Image Source="settings_icon_phone.png" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" />
+                        <Label Text="المكالمات" FontSize="9.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                    <Border.GestureRecognizers><TapGestureRecognizer Tapped="CallsNavTapped" /></Border.GestureRecognizers>
+                </Border>
+                <Border Grid.Column="2" Margin="2,0" Padding="2,5"
+                        BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                        <Image Source="settings_icon_contacts.png" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" />
+                        <Label Text="بحث الأشخاص" FontSize="9.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                    <Border.GestureRecognizers><TapGestureRecognizer Tapped="PeopleNavTapped" /></Border.GestureRecognizers>
+                </Border>
+                <Border Grid.Column="3" Margin="2,0" Padding="2,5"
+                        BackgroundColor="{DynamicResource HimoSoft}"
+                        Stroke="{DynamicResource HimoBorder}"
+                        StrokeThickness="0.8">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                        <Image Source="settings_icon_user.png" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" />
+                        <Label Text="الملف" FontSize="9.5" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Border>
+                <Border Grid.Column="4" Margin="2,0" Padding="2,5"
+                        BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                        <Image Source="settings_icon_gear.png" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" />
+                        <Label Text="الإعدادات" FontSize="9.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                    <Border.GestureRecognizers><TapGestureRecognizer Tapped="SettingsNavTapped" /></Border.GestureRecognizers>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Grid.GestureRecognizers>
+            <SwipeGestureRecognizer Direction="Left" Swiped="PageSwiped" />
+            <SwipeGestureRecognizer Direction="Right" Swiped="PageSwiped" />
+        </Grid.GestureRecognizers>
+    </Grid>
+</ContentPage>

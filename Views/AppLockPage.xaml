@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Himo.Views.AppLockPage"
+             Title="قفل Himo"
+             FlowDirection="RightToLeft"
+             BackgroundColor="{DynamicResource HimoBackground}"
+             Shell.NavBarIsVisible="False">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Style x:Key="LockOutlineButtonStyle" TargetType="Button">
+                <Setter Property="HeightRequest" Value="50" />
+                <Setter Property="CornerRadius" Value="14" />
+                <Setter Property="Padding" Value="16,0" />
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="FontAttributes" Value="Bold" />
+                <Setter Property="BackgroundColor" Value="{DynamicResource HimoCard}" />
+                <Setter Property="TextColor" Value="{DynamicResource HimoPrimary}" />
+                <Setter Property="BorderColor" Value="{DynamicResource HimoBorder}" />
+                <Setter Property="BorderWidth" Value="1" />
+            </Style>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <Grid BackgroundColor="{DynamicResource HimoBackground}">
+        <ScrollView VerticalScrollBarVisibility="Never">
+            <VerticalStackLayout Padding="24,22,24,28"
+                                 Spacing="0"
+                                 HorizontalOptions="Fill">
+
+                <!-- Brand header -->
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Margin="0,0,0,36">
+                    <Border Grid.Column="0"
+                            WidthRequest="44" HeightRequest="44"
+                            BackgroundColor="{DynamicResource HimoSoft}"
+                            Stroke="{DynamicResource HimoBorder}"
+                            StrokeThickness="1"
+                            VerticalOptions="Center">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                        <Label Text="H"
+                               FontSize="21"
+                               FontAttributes="Bold"
+                               TextColor="{DynamicResource HimoAccent}"
+                               HorizontalTextAlignment="Center"
+                               VerticalTextAlignment="Center" />
+                    </Border>
+                    <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                        <Label Text="Himo"
+                               FontSize="19"
+                               FontAttributes="Bold"
+                               TextColor="{DynamicResource HimoPrimary}" />
+                        <Label Text="تواصل بلا حدود"
+                               FontSize="12"
+                               TextColor="{DynamicResource HimoTextSecondary}" />
+                    </VerticalStackLayout>
+                </Grid>
+
+                <!-- Clear lock symbol and message -->
+                <VerticalStackLayout Spacing="0"
+                                     HorizontalOptions="Fill"
+                                     MaximumWidthRequest="420"
+                                     Margin="0,0,0,22">
+                    <Border WidthRequest="92" HeightRequest="92"
+                            Padding="19"
+                            HorizontalOptions="Center"
+                            BackgroundColor="{DynamicResource HimoSoft}"
+                            Stroke="{DynamicResource HimoBorder}"
+                            StrokeThickness="1">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="28" /></Border.StrokeShape>
+                        <Image Source="settings_icon_lock.png"
+                               Aspect="AspectFit"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <Label Text="التطبيق مقفل"
+                           FontSize="27"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource HimoPrimary}"
+                           HorizontalTextAlignment="Center"
+                           Margin="0,20,0,7" />
+                    <Label Text="أدخل رمز القفل للمتابعة إلى حسابك"
+                           FontSize="14"
+                           TextColor="{DynamicResource HimoTextSecondary}"
+                           HorizontalTextAlignment="Center"
+                           LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+
+                <!-- Secure input card -->
+                <Border Padding="18"
+                        BackgroundColor="{DynamicResource HimoCard}"
+                        Stroke="{DynamicResource HimoBorder}"
+                        StrokeThickness="1">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="0">
+                        <Label Text="رمز القفل"
+                               FontSize="14"
+                               FontAttributes="Bold"
+                               TextColor="{DynamicResource HimoPrimary}"
+                               Margin="2,0,2,10" />
+
+                        <Border BackgroundColor="{DynamicResource HimoInput}"
+                                Stroke="{DynamicResource HimoBorder}"
+                                StrokeThickness="1"
+                                Padding="12,2"
+                                HeightRequest="58">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                            <Entry x:Name="PinEntry"
+                                   Keyboard="Numeric"
+                                   IsPassword="True"
+                                   MaxLength="6"
+                                   Placeholder="أدخل رمز القفل"
+                                   PlaceholderColor="{DynamicResource HimoMuted}"
+                                   TextColor="{DynamicResource HimoPrimary}"
+                                   BackgroundColor="Transparent"
+                                   HorizontalTextAlignment="Center"
+                                   VerticalOptions="Center"
+                                   FontSize="23"
+                                   ClearButtonVisibility="WhileEditing"
+                                   ReturnType="Go"
+                                   Completed="UnlockClicked" />
+                        </Border>
+
+                        <Label x:Name="ErrorLabel"
+                               Text=""
+                               FontSize="13"
+                               TextColor="{DynamicResource HimoDanger}"
+                               HorizontalTextAlignment="Center"
+                               VerticalTextAlignment="Center"
+                               MinimumHeightRequest="24"
+                               Margin="0,6,0,4" />
+
+                        <Button x:Name="UnlockButton"
+                                Text="فتح القفل"
+                                HeightRequest="54"
+                                CornerRadius="15"
+                                BackgroundColor="{DynamicResource HimoAccent}"
+                                TextColor="{DynamicResource HimoOnAccent}"
+                                FontAttributes="Bold"
+                                FontSize="16"
+                                Clicked="UnlockClicked" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Grid ColumnDefinitions="Auto,*"
+                      ColumnSpacing="10"
+                      Margin="4,20,4,0"
+                      HorizontalOptions="Center">
+                    <Image Grid.Column="0"
+                           Source="settings_icon_shield.png"
+                           WidthRequest="20" HeightRequest="20"
+                           Aspect="AspectFit"
+                           VerticalOptions="Center" />
+                    <Label Grid.Column="1"
+                           Text="رمزك يحمي خصوصية محادثاتك وبياناتك"
+                           FontSize="12"
+                           TextColor="{DynamicResource HimoTextSecondary}"
+                           VerticalTextAlignment="Center" />
+                </Grid>
+
+                <Label Text="Himo • حماية حسابك تبدأ من هنا"
+                       FontSize="12"
+                       TextColor="{DynamicResource HimoTextSecondary}"
+                       HorizontalTextAlignment="Center"
+                       Margin="0,34,0,0" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

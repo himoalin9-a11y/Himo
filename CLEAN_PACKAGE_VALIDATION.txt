@@ -1,0 +1,8 @@
+Himo clean package validation
+XML files parsed: 19
+XML parse failures: 0
+Manifest aliases: 56; unique aliases: 56
+Icon mappings: 55; missing PNG assets: 0; missing aliases: 0
+Staged WebRTC AAR: True
+Generated .vs/bin/obj folders and machine-specific project-user files omitted.
+No Android build was performed in this environment.
