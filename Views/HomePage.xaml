@@ -1,14 +1,16 @@
-<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:models="clr-namespace:Himo.Models"
+             xmlns:views="clr-namespace:Himo.Views"
+             xmlns:viewmodels="clr-namespace:Himo.ViewModels"
              xmlns:behaviors="clr-namespace:Himo.Behaviors"
              x:Class="Himo.Views.HomePage"
              x:Name="HomeRoot"
              Title="Himo"
              FlowDirection="RightToLeft"
              BackgroundColor="{DynamicResource HimoBackground}"
-             Shell.NavBarIsVisible="False">
+             Shell.NavBarIsVisible="False" x:DataType="viewmodels:HomeViewModel">
 
     <ContentPage.Resources>
         <ResourceDictionary>
@@ -139,7 +141,7 @@
         </Border>
 
         <!-- Main section switcher -->
-        <Grid Grid.Row="2" Margin="0,0,0,2" BackgroundColor="{DynamicResource HimoSurface}">
+        <Grid x:Name="MainSectionHost" Grid.Row="2" Margin="0,0,0,2" BackgroundColor="{DynamicResource HimoSurface}">
             <!-- Conversations -->
             <Grid x:Name="ChatsSection" IsVisible="True" RowDefinitions="*" BackgroundColor="Transparent">
                 <!-- Recent conversations -->
@@ -183,10 +185,10 @@
                                              Long-press remains a separate behavior for multi-select. -->
                                         <Border.Behaviors>
                                             <behaviors:ConversationTapBehavior
-                                                Command="{Binding Source={x:Reference HomeRoot}, Path=ConversationTapCommand}"
+                                                Command="{Binding Source={x:Reference HomeRoot}, Path=ConversationTapCommand, x:DataType=views:HomePage}"
                                                 CommandParameter="{Binding .}" />
                                             <behaviors:LongPressBehavior
-                                                Command="{Binding Source={x:Reference HomeRoot}, Path=ConversationLongPressCommand}"
+                                                Command="{Binding Source={x:Reference HomeRoot}, Path=ConversationLongPressCommand, x:DataType=views:HomePage}"
                                                 CommandParameter="{Binding .}" />
                                         </Border.Behaviors>
                                         <Grid FlowDirection="LeftToRight" ColumnDefinitions="60,*,74" ColumnSpacing="11" Padding="2,2" MinimumHeightRequest="74">

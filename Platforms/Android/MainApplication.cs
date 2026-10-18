@@ -40,6 +40,10 @@ public class MainApplication : MauiApplication
         {
             try
             {
+                // The Firebase callback may be invoked without a notification object.
+                // Cache nullable fields safely before processing the optional data map.
+                var notificationTitle = notification?.Title;
+                var notificationBody = notification?.Body;
                 var data = notification?.Data;
                 if (data is not null && data.TryGetValue("call_type", out var callType))
                 {
@@ -55,7 +59,7 @@ public class MainApplication : MauiApplication
                         // create a full-screen system notification when app is backgrounded.
                         if (MainActivity.IsAppForeground) return;
                         _ = service.ShowIncomingCallAsync(
-                            string.IsNullOrWhiteSpace(callerName) ? notification.Title ?? "مكالمة واردة" : callerName,
+                            string.IsNullOrWhiteSpace(callerName) ? notificationTitle ?? "مكالمة واردة" : callerName,
                             conversationId ?? string.Empty,
                             callMode ?? "audio",
                             callId ?? string.Empty);
@@ -79,7 +83,7 @@ public class MainApplication : MauiApplication
                     else if (!string.IsNullOrWhiteSpace(conversationId))
                     {
                         _ = service.ShowMessageAsync(
-                            notification.Title ?? "رسالة جديدة", notification.Body ?? "لديك رسالة جديدة", conversationId);
+                            notificationTitle ?? "رسالة جديدة", notificationBody ?? "لديك رسالة جديدة", conversationId);
                     }
                     return;
                 }

@@ -251,6 +251,63 @@ public static class HimoLauncherIconService
 #endif
     }
 
+    /// <summary>
+    /// Matches the app's in-app palette to the dominant color of the chosen launcher mark.
+    /// The user can still choose any other full theme later in the Appearance gallery.
+    /// </summary>
+    public static void ApplyCompanionInterfaceStyle(string imageFileName)
+    {
+        var file = Path.GetFileName(imageFileName ?? string.Empty).ToLowerInvariant();
+        var styleId = file switch
+        {
+            "himo_system_icon_original.png" => "p_neon_violet",
+            "himo_system_icon_sapphire.png" or "himo_system_icon_azure.png" => "p_electric_blue",
+            "himo_system_icon_cyan.png" or "himo_system_icon_turquoise.png" => "p_aurora",
+            "himo_system_icon_emerald.png" or "himo_system_icon_green.png" or "himo_system_icon_lime.png" => "p_emerald",
+            "himo_system_icon_gold.png" or "himo_system_icon_amber.png" or "himo_system_icon_orange.png" => "p_royal_gold",
+            "himo_system_icon_ruby.png" => "p_ruby",
+            "himo_system_icon_rose.png" => "p_rose_gold",
+            "himo_system_icon_magenta.png" or "himo_system_icon_indigo.png" => "p_neon_violet",
+            "himo_glass_icon_purple.png" or "himo_glass_icon_indigo.png" or "himo_glass_icon_magenta.png" => "p_neon_violet",
+            "himo_glass_icon_sapphire.png" or "himo_glass_icon_holographic.png" => "p_electric_blue",
+            "himo_glass_icon_rose.png" => "p_rose_gold",
+            "himo_glass_icon_gold.png" or "himo_glass_icon_amber.png" => "p_royal_gold",
+            "himo_glass_icon_turquoise.png" or "himo_glass_icon_icecyan.png" => "p_aurora",
+            "himo_glass_icon_ruby.png" => "p_ruby",
+            "himo_glass_icon_silver.png" => "p_silver",
+            "himo_glass_icon_night.png" => "p_silver",
+            "himo_glass_icon_emerald.png" or "himo_glass_icon_lime.png" => "p_emerald",
+            _ when file.StartsWith("himo_professional_icon_", StringComparison.Ordinal) => ProfessionalIconStyle(file),
+            _ => null
+        };
+
+        if (string.IsNullOrWhiteSpace(styleId))
+            return;
+
+        HimoAppearanceManager.SetActiveStyle(styleId);
+        HimoAppearanceManager.ApplyIconsToCurrentPages();
+    }
+
+    private static string? ProfessionalIconStyle(string file)
+    {
+        var stem = Path.GetFileNameWithoutExtension(file);
+        var numberText = stem.Replace("himo_professional_icon_", string.Empty, StringComparison.Ordinal);
+        if (!int.TryParse(numberText, out var number)) return null;
+
+        return number switch
+        {
+            1 or 3 or 5 or 6 or 11 or 18 or 19 or 22 or 24 or 25 => "p_royal_gold",
+            2 or 8 or 10 or 17 or 20 => "p_electric_blue",
+            4 or 15 or 21 => "p_neon_violet",
+            7 or 13 => "p_ruby",
+            9 or 16 => "p_emerald",
+            12 => "p_silver",
+            14 => "p_rose_gold",
+            23 => "p_aurora",
+            _ => "p_neon_violet"
+        };
+    }
+
     public static string GetSelectedVariant(string fallback = "") =>
         Preferences.Default.Get(SelectedVariantPreference, fallback);
 }

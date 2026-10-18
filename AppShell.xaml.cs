@@ -1,18 +1,24 @@
 using Himo.Views;
 using Himo.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 
 namespace Himo;
 
 public partial class AppShell : Shell
 {
+    private static readonly SettingsPageRouteFactory SettingsFactory = new();
+    private static readonly ProfilePageRouteFactory ProfileFactory = new();
+    private readonly IServiceProvider _services;
+    private int _prewarmState;
+
     static AppShell()
     {
         Routing.RegisterRoute("chat", new ChatPageRouteFactory());
         Routing.RegisterRoute("CallPage", new CallPageRouteFactory());
-        Routing.RegisterRoute("settings", new SettingsPageRouteFactory());
-        Routing.RegisterRoute("profile", new ProfilePageRouteFactory());
+        Routing.RegisterRoute("settings", SettingsFactory);
+        Routing.RegisterRoute("profile", ProfileFactory);
         Routing.RegisterRoute("search", typeof(SearchPage));
         Routing.RegisterRoute("CreateGroupPage", new CreateGroupPageRouteFactory());
         Routing.RegisterRoute("icons-appearance", typeof(IconsAppearanceSettingsPage));
@@ -26,12 +32,63 @@ public partial class AppShell : Shell
     public AppShell()
     {
         InitializeComponent();
-        // Visible pages apply their palette from OnAppearing. Keeping a second
-        // Shell-wide scan here and on every route duplicated the expensive walk.
-        var services = Application.Current?.Handler?.MauiContext?.Services
+        _services = Application.Current?.Handler?.MauiContext?.Services
             ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق.");
 
-        HomeContent.Content = services.GetRequiredService<HomePage>();
+        // A new Shell can be created after the app-lock/session recovery flow.
+        // Do not reuse page instances that belonged to the previous Shell.
+        SettingsFactory.ResetCache();
+        ProfileFactory.ResetCache();
+
+        HomeContent.Content = _services.GetRequiredService<HomePage>();
+        // Also cover the sign-in and app-unlock flows that enter AppShell without
+        // going through the welcome-page timer. Yield long enough for the first
+        // home frame to render before warming the destination pages.
+        _ = PrewarmAccountPagesAfterFirstFrameAsync();
+    }
+
+    /// <summary>
+    /// Build the two expensive primary pages while the two-second welcome screen
+    /// is visible, then keep them warm for the first navigation as well as later visits.
+    /// Must be called on the UI thread.
+    /// </summary>
+    internal void PrewarmAccountPages()
+    {
+        // The splash timer and the sign-in fallback can both request prewarming.
+        // Only one walk/creation pass should run for a Shell instance.
+        if (Interlocked.CompareExchange(ref _prewarmState, 1, 0) != 0)
+            return;
+
+        try
+        {
+            var settings = SettingsFactory.Preload(_services);
+            HimoAppearanceManager.ApplyToTree(settings);
+
+            var profile = ProfileFactory.Preload(_services);
+            HimoAppearanceManager.ApplyToTree(profile);
+            Volatile.Write(ref _prewarmState, 2);
+        }
+        catch (Exception ex)
+        {
+            // Prewarming is an optimization only; normal lazy navigation remains a fallback.
+            Volatile.Write(ref _prewarmState, 0);
+            System.Diagnostics.Debug.WriteLine($"[Himo PageCache] Prewarming skipped: {ex.Message}");
+        }
+    }
+
+    private async Task PrewarmAccountPagesAfterFirstFrameAsync()
+    {
+        try
+        {
+            await Task.Delay(320).ConfigureAwait(false);
+            if (Volatile.Read(ref _prewarmState) == 2)
+                return;
+            await MainThread.InvokeOnMainThreadAsync(PrewarmAccountPages);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo PageCache] Idle prewarm skipped: {ex.Message}");
+        }
     }
 }
 
@@ -67,30 +124,72 @@ internal sealed class CallPageRouteFactory : RouteFactory
         services.GetRequiredService<CallPage>();
 }
 
+/// <summary>
+/// Keeps one detached instance ready for fast navigation. Never pushes an instance
+/// that is already in Shell's stack; in that unusual case a temporary page is created.
+/// </summary>
 internal sealed class SettingsPageRouteFactory : RouteFactory
 {
+    private SettingsPage? _cachedPage;
+
+    public SettingsPage Preload(IServiceProvider services) => GetReusableOrCreate(services);
+
+    public void ResetCache() => _cachedPage = null;
+
     public override Element GetOrCreate()
     {
         var services = Application.Current?.Handler?.MauiContext?.Services
             ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق.");
-        return services.GetRequiredService<SettingsPage>();
+        return GetReusableOrCreate(services);
     }
 
-    public override Element GetOrCreate(IServiceProvider services) =>
-        services.GetRequiredService<SettingsPage>();
+    public override Element GetOrCreate(IServiceProvider services) => GetReusableOrCreate(services);
+
+    private SettingsPage GetReusableOrCreate(IServiceProvider services)
+    {
+        if (_cachedPage is not null && !IsInNavigationStack(_cachedPage))
+            return _cachedPage;
+
+        var page = services.GetRequiredService<SettingsPage>();
+        if (_cachedPage is null)
+            _cachedPage = page;
+        return page;
+    }
+
+    private static bool IsInNavigationStack(Page page) =>
+        Shell.Current?.Navigation?.NavigationStack.Any(item => ReferenceEquals(item, page)) == true;
 }
 
 internal sealed class ProfilePageRouteFactory : RouteFactory
 {
+    private ProfilePage? _cachedPage;
+
+    public ProfilePage Preload(IServiceProvider services) => GetReusableOrCreate(services);
+
+    public void ResetCache() => _cachedPage = null;
+
     public override Element GetOrCreate()
     {
         var services = Application.Current?.Handler?.MauiContext?.Services
             ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق.");
-        return services.GetRequiredService<ProfilePage>();
+        return GetReusableOrCreate(services);
     }
 
-    public override Element GetOrCreate(IServiceProvider services) =>
-        services.GetRequiredService<ProfilePage>();
+    public override Element GetOrCreate(IServiceProvider services) => GetReusableOrCreate(services);
+
+    private ProfilePage GetReusableOrCreate(IServiceProvider services)
+    {
+        if (_cachedPage is not null && !IsInNavigationStack(_cachedPage))
+            return _cachedPage;
+
+        var page = services.GetRequiredService<ProfilePage>();
+        if (_cachedPage is null)
+            _cachedPage = page;
+        return page;
+    }
+
+    private static bool IsInNavigationStack(Page page) =>
+        Shell.Current?.Navigation?.NavigationStack.Any(item => ReferenceEquals(item, page)) == true;
 }
 
 internal sealed class CreateGroupPageRouteFactory : RouteFactory

@@ -23,7 +23,7 @@
                             TextColor="{DynamicResource HimoPrimary}"
                             FontSize="13"
                             Clicked="BackClicked"
-                            AutomationProperties.Name="العودة إلى تسجيل الدخول" />
+                            SemanticProperties.Description="العودة إلى تسجيل الدخول" />
                     <Label Grid.Column="1"
                            Text="Himo"
                            FontSize="20"
@@ -140,7 +140,7 @@
                                                  BackgroundColor="Transparent" Padding="10"
                                                  WidthRequest="40" HeightRequest="44"
                                                  Clicked="TogglePasswordClicked"
-                                                 AutomationProperties.Name="إظهار أو إخفاء كلمة المرور" />
+                                                 SemanticProperties.Description="إظهار أو إخفاء كلمة المرور" />
                                     <Entry x:Name="PasswordEntry" Grid.Column="1" IsPassword="True"
                                            Placeholder="8 أحرف على الأقل" MaxLength="128"
                                            ReturnType="Next" Completed="PasswordCompleted"
@@ -167,7 +167,7 @@
                                                  BackgroundColor="Transparent" Padding="10"
                                                  WidthRequest="40" HeightRequest="44"
                                                  Clicked="TogglePasswordClicked"
-                                                 AutomationProperties.Name="إظهار أو إخفاء تأكيد كلمة المرور" />
+                                                 SemanticProperties.Description="إظهار أو إخفاء تأكيد كلمة المرور" />
                                     <Entry x:Name="ConfirmPasswordEntry" Grid.Column="1" IsPassword="True"
                                            Placeholder="أعد كتابة كلمة المرور" MaxLength="128"
                                            ReturnType="Done" Completed="ConfirmPasswordCompleted"

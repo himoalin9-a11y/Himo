@@ -224,9 +224,8 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
 
     private async void NewConversationClicked(object? sender, EventArgs e)
     {
-        var shell = Shell.Current;
-        if (shell is null) return;
-        await shell.GoToAsync("search", false);
+        if (Shell.Current is null) return;
+        await SwipePageTransition.NavigateAsync(this, "search", SwipeDirection.Left);
     }
 
     protected override void OnAppearing()
@@ -406,8 +405,8 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private async void SearchUserClicked(object sender, EventArgs e)
     {
         OverflowMenu.IsVisible = false;
-        var shell = Shell.Current;
-        if (shell is not null) await shell.GoToAsync("search", false);
+        if (Shell.Current is not null)
+            await SwipePageTransition.NavigateAsync(this, "search", SwipeDirection.Left);
     }
 
     private void OverflowMenuClicked(object sender, EventArgs e)
@@ -976,7 +975,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         try
         {
             var peer = Uri.EscapeDataString(call.ContactName ?? "جهة اتصال");
-            await Shell.Current.GoToAsync($"CallPage?id={conversationId:D}&mode={mode}&peerName={peer}");
+            await SwipePageTransition.NavigateAsync(this, $"CallPage?id={conversationId:D}&mode={mode}&peerName={peer}", SwipeDirection.Left);
         }
         catch (Exception ex)
         {

@@ -14,6 +14,11 @@ sealed class EmailVerificationService
         await SendAsync(email, "إعادة تعيين كلمة مرور Himo", $"رمز إعادة تعيين كلمة المرور في Himo هو: {code}", code, "إذا لم تطلب إعادة تعيين كلمة المرور، تجاهل هذه الرسالة.", cancellationToken);
     }
 
+    public async Task SendEmailChangeCodeAsync(string email, string code, CancellationToken cancellationToken = default)
+    {
+        await SendAsync(email, "تأكيد تغيير البريد الإلكتروني في Himo", $"رمز تأكيد تغيير البريد الإلكتروني لحساب Himo هو: {code}", code, "إذا لم تطلب تغيير البريد الإلكتروني، تجاهل هذه الرسالة.", cancellationToken);
+    }
+
     private async Task SendAsync(string email, string subject, string bodyText, string code, string footer, CancellationToken cancellationToken)
     {
         var apiKey = Environment.GetEnvironmentVariable("HIMO_EMAIL_API_KEY")?.Trim();

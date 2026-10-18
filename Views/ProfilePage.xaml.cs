@@ -1,4 +1,6 @@
 using Himo.Services;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Storage;
 
 namespace Himo.Views;
 
@@ -7,15 +9,31 @@ public partial class ProfilePage : ContentPage
     private const int MaximumPhotoBytes = 4 * 1024 * 1024;
     private readonly ProfileService _profile;
     private readonly HimoApiClient _api;
+    private readonly AccountService _account;
+    private readonly ChatService _chat;
+    private readonly INotificationService _notifications;
     private bool _busy;
     private bool _profileChangedLocally;
-    private bool _loadingProfileFields;
+    private bool _logoutInProgress;
 
-    public ProfilePage(ProfileService profile, HimoApiClient api)
+    public ProfilePage(ProfileService profile, HimoApiClient api, AccountService account,
+        ChatService chat, INotificationService notifications)
     {
         InitializeComponent();
         _profile = profile;
         _api = api;
+        _account = account;
+        _chat = chat;
+        _notifications = notifications;
+        RegisterProfileRoutes();
+    }
+
+    private static void RegisterProfileRoutes()
+    {
+        // SettingsPage registers these too. Ignore duplicate registrations so this
+        // page can open the same destinations even when Settings has never opened.
+        try { Routing.RegisterRoute("privacy-settings", typeof(PrivacySettingsPage)); } catch { }
+        try { Routing.RegisterRoute("notification-settings", typeof(NotificationSettingsPage)); } catch { }
     }
 
     protected override void OnAppearing()
@@ -42,20 +60,18 @@ public partial class ProfilePage : ContentPage
     {
         _profileChangedLocally = false;
         var value = _profile.Profile;
-        _loadingProfileFields = true;
-        try
-        {
-            if (NameEntry is not null) NameEntry.Text = value.Name;
-            if (StatusEntry is not null) StatusEntry.Text = value.Status;
-            if (InitialLabel is not null) InitialLabel.Text = value.Initial;
-            if (ProfileNameLabel is not null) ProfileNameLabel.Text = value.Name;
-            DisplayPhoto(value.PhotoPath);
-        }
-        finally
-        {
-            _loadingProfileFields = false;
-        }
+        if (InitialLabel is not null) InitialLabel.Text = value.Initial;
+        UpdateProfileSummary(value.Name, value.Status);
+        DisplayPhoto(value.PhotoPath);
         _ = LoadRemoteProfileAsync();
+    }
+
+    private void UpdateProfileSummary(string? name, string? status)
+    {
+        var cleanName = string.IsNullOrWhiteSpace(name) ? "مستخدم Himo" : name.Trim();
+        var cleanStatus = string.IsNullOrWhiteSpace(status) ? "متاح على Himo" : status.Trim();
+        if (ProfileNameLabel is not null) ProfileNameLabel.Text = cleanName;
+        if (ProfileStatusLabel is not null) ProfileStatusLabel.Text = cleanStatus;
     }
 
     private async Task LoadRemoteProfileAsync()
@@ -66,19 +82,9 @@ public partial class ProfilePage : ContentPage
             var remote = await _api.GetMyProfileAsync();
             if (_profileChangedLocally) return;
 
-            _loadingProfileFields = true;
-            try
-            {
-                _profile.Update(remote.Name, remote.Status);
-                if (NameEntry is not null) NameEntry.Text = remote.Name;
-                if (StatusEntry is not null) StatusEntry.Text = remote.Status;
-                if (InitialLabel is not null) InitialLabel.Text = _profile.Profile.Initial;
-                if (ProfileNameLabel is not null) ProfileNameLabel.Text = remote.Name;
-            }
-            finally
-            {
-                _loadingProfileFields = false;
-            }
+            _profile.Update(remote.Name, remote.Status);
+            if (InitialLabel is not null) InitialLabel.Text = _profile.Profile.Initial;
+            UpdateProfileSummary(remote.Name, remote.Status);
 
             // Nullable means the server predates profile-photo support; in that case
             // keep the locally cached photo instead of unexpectedly removing it.
@@ -103,16 +109,114 @@ public partial class ProfilePage : ContentPage
         }
     }
 
-    private void ProfileFieldChanged(object sender, TextChangedEventArgs e)
+    private async void EditProfileTapped(object? sender, TappedEventArgs e)
     {
-        if (_loadingProfileFields || _busy) return;
-        _profileChangedLocally = true;
-        if (NameEntry is not null && ReferenceEquals(sender, NameEntry) && ProfileNameLabel is not null)
+        // Open a dedicated details screen instead of expanding a long edit form
+        // underneath the main profile menu.
+        try
         {
-            var editedName = NameEntry.Text?.Trim();
-            ProfileNameLabel.Text = string.IsNullOrWhiteSpace(editedName)
-                ? "مستخدم Himo"
-                : editedName;
+            await Navigation.PushModalAsync(new ProfileDetailsPage(_profile, _api, _account));
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("الملف الشخصي", "تعذر فتح تفاصيل الحساب. " + ex.Message, "حسنًا");
+        }
+    }
+
+    private async void ProfilePhotoTapped(object? sender, TappedEventArgs e)
+    {
+        // The main avatar opens the dedicated profile-details screen. From there,
+        // tapping the avatar opens the full-screen zoomable photo viewer.
+        try
+        {
+            await Navigation.PushModalAsync(new ProfileDetailsPage(_profile, _api, _account));
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("الملف الشخصي", "تعذر فتح تفاصيل الحساب. " + ex.Message, "حسنًا");
+        }
+    }
+
+    private async void SecurityPrivacyTapped(object? sender, TappedEventArgs e) =>
+        await OpenProfileRouteAsync("privacy-settings", "تعذر فتح إعدادات الأمان والخصوصية.");
+
+    private async void NotificationsTapped(object? sender, TappedEventArgs e) =>
+        await OpenProfileRouteAsync("notification-settings", "تعذر فتح إعدادات الإشعارات.");
+
+    private async void AppearanceTapped(object? sender, TappedEventArgs e) =>
+        await OpenProfileRouteAsync("icons-appearance", "تعذر فتح إعدادات المظهر والأيقونات.");
+
+    private async Task OpenProfileRouteAsync(string route, string errorMessage)
+    {
+        try
+        {
+            var navigated = await HimoShellNavigator.NavigateAsync(route, false);
+            if (!navigated && Shell.Current is null)
+                await DisplayAlertAsync("التنقل", errorMessage, "حسنًا");
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("التنقل", errorMessage + " " + ex.Message, "حسنًا");
+        }
+    }
+
+    private async void HelpTapped(object? sender, TappedEventArgs e)
+    {
+        await DisplayAlertAsync(
+            "مساعدة ودعم",
+            "إذا واجهت مشكلة في Himo، تحقق أولًا من اتصال الإنترنت وأذونات الإشعارات والكاميرا والميكروفون. يمكنك مراجعة خيارات الخصوصية والمظهر من هذه الصفحة، وإعادة فتح التطبيق إذا توقف تحديث الواجهة.",
+            "حسنًا");
+    }
+
+    private async void AboutTapped(object? sender, TappedEventArgs e)
+    {
+        var version = string.IsNullOrWhiteSpace(AppInfo.Current.VersionString)
+            ? "غير محدد"
+            : AppInfo.Current.VersionString;
+        await DisplayAlertAsync("حول Himo", $"Himo — تطبيق للتواصل والمحادثات والمكالمات.\nالإصدار: {version}", "حسنًا");
+    }
+
+    private async void LogoutClicked(object? sender, EventArgs e)
+    {
+        if (_logoutInProgress) return;
+        var confirmed = await DisplayAlertAsync(
+            "تسجيل الخروج", "هل تريد تسجيل الخروج من هذا الجهاز؟", "خروج", "إلغاء");
+        if (!confirmed) return;
+
+        _logoutInProgress = true;
+        string? logoutError = null;
+        try
+        {
+            try
+            {
+#if ANDROID
+                if (Application.Current is App app)
+                    await app.UnregisterCurrentPushTokenAsync();
+#endif
+                await _api.LogoutAsync();
+            }
+            catch (Exception ex)
+            {
+                logoutError = ex.Message;
+            }
+            finally
+            {
+                try { await _notifications.ClearAllAsync(); } catch { }
+                _account.SignOut();
+                _chat.ClearAll();
+                _api.ClearToken();
+                Preferences.Default.Remove("himo_registered_fcm_token");
+                var window = Application.Current?.Windows.FirstOrDefault();
+                if (window is not null)
+                    window.Page = new LoginPage(_account, _api);
+            }
+
+            if (!string.IsNullOrWhiteSpace(logoutError))
+                await DisplayAlertAsync("تسجيل الخروج", "تم تسجيل الخروج من الجهاز، لكن تعذر إكمال العملية على الخادم. يمكنك تسجيل الدخول لاحقًا.", "حسنًا");
+        }
+        finally
+        {
+            _logoutInProgress = false;
         }
     }
 
@@ -120,17 +224,35 @@ public partial class ProfilePage : ContentPage
     {
         if (_busy) return;
         await UiMotion.PressAsync(sender as VisualElement);
+
+        var action = await DisplayActionSheetAsync(
+            "صورة الملف الشخصي", "إلغاء", "إزالة الصورة",
+            "التقاط صورة بالكاميرا", "اختيار صورة من المعرض");
+        if (action == "إزالة الصورة")
+        {
+            RemovePhotoClicked(sender, EventArgs.Empty);
+            return;
+        }
+        if (action is not ("التقاط صورة بالكاميرا" or "اختيار صورة من المعرض")) return;
+
         try
         {
-            SetBusy(true, "جارٍ تحديث الصورة...");
-            var pickedPhotos = await MediaPicker.Default.PickPhotosAsync(new MediaPickerOptions
+            SetBusy(true);
+            FileResult? pickedPhoto;
+            if (action == "التقاط صورة بالكاميرا")
             {
-                Title = "اختر صورة الملف الشخصي",
-                SelectionLimit = 1
-            });
-            // Keep single-photo behavior on .NET 10 and handle cancellation safely.
-            if (pickedPhotos is null || pickedPhotos.Count == 0) return;
-            var pickedPhoto = pickedPhotos[0];
+                pickedPhoto = await MediaPicker.Default.CapturePhotoAsync();
+            }
+            else
+            {
+                var pickedPhotos = await MediaPicker.Default.PickPhotosAsync(new MediaPickerOptions
+                {
+                    Title = "اختر صورة الملف الشخصي",
+                    SelectionLimit = 1
+                });
+                pickedPhoto = pickedPhotos is { Count: > 0 } ? pickedPhotos[0] : null;
+            }
+            if (pickedPhoto is null) return;
 
             var contentType = ResolvePhotoContentType(pickedPhoto);
             byte[] imageBytes;
@@ -179,7 +301,7 @@ public partial class ProfilePage : ContentPage
 
         try
         {
-            SetBusy(true, "جارٍ إزالة الصورة...");
+            SetBusy(true);
             if (_api.HasToken)
                 await _api.DeleteMyProfilePhotoAsync();
 
@@ -233,75 +355,12 @@ public partial class ProfilePage : ContentPage
             ProfilePhotoImage.Source = hasPhoto ? ImageSource.FromFile(path!) : null;
         }
         if (InitialLabel is not null) InitialLabel.IsVisible = !hasPhoto;
-        if (RemovePhotoButton is not null) RemovePhotoButton.IsVisible = hasPhoto;
-        if (ChangePhotoButton is not null)
-        {
-            ChangePhotoButton.Text = hasPhoto ? "تغيير الصورة" : "إضافة صورة";
-            // Fill the action row until a photo exists; use paired actions afterward.
-            Grid.SetColumn(ChangePhotoButton, hasPhoto ? 1 : 0);
-            Grid.SetColumnSpan(ChangePhotoButton, hasPhoto ? 1 : 2);
-        }
     }
 
-    private void SetBusy(bool busy, string? buttonText = null)
+    private void SetBusy(bool busy)
     {
         _busy = busy;
-        if (SaveButton is not null) SaveButton.IsEnabled = !busy;
-        if (ChangePhotoButton is not null) ChangePhotoButton.IsEnabled = !busy;
-        if (RemovePhotoButton is not null) RemovePhotoButton.IsEnabled = !busy;
         if (CameraPhotoButton is not null) CameraPhotoButton.IsEnabled = !busy;
-        if (SaveButton is not null)
-            SaveButton.Text = busy && !string.IsNullOrWhiteSpace(buttonText)
-                ? buttonText
-                : "حفظ التغييرات";
-    }
-
-    private async void SaveClicked(object sender, EventArgs e)
-    {
-        if (_busy) return;
-        await UiMotion.PressAsync(sender as VisualElement);
-        try
-        {
-            SetBusy(true, "جارٍ الحفظ...");
-            var name = NameEntry?.Text ?? string.Empty;
-            var status = StatusEntry?.Text ?? string.Empty;
-            if (_api.HasToken)
-            {
-                // Keep the local view unchanged unless the server accepted the edit.
-                var remote = await _api.UpdateMyProfileAsync(name.Trim(), status.Trim());
-                _profile.Update(remote.Name, remote.Status);
-                _profileChangedLocally = true;
-            }
-            else
-            {
-                _profile.Update(name, status);
-                _profileChangedLocally = true;
-            }
-
-            if (InitialLabel is not null) InitialLabel.Text = _profile.Profile.Initial;
-            if (ProfileNameLabel is not null) ProfileNameLabel.Text = _profile.Profile.Name;
-            await DisplayAlertAsync("تم الحفظ", "تم تحديث الملف الشخصي.", "حسنًا");
-        }
-        catch (ArgumentException ex)
-        {
-            await DisplayAlertAsync("تنبيه", ex.Message, "حسنًا");
-        }
-        catch (HttpRequestException ex)
-        {
-            await DisplayAlertAsync("تعذر الحفظ", ex.Message, "حسنًا");
-        }
-        catch (TaskCanceledException)
-        {
-            await DisplayAlertAsync("تعذر الحفظ", "انتهت مهلة الاتصال بالخادم. حاول مرة أخرى.", "حسنًا");
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlertAsync("تعذر الحفظ", ex.Message, "حسنًا");
-        }
-        finally
-        {
-            SetBusy(false);
-        }
     }
 
     // Use the same shared navigator as HomePage and SettingsPage so the profile
@@ -315,7 +374,13 @@ public partial class ProfilePage : ContentPage
     private async void PeopleNavTapped(object? sender, TappedEventArgs e) =>
         await SwipePageTransition.NavigateToHomeSectionAsync(this, "phone", SwipeDirection.Right);
 
-    private async void SettingsNavTapped(object? sender, TappedEventArgs e)
+    private async void SettingsNavTapped(object? sender, TappedEventArgs e) =>
+        await OpenSettingsFromProfileAsync();
+
+    private async void SettingsHeaderClicked(object? sender, EventArgs e) =>
+        await OpenSettingsFromProfileAsync();
+
+    private async Task OpenSettingsFromProfileAsync()
     {
         // If Profile was opened from Settings, return to that existing page rather
         // than pushing a duplicate SettingsPage onto the Shell stack.

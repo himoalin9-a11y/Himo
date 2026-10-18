@@ -93,7 +93,7 @@ public sealed class SystemIconsSettingsPage : SettingsHubPageBase
 
         AddIntroCard(
             "15 لونًا للشعار نفسه",
-            "اختر اللون الذي تفضله. الضغط على الأيقونة يطبقها على مشغّل Android ويحفظ اختيارك داخل التطبيق.",
+            "اختر اللون الذي تفضله. ستُطبّق الأيقونة على مشغّل Android وتُنسّق ألوان واجهة Himo ورموزها مع اللون المختار.",
             "himo_system_icon_original.png");
 
         var grid = new Grid
@@ -211,7 +211,8 @@ public sealed class SystemIconsSettingsPage : SettingsHubPageBase
         _selectedKey = option.FileName;
         Preferences.Set(PreferenceKey, _selectedKey);
         HimoLauncherIconService.TryApply(option.FileName, out var applyMessage);
-        _applyStatus.Text = applyMessage;
+        HimoLauncherIconService.ApplyCompanionInterfaceStyle(option.FileName);
+        _applyStatus.Text = applyMessage + " تم تنسيق ألوان الواجهة ورموزها مع الاختيار.";
 
         foreach (var candidate in Options)
         {
@@ -284,7 +285,7 @@ public sealed class GlassIconsSettingsPage : SettingsHubPageBase
 
         AddIntroCard(
             "15 تصميمًا زجاجيًا",
-            "كل الخيارات تحافظ على شكل حرف H وكلمة Himo. اضغط على التصميم لتطبيقه كأيقونة فعلية للتطبيق على الشاشة الرئيسية.",
+            "كل الخيارات تحافظ على شكل Himo. عند اختيار تصميم، تُحدّث أيقونة التطبيق وتتناغم معها ألوان الواجهة والرموز الداخلية.",
             "himo_glass_icon_purple.png");
 
         var grid = new Grid
@@ -412,7 +413,8 @@ public sealed class GlassIconsSettingsPage : SettingsHubPageBase
         _selectedKey = option.FileName;
         Preferences.Set(PreferenceKey, _selectedKey);
         HimoLauncherIconService.TryApply(option.FileName, out var applyMessage);
-        _applyStatus.Text = applyMessage;
+        HimoLauncherIconService.ApplyCompanionInterfaceStyle(option.FileName);
+        _applyStatus.Text = applyMessage + " تم تنسيق ألوان الواجهة ورموزها مع الاختيار.";
 
         foreach (var candidate in Options)
         {
@@ -496,7 +498,7 @@ public sealed class ProfessionalIconsSettingsPage : SettingsHubPageBase
 
         AddIntroCard(
             "25 تصميمًا لامعًا لهوية Himo",
-            "اختر من بين تصاميم ذهبية وفضية وكريستالية وألوان مضيئة. الضغط على أيقونة يطبّقها كأيقونة Himo على الشاشة الرئيسية في Android.",
+            "اختر من بين تصاميم ذهبية وفضية وكريستالية وألوان مضيئة. يطبّق الاختيار أيقونة Himo ويضبط ألوان الواجهة ورموزها لتناسبها.",
             "himo_professional_icon_01.png");
 
         var grid = new Grid
@@ -623,7 +625,8 @@ public sealed class ProfessionalIconsSettingsPage : SettingsHubPageBase
         _selectedKey = option.FileName;
         Preferences.Set(PreferenceKey, _selectedKey);
         HimoLauncherIconService.TryApply(option.FileName, out var applyMessage);
-        _applyStatus.Text = applyMessage;
+        HimoLauncherIconService.ApplyCompanionInterfaceStyle(option.FileName);
+        _applyStatus.Text = applyMessage + " تم تنسيق ألوان الواجهة ورموزها مع الاختيار.";
 
         foreach (var candidate in Options)
         {
@@ -1130,7 +1133,7 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
                 action.BorderWidth = selected ? 0 : 1;
                 action.Shadow = selected
                     ? new Shadow { Brush = new SolidColorBrush(accent), Offset = new Point(0, 2), Radius = 8, Opacity = 0.20f }
-                    : null;
+                    : new Shadow { Opacity = 0 };
             }
         }
     }

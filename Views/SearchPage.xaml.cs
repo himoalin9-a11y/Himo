@@ -37,6 +37,8 @@ public partial class SearchPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        _ = SwipePageTransition.AnimateIncomingAsync(this, SwipeDirection.Left);
+        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this);
         if (!_contactsLoaded && !_loadingContacts)
             _ = LoadContactsAsync();
     }
@@ -293,7 +295,7 @@ public partial class SearchPage : ContentPage
                 ? conversation.RemoteId
                 : conversation.Id.ToString();
             if (Shell.Current is not null)
-                await Shell.Current.GoToAsync($"chat?id={routeId}", false);
+                await SwipePageTransition.NavigateAsync(this, $"chat?id={Uri.EscapeDataString(routeId)}", SwipeDirection.Left);
         }
         catch (Exception ex)
         {
@@ -310,7 +312,7 @@ public partial class SearchPage : ContentPage
     private async void BackClicked(object sender, EventArgs e)
     {
         if (Shell.Current is not null)
-            await Shell.Current.GoToAsync("..", false);
+            await SwipePageTransition.GoBackAsync(this, SwipeDirection.Right);
     }
 
     private static string NormalizePhoneForMatching(string? value)

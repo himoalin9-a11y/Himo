@@ -361,3 +361,9 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Keep timestamped patch backups outside the MAUI project tree: default XAML globs can compile them twice.
+stage*-backup-*/
+**/stage*-backup-*/
+*.bak
+*.bak.*
+*.backup-before-*

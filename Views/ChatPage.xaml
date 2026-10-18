@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:models="clr-namespace:Himo.Models"
@@ -56,7 +56,7 @@
                 <Setter Property="FontSize" Value="10" />
                 <Setter Property="TextColor" Value="{DynamicResource HimoTextSecondary}" />
                 <Style.Triggers>
-                    <DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True">
+                    <DataTrigger TargetType="Label" Binding="{Binding x:DataType=models:ChatMessage, Path=IsMine}" Value="True">
                         <Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" />
                     </DataTrigger>
                 </Style.Triggers>
@@ -75,14 +75,14 @@
                 <Setter Property="Stroke" Value="{DynamicResource HimoBorder}" />
                 <Setter Property="StrokeThickness" Value="0.8" />
                 <Style.Triggers>
-                    <DataTrigger TargetType="Border" Binding="{Binding IsMine}" Value="True">
+                    <DataTrigger TargetType="Border" Binding="{Binding x:DataType=models:ChatMessage, Path=IsMine}" Value="True">
                         <Setter Property="HorizontalOptions" Value="Start" />
                         <Setter Property="Margin" Value="0,3,40,3" />
                         <Setter Property="Background" Value="{StaticResource SenderBubbleBrush}" />
                         <Setter Property="Stroke" Value="{DynamicResource HimoBorder}" />
                         <Setter Property="StrokeThickness" Value="0.8" />
                     </DataTrigger>
-                    <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                    <DataTrigger TargetType="Border" Binding="{Binding x:DataType=models:ChatMessage, Path=IsSelected}" Value="True">
                         <Setter Property="Stroke" Value="{DynamicResource HimoBorder}" />
                         <Setter Property="StrokeThickness" Value="2" />
                     </DataTrigger>
@@ -97,13 +97,13 @@
                 <Setter Property="Stroke" Value="{DynamicResource HimoBorder}" />
                 <Setter Property="StrokeThickness" Value="0.8" />
                 <Style.Triggers>
-                    <DataTrigger TargetType="Border" Binding="{Binding IsMine}" Value="True">
+                    <DataTrigger TargetType="Border" Binding="{Binding x:DataType=models:ChatMessage, Path=IsMine}" Value="True">
                         <Setter Property="HorizontalOptions" Value="Start" />
                         <Setter Property="Margin" Value="0,4,40,4" />
                         <Setter Property="Background" Value="{StaticResource SenderBubbleBrush}" />
                         <Setter Property="Stroke" Value="{DynamicResource HimoBorder}" />
                     </DataTrigger>
-                    <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                    <DataTrigger TargetType="Border" Binding="{Binding x:DataType=models:ChatMessage, Path=IsSelected}" Value="True">
                         <Setter Property="Stroke" Value="{DynamicResource HimoBorder}" />
                         <Setter Property="StrokeThickness" Value="2" />
                     </DataTrigger>
@@ -113,7 +113,7 @@
                 <Setter Property="FontSize" Value="10" />
                 <Setter Property="TextColor" Value="{DynamicResource HimoTextSecondary}" />
                 <Style.Triggers>
-                    <DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True">
+                    <DataTrigger TargetType="Label" Binding="{Binding x:DataType=models:ChatMessage, Path=IsMine}" Value="True">
                         <Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" />
                     </DataTrigger>
                 </Style.Triggers>
@@ -130,7 +130,7 @@
                         <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
                         <VerticalStackLayout Spacing="5">
                             <Border IsVisible="{Binding HasReply}" Padding="9,6" BackgroundColor="{DynamicResource HimoSurface}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="0.8"><Border.StrokeShape><shapes:RoundRectangle CornerRadius="10" /></Border.StrokeShape><Label Text="{Binding ReplyToText}" FontSize="10.5" TextColor="{DynamicResource HimoPrimary}" MaxLines="2" LineBreakMode="TailTruncation" /></Border>
-                            <Label Text="{Binding Text}" FontSize="{Binding MessageFontSize}" LineHeight="1.16" TextColor="{DynamicResource HimoPrimary}" LineBreakMode="WordWrap" Margin="1,1,1,0"><Label.Triggers><DataTrigger TargetType="Label" Binding="{Binding IsMine}" Value="True"><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger></Label.Triggers></Label>
+                            <Label Text="{Binding Text}" FontSize="{Binding MessageFontSize}" LineHeight="1.16" TextColor="{DynamicResource HimoPrimary}" LineBreakMode="WordWrap" Margin="1,1,1,0"><Label.Triggers><DataTrigger TargetType="Label" Binding="{Binding x:DataType=models:ChatMessage, Path=IsMine}" Value="True"><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger></Label.Triggers></Label>
                             <HorizontalStackLayout HorizontalOptions="End" Spacing="4">
                                 <Label Text="{Binding EditedLabel}" Style="{StaticResource ChatMeta}" />
                                 <Label Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" />

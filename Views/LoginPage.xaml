@@ -40,7 +40,7 @@
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <Grid Background="{DynamicResource HimoBackground}">
+    <Grid Background="{DynamicResource HimoBackgroundGradient}">
         <!-- Keep the sign-in surface clean so fields and actions remain the visual focus. -->
         <ScrollView x:Name="LoginScroll" VerticalScrollBarVisibility="Never">
             <VerticalStackLayout Padding="22,18,22,24" Spacing="0">
@@ -142,7 +142,7 @@
                                          WidthRequest="42" HeightRequest="46"
                                          HorizontalOptions="Center" VerticalOptions="Center"
                                          Clicked="TogglePasswordClicked"
-                                         AutomationProperties.Name="إظهار أو إخفاء كلمة المرور" />
+                                         SemanticProperties.Description="إظهار أو إخفاء كلمة المرور" />
                             <Entry x:Name="PasswordEntry"
                                    Grid.Column="1"
                                    IsPassword="True"

@@ -175,7 +175,7 @@ public class MainActivity : MauiAppCompatActivity
     {
         try
         {
-            var background = global::Android.Graphics.Color.ParseColor("#10071A");
+            var background = global::Android.Graphics.Color.ParseColor("#060B2D");
             if (Window is null) return;
             Window.SetBackgroundDrawable(new global::Android.Graphics.Drawables.ColorDrawable(background));
 #pragma warning disable CA1422 // Android 15+ controls these bars through edge-to-edge APIs; retain compatibility with earlier Android versions.
@@ -434,28 +434,34 @@ public class MainActivity : MauiAppCompatActivity
                     await Task.Delay(650);
                     if (IsFinishing || IsDestroyed) return;
 
-                    var dialog = new global::Android.App.AlertDialog.Builder(this)
-                        .SetTitle("السماح بواجهة المكالمات")
-                        .SetMessage("لكي تظهر واجهة المكالمة الواردة بملء الشاشة عندما يكون Himo بالخلفية أو مغلقًا، فعّل السماح بعرض الإشعارات بملء الشاشة من إعدادات Himo. إذا لم تفعّله، فقد تظهر المكالمة كإشعار فقط.")
-                        .SetPositiveButton("فتح الإعدادات", (sender, args) =>
+                    // Build the dialog in separate calls. The Android bindings annotate
+                    // some fluent Builder return values as nullable; a chained expression
+                    // can consequently produce multiple CS8602 warnings at this line.
+                    var builder = new global::Android.App.AlertDialog.Builder(this);
+                    builder.SetTitle("السماح بواجهة المكالمات");
+                    builder.SetMessage("لكي تظهر واجهة المكالمة الواردة بملء الشاشة عندما يكون Himo بالخلفية أو مغلقًا، فعّل السماح بعرض الإشعارات بملء الشاشة من إعدادات Himo. إذا لم تفعّله، فقد تظهر المكالمة كإشعار فقط.");
+                    builder.SetPositiveButton("فتح الإعدادات", (sender, args) =>
+                    {
+                        try
                         {
-                            try
-                            {
-                                var settingsIntent = new global::Android.Content.Intent(
-                                    "android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT");
-                                settingsIntent.SetData(global::Android.Net.Uri.Parse("package:" + PackageName));
-                                StartActivity(settingsIntent);
-                            }
-                            catch (Exception settingsEx)
-                            {
-                                System.Diagnostics.Debug.WriteLine(
-                                    $"[Himo Call] Could not open full-screen access settings: {settingsEx.Message}");
-                            }
-                        })
-                        .SetNegativeButton("لاحقًا", (sender, args) => { })
-                        .SetCancelable(true)
-                        .Create();
+                            var settingsIntent = new global::Android.Content.Intent(
+                                "android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT");
+                            var packageName = PackageName;
+                            if (string.IsNullOrWhiteSpace(packageName)) return;
+                            settingsIntent.SetData(global::Android.Net.Uri.Parse("package:" + packageName));
+                            StartActivity(settingsIntent);
+                        }
+                        catch (Exception settingsEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine(
+                                $"[Himo Call] Could not open full-screen access settings: {settingsEx.Message}");
+                        }
+                    });
+                    builder.SetNegativeButton("لاحقًا", (sender, args) => { });
+                    builder.SetCancelable(true);
 
+                    var dialog = builder.Create();
+                    if (dialog is null) return;
                     dialog.Show();
                     // Ask only once automatically; users can still enable it later in
                     // Android Settings > Apps > Special app access > Full-screen intents.

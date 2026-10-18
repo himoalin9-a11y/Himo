@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net10.0-android36.0</TargetFrameworks>
@@ -10,6 +10,9 @@
     <SingleProject>true</SingleProject>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Never glob timestamped source backups into a MAUI build: duplicate XAML files generate duplicate partial classes. -->
+    <DefaultItemExcludesInProjectFolder>$(DefaultItemExcludesInProjectFolder);stage*-backup-*/**;**/stage*-backup-*/**</DefaultItemExcludesInProjectFolder>
+    <MauiEnableXamlCBindingWithSourceCompilation>true</MauiEnableXamlCBindingWithSourceCompilation>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
     <ApplicationTitle>Himo</ApplicationTitle>
     <ApplicationId>com.companyname.himo</ApplicationId>
@@ -61,7 +64,7 @@
 
   <ItemGroup>
     <MauiIcon Include="Resources\AppIcon\appicon.png" BaseSize="1024,1024" />
-    <MauiSplashScreen Include="Resources\Splash\splash.png" Color="#17083D" BaseSize="1024,1024" />
+    <MauiSplashScreen Include="Resources\Splash\splash.png" Color="#060B2D" BaseSize="1024,1024" />
     <MauiFont Include="Resources\Fonts\*" />
     <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>

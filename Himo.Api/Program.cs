@@ -343,6 +343,82 @@ webApp.MapPut("/api/me", (HttpRequest http, UpdateProfileRequest request, Postgr
     return Results.Ok(store.UpdateProfile(session.UserId, name, cleanStatus));
 });
 
+webApp.MapPut("/api/me/username", (HttpRequest http, UpdateUsernameRequest request, PostgresStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    var username = (request.Username ?? string.Empty).Trim().ToLowerInvariant();
+    var validChars = username.All(ch => (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '.');
+    if (username.Length is < 3 or > 24 || !validChars || username.StartsWith('.') || username.EndsWith('.') || username.Contains("..", StringComparison.Ordinal))
+        return Results.BadRequest(new { message = "اسم المستخدم يجب أن يكون بين 3 و24 حرفًا، ويحتوي على أحرف إنجليزية أو أرقام أو (_) أو (.) فقط." });
+    if (!store.TryUpdateUsername(session.UserId, username, out var error))
+        return Results.Conflict(new { message = error ?? "اسم المستخدم مستخدم بالفعل." });
+    return Results.Ok(new { username });
+});
+
+webApp.MapPost("/api/me/request-email-change", async (HttpRequest http, EmailChangeRequest request, PostgresStore store, EmailVerificationService emailService, IHostEnvironment environment, CancellationToken cancellationToken) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    var email = NormalizeEmail(request.Email);
+    if (!IsValidEmail(email)) return Results.BadRequest(new { message = "أدخل بريدًا إلكترونيًا صحيحًا." });
+    var current = store.GetAccountEmailAndName(session.UserId);
+    if (string.Equals(current.Email, email, StringComparison.OrdinalIgnoreCase))
+        return Results.BadRequest(new { message = "هذا هو البريد الإلكتروني الحالي للحساب." });
+    if (store.EmailExists(email))
+        return Results.Conflict(new { message = "هذا البريد الإلكتروني مستخدم بالفعل في حساب آخر." });
+
+    var code = environment.IsDevelopment()
+        ? "123456"
+        : RandomNumberGenerator.GetInt32(100000, 1000000).ToString(CultureInfo.InvariantCulture);
+    if (!store.TrySetEmailChangeVerification(session.UserId, email, code, DateTimeOffset.UtcNow.AddMinutes(10), out var retryAfterSeconds))
+        return Results.Json(new { message = $"انتظر {retryAfterSeconds} ثانية قبل طلب رمز جديد." }, statusCode: StatusCodes.Status429TooManyRequests);
+
+    if (environment.IsDevelopment())
+        return Results.Ok(new { message = "تم إنشاء رمز التأكيد.", developmentCode = code });
+
+    try
+    {
+        await emailService.SendEmailChangeCodeAsync(email, code, cancellationToken);
+        return Results.Ok(new { message = "أرسلنا رمز التأكيد إلى البريد الجديد." });
+    }
+    catch (EmailProviderNotConfiguredException ex)
+    {
+        store.RemoveEmailChangeVerification(session.UserId);
+        return Results.Json(new { message = ex.Message }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (EmailProviderException ex)
+    {
+        store.RemoveEmailChangeVerification(session.UserId);
+        Console.Error.WriteLine($"[Himo.EmailChange] Brevo HTTP {ex.StatusCode}: {ex.ProviderResponse}");
+        return Results.Json(new { message = "تعذر إرسال رمز التأكيد إلى البريد الجديد. حاول لاحقًا." }, statusCode: StatusCodes.Status502BadGateway);
+    }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+        store.RemoveEmailChangeVerification(session.UserId);
+        return Results.StatusCode(StatusCodes.Status408RequestTimeout);
+    }
+    catch
+    {
+        store.RemoveEmailChangeVerification(session.UserId);
+        return Results.Json(new { message = "تعذر إرسال رمز التأكيد. حاول لاحقًا." }, statusCode: StatusCodes.Status502BadGateway);
+    }
+}).RequireRateLimiting("otp-request");
+
+webApp.MapPost("/api/me/verify-email-change", (HttpRequest http, VerifyEmailChangeRequest request, PostgresStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    var email = NormalizeEmail(request.Email);
+    var code = NormalizeDigits(request.Code?.Trim());
+    if (!IsValidEmail(email)) return Results.BadRequest(new { message = "البريد الإلكتروني غير صحيح." });
+    if (code.Length != 6 || code.Any(ch => ch < '0' || ch > '9'))
+        return Results.Json(new { message = "أدخل رمز التأكيد المكوّن من 6 أرقام." }, statusCode: StatusCodes.Status401Unauthorized);
+    if (!store.TryConfirmEmailChange(session.UserId, email, code, out var error))
+    {
+        var conflict = error?.Contains("مستخدم بالفعل", StringComparison.Ordinal) == true;
+        return Results.Json(new { message = error ?? "رمز التأكيد غير صحيح أو منتهي." }, statusCode: conflict ? StatusCodes.Status409Conflict : StatusCodes.Status401Unauthorized);
+    }
+    return Results.Ok(store.GetProfile(session.UserId));
+});
+
 webApp.MapGet("/api/me/photo", (HttpRequest http, PostgresStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
@@ -1279,6 +1355,8 @@ ALTER TABLE Users ADD COLUMN IF NOT EXISTS ProfilePhotoContentType TEXT NULL;
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS ProfilePhotoVersion BIGINT NOT NULL DEFAULT 0;
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS ContactPhoneNumber TEXT NULL;
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS PhoneDiscoverable BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS Username TEXT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS IX_Users_Username_Normalized ON Users(LOWER(Username)) WHERE Username IS NOT NULL;
 CREATE INDEX IF NOT EXISTS IX_Users_ContactPhoneNumber ON Users(ContactPhoneNumber);
 CREATE TABLE IF NOT EXISTS UserLegalConsents (
     Id TEXT PRIMARY KEY NOT NULL,
@@ -1321,6 +1399,15 @@ ALTER TABLE EmailVerificationCodes ADD COLUMN IF NOT EXISTS TermsAcceptedAt TEXT
 ALTER TABLE EmailVerificationCodes ADD COLUMN IF NOT EXISTS TermsVersion TEXT NULL;
 ALTER TABLE EmailVerificationCodes ADD COLUMN IF NOT EXISTS PrivacyAcceptedAt TEXT NULL;
 ALTER TABLE EmailVerificationCodes ADD COLUMN IF NOT EXISTS PrivacyVersion TEXT NULL;
+CREATE TABLE IF NOT EXISTS EmailChangeVerificationCodes (
+    UserId TEXT PRIMARY KEY NOT NULL,
+    NewEmail TEXT NOT NULL,
+    Code TEXT NOT NULL,
+    ExpiresAt TEXT NOT NULL,
+    FailedAttempts INTEGER NOT NULL DEFAULT 0,
+    LastSentAt TEXT NULL,
+    FOREIGN KEY(UserId) REFERENCES Users(Id) ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS PasswordResetCodes (
     Email TEXT PRIMARY KEY NOT NULL,
     Code TEXT NOT NULL,
@@ -1442,7 +1529,7 @@ WHERE NOT EXISTS (SELECT 1 FROM ConversationParticipants cp WHERE cp.Conversatio
         {
             using var connection = Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT PhoneNumber,Name,Status,ContactPhoneNumber,COALESCE(PhoneDiscoverable,FALSE),(ProfilePhoto IS NOT NULL) FROM Users WHERE Id=@id LIMIT 1;";
+            command.CommandText = "SELECT PhoneNumber,Name,Status,ContactPhoneNumber,COALESCE(PhoneDiscoverable,FALSE),(ProfilePhoto IS NOT NULL),Username FROM Users WHERE Id=@id LIMIT 1;";
             command.Parameters.AddWithValue("@id", userId.ToString());
             using var reader = command.ExecuteReader();
             if (!reader.Read()) throw new InvalidOperationException("المستخدم غير موجود.");
@@ -1451,7 +1538,191 @@ WHERE NOT EXISTS (SELECT 1 FROM ConversationParticipants cp WHERE cp.Conversatio
             var contactPhoneNumber = reader.IsDBNull(3) ? null : reader.GetString(3);
             var phoneDiscoverable = !reader.IsDBNull(4) && reader.GetBoolean(4);
             var hasProfilePhoto = !reader.IsDBNull(5) && reader.GetBoolean(5);
-            return new { userId, email = reader.GetString(0), name = reader.GetString(1), status = reader.GetString(2), contactPhoneNumber, phoneDiscoverable, hasProfilePhoto };
+            var username = reader.IsDBNull(6) ? null : reader.GetString(6);
+            return new { userId, email = reader.GetString(0), name = reader.GetString(1), status = reader.GetString(2), contactPhoneNumber, phoneDiscoverable, hasProfilePhoto, username };
+        }
+    }
+
+    public (string Email, string Name) GetAccountEmailAndName(Guid userId)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT PhoneNumber,Name FROM Users WHERE Id=@id LIMIT 1;";
+            command.Parameters.AddWithValue("@id", userId.ToString());
+            using var reader = command.ExecuteReader();
+            if (!reader.Read()) throw new InvalidOperationException("المستخدم غير موجود.");
+            return (reader.GetString(0), reader.GetString(1));
+        }
+    }
+
+    public bool TryUpdateUsername(Guid userId, string username, out string? error)
+    {
+        error = null;
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var transaction = connection.BeginTransaction();
+            using var check = connection.CreateCommand();
+            check.Transaction = transaction;
+            check.CommandText = "SELECT 1 FROM Users WHERE LOWER(Username)=LOWER(@username) AND Id<>@id LIMIT 1;";
+            check.Parameters.AddWithValue("@username", username);
+            check.Parameters.AddWithValue("@id", userId.ToString());
+            if (check.ExecuteScalar() is not null)
+            {
+                transaction.Rollback();
+                error = "اسم المستخدم مستخدم بالفعل. اختر اسمًا آخر.";
+                return false;
+            }
+
+            using var update = connection.CreateCommand();
+            update.Transaction = transaction;
+            update.CommandText = "UPDATE Users SET Username=@username WHERE Id=@id;";
+            update.Parameters.AddWithValue("@username", username);
+            update.Parameters.AddWithValue("@id", userId.ToString());
+            if (update.ExecuteNonQuery() == 0)
+            {
+                transaction.Rollback();
+                error = "المستخدم غير موجود.";
+                return false;
+            }
+            transaction.Commit();
+            return true;
+        }
+    }
+
+    public bool TrySetEmailChangeVerification(Guid userId, string newEmail, string code, DateTimeOffset expiresAt, out int retryAfterSeconds)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            var now = DateTimeOffset.UtcNow;
+            using var current = connection.CreateCommand();
+            current.CommandText = "SELECT LastSentAt FROM EmailChangeVerificationCodes WHERE UserId=@id LIMIT 1;";
+            current.Parameters.AddWithValue("@id", userId.ToString());
+            var raw = current.ExecuteScalar();
+            if (raw is string lastSentText && DateTimeOffset.TryParse(lastSentText, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var lastSentAt))
+            {
+                var elapsed = now - lastSentAt;
+                if (elapsed < TimeSpan.FromSeconds(60))
+                {
+                    retryAfterSeconds = Math.Max(1, (int)Math.Ceiling((TimeSpan.FromSeconds(60) - elapsed).TotalSeconds));
+                    return false;
+                }
+            }
+
+            using var command = connection.CreateCommand();
+            command.CommandText = @"INSERT INTO EmailChangeVerificationCodes(UserId,NewEmail,Code,ExpiresAt,FailedAttempts,LastSentAt)
+VALUES(@id,@email,@code,@expires,0,@sent)
+ON CONFLICT(UserId) DO UPDATE SET NewEmail=@email,Code=@code,ExpiresAt=@expires,FailedAttempts=0,LastSentAt=@sent;";
+            command.Parameters.AddWithValue("@id", userId.ToString());
+            command.Parameters.AddWithValue("@email", newEmail);
+            command.Parameters.AddWithValue("@code", HashOtp(code));
+            command.Parameters.AddWithValue("@expires", expiresAt.ToString("O"));
+            command.Parameters.AddWithValue("@sent", now.ToString("O"));
+            command.ExecuteNonQuery();
+            retryAfterSeconds = 0;
+            return true;
+        }
+    }
+
+    public void RemoveEmailChangeVerification(Guid userId)
+    {
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM EmailChangeVerificationCodes WHERE UserId=@id;";
+            command.Parameters.AddWithValue("@id", userId.ToString());
+            command.ExecuteNonQuery();
+        }
+    }
+
+    public bool TryConfirmEmailChange(Guid userId, string email, string code, out string? error)
+    {
+        error = null;
+        lock (_sync)
+        {
+            using var connection = Open();
+            using var transaction = connection.BeginTransaction();
+            using var read = connection.CreateCommand();
+            read.Transaction = transaction;
+            read.CommandText = "SELECT NewEmail,Code,ExpiresAt,FailedAttempts FROM EmailChangeVerificationCodes WHERE UserId=@id LIMIT 1;";
+            read.Parameters.AddWithValue("@id", userId.ToString());
+            using var reader = read.ExecuteReader();
+            if (!reader.Read())
+            {
+                reader.Close();
+                transaction.Rollback();
+                error = "اطلب رمز تأكيد جديدًا أولًا.";
+                return false;
+            }
+            var storedEmail = reader.GetString(0);
+            var storedHash = reader.GetString(1);
+            var expiresText = reader.GetString(2);
+            var failedAttempts = reader.GetInt32(3);
+            reader.Close();
+
+            if (!string.Equals(storedEmail, email, StringComparison.OrdinalIgnoreCase) ||
+                !DateTimeOffset.TryParse(expiresText, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var expiresAt) ||
+                expiresAt <= DateTimeOffset.UtcNow || failedAttempts >= 5)
+            {
+                using var deleteExpired = connection.CreateCommand();
+                deleteExpired.Transaction = transaction;
+                deleteExpired.CommandText = "DELETE FROM EmailChangeVerificationCodes WHERE UserId=@id;";
+                deleteExpired.Parameters.AddWithValue("@id", userId.ToString());
+                deleteExpired.ExecuteNonQuery();
+                transaction.Commit();
+                error = "رمز التأكيد منتهي أو لا يطابق البريد المطلوب. اطلب رمزًا جديدًا.";
+                return false;
+            }
+
+            var suppliedHash = HashOtp(code);
+            var storedBytes = Convert.FromHexString(storedHash);
+            var suppliedBytes = Convert.FromHexString(suppliedHash);
+            if (!CryptographicOperations.FixedTimeEquals(storedBytes, suppliedBytes))
+            {
+                using var updateAttempts = connection.CreateCommand();
+                updateAttempts.Transaction = transaction;
+                updateAttempts.CommandText = "UPDATE EmailChangeVerificationCodes SET FailedAttempts=FailedAttempts+1 WHERE UserId=@id;";
+                updateAttempts.Parameters.AddWithValue("@id", userId.ToString());
+                updateAttempts.ExecuteNonQuery();
+                transaction.Commit();
+                error = "رمز التأكيد غير صحيح.";
+                return false;
+            }
+
+            using var check = connection.CreateCommand();
+            check.Transaction = transaction;
+            check.CommandText = "SELECT 1 FROM Users WHERE LOWER(PhoneNumber)=LOWER(@email) AND Id<>@id LIMIT 1;";
+            check.Parameters.AddWithValue("@email", email);
+            check.Parameters.AddWithValue("@id", userId.ToString());
+            if (check.ExecuteScalar() is not null)
+            {
+                transaction.Rollback();
+                error = "هذا البريد الإلكتروني مستخدم بالفعل في حساب آخر.";
+                return false;
+            }
+
+            using var updateEmail = connection.CreateCommand();
+            updateEmail.Transaction = transaction;
+            updateEmail.CommandText = "UPDATE Users SET PhoneNumber=@email,EmailVerified=TRUE WHERE Id=@id;";
+            updateEmail.Parameters.AddWithValue("@email", email);
+            updateEmail.Parameters.AddWithValue("@id", userId.ToString());
+            if (updateEmail.ExecuteNonQuery() == 0)
+            {
+                transaction.Rollback();
+                error = "المستخدم غير موجود.";
+                return false;
+            }
+            using var deleteCode = connection.CreateCommand();
+            deleteCode.Transaction = transaction;
+            deleteCode.CommandText = "DELETE FROM EmailChangeVerificationCodes WHERE UserId=@id;";
+            deleteCode.Parameters.AddWithValue("@id", userId.ToString());
+            deleteCode.ExecuteNonQuery();
+            transaction.Commit();
+            return true;
         }
     }
 
@@ -3558,6 +3829,9 @@ record PasswordResetResult(Guid UserId, string Email, string Name);
 enum PasswordResetFailure { None, InvalidCode, RateLimited }
 record PushTokenRequest(string? Token);
 record UpdateProfileRequest(string? Name, string? Status);
+record UpdateUsernameRequest(string? Username);
+record EmailChangeRequest(string? Email);
+record VerifyEmailChangeRequest(string? Email, string? Code);
 record UpdateContactPhoneRequest(string? ContactPhoneNumber, bool PhoneDiscoverable);
 record ContactLookupRequest(string[]? PhoneNumbers);
 record ContactMatchResponse(Guid Id, string Name, string MatchedPhoneNumber);

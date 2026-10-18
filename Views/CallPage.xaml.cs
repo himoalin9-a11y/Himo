@@ -452,6 +452,7 @@ public partial class CallPage : ContentPage
     {
         base.OnAppearing();
         HimoAppearanceManager.ApplyToTree(this);
+        _ = SwipePageTransition.AnimateIncomingAsync(this, SwipeDirection.Left);
         _calls.StateChanged -= CallsStateChanged;
         _calls.StateChanged += CallsStateChanged;
         _calls.CallEnded -= CallsEnded;
@@ -943,9 +944,9 @@ public partial class CallPage : ContentPage
         _navigationStarted = true;
         try
         {
-            var shell = Shell.Current;
-            if (shell is null) return;
-            await MainThread.InvokeOnMainThreadAsync(async () => await shell.GoToAsync(".."));
+            if (Shell.Current is null) return;
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+                await SwipePageTransition.GoBackForCallAsync(this));
         }
         catch (Exception ex)
         {

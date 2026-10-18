@@ -502,7 +502,17 @@ public abstract class AccountSubPageBase : ContentPage
         else if (Navigation.NavigationStack.Count > 1) await Navigation.PopAsync();
     }
 
-    private async void BackClicked(object? sender, EventArgs e) => await GoBackAsync();
+    private async void BackClicked(object? sender, EventArgs e)
+    {
+        // Account pages can be opened as modal subpages from the profile editor.
+        // Dismiss that modal first; otherwise retain the normal Shell back behavior.
+        if (Navigation.ModalStack.Count > 0)
+        {
+            await Navigation.PopModalAsync();
+            return;
+        }
+        await GoBackAsync();
+    }
 }
 
 public sealed class AccountUsernamePage : AccountSubPageBase

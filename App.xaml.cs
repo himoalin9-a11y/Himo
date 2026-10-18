@@ -276,6 +276,85 @@ public partial class App : Application
         }
     }
 
+    private static readonly TimeSpan WelcomeScreenDuration = TimeSpan.FromSeconds(2);
+
+    private ContentPage CreateWelcomePage()
+    {
+        // Use the approved Himo welcome artwork as the in-app two-second splash.
+        // The asset is included as a MauiImage under Resources/Images.
+        const string splashBackground = "#060B2D";
+
+        return new ContentPage
+        {
+            Title = "Himo",
+            Padding = 0,
+            BackgroundColor = Color.FromArgb(splashBackground),
+            FlowDirection = FlowDirection.LeftToRight,
+            Content = new Grid
+            {
+                Padding = 0,
+                BackgroundColor = Color.FromArgb(splashBackground),
+                Children =
+                {
+                    new Image
+                    {
+                        Source = ImageSource.FromFile("himo_welcome.png"),
+                        Aspect = Aspect.AspectFill,
+                        HorizontalOptions = LayoutOptions.Fill,
+                        VerticalOptions = LayoutOptions.Fill
+                    }
+                }
+            }
+        };
+    }
+
+    private Window CreateWindowWithWelcome(Page destination)
+    {
+        var welcome = CreateWelcomePage();
+        var window = new Window(welcome);
+        _ = RevealPageAfterWelcomeAsync(window, welcome, destination);
+        return window;
+    }
+
+    private async Task RevealPageAfterWelcomeAsync(Window window, Page welcome, Page destination)
+    {
+        // Keep exactly one in-app welcome screen, then navigate directly to the
+        // already-selected destination. AppShell owns its own delayed page prewarm;
+        // do not run a second synchronous prewarm from the splash timer because it
+        // can block the UI thread and make the welcome screen appear longer than 2s.
+        await Task.Delay(WelcomeScreenDuration).ConfigureAwait(false);
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            if (ReferenceEquals(window.Page, welcome))
+                window.Page = destination;
+        });
+    }
+
+    private async Task ShowWelcomeThenRestoreAsync(Window window, Page welcome)
+    {
+        // Keep a single branded welcome screen while session/token restoration runs.
+        // Android's platform splash is handled separately by Resources/Splash/splash.png.
+        var minimumWelcomeDuration = Task.Delay(WelcomeScreenDuration);
+
+        try
+        {
+            await _api.TokenInitialization.ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // RestorePersistedSessionAsync handles the failed-token path and shows LoginPage.
+            System.Diagnostics.Debug.WriteLine($"Token initialization during welcome failed: {ex.Message}");
+        }
+
+        await minimumWelcomeDuration.ConfigureAwait(false);
+
+        // Do not override the page if another navigation path has already taken ownership.
+        var stillShowingWelcome = await MainThread.InvokeOnMainThreadAsync(
+            () => ReferenceEquals(window.Page, welcome));
+        if (stillShowingWelcome)
+            await RestorePersistedSessionAsync(window).ConfigureAwait(false);
+    }
+
     protected override Window CreateWindow(IActivationState? activationState)
     {
         // Startup is deliberately defensive: a stale/corrupt session or an
@@ -303,47 +382,10 @@ public partial class App : Application
             // initialization and then restore the existing session.
             if (accountSignedIn && !_api.TokenInitialization.IsCompleted)
             {
-                var restoringPage = new ContentPage
-                {
-                    BackgroundColor = Color.FromArgb("#10071A"),
-                    Content = new VerticalStackLayout
-                    {
-                        Spacing = 14,
-                        Padding = new Thickness(28),
-                        HorizontalOptions = LayoutOptions.Center,
-                        VerticalOptions = LayoutOptions.Center,
-                        Children =
-                        {
-                            new Label
-                            {
-                                Text = "Himo",
-                                FontSize = 34,
-                                FontAttributes = FontAttributes.Bold,
-                                TextColor = Color.FromArgb("#FBF6FF"),
-                                HorizontalTextAlignment = TextAlignment.Center
-                            },
-                            new ActivityIndicator
-                            {
-                                IsRunning = true,
-                                Color = Color.FromArgb("#A12AFF"),
-                                WidthRequest = 44,
-                                HeightRequest = 44,
-                                HorizontalOptions = LayoutOptions.Center
-                            },
-                            new Label
-                            {
-                                Text = "جارٍ تجهيز حسابك...",
-                                FontSize = 14,
-                                TextColor = Color.FromArgb("#B7A2D2"),
-                                HorizontalTextAlignment = TextAlignment.Center
-                            }
-                        }
-                    }
-                };
-
-                var restoringWindow = new Window(restoringPage);
-                _ = RestorePersistedSessionAsync(restoringWindow);
-                return restoringWindow;
+                var welcome = CreateWelcomePage();
+                var welcomeWindow = new Window(welcome);
+                _ = ShowWelcomeThenRestoreAsync(welcomeWindow, welcome);
+                return welcomeWindow;
             }
 
             Page page;
@@ -406,7 +448,7 @@ public partial class App : Application
                 page = new Views.LoginPage(_account, _api);
             }
 
-            return new Window(page);
+            return CreateWindowWithWelcome(page);
         }
         catch (Exception ex)
         {
@@ -416,7 +458,7 @@ public partial class App : Application
             try
             {
                 _sessionUnlocked = false;
-                return new Window(new Views.LoginPage(_account, _api));
+                return CreateWindowWithWelcome(new Views.LoginPage(_account, _api));
             }
             catch (Exception loginEx)
             {

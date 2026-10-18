@@ -508,6 +508,47 @@ public sealed class HimoApiClient
                 "استجابة الملف الشخصي غير صالحة.");
     }
 
+    public async Task<UsernameUpdateResponse> UpdateMyUsernameAsync(
+        string username,
+        CancellationToken cancellationToken = default)
+    {
+        username = (username ?? string.Empty).Trim().ToLowerInvariant();
+        using var response = await _http.PutAsJsonAsync(
+            "api/me/username", new { username }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<UsernameUpdateResponse>(
+                   cancellationToken: cancellationToken)
+               ?? throw new InvalidOperationException("استجابة اسم المستخدم غير صالحة.");
+    }
+
+    public async Task<EmailChangeRequestResponse> RequestMyEmailChangeAsync(
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        email = NormalizeEmail(email);
+        using var response = await _http.PostAsJsonAsync(
+            "api/me/request-email-change", new { email }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<EmailChangeRequestResponse>(
+                   cancellationToken: cancellationToken)
+               ?? throw new InvalidOperationException("استجابة طلب تغيير البريد غير صالحة.");
+    }
+
+    public async Task<UserProfileResponse> VerifyMyEmailChangeAsync(
+        string email,
+        string code,
+        CancellationToken cancellationToken = default)
+    {
+        email = NormalizeEmail(email);
+        code = code?.Trim() ?? string.Empty;
+        using var response = await _http.PostAsJsonAsync(
+            "api/me/verify-email-change", new { email, code }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<UserProfileResponse>(
+                   cancellationToken: cancellationToken)
+               ?? throw new InvalidOperationException("استجابة تأكيد البريد الإلكتروني غير صالحة.");
+    }
+
     public async Task<ContactPhoneSettingsResponse> UpdateMyContactPhoneAsync(
         string? contactPhoneNumber,
         bool phoneDiscoverable,
@@ -1509,7 +1550,12 @@ public sealed class HimoApiClient
         string Status,
         bool? HasProfilePhoto = null,
         string? ContactPhoneNumber = null,
-        bool PhoneDiscoverable = false);
+        bool PhoneDiscoverable = false,
+        string? Username = null);
+
+    public sealed record UsernameUpdateResponse(string Username);
+
+    public sealed record EmailChangeRequestResponse(string Message, string? DevelopmentCode = null);
 
     public sealed record ContactPhoneSettingsResponse(
         string? ContactPhoneNumber,

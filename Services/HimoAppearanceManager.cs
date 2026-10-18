@@ -46,6 +46,7 @@ public static class HimoAppearanceManager
     private static readonly ConditionalWeakTable<VisualElement, OriginalViewColors> OriginalColors = new();
     private static readonly ConditionalWeakTable<VisualElement, AppliedAppearanceState> AppliedAppearances = new();
     private static readonly ConditionalWeakTable<VisualElement, ScheduledAppearanceApply> ScheduledApplies = new();
+    private static readonly ConditionalWeakTable<VisualElement, RootAppearanceState> RootAppearanceStates = new();
 
     private static readonly HashSet<string> UiIconPrefixes = new(StringComparer.Ordinal)
     {
@@ -147,6 +148,16 @@ public static class HimoAppearanceManager
     /// </summary>
     public static Task ApplyToTreeAfterFirstFrameAsync(VisualElement root)
     {
+        var styleId = ActiveStyleId;
+        var rootState = RootAppearanceStates.GetValue(root, _ => new RootAppearanceState());
+        lock (rootState.Sync)
+        {
+            // Cached Settings/Profile pages already have their icon/color pass applied.
+            // Avoid rescanning hundreds of elements on every visit unless the style changed.
+            if (string.Equals(rootState.AppliedStyleId, styleId, StringComparison.Ordinal))
+                return Task.CompletedTask;
+        }
+
         var scheduled = ScheduledApplies.GetValue(root, _ => new ScheduledAppearanceApply());
         var generation = Interlocked.Increment(ref scheduled.Generation);
         return ApplyToTreeAfterFirstFrameCoreAsync(root, scheduled, generation);
@@ -159,23 +170,71 @@ public static class HimoAppearanceManager
     {
         try
         {
-            for (var attempt = 0; attempt < 4; attempt++)
+            // Let the page's entrance transition complete before the more expensive
+            // legacy-color/icon pass starts. Large Settings trees used to be scanned
+            // in one UI-thread block 90 ms after appearing, which interrupted motion.
+            var ready = false;
+            for (var attempt = 0; attempt < 4 && !ready; attempt++)
             {
-                await Task.Delay(attempt == 0 ? 90 : 140).ConfigureAwait(false);
+                await Task.Delay(attempt == 0 ? 155 : 100).ConfigureAwait(false);
                 if (Volatile.Read(ref scheduled.Generation) != generation)
                     return;
 
-                var applied = false;
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
-                    if (Volatile.Read(ref scheduled.Generation) != generation || root.Handler is null)
+                    ready = Volatile.Read(ref scheduled.Generation) == generation && root.Handler is not null;
+                }).ConfigureAwait(false);
+            }
+
+            if (!ready || Volatile.Read(ref scheduled.Generation) != generation)
+                return;
+
+            // Apply in small batches. Each batch runs on the UI thread because MAUI
+            // visual elements must not be read or mutated from a worker thread; the
+            // short yield between batches gives Android time to render frames.
+            using var iterator = EnumerateVisualTree(root).GetEnumerator();
+            var finished = false;
+            while (!finished)
+            {
+                var batch = new List<VisualElement>(24);
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    if (Volatile.Read(ref scheduled.Generation) != generation)
+                    {
+                        finished = true;
                         return;
-                    ApplyToTree(root);
-                    applied = true;
+                    }
+
+                    while (batch.Count < 24 && iterator.MoveNext())
+                        batch.Add(iterator.Current);
+
+                    var styleId = ActiveStyleId;
+                    if (!Palettes.TryGetValue(styleId, out var palette))
+                    {
+                        finished = true;
+                        return;
+                    }
+
+                    foreach (var view in batch)
+                    {
+                        if (IsInThemePreview(view))
+                            continue;
+                        ApplyToView(view, styleId, palette);
+                    }
+
+                    finished = batch.Count == 0;
                 }).ConfigureAwait(false);
 
-                if (applied)
-                    return;
+                if (!finished)
+                    await Task.Delay(16).ConfigureAwait(false);
+            }
+
+            if (Volatile.Read(ref scheduled.Generation) == generation)
+            {
+                var completedStyleId = ActiveStyleId;
+                var completedState = RootAppearanceStates.GetValue(root, _ => new RootAppearanceState());
+                lock (completedState.Sync)
+                    completedState.AppliedStyleId = completedStyleId;
             }
         }
         catch (Exception ex)
@@ -189,32 +248,45 @@ public static class HimoAppearanceManager
         public int Generation;
     }
 
+    private sealed class RootAppearanceState
+    {
+        public object Sync { get; } = new();
+        public string? AppliedStyleId { get; set; }
+    }
+
     private static void ApplyToTree(VisualElement root, string styleId, Palette palette)
     {
         foreach (var view in EnumerateVisualTree(root))
         {
-            if (IsInThemePreview(view))
-                continue;
+            if (!IsInThemePreview(view))
+                ApplyToView(view, styleId, palette);
+        }
 
-            var applied = AppliedAppearances.GetValue(view, _ => new AppliedAppearanceState());
-            var currentSourceKey = GetImageSourceKey(view);
-            var styleChanged = !string.Equals(applied.StyleId, styleId, StringComparison.Ordinal);
+        var rootState = RootAppearanceStates.GetValue(root, _ => new RootAppearanceState());
+        lock (rootState.Sync)
+            rootState.AppliedStyleId = styleId;
+    }
 
-            if (styleChanged)
-            {
-                var original = Snapshot(view);
-                ApplyColorSnapshot(view, original, palette);
-                ApplyIconSource(view, styleId);
-                applied.StyleId = styleId;
-                applied.ImageSourceKey = GetImageSourceKey(view);
-            }
-            else if (!string.Equals(currentSourceKey, applied.ImageSourceKey, StringComparison.Ordinal))
-            {
-                // A page can load a new image after appearing (e.g. avatar/icon).
-                // Only touch its source when it actually changed, not on every pass.
-                ApplyIconSource(view, styleId);
-                applied.ImageSourceKey = GetImageSourceKey(view);
-            }
+    private static void ApplyToView(VisualElement view, string styleId, Palette palette)
+    {
+        var applied = AppliedAppearances.GetValue(view, _ => new AppliedAppearanceState());
+        var currentSourceKey = GetImageSourceKey(view);
+        var styleChanged = !string.Equals(applied.StyleId, styleId, StringComparison.Ordinal);
+
+        if (styleChanged)
+        {
+            var original = Snapshot(view);
+            ApplyColorSnapshot(view, original, palette);
+            ApplyIconSource(view, styleId);
+            applied.StyleId = styleId;
+            applied.ImageSourceKey = GetImageSourceKey(view);
+        }
+        else if (!string.Equals(currentSourceKey, applied.ImageSourceKey, StringComparison.Ordinal))
+        {
+            // A page can load a new image after appearing (e.g. avatar/icon).
+            // Only touch its source when it actually changed, not on every pass.
+            ApplyIconSource(view, styleId);
+            applied.ImageSourceKey = GetImageSourceKey(view);
         }
     }
 

@@ -1176,7 +1176,7 @@ public partial class ChatPage : ContentPage
 
         try
         {
-            await Shell.Current.GoToAsync($"CallPage?id={conversationId:D}&mode=audio");
+            await SwipePageTransition.NavigateAsync(this, $"CallPage?id={conversationId:D}&mode=audio", SwipeDirection.Left);
         }
         catch (Exception ex)
         {
@@ -1194,7 +1194,7 @@ public partial class ChatPage : ContentPage
 
         try
         {
-            await Shell.Current.GoToAsync($"CallPage?id={conversationId:D}&mode=video");
+            await SwipePageTransition.NavigateAsync(this, $"CallPage?id={conversationId:D}&mode=video", SwipeDirection.Left);
         }
         catch (Exception ex)
         {
