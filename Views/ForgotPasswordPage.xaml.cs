@@ -13,6 +13,7 @@ public partial class ForgotPasswordPage : ContentPage
     public ForgotPasswordPage(AccountService account, HimoApiClient api, string? initialEmail = null)
     {
         InitializeComponent();
+        Himo.Services.AppLocalization.AttachToPage(this);
         _account = account;
         _api = api;
         NavigationPage.SetHasNavigationBar(this, false);

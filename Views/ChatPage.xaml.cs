@@ -1,4 +1,4 @@
-using Microsoft.Maui.Graphics;
+﻿using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Dispatching;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Networking;
@@ -143,6 +143,7 @@ public partial class ChatPage : ContentPage
     {
         System.Diagnostics.Debug.WriteLine("[Himo ChatPage] Constructor started.");
         InitializeComponent();
+        Himo.Services.AppLocalization.AttachToPage(this);
         System.Diagnostics.Debug.WriteLine("[Himo ChatPage] XAML initialized successfully.");
         Messages.ItemsSource = _visibleMessages;
         _chat = chat; _api = api; _account = account; _notifications = notifications; _realtime = realtime;
@@ -176,7 +177,10 @@ public partial class ChatPage : ContentPage
     {
         System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] OnAppearing id={_conversationId} remote={_remoteConversationId ?? "(null)"}.");
         base.OnAppearing();
-        HimoAppearanceManager.ApplyToTree(this);
+        // Defer the expensive legacy icon/palette traversal until after the chat
+        // first frame. A synchronous tree walk here was responsible for 80-145
+        // dropped frames when opening a conversation.
+        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this);
         _isAppInBackground = false;
         AttachWallpaperLifecycleHandlers();
         Connectivity.Current.ConnectivityChanged -= OnConnectivityChanged;
@@ -716,7 +720,7 @@ public partial class ChatPage : ContentPage
     private async void CreateGroupMenuClicked(object? sender, EventArgs e)
     {
         CloseConversationMenu();
-        await DisplayAlertAsync("إنشاء مجموعة", "سيتم إنشاء المجموعة من شاشة المجموعات.", "حسنًا");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إنشاء مجموعة"), "سيتم إنشاء المجموعة من شاشة المجموعات.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     private void SearchMenuClicked(object? sender, EventArgs e)
@@ -750,7 +754,7 @@ public partial class ChatPage : ContentPage
                 : $"himo_disappearing_local_{_conversationId}";
 
             Preferences.Default.Set(key, selected);
-            await DisplayAlertAsync("الرسائل ذاتية الاختفاء", $"تم اختيار: {selected}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الرسائل ذاتية الاختفاء"), $"تم اختيار: {selected}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -823,7 +827,7 @@ public partial class ChatPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("خلفية الدردشة", "تعذر استخدام الصورة: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفية الدردشة"), "تعذر استخدام الصورة: " + ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -1131,11 +1135,11 @@ public partial class ChatPage : ContentPage
         try
         {
             await _api.ReportConversationAsync(conversationId, reason);
-            await DisplayAlertAsync("الإبلاغ", "تم إرسال البلاغ.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الإبلاغ"), Himo.Services.AppLocalization.TranslateSourceText("تم إرسال البلاغ."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الإبلاغ", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الإبلاغ"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -1150,7 +1154,7 @@ public partial class ChatPage : ContentPage
             .ToList();
         if (!blocked) values.Add(_remoteConversationId);
         Preferences.Default.Set("himo_blocked_conversations", string.Join(',', values.Distinct(StringComparer.OrdinalIgnoreCase)));
-        await DisplayAlertAsync("المحادثة", blocked ? "تم إلغاء حظر المحادثة." : "تم حظر المحادثة.", "حسنًا");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المحادثة"), blocked ? Himo.Services.AppLocalization.TranslateSourceText("تم إلغاء حظر المحادثة.") : Himo.Services.AppLocalization.TranslateSourceText("تم حظر المحادثة."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     private async void ArchiveConversationClicked(object? sender, EventArgs e)
@@ -1163,14 +1167,14 @@ public partial class ChatPage : ContentPage
             .ToList();
         if (!archived) values.Add(_remoteConversationId);
         Preferences.Default.Set("himo_archived_conversations", string.Join(',', values.Distinct(StringComparer.OrdinalIgnoreCase)));
-        await DisplayAlertAsync("المحادثة", archived ? "تم إلغاء أرشفة المحادثة." : "تمت أرشفة المحادثة.", "حسنًا");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المحادثة"), archived ? "تم إلغاء أرشفة المحادثة." : Himo.Services.AppLocalization.TranslateSourceText("تمت أرشفة المحادثة."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     private async void AudioCallClicked(object? sender, EventArgs e)
     {
         if (!Guid.TryParse(_remoteConversationId, out var conversationId))
         {
-            await DisplayAlertAsync("المكالمة", "المحادثة غير متصلة بالخادم بعد.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المكالمة"), "المحادثة غير متصلة بالخادم بعد.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -1180,7 +1184,7 @@ public partial class ChatPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("المكالمة", $"تعذر فتح شاشة المكالمة: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المكالمة"), $"تعذر فتح شاشة المكالمة: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -1188,7 +1192,7 @@ public partial class ChatPage : ContentPage
     {
         if (!Guid.TryParse(_remoteConversationId, out var conversationId))
         {
-            await DisplayAlertAsync("المكالمة", "المحادثة غير متصلة بالخادم بعد.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المكالمة"), "المحادثة غير متصلة بالخادم بعد.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -1198,7 +1202,7 @@ public partial class ChatPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("المكالمة", $"تعذر فتح شاشة المكالمة: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المكالمة"), $"تعذر فتح شاشة المكالمة: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -1212,7 +1216,7 @@ public partial class ChatPage : ContentPage
             .ToList();
         if (!muted) values.Add(_remoteConversationId);
         Preferences.Default.Set("himo_muted_conversations", string.Join(',', values.Distinct(StringComparer.OrdinalIgnoreCase)));
-        await DisplayAlertAsync("الإشعارات", muted ? "تم إلغاء كتم إشعارات المحادثة." : "تم كتم إشعارات المحادثة.", "حسنًا");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الإشعارات"), muted ? "تم إلغاء كتم إشعارات المحادثة." : Himo.Services.AppLocalization.TranslateSourceText("تم كتم إشعارات المحادثة."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     protected override void OnDisappearing()
@@ -1258,7 +1262,7 @@ public partial class ChatPage : ContentPage
 
     private int _flushingOutbox;
 
-    private async Task FlushOutboxAsync()
+    private async Task FlushOutboxAsync(string? prioritizeClientMessageId = null)
     {
         if (!_api.HasToken ||
             Connectivity.Current.NetworkAccess != NetworkAccess.Internet ||
@@ -1270,7 +1274,12 @@ public partial class ChatPage : ContentPage
             while (_api.HasToken)
             {
                 var pendingBatch = _chat.GetPendingMessages()
-                    .OrderBy(x => x.SentAt)
+                    // Send the message the user just submitted before older failed
+                    // or offline messages, then drain the durable outbox normally.
+                    .OrderBy(x => !string.IsNullOrWhiteSpace(prioritizeClientMessageId) &&
+                                  string.Equals(x.ClientMessageId, prioritizeClientMessageId, StringComparison.Ordinal)
+                        ? 0 : 1)
+                    .ThenBy(x => x.SentAt)
                     .ThenBy(x => x.Id)
                     .ToList();
 
@@ -1688,12 +1697,10 @@ public partial class ChatPage : ContentPage
             var receivedNewMessages = allMessages.Count > messageCountBeforeSync;
             var shouldMarkRead = IsConversationVisible && (wasInitialSync || receivedNewMessages);
 
+            // Update the local unread count immediately, but never wait for the
+            // notification plugin or the server's read receipt before showing messages.
             if (shouldMarkRead)
-            {
-                _chat.MarkAsRead(_conversationId);
-                await _notifications.ClearConversationAsync(_conversationId.ToString()).ConfigureAwait(false);
-                try { await _api.MarkConversationReadAsync(remoteConversationId, cancellationToken).ConfigureAwait(false); } catch { }
-            }
+                await MainThread.InvokeOnMainThreadAsync(() => _chat.MarkAsRead(_conversationId)).ConfigureAwait(false);
 
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
@@ -1717,6 +1724,15 @@ public partial class ChatPage : ContentPage
                     AppendNewMessagesToVisible();
                 }
             }).ConfigureAwait(false);
+
+            if (shouldMarkRead)
+            {
+                // Both acknowledgements are independent of first paint. Run them after
+                // binding, so slow push-notification cleanup or network receipts cannot
+                // add seconds to the perceived chat opening time.
+                _ = ClearConversationNotificationAsync();
+                _ = MarkRemoteConversationReadAsync(remoteConversationId);
+            }
 
             System.Diagnostics.Debug.WriteLine($"[HimoTiming] LoadRemote END total={timing.ElapsedMilliseconds}ms");
             QueueVisibleMediaPreparation();
@@ -1873,7 +1889,7 @@ public partial class ChatPage : ContentPage
             var permission = await Permissions.RequestAsync<Permissions.Microphone>();
             if (permission != PermissionStatus.Granted)
             {
-                await DisplayAlertAsync("الرسائل الصوتية", "يلزم السماح باستخدام الميكروفون لتسجيل رسالة صوتية.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الرسائل الصوتية"), "يلزم السماح باستخدام الميكروفون لتسجيل رسالة صوتية.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
 
@@ -1898,10 +1914,10 @@ public partial class ChatPage : ContentPage
         catch (Exception ex)
         {
             CleanupAudioRecorder();
-            await DisplayAlertAsync("الرسائل الصوتية", $"تعذر بدء التسجيل: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الرسائل الصوتية"), $"تعذر بدء التسجيل: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
 #else
-        await DisplayAlertAsync("الرسائل الصوتية", "تسجيل الصوت متاح حاليًا على Android.", "حسنًا");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الرسائل الصوتية"), "تسجيل الصوت متاح حاليًا على Android.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
 #endif
     }
 
@@ -1925,7 +1941,7 @@ public partial class ChatPage : ContentPage
             var info = new FileInfo(path);
             if (info.Length == 0 || info.Length > 25L * 1024 * 1024)
             {
-                await DisplayAlertAsync("الرسائل الصوتية", "تعذر إرسال التسجيل أو تجاوز حجمه 25 ميجابايت.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الرسائل الصوتية"), "تعذر إرسال التسجيل أو تجاوز حجمه 25 ميجابايت.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
 
@@ -1969,7 +1985,7 @@ public partial class ChatPage : ContentPage
         catch (Exception ex)
         {
             CleanupAudioRecorder();
-            await DisplayAlertAsync("الرسائل الصوتية", $"تعذر إرسال التسجيل: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الرسائل الصوتية"), $"تعذر إرسال التسجيل: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -2039,9 +2055,9 @@ public partial class ChatPage : ContentPage
                 {
                     StopAudioPlayback();
                     await DisplayAlertAsync(
-                        "الرسالة الصوتية",
+                        Himo.Services.AppLocalization.TranslateSourceText("الرسالة الصوتية"),
                         $"تعذر تشغيل التسجيل الصوتي. MediaPlayer: {what}/{extra}",
-                        "حسنًا");
+                        Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 });
             };
 
@@ -2050,7 +2066,7 @@ public partial class ChatPage : ContentPage
         catch (Exception ex)
         {
             StopAudioPlayback();
-            await DisplayAlertAsync("الرسالة الصوتية", $"تعذر تشغيل التسجيل: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الرسالة الصوتية"), $"تعذر تشغيل التسجيل: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
 #else
         await Task.CompletedTask;
@@ -2162,11 +2178,11 @@ public partial class ChatPage : ContentPage
         }
         catch (PermissionException)
         {
-            await DisplayAlertAsync("صلاحية الكاميرا", "اسمح لـ Himo باستخدام الكاميرا والميكروفون ثم حاول مرة أخرى.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("صلاحية الكاميرا"), "اسمح لـ Himo باستخدام الكاميرا والميكروفون ثم حاول مرة أخرى.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الكاميرا", $"تعذر فتح كاميرا Himo: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الكاميرا"), $"تعذر فتح كاميرا Himo: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -2191,15 +2207,15 @@ public partial class ChatPage : ContentPage
         }
         catch (FeatureNotSupportedException)
         {
-            await DisplayAlertAsync("الصور", "اختيار الصور غير مدعوم على هذا الجهاز.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الصور"), "اختيار الصور غير مدعوم على هذا الجهاز.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (PermissionException)
         {
-            await DisplayAlertAsync("الصور", "تعذر الوصول إلى الصور. اسمح للتطبيق بالوصول ثم حاول مرة أخرى.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الصور"), "تعذر الوصول إلى الصور. اسمح للتطبيق بالوصول ثم حاول مرة أخرى.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الصور", $"تعذر اختيار الصورة: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الصور"), $"تعذر اختيار الصورة: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -2224,15 +2240,15 @@ public partial class ChatPage : ContentPage
         }
         catch (FeatureNotSupportedException)
         {
-            await DisplayAlertAsync("الفيديو", "اختيار الفيديو غير مدعوم على هذا الجهاز.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الفيديو"), "اختيار الفيديو غير مدعوم على هذا الجهاز.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (PermissionException)
         {
-            await DisplayAlertAsync("الفيديو", "تعذر الوصول إلى الفيديوهات. اسمح للتطبيق بالوصول ثم حاول مرة أخرى.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الفيديو"), "تعذر الوصول إلى الفيديوهات. اسمح للتطبيق بالوصول ثم حاول مرة أخرى.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الفيديو", $"تعذر اختيار الفيديو: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الفيديو"), $"تعذر اختيار الفيديو: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -2265,9 +2281,9 @@ public partial class ChatPage : ContentPage
         catch (Exception ex)
         {
             await DisplayAlertAsync(
-                "تحرير الوسائط",
+                Himo.Services.AppLocalization.TranslateSourceText("تحرير الوسائط"),
                 $"تعذر فتح محرر الوسائط: {ex.Message}",
-                "حسنًا");
+                Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return null;
         }
     }
@@ -2286,7 +2302,7 @@ public partial class ChatPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("المرفقات", $"تعذر اختيار الملف: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المرفقات"), $"تعذر اختيار الملف: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -2302,7 +2318,7 @@ public partial class ChatPage : ContentPage
 
             if (file.FileName.Length > 180)
             {
-                await DisplayAlertAsync("المرفقات", "اسم الملف طويل جدًا.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المرفقات"), "اسم الملف طويل جدًا.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
 
@@ -2333,7 +2349,7 @@ public partial class ChatPage : ContentPage
                 if (selectedStream.CanSeek && selectedStream.Length > maxBytes)
                 {
                     var limitText = isVideo ? "100 ميجابايت" : "25 ميجابايت";
-                    await DisplayAlertAsync("المرفقات", $"الحد الأقصى لحجم {(isVideo ? "الفيديو" : "الملف")} {limitText}.", "حسنًا");
+                    await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المرفقات"), $"الحد الأقصى لحجم {(isVideo ? "الفيديو" : "الملف")} {limitText}.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                     return;
                 }
             }
@@ -2385,19 +2401,19 @@ public partial class ChatPage : ContentPage
         }
         catch (HttpRequestException ex)
         {
-            await DisplayAlertAsync("المرفقات", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المرفقات"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (FeatureNotSupportedException)
         {
-            await DisplayAlertAsync("المرفقات", "هذه الميزة غير مدعومة على الجهاز الحالي.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المرفقات"), "هذه الميزة غير مدعومة على الجهاز الحالي.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (PermissionException)
         {
-            await DisplayAlertAsync("المرفقات", "يلزم السماح بالوصول إلى الوسائط ثم المحاولة مرة أخرى.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المرفقات"), "يلزم السماح بالوصول إلى الوسائط ثم المحاولة مرة أخرى.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("المرفقات", $"تعذر إرسال المرفق: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المرفقات"), $"تعذر إرسال المرفق: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -2554,7 +2570,7 @@ public partial class ChatPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الصورة", $"تعذر فتح الصورة: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الصورة"), $"تعذر فتح الصورة: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -2568,7 +2584,7 @@ public partial class ChatPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("المرفق", $"تعذر فتح الملف: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المرفق"), $"تعذر فتح الملف: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -2828,7 +2844,7 @@ public partial class ChatPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الفيديو", $"تعذر تشغيل الفيديو: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الفيديو"), $"تعذر تشغيل الفيديو: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -2930,7 +2946,7 @@ public partial class ChatPage : ContentPage
                         ? "تعذر تشغيل الفيديو على هذا الجهاز."
                         : $"تعذر تشغيل الفيديو: {args.ErrorMessage}";
                     CloseInlineVideo();
-                    await DisplayAlertAsync("الفيديو", message, "حسنًا");
+                    await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الفيديو"), message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 });
             };
 
@@ -3061,7 +3077,7 @@ public partial class ChatPage : ContentPage
         }
         catch (Exception ex)
         {
-            _ = DisplayAlertAsync("الفيديو", $"تعذر التحكم في الفيديو: {ex.Message}", "حسنًا");
+            _ = DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الفيديو"), $"تعذر التحكم في الفيديو: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -3189,7 +3205,7 @@ public partial class ChatPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعديل الرسالة", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعديل الرسالة"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -3200,11 +3216,11 @@ public partial class ChatPage : ContentPage
 
         if (!Guid.TryParse(message.RemoteId, out var messageId))
         {
-            await DisplayAlertAsync("حذف الرسالة", "هذه الرسالة لم تحصل بعد على رقم من الخادم، لذلك لا يمكن حذفها الآن.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الرسالة"), "هذه الرسالة لم تحصل بعد على رقم من الخادم، لذلك لا يمكن حذفها الآن.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
-        var confirm = await DisplayAlertAsync("حذف الرسالة", "هل تريد حذف الرسالة؟", "حذف", "إلغاء");
+        var confirm = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الرسالة"), "هل تريد حذف الرسالة؟", Himo.Services.AppLocalization.TranslateSourceText("حذف"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
         if (!confirm) return;
 
         try
@@ -3215,7 +3231,7 @@ public partial class ChatPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("حذف الرسالة", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الرسالة"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -3233,7 +3249,7 @@ public partial class ChatPage : ContentPage
 
             if (targets.Count == 0)
             {
-                await DisplayAlertAsync("تحويل الرسالة", "لا توجد محادثات أخرى متاحة.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تحويل الرسالة"), Himo.Services.AppLocalization.TranslateSourceText("لا توجد محادثات أخرى متاحة."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
 
@@ -3245,11 +3261,11 @@ public partial class ChatPage : ContentPage
             if (target is null) return;
 
             await _api.SendMessageAsync(target.Id, message.Text);
-            await DisplayAlertAsync("تحويل الرسالة", "تم تحويل الرسالة.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تحويل الرسالة"), Himo.Services.AppLocalization.TranslateSourceText("تم تحويل الرسالة."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تحويل الرسالة", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تحويل الرسالة"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -3427,7 +3443,7 @@ public partial class ChatPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("مشاركة الرسالة", $"تعذر مشاركة الرسالة: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("مشاركة الرسالة"), $"تعذر مشاركة الرسالة: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -3444,7 +3460,7 @@ public partial class ChatPage : ContentPage
 
         if (selected.Count != 1)
         {
-            _ = DisplayAlertAsync("التعليق", "اختر رسالة واحدة فقط للتعليق عليها.", "حسنًا");
+            _ = DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("التعليق"), Himo.Services.AppLocalization.TranslateSourceText("اختر رسالة واحدة فقط للتعليق عليها."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -3512,11 +3528,11 @@ public partial class ChatPage : ContentPage
         var deletable = selected.Where(x => Guid.TryParse(x.RemoteId, out _)).ToList();
         if (deletable.Count == 0)
         {
-            await DisplayAlertAsync("حذف الرسائل", "الرسائل المحددة لم تحصل بعد على أرقام من الخادم، أرسلها وانتظر اكتمال الإرسال ثم حاول الحذف.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الرسائل"), "الرسائل المحددة لم تحصل بعد على أرقام من الخادم، أرسلها وانتظر اكتمال الإرسال ثم حاول الحذف.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
-        var confirm = await DisplayAlertAsync("حذف الرسائل", $"حذف {deletable.Count} رسالة؟", "حذف", "إلغاء");
+        var confirm = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الرسائل"), $"حذف {deletable.Count} رسالة؟", Himo.Services.AppLocalization.TranslateSourceText("حذف"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
         if (!confirm) return;
 
         var failures = new List<string>();
@@ -3542,7 +3558,7 @@ public partial class ChatPage : ContentPage
         if (failures.Count > 0)
         {
             var details = string.Join(Environment.NewLine, failures.Distinct().Take(3));
-            await DisplayAlertAsync("حذف الرسائل", details, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الرسائل"), details, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -3618,7 +3634,7 @@ public partial class ChatPage : ContentPage
         {
             if (!_api.HasToken || Connectivity.Current.NetworkAccess != NetworkAccess.Internet)
             {
-                await DisplayAlertAsync("إعادة الإرسال", "لا يوجد اتصال بالإنترنت حاليًا. أعد المحاولة بعد الاتصال بالشبكة.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إعادة الإرسال"), "لا يوجد اتصال بالإنترنت حاليًا. أعد المحاولة بعد الاتصال بالشبكة.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
 
@@ -3662,14 +3678,14 @@ public partial class ChatPage : ContentPage
                 return;
             }
 
-            await DisplayAlertAsync("إعادة الإرسال", "لا توجد نسخة محلية من هذا الملف لإعادة رفعه. أعد اختيار الملف من المرفقات.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إعادة الإرسال"), "لا توجد نسخة محلية من هذا الملف لإعادة رفعه. أعد اختيار الملف من المرفقات.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
             message.IsPending = true;
             message.DeliveryStatus = "failed";
             RefreshMessagesView(scrollToEnd: false);
-            await DisplayAlertAsync("إعادة الإرسال", $"تعذرت إعادة الإرسال: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إعادة الإرسال"), $"تعذرت إعادة الإرسال: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -3686,7 +3702,7 @@ public partial class ChatPage : ContentPage
             return;
         if (text.Length > 4000)
         {
-            await DisplayAlertAsync("الإرسال", "الرسالة طويلة جدًا. الحد الأقصى 4000 حرف.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الإرسال"), "الرسالة طويلة جدًا. الحد الأقصى 4000 حرف.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -3694,9 +3710,9 @@ public partial class ChatPage : ContentPage
         if (!_api.HasToken)
         {
             await DisplayAlertAsync(
-                "الإرسال",
-                "جلسة الدخول غير متاحة حاليًا. سجّل الدخول مرة أخرى ثم أعد الإرسال.",
-                "حسنًا");
+                Himo.Services.AppLocalization.TranslateSourceText("الإرسال"),
+                Himo.Services.AppLocalization.TranslateSourceText("جلسة الدخول غير متاحة حاليًا. سجّل الدخول مرة أخرى ثم أعد الإرسال."),
+                Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -3714,9 +3730,9 @@ public partial class ChatPage : ContentPage
         if (conversation is null || !Guid.TryParse(conversation.RemoteId, out _))
         {
             await DisplayAlertAsync(
-                "الإرسال",
-                "تعذر ربط المحادثة بالخادم حاليًا. انتظر لحظة ثم أرسل الرسالة مرة أخرى.",
-                "حسنًا");
+                Himo.Services.AppLocalization.TranslateSourceText("الإرسال"),
+                Himo.Services.AppLocalization.TranslateSourceText("تعذر ربط المحادثة بالخادم حاليًا. انتظر لحظة ثم أرسل الرسالة مرة أخرى."),
+                Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -3738,7 +3754,7 @@ public partial class ChatPage : ContentPage
         ClearReply();
         RefreshMessagesView(scrollToEnd: true);
 
-        _ = FlushOutboxAsync();
+        _ = FlushOutboxAsync(clientMessageId);
     }
 
     private static string GetMessageUiKey(ChatMessage message)

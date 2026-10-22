@@ -12,6 +12,7 @@ public partial class AccountManagementPage : ContentPage
     public AccountManagementPage(HimoApiClient api, AccountService account, ProfileService profile)
     {
         InitializeComponent();
+        Himo.Services.AppLocalization.AttachToPage(this);
         _api = api;
         _account = account;
         _profile = profile;
@@ -44,6 +45,7 @@ public partial class AccountManagementPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        HimoAppearanceManager.ApplyToTree(this);
         UpdateSummaryFromLocalAccount();
         DisplayAccountPhoto(_profile.Profile.PhotoPath);
         if (!_api.HasToken)
@@ -123,7 +125,7 @@ public partial class AccountManagementPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("إدارة الحساب", "تعذر فتح الصفحة المطلوبة: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إدارة الحساب"), "تعذر فتح الصفحة المطلوبة: " + ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 

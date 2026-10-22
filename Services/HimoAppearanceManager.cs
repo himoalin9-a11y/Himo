@@ -395,11 +395,16 @@ public static class HimoAppearanceManager
             slider2.MaximumTrackColor = MapColor(maximum, ColorRole.Stroke, palette);
     }
 
+    // Keep every UI icon consistently electric blue, regardless of the selected
+    // background/accent theme. This only changes icon image assets; it does not
+    // change the selected palette, text colors, or page backgrounds.
+    private const string UiIconStyleId = "p_electric_blue";
+
     private static void ApplyIconSource(VisualElement view, string styleId)
     {
-        if (view is Image image && TryGetThemedSource(image.Source, styleId, out var imageSource))
+        if (view is Image image && TryGetThemedSource(image.Source, UiIconStyleId, out var imageSource))
             image.Source = imageSource;
-        else if (view is ImageButton imageButton && TryGetThemedSource(imageButton.Source, styleId, out var buttonSource))
+        else if (view is ImageButton imageButton && TryGetThemedSource(imageButton.Source, UiIconStyleId, out var buttonSource))
             imageButton.Source = buttonSource;
     }
 
@@ -426,9 +431,6 @@ public static class HimoAppearanceManager
 
         if (!ShouldThemeIcon(file))
             return false;
-        if (FixedMeaningIcons.Contains(file))
-            return false;
-
         themedSource = ImageSource.FromFile($"himo_theme_{styleId}_{file}");
         return true;
     }

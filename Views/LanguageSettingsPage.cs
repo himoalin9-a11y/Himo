@@ -1,24 +1,24 @@
 using System.Globalization;
 using Microsoft.Maui.Controls;
+using Himo.Services;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Storage;
 
 namespace Himo.Views;
 
 /// <summary>
-/// Persists the user's language choice and applies its culture and text direction.
-/// App-wide text translation requires localized string resources; this page does not
-/// pretend that changing CultureInfo translates hard-coded Arabic labels by itself.
+/// Persists the user's language choice and applies resource-backed text translations
+/// to the visible page tree. The app's resx files are the source for translated labels.
 /// </summary>
-public sealed class LanguageSettingsPage : ContentPage
+public sealed class LanguageSettingsPage : LocalizedContentPage
 {
-    private const string LanguagePreferenceKey = "himo_app_language";
+    private const string LanguagePreferenceKey = AppLocalization.PreferenceKey;
 
     private sealed record LanguageOption(string Code, string NativeName, string LocalName, bool IsRtl);
 
     private static readonly LanguageOption[] Languages =
     {
-        new("ar", "العربية", "Arabic", true),
+        new("ar", "العربية", "اللغة العربية", true),
         new("en", "English", "الإنجليزية", false),
         new("fr", "Français", "الفرنسية", false),
         new("tr", "Türkçe", "التركية", false),
@@ -35,7 +35,7 @@ public sealed class LanguageSettingsPage : ContentPage
     public LanguageSettingsPage()
     {
         Title = "لغة التطبيق";
-        FlowDirection = FlowDirection.RightToLeft;
+        FlowDirection = AppLocalization.PreferredFlowDirection;
         Shell.SetNavBarIsVisible(this, false);
         SetDynamicResource(BackgroundColorProperty, "HimoBackground");
         _selectedCode = Preferences.Default.Get(LanguagePreferenceKey, "ar");
@@ -95,7 +95,7 @@ public sealed class LanguageSettingsPage : ContentPage
 
         var note = new Label
         {
-            Text = "سيُحفظ اختيارك. بعض النصوص الحالية مكتوبة مباشرة داخل الواجهات، وستحتاج إلى موارد ترجمة حتى تتبدّل جميع الشاشات بالكامل.",
+            Text = "سيتم تطبيق اللغة على الواجهات التي تتوفر لها موارد ترجمة.",
             FontSize = 11,
             LineBreakMode = LineBreakMode.WordWrap,
             HorizontalTextAlignment = TextAlignment.Start
@@ -182,39 +182,14 @@ public sealed class LanguageSettingsPage : ContentPage
     private async void SaveLanguageClicked(object? sender, EventArgs e)
     {
         var selected = Languages.First(x => x.Code.Equals(_selectedCode, StringComparison.OrdinalIgnoreCase));
-        Preferences.Default.Set(LanguagePreferenceKey, selected.Code);
+        AppLocalization.SetLanguage(selected.Code);
+        FlowDirection = AppLocalization.PreferredFlowDirection;
+        AppLocalization.ApplyToPage(this);
 
-        try
-        {
-            var culture = CultureInfo.GetCultureInfo(selected.Code);
-            CultureInfo.DefaultThreadCurrentCulture = culture;
-            CultureInfo.DefaultThreadCurrentUICulture = culture;
-            CultureInfo.CurrentCulture = culture;
-            CultureInfo.CurrentUICulture = culture;
-        }
-        catch (CultureNotFoundException)
-        {
-            // The choice remains saved even if a platform lacks the culture definition.
-        }
-
-        var direction = selected.IsRtl ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
-        if (Application.Current is { } app)
-        {
-            foreach (var window in app.Windows)
-            {
-                if (window.Page is not null)
-                    window.Page.FlowDirection = direction;
-            }
-        }
-
-        if (Shell.Current is not null)
-            Shell.Current.FlowDirection = direction;
-
-        var message = selected.Code == "en"
-            ? "Language preference saved. Some screens still contain fixed Arabic text and need localization resources."
-            : "تم حفظ تفضيل اللغة. بعض الشاشات تحتوي نصوصًا عربية ثابتة وتحتاج إلى موارد ترجمة لتغييرها بالكامل.";
-        var title = selected.Code == "en" ? "Language saved" : "تم حفظ اللغة";
-        await DisplayAlertAsync(title, message, selected.Code == "en" ? "OK" : "حسنًا");
+        await DisplayAlertAsync(
+            AppLocalization.T("LanguageSavedTitle"),
+            AppLocalization.T("LanguageSavedMessage"),
+            AppLocalization.T("OK"));
         await BackAsync();
     }
 

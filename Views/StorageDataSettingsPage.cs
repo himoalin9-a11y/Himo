@@ -20,7 +20,7 @@ namespace Himo.Views;
 /// app-owned cache/media files; the message database and account/session stores
 /// are never offered for deletion from this page.
 /// </summary>
-public sealed class StorageDataSettingsPage : ContentPage
+public sealed class StorageDataSettingsPage : Himo.Services.LocalizedContentPage
 {
     private const string RxBaselineKey = "himo_data_usage_uid_rx_baseline_v1";
     private const string TxBaselineKey = "himo_data_usage_uid_tx_baseline_v1";
@@ -51,6 +51,7 @@ public sealed class StorageDataSettingsPage : ContentPage
         WidthRequest = 22
     };
     private readonly Label _totalStorageValue = StatValueLabel("—");
+    private readonly Label _cacheStorageValue = StatValueLabel("—");
     private readonly Label _mediaStorageValue = StatValueLabel("—");
     private readonly Label _fileCountValue = StatValueLabel("—");
     private readonly Label _receivedValue = StatValueLabel("جارٍ القراءة");
@@ -72,7 +73,8 @@ public sealed class StorageDataSettingsPage : ContentPage
         _callHistory = new CallHistoryService();
         Title = "التخزين والبيانات";
         FlowDirection = FlowDirection.RightToLeft;
-        BackgroundColor = Color.FromArgb("#F7F5FC");
+        BackgroundColor = Color.FromArgb("#211333");
+        SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         Shell.SetNavBarIsVisible(this, false);
         Content = BuildLayout();
         EnsureInitialUsageBaseline();
@@ -81,6 +83,7 @@ public sealed class StorageDataSettingsPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        HimoAppearanceManager.ApplyToTree(this);
         RefreshScreen();
     }
 
@@ -93,32 +96,37 @@ public sealed class StorageDataSettingsPage : ContentPage
                 new RowDefinition { Height = GridLength.Auto },
                 new RowDefinition { Height = GridLength.Star }
             },
-            BackgroundColor = Color.FromArgb("#F7F5FC"),
+            BackgroundColor = Color.FromArgb("#211333"),
             FlowDirection = FlowDirection.LeftToRight
         };
-
+        root.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         root.Add(BuildHeader(), 0, 0);
 
         var content = new VerticalStackLayout
         {
             Padding = new Thickness(16, 12, 16, 28),
             Spacing = 15,
-            FlowDirection = FlowDirection.RightToLeft
+            FlowDirection = FlowDirection.RightToLeft,
+            BackgroundColor = Color.FromArgb("#211333")
         };
+        content.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         content.Add(_refreshIndicator);
         content.Add(BuildSummaryCard());
-        content.Add(BuildStorageManagementCard());
+        content.Add(BuildCacheActionsCard());
         content.Add(BuildNetworkUsageCard());
 
-        content.Add(new Border
+        var usageNote = new Border
         {
             Padding = new Thickness(13, 12),
-            Background = new SolidColorBrush(Color.FromArgb("#F2EFF9")),
-            Stroke = new SolidColorBrush(Color.FromArgb("#E1DAF0")),
+            BackgroundColor = Color.FromArgb("#39204F"),
+            Stroke = new SolidColorBrush(Color.FromArgb("#594768")),
             StrokeThickness = 1,
             StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(15) },
-            Content = BodyLabel("تعتمد إحصائيات الشبكة على عدّاد Android منذ آخر إعادة تعيين؛ وقد لا تتوفر تفاصيل منفصلة لبعض أنواع الاستخدام.")
-        });
+            Content = BodyLabel("تعرض هذه الصفحة إجماليات الاستهلاك فقط، ولا تعرض أسماء الملفات أو محتوياتها.")
+        };
+        usageNote.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoSoft");
+        usageNote.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+        content.Add(usageNote);
 
         var reset = new Button
         {
@@ -127,22 +135,27 @@ public sealed class StorageDataSettingsPage : ContentPage
             CornerRadius = 14,
             FontAttributes = FontAttributes.Bold,
             FontSize = 14,
-            Background = new SolidColorBrush(Color.FromArgb("#5636A5")),
+            BackgroundColor = Color.FromArgb("#C76BFF"),
             TextColor = Colors.White,
-            BorderColor = Color.FromArgb("#5636A5"),
+            BorderColor = Color.FromArgb("#C76BFF"),
             BorderWidth = 1,
             Margin = new Thickness(0, 0, 0, 2)
         };
+        reset.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoAccent");
+        reset.SetDynamicResource(Button.TextColorProperty, "HimoOnAccent");
+        reset.SetDynamicResource(Button.BorderColorProperty, "HimoAccent");
         reset.Clicked += ResetStatisticsClicked;
         content.Add(reset);
 
         var scroll = new ScrollView
         {
+            BackgroundColor = Color.FromArgb("#211333"),
             VerticalScrollBarVisibility = ScrollBarVisibility.Never,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Never,
             Padding = new Thickness(0),
             Content = content
         };
+        scroll.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         root.Add(scroll, 0, 1);
         return root;
     }
@@ -178,6 +191,8 @@ public sealed class StorageDataSettingsPage : ContentPage
             HorizontalOptions = LayoutOptions.Start,
             VerticalOptions = LayoutOptions.Center
         };
+        back.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoSoft");
+        back.SetDynamicResource(Button.BorderColorProperty, "HimoBorder");
         back.Clicked += BackClicked;
         header.Add(back, 0, 0);
 
@@ -188,22 +203,26 @@ public sealed class StorageDataSettingsPage : ContentPage
             VerticalOptions = LayoutOptions.Center,
             FlowDirection = FlowDirection.RightToLeft
         };
-        labels.Add(new Label
+        var title = new Label
         {
             Text = "التخزين والبيانات", FontSize = 22, FontAttributes = FontAttributes.Bold,
-            TextColor = Color.FromArgb("#241A3D"), HorizontalTextAlignment = TextAlignment.Start,
+            TextColor = Color.FromArgb("#F7E9FF"), HorizontalTextAlignment = TextAlignment.Start,
             FlowDirection = FlowDirection.RightToLeft,
             LineBreakMode = LineBreakMode.TailTruncation,
             MaxLines = 1
-        });
-        labels.Add(new Label
+        };
+        title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        labels.Add(title);
+        var subtitle = new Label
         {
-            Text = "إدارة التخزين ومراجعة استخدام الشبكة", FontSize = 11.5,
-            TextColor = Color.FromArgb("#7B748C"), HorizontalTextAlignment = TextAlignment.Start,
+            Text = "ملخص التخزين واستخدام الشبكة", FontSize = 11.5,
+            TextColor = Color.FromArgb("#C7B8D8"), HorizontalTextAlignment = TextAlignment.Start,
             FlowDirection = FlowDirection.RightToLeft,
             LineBreakMode = LineBreakMode.TailTruncation,
             MaxLines = 1
-        });
+        };
+        subtitle.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        labels.Add(subtitle);
         header.Add(labels, 1, 0);
         header.Add(CreateIconBadge("storage", 42), 2, 0);
         return header;
@@ -211,14 +230,40 @@ public sealed class StorageDataSettingsPage : ContentPage
 
     private View BuildSummaryCard()
     {
-        var cardContent = new VerticalStackLayout { Spacing = 10 };
-        cardContent.Add(SectionTitle("ملخص التخزين"));
-        cardContent.Add(StatRow("إجمالي مساحة التطبيق", _totalStorageValue, "storage"));
+        var cardContent = new VerticalStackLayout { Spacing = 10, FlowDirection = FlowDirection.RightToLeft };
+        cardContent.Add(SectionTitle("استهلاك التخزين"));
+        cardContent.Add(StatRow("الذاكرة المؤقتة المستخدمة", _cacheStorageValue, "cache"));
         cardContent.Add(ThinDivider());
-        cardContent.Add(StatRow("الوسائط والملفات المؤقتة", _mediaStorageValue, "media"));
+        cardContent.Add(StatRow("إجمالي بيانات التطبيق", _totalStorageValue, "storage"));
         cardContent.Add(ThinDivider());
-        cardContent.Add(StatRow("عدد الملفات المحلية", _fileCountValue, "archive"));
+        cardContent.Add(StatRow("حجم الوسائط المخزنة", _mediaStorageValue, "media"));
         return Card(cardContent);
+    }
+
+    private View BuildCacheActionsCard()
+    {
+        var content = new VerticalStackLayout { Spacing = 9, FlowDirection = FlowDirection.RightToLeft };
+        content.Add(BuildSectionHeader("الذاكرة المؤقتة", "cache"));
+        content.Add(BodyLabel("يمكنك مسح النسخ المؤقتة لتوفير مساحة. لن يتم حذف المحادثات من الخادم."));
+        var clearCache = new Button
+        {
+            Text = "مسح الذاكرة المؤقتة",
+            HeightRequest = 44,
+            CornerRadius = 13,
+            FontSize = 13,
+            FontAttributes = FontAttributes.Bold,
+            BackgroundColor = Color.FromArgb("#39204F"),
+            TextColor = Color.FromArgb("#F7E9FF"),
+            BorderColor = Color.FromArgb("#594768"),
+            BorderWidth = 1,
+            HorizontalOptions = LayoutOptions.Fill
+        };
+        clearCache.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoSoft");
+        clearCache.SetDynamicResource(Button.TextColorProperty, "HimoPrimary");
+        clearCache.SetDynamicResource(Button.BorderColorProperty, "HimoBorder");
+        clearCache.Clicked += ClearCacheClicked;
+        content.Add(clearCache);
+        return Card(content);
     }
 
     private View BuildStorageManagementCard()
@@ -327,42 +372,63 @@ public sealed class StorageDataSettingsPage : ContentPage
         return Card(content);
     }
 
-    private static Border Card(View content, Color? background = null, Color? border = null) => new()
+    private static Border Card(View content, Color? background = null, Color? border = null)
     {
-        Background = new SolidColorBrush(background ?? Colors.White),
-        Stroke = new SolidColorBrush(border ?? Color.FromArgb("#E2DDED")),
-        StrokeThickness = 1,
-        Padding = 14,
-        Content = content,
-        StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(18) },
-        Shadow = new Shadow
+        var card = new Border
         {
-            Brush = new SolidColorBrush(Color.FromArgb("#29213D")),
-            Offset = new Point(0, 1), Radius = 5, Opacity = 0.055f
-        }
-    };
+            BackgroundColor = background ?? Color.FromArgb("#2D1942"),
+            Stroke = new SolidColorBrush(border ?? Color.FromArgb("#594768")),
+            StrokeThickness = 1,
+            Padding = 14,
+            Content = content,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(18) },
+            Shadow = new Shadow
+            {
+                Brush = new SolidColorBrush(Color.FromArgb("#100818")),
+                Offset = new Point(0, 1), Radius = 5, Opacity = 0.10f
+            }
+        };
+        card.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoCard");
+        card.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+        return card;
+    }
 
-    private static Label SectionTitle(string text) => new()
+    private static Label SectionTitle(string text)
     {
-        Text = text, FontSize = 14, FontAttributes = FontAttributes.Bold,
-        TextColor = Color.FromArgb("#241A3D"), HorizontalTextAlignment = TextAlignment.Start,
-        FlowDirection = FlowDirection.RightToLeft
-    };
+        var label = new Label
+        {
+            Text = text, FontSize = 14, FontAttributes = FontAttributes.Bold,
+            TextColor = Color.FromArgb("#F7E9FF"), HorizontalTextAlignment = TextAlignment.Start,
+            FlowDirection = FlowDirection.RightToLeft
+        };
+        label.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        return label;
+    }
 
-    private static Label BodyLabel(string text) => new()
+    private static Label BodyLabel(string text)
     {
-        Text = text, FontSize = 11, TextColor = Color.FromArgb("#756D83"),
-        HorizontalTextAlignment = TextAlignment.Start, FlowDirection = FlowDirection.RightToLeft,
-        LineBreakMode = LineBreakMode.WordWrap
-    };
+        var label = new Label
+        {
+            Text = text, FontSize = 11, TextColor = Color.FromArgb("#C7B8D8"),
+            HorizontalTextAlignment = TextAlignment.Start, FlowDirection = FlowDirection.RightToLeft,
+            LineBreakMode = LineBreakMode.WordWrap
+        };
+        label.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        return label;
+    }
 
-    private static Label StatValueLabel(string text) => new()
+    private static Label StatValueLabel(string text)
     {
-        Text = text, FontSize = 11.5, FontAttributes = FontAttributes.Bold,
-        TextColor = Color.FromArgb("#5235A4"), HorizontalTextAlignment = TextAlignment.End,
-        VerticalTextAlignment = TextAlignment.Center, WidthRequest = 108, MaximumWidthRequest = 108,
-        FlowDirection = FlowDirection.RightToLeft, LineBreakMode = LineBreakMode.WordWrap, MaxLines = 3
-    };
+        var label = new Label
+        {
+            Text = text, FontSize = 11.5, FontAttributes = FontAttributes.Bold,
+            TextColor = Color.FromArgb("#C76BFF"), HorizontalTextAlignment = TextAlignment.End,
+            VerticalTextAlignment = TextAlignment.Center, WidthRequest = 108, MaximumWidthRequest = 108,
+            FlowDirection = FlowDirection.LeftToRight, LineBreakMode = LineBreakMode.WordWrap, MaxLines = 3
+        };
+        label.SetDynamicResource(Label.TextColorProperty, "HimoAccent");
+        return label;
+    }
 
     private static string IconFileForName(string iconName) => iconName switch
     {
@@ -381,24 +447,30 @@ public sealed class StorageDataSettingsPage : ContentPage
         _ => "himo_s5_icon_storage.png"
     };
 
-    private static Border CreateIconBadge(string iconName, double size = 34) => new()
+    private static Border CreateIconBadge(string iconName, double size = 34)
     {
-        WidthRequest = size,
-        HeightRequest = size,
-        Background = new SolidColorBrush(Color.FromArgb("#F0ECFA")),
-        Stroke = new SolidColorBrush(Color.FromArgb("#E1DAF0")),
-        StrokeThickness = 1,
-        StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(size / 2) },
-        Content = new Image
+        var badge = new Border
         {
-            Source = ImageSource.FromFile(IconFileForName(iconName)),
-            WidthRequest = size * 0.58,
-            HeightRequest = size * 0.58,
-            Aspect = Aspect.AspectFit,
-            HorizontalOptions = LayoutOptions.Center,
-            VerticalOptions = LayoutOptions.Center
-        }
-    };
+            WidthRequest = size,
+            HeightRequest = size,
+            BackgroundColor = Color.FromArgb("#39204F"),
+            Stroke = new SolidColorBrush(Color.FromArgb("#594768")),
+            StrokeThickness = 0.8,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(size * 0.28) },
+            Content = new Image
+            {
+                Source = ImageSource.FromFile(IconFileForName(iconName)),
+                WidthRequest = size * 0.56,
+                HeightRequest = size * 0.56,
+                Aspect = Aspect.AspectFit,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center
+            }
+        };
+        badge.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoIconBackground");
+        badge.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+        return badge;
+    }
 
     private static Grid BuildSectionHeader(string title, string iconName)
     {
@@ -413,29 +485,31 @@ public sealed class StorageDataSettingsPage : ContentPage
             MinimumHeightRequest = 38,
             FlowDirection = FlowDirection.LeftToRight
         };
-        row.Add(new Label
+        var titleLabel = new Label
         {
             Text = title,
             FontSize = 15,
             FontAttributes = FontAttributes.Bold,
-            TextColor = Color.FromArgb("#241A3D"),
+            TextColor = Color.FromArgb("#F7E9FF"),
             HorizontalTextAlignment = TextAlignment.Start,
             HorizontalOptions = LayoutOptions.Fill,
             Margin = new Thickness(0),
             VerticalTextAlignment = TextAlignment.Center,
             VerticalOptions = LayoutOptions.Center,
             FlowDirection = FlowDirection.RightToLeft
-        }, 0, 0);
+        };
+        titleLabel.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        row.Add(titleLabel, 0, 0);
         row.Add(CreateIconBadge(iconName, 36), 1, 0);
         return row;
     }
 
-    private static View ThinDivider() => new BoxView
+    private static View ThinDivider()
     {
-        HeightRequest = 1,
-        Color = Color.FromArgb("#E9E4F1"),
-        Margin = new Thickness(0, 1, 0, 1)
-    };
+        var divider = new BoxView { HeightRequest = 1, Color = Color.FromArgb("#594768"), Margin = new Thickness(0, 1, 0, 1) };
+        divider.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoDivider");
+        return divider;
+    }
 
     private static Grid StatRow(string title, Label value, string iconName)
     {
@@ -470,21 +544,22 @@ public sealed class StorageDataSettingsPage : ContentPage
         value.MaxLines = 3;
         row.Add(value, 0, 0);
 
-        row.Add(new Label
+        var titleLabel = new Label
         {
             Text = title,
             FontSize = 12,
-            TextColor = Color.FromArgb("#35294F"),
+            TextColor = Color.FromArgb("#F7E9FF"),
             VerticalTextAlignment = TextAlignment.Center,
             VerticalOptions = LayoutOptions.Center,
-            // RTL Start is the right edge of the middle column, beside the icon.
             HorizontalTextAlignment = TextAlignment.Start,
             HorizontalOptions = LayoutOptions.Fill,
             Margin = new Thickness(0),
             FlowDirection = FlowDirection.RightToLeft,
             LineBreakMode = LineBreakMode.WordWrap,
             MaxLines = 2
-        }, 1, 0);
+        };
+        titleLabel.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        row.Add(titleLabel, 1, 0);
 
         row.Add(CreateIconBadge(iconName, 32), 2, 0);
         return row;
@@ -529,9 +604,9 @@ public sealed class StorageDataSettingsPage : ContentPage
             {
                 _fileSnapshot = snapshot.Files;
                 var total = SaturatingAdd(snapshot.AppDataBytes, snapshot.CacheBytes);
+                _cacheStorageValue.Text = FormatGigabytes(snapshot.CacheBytes);
                 _totalStorageValue.Text = FormatBytes(total);
                 _mediaStorageValue.Text = FormatBytes(snapshot.MediaBytes);
-                _fileCountValue.Text = snapshot.Files.Count.ToString("N0", CultureInfo.InvariantCulture);
 
                 _receivedValue.Text = snapshot.Network.Received;
                 _sentValue.Text = snapshot.Network.Sent;
@@ -542,16 +617,15 @@ public sealed class StorageDataSettingsPage : ContentPage
                 _statusUsageValue.Text = snapshot.Network.Status;
                 _roamingUsageValue.Text = snapshot.Network.Roaming;
 
-                RenderFileRows();
-                UpdateFilterButtonStyles();
             }).ConfigureAwait(false);
         }
         catch (Exception)
         {
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
-                _filesEmptyLabel.Text = "تعذر قراءة الملفات الآن. أعد المحاولة بعد قليل.";
-                _filesEmptyLabel.IsVisible = true;
+                _cacheStorageValue.Text = "تعذر القراءة";
+                _totalStorageValue.Text = "تعذر القراءة";
+                _mediaStorageValue.Text = "تعذر القراءة";
             }).ConfigureAwait(false);
         }
         finally
@@ -712,7 +786,7 @@ public sealed class StorageDataSettingsPage : ContentPage
             ColumnSpacing = 9,
             FlowDirection = FlowDirection.LeftToRight,
             Padding = new Thickness(10, 8),
-            BackgroundColor = Color.FromArgb("#FFFFFF")
+            BackgroundColor = Color.FromArgb("#2D1942")
         };
         var avatar = new Border
         {
@@ -734,8 +808,8 @@ public sealed class StorageDataSettingsPage : ContentPage
         row.Add(new Label { Text = "›", FontSize = 22, TextColor = Color.FromArgb("#71628E"), VerticalTextAlignment = TextAlignment.Center, HorizontalTextAlignment = TextAlignment.Center }, 2, 0);
         var border = new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb("#FFFFFF")),
-            Stroke = new SolidColorBrush(Color.FromArgb("#E2DDED")), StrokeThickness = 1,
+            BackgroundColor = Color.FromArgb("#2D1942"),
+            Stroke = new SolidColorBrush(Color.FromArgb("#594768")), StrokeThickness = 1,
             StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(13) }, Content = row
         };
         return border;
@@ -830,9 +904,9 @@ public sealed class StorageDataSettingsPage : ContentPage
     private async void ResetStatisticsClicked(object? sender, EventArgs e)
     {
         var accepted = await DisplayAlertAsync(
-            "إعادة تعيين الإحصائيات",
-            "سيبدأ حساب استخدام الشبكة والمكالمات والرسائل والوسائط من الصفر. لن تُحذف المحادثات أو الملفات.",
-            "إعادة تعيين", "إلغاء");
+            Himo.Services.AppLocalization.TranslateSourceText("إعادة تعيين الإحصائيات"),
+            Himo.Services.AppLocalization.TranslateSourceText("سيبدأ حساب استخدام الشبكة والمكالمات والرسائل والوسائط من الصفر. لن تُحذف المحادثات أو الملفات."),
+            Himo.Services.AppLocalization.TranslateSourceText("إعادة تعيين"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
         if (!accepted) return;
 
         var now = DateTimeOffset.UtcNow;
@@ -849,7 +923,7 @@ public sealed class StorageDataSettingsPage : ContentPage
         catch { }
 #endif
         await RefreshScreenAsync();
-        await DisplayAlertAsync("تمت إعادة التعيين", "تم تصفير الإحصائيات المعروضة. لم يتم حذف أي محتوى.", "موافق");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تمت إعادة التعيين"), Himo.Services.AppLocalization.TranslateSourceText("تم تصفير الإحصائيات المعروضة. لم يتم حذف أي محتوى."), Himo.Services.AppLocalization.TranslateSourceText("موافق"));
     }
 
     private void SelectFilter(string filter)
@@ -957,8 +1031,8 @@ public sealed class StorageDataSettingsPage : ContentPage
         grid.Add(CreateIconBadge(categoryIcon, 32), 2, 0);
         return new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb("#FFFFFF")),
-            Stroke = new SolidColorBrush(Color.FromArgb("#E2DDED")), StrokeThickness = 1,
+            BackgroundColor = Color.FromArgb("#2D1942"),
+            Stroke = new SolidColorBrush(Color.FromArgb("#594768")), StrokeThickness = 1,
             StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(13) }, Content = grid
         };
     }
@@ -969,7 +1043,7 @@ public sealed class StorageDataSettingsPage : ContentPage
         {
             if (!File.Exists(entry.FullPath))
             {
-                await DisplayAlertAsync("الملف", "لم يعد الملف موجودًا في الذاكرة المحلية.", "موافق");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الملف"), "لم يعد الملف موجودًا في الذاكرة المحلية.", Himo.Services.AppLocalization.TranslateSourceText("موافق"));
                 await RefreshScreenAsync();
                 return;
             }
@@ -977,14 +1051,14 @@ public sealed class StorageDataSettingsPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("فتح الملف", "تعذر فتح الملف على هذا الجهاز: " + ex.Message, "موافق");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("فتح الملف"), "تعذر فتح الملف على هذا الجهاز: " + ex.Message, Himo.Services.AppLocalization.TranslateSourceText("موافق"));
         }
     }
 
     private async Task DeleteFileAsync(StorageFileEntry entry)
     {
         if (!entry.CanDelete || !IsPathInside(entry.FullPath, FileSystem.Current.CacheDirectory)) return;
-        var accepted = await DisplayAlertAsync("حذف النسخة المؤقتة", $"هل تريد حذف النسخة المحلية من «{entry.Name}»؟ لن تُحذف الرسالة أو المرفق من المحادثة على الخادم.", "حذف", "إلغاء");
+        var accepted = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف النسخة المؤقتة"), $"هل تريد حذف النسخة المحلية من «{entry.Name}»؟ لن تُحذف الرسالة أو المرفق من المحادثة على الخادم.", Himo.Services.AppLocalization.TranslateSourceText("حذف"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
         if (!accepted) return;
 
         try
@@ -997,16 +1071,16 @@ public sealed class StorageDataSettingsPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذر الحذف", ex.Message, "موافق");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر الحذف"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("موافق"));
         }
     }
 
     private async void ClearCacheClicked(object? sender, EventArgs e)
     {
         var accepted = await DisplayAlertAsync(
-            "مسح الوسائط المؤقتة",
-            "سيتم حذف نسخ الملفات الموجودة في ذاكرة التخزين المؤقت فقط. لن تُحذف المحادثات أو ملفات الإرسال المعلّقة، وقد يعاد تنزيل الوسائط عند فتحها.",
-            "مسح الذاكرة", "إلغاء");
+            Himo.Services.AppLocalization.TranslateSourceText("مسح الوسائط المؤقتة"),
+            Himo.Services.AppLocalization.TranslateSourceText("سيتم حذف نسخ الملفات الموجودة في ذاكرة التخزين المؤقت فقط. لن تُحذف المحادثات أو ملفات الإرسال المعلّقة، وقد يعاد تنزيل الوسائط عند فتحها."),
+            Himo.Services.AppLocalization.TranslateSourceText("مسح الذاكرة"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
         if (!accepted) return;
 
         var cacheRoot = SafeFullPath(FileSystem.Current.CacheDirectory);
@@ -1031,7 +1105,7 @@ public sealed class StorageDataSettingsPage : ContentPage
         await RefreshScreenAsync();
         var result = $"تم حذف {counts.Deleted.ToString("N0", CultureInfo.InvariantCulture)} ملفًا مؤقتًا." +
             (counts.Failures > 0 ? $" تعذر حذف {counts.Failures.ToString("N0", CultureInfo.InvariantCulture)} ملف." : string.Empty);
-        await DisplayAlertAsync("مسح الذاكرة المؤقتة", result, "موافق");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("مسح الذاكرة المؤقتة"), result, Himo.Services.AppLocalization.TranslateSourceText("موافق"));
     }
 
     private static string GetFileCategory(string extension)
@@ -1062,6 +1136,12 @@ public sealed class StorageDataSettingsPage : ContentPage
     }
 
     private static long SaturatingAdd(long left, long right) => right > 0 && left > long.MaxValue - right ? long.MaxValue : Math.Max(0, left) + Math.Max(0, right);
+
+    private static string FormatGigabytes(long bytes)
+    {
+        if (bytes < 0) return "غير متاح";
+        return (bytes / (1024d * 1024d * 1024d)).ToString("0.00", CultureInfo.InvariantCulture) + " GB";
+    }
 
     private static string FormatBytes(long bytes)
     {

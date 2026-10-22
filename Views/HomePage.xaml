@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:models="clr-namespace:Himo.Models"
@@ -43,7 +43,7 @@
         <!-- Clean surface: use palette colors without decorative glow layers. -->
 <!-- Centered welcome header: group action on the left and a larger profile button on the right. -->
         <Grid x:Name="HomeHeader" Grid.Row="0" Padding="15,7,15,7"
-              ColumnDefinitions="*,Auto,*" FlowDirection="LeftToRight">
+              ColumnDefinitions="*,Auto,Auto" FlowDirection="LeftToRight">
             <Border x:Name="HomeCreateGroupButton" Grid.Column="0" Padding="8,6"
                     HeightRequest="42" MinimumWidthRequest="102"
                     BackgroundColor="{DynamicResource HimoSurface}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.1"
@@ -58,12 +58,12 @@
                 <Border.GestureRecognizers><TapGestureRecognizer Tapped="CreateGroupClicked" /></Border.GestureRecognizers>
             </Border>
 
-            <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center"
+            <VerticalStackLayout Grid.Column="1" HorizontalOptions="End"
                                  VerticalOptions="Center" Spacing="2" FlowDirection="RightToLeft">
                 <Label Text="مرحبًا بعودتك" FontSize="16.5" FontAttributes="Bold"
-                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
-                <Label Text="تواصل بلا حدود" FontSize="11" TextColor="{DynamicResource HimoPrimary}"
-                       HorizontalTextAlignment="Center" />
+                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="End" />
+                <Label Text="تواصل بلا حدود" FontSize="11" TextColor="{DynamicResource HimoTextSecondary}"
+                       HorizontalTextAlignment="End" />
             </VerticalStackLayout>
 
             <Border Grid.Column="2" WidthRequest="50" HeightRequest="50"
@@ -120,12 +120,12 @@
         </Border>
 
         <!-- Local chat filter; hidden when the calls/phone-search section is selected -->
-        <Border x:Name="ChatSearchCard" Grid.Row="1" Margin="15,0,15,7" Padding="10,0"
+        <Border x:Name="ChatSearchCard" Grid.Row="1" Margin="14,1,14,6" Padding="9,0"
                 HeightRequest="46" BackgroundColor="{DynamicResource HimoCard}"
                 Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
-            <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
-            <Grid ColumnDefinitions="34,*,36" FlowDirection="RightToLeft">
-                <Image Grid.Column="0" Source="home_search_neon.png" WidthRequest="19" HeightRequest="19"
+            <Border.StrokeShape><RoundRectangle CornerRadius="25" /></Border.StrokeShape>
+            <Grid ColumnDefinitions="32,*,34" FlowDirection="RightToLeft">
+                <Image Grid.Column="0" Source="home_search_neon.png" WidthRequest="18" HeightRequest="18"
                        VerticalOptions="Center" HorizontalOptions="Center" Opacity="0.95" />
                 <Entry x:Name="Search" Grid.Column="1" FlowDirection="RightToLeft"
                        Placeholder="البحث في محادثاتك" PlaceholderColor="{DynamicResource HimoTextSecondary}"
@@ -133,7 +133,7 @@
                        ClearButtonVisibility="WhileEditing" VerticalOptions="Center"
                        TextChanged="SearchTextChanged" ReturnType="Search" />
                 <ImageButton x:Name="ArchiveListButton" Grid.Column="2" Source="selection_archive.png"
-                             WidthRequest="30" HeightRequest="30" Padding="6"
+                             WidthRequest="27" HeightRequest="27" Padding="5"
                              BackgroundColor="Transparent" Aspect="AspectFit"
                              Clicked="ArchiveListClicked"
                              SemanticProperties.Description="عرض المحادثات المؤرشفة" />
@@ -141,18 +141,63 @@
         </Border>
 
         <!-- Main section switcher -->
-        <Grid x:Name="MainSectionHost" Grid.Row="2" Margin="0,0,0,2" BackgroundColor="{DynamicResource HimoSurface}">
+        <Grid Grid.Row="2" Margin="0,0,0,2" BackgroundColor="{DynamicResource HimoSurface}">
             <!-- Conversations -->
-            <Grid x:Name="ChatsSection" IsVisible="True" RowDefinitions="*" BackgroundColor="Transparent">
+            <Grid x:Name="ChatsSection" IsVisible="True" RowDefinitions="Auto,*" BackgroundColor="Transparent">
+                <!-- Compact filter chips match the reference layout while using the active Himo palette. -->
+                <ScrollView Grid.Row="0" Orientation="Horizontal" HorizontalScrollBarVisibility="Never"
+                            VerticalScrollBarVisibility="Never" HeightRequest="42" Margin="10,0,10,3">
+                    <HorizontalStackLayout FlowDirection="RightToLeft" Spacing="8" VerticalOptions="Center">
+                        <Border x:Name="FilterAllChip" Padding="12,6" HeightRequest="34" MinimumWidthRequest="78"
+                                BackgroundColor="{DynamicResource HimoAccent}" Stroke="{DynamicResource HimoAccent}" StrokeThickness="1.1">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                            <HorizontalStackLayout FlowDirection="RightToLeft" Spacing="6" VerticalOptions="Center" HorizontalOptions="Center">
+                                <Image Source="home_chat_neon.png" WidthRequest="16" HeightRequest="16" Aspect="AspectFit" />
+                                <Label x:Name="FilterAllLabel" Text="الكل" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource HimoOnAccent}" VerticalTextAlignment="Center" />
+                            </HorizontalStackLayout>
+                            <Border.GestureRecognizers><TapGestureRecognizer Tapped="AllConversationsFilterTapped" /></Border.GestureRecognizers>
+                        </Border>
+                        <Border x:Name="FilterUnreadChip" Padding="10,5" HeightRequest="34" MinimumWidthRequest="106"
+                                BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                            <HorizontalStackLayout FlowDirection="RightToLeft" Spacing="6" VerticalOptions="Center" HorizontalOptions="Center">
+                                <Border x:Name="FilterUnreadCountBadge" WidthRequest="20" HeightRequest="20" BackgroundColor="{DynamicResource HimoAccent}" StrokeThickness="0">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
+                                    <Label x:Name="FilterUnreadCountLabel" Text="0" FontSize="9.5" FontAttributes="Bold" TextColor="{DynamicResource HimoOnAccent}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                </Border>
+                                <Label x:Name="FilterUnreadLabel" Text="غير مقروءة" FontSize="12" TextColor="{DynamicResource HimoTextSecondary}" VerticalTextAlignment="Center" />
+                            </HorizontalStackLayout>
+                            <Border.GestureRecognizers><TapGestureRecognizer Tapped="UnreadConversationsFilterTapped" /></Border.GestureRecognizers>
+                        </Border>
+                        <Border x:Name="FilterGroupsChip" Padding="10,5" HeightRequest="34" MinimumWidthRequest="96"
+                                BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                            <HorizontalStackLayout FlowDirection="RightToLeft" Spacing="6" VerticalOptions="Center" HorizontalOptions="Center">
+                                <Image Source="home_contacts_neon.png" WidthRequest="16" HeightRequest="16" Aspect="AspectFit" />
+                                <Label x:Name="FilterGroupsLabel" Text="المجموعات" FontSize="12" TextColor="{DynamicResource HimoTextSecondary}" VerticalTextAlignment="Center" />
+                            </HorizontalStackLayout>
+                            <Border.GestureRecognizers><TapGestureRecognizer Tapped="GroupConversationsFilterTapped" /></Border.GestureRecognizers>
+                        </Border>
+                        <Border x:Name="FilterArchivedChip" Padding="10,5" HeightRequest="34" MinimumWidthRequest="96"
+                                BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                            <HorizontalStackLayout FlowDirection="RightToLeft" Spacing="6" VerticalOptions="Center" HorizontalOptions="Center">
+                                <Image Source="selection_archive.png" WidthRequest="16" HeightRequest="16" Aspect="AspectFit" />
+                                <Label x:Name="FilterArchivedLabel" Text="المؤرشفة" FontSize="12" TextColor="{DynamicResource HimoTextSecondary}" VerticalTextAlignment="Center" />
+                            </HorizontalStackLayout>
+                            <Border.GestureRecognizers><TapGestureRecognizer Tapped="ArchivedConversationsFilterTapped" /></Border.GestureRecognizers>
+                        </Border>
+                    </HorizontalStackLayout>
+                </ScrollView>
                 <!-- Recent conversations -->
-                <Grid Grid.Row="0">
+                <Grid Grid.Row="1">
                     <Grid x:Name="ConnectionStatusContainer" IsVisible="False" HeightRequest="0">
                         <Label x:Name="ConnectionLabel" Text="" />
                         <ActivityIndicator x:Name="RefreshIndicator" IsRunning="False" IsVisible="False" />
                         <Button x:Name="RetryButton" IsVisible="False" Clicked="RetryClicked" />
                     </Grid>
                     <RefreshView x:Name="ConversationRefresh" Refreshing="ConversationRefresh_Refreshing" Margin="10,0,10,0">
-                        <CollectionView x:Name="ConversationsCollection" ItemsSource="{Binding FilteredConversations}" SelectionMode="None"
+                        <CollectionView x:Name="ConversationsCollection" SelectionMode="None"
                                         ItemSizingStrategy="MeasureFirstItem"
                                         BackgroundColor="Transparent" FlowDirection="RightToLeft"
                                         VerticalScrollBarVisibility="Never">
@@ -171,18 +216,15 @@
                             </CollectionView.EmptyView>
                             <CollectionView.ItemTemplate>
                                 <DataTemplate x:DataType="models:Conversation">
-                                    <Border Margin="2,5" Padding="10,9" BackgroundColor="{DynamicResource HimoSurface}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="0.8">
-                                        <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                                    <Border Margin="2,0" Padding="4,2" HeightRequest="66" BackgroundColor="Transparent" Stroke="{DynamicResource HimoBorder}" StrokeThickness="0">
+                                        <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
                                         <Border.Triggers>
                                             <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
                                                 <Setter Property="BackgroundColor" Value="{DynamicResource HimoSoft}" />
                                                 <Setter Property="Stroke" Value="{DynamicResource HimoAccent}" />
-                                                <Setter Property="StrokeThickness" Value="1.8" />
+                                                <Setter Property="StrokeThickness" Value="1.5" />
                                             </DataTrigger>
                                         </Border.Triggers>
-                                        
-                                        <!-- Use the Android native click behavior for reliable taps on CollectionView rows.
-                                             Long-press remains a separate behavior for multi-select. -->
                                         <Border.Behaviors>
                                             <behaviors:ConversationTapBehavior
                                                 Command="{Binding Source={x:Reference HomeRoot}, Path=ConversationTapCommand, x:DataType=views:HomePage}"
@@ -191,37 +233,36 @@
                                                 Command="{Binding Source={x:Reference HomeRoot}, Path=ConversationLongPressCommand, x:DataType=views:HomePage}"
                                                 CommandParameter="{Binding .}" />
                                         </Border.Behaviors>
-                                        <Grid FlowDirection="LeftToRight" ColumnDefinitions="60,*,74" ColumnSpacing="11" Padding="2,2" MinimumHeightRequest="74">
-                                            <Grid Grid.Column="0" WidthRequest="56" HeightRequest="56" HorizontalOptions="Start" VerticalOptions="Center">
-                                                <Border WidthRequest="54" HeightRequest="54" BackgroundColor="{DynamicResource HimoSurface}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.35">
-                                                    <Border.StrokeShape><RoundRectangle CornerRadius="27" /></Border.StrokeShape>
+                                        <!-- Explicit physical LTR columns keep the avatar on the right while RTL text remains beside it. -->
+                                        <Grid FlowDirection="LeftToRight" ColumnDefinitions="48,*,48" ColumnSpacing="6" Padding="0,0" HeightRequest="60" MinimumHeightRequest="60">
+                                            <VerticalStackLayout Grid.Column="0" VerticalOptions="Center" HorizontalOptions="Start" Spacing="2" FlowDirection="LeftToRight">
+                                                <Label Text="{Binding Time}" FontSize="9.8" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" LineBreakMode="TailTruncation" MaxLines="1" />
+                                                <Border WidthRequest="19" HeightRequest="19" BackgroundColor="{DynamicResource HimoAccent}" StrokeThickness="0" HorizontalOptions="Start">
+                                                    <Border.StrokeShape><RoundRectangle CornerRadius="9.5" /></Border.StrokeShape>
+                                                    <Border.Triggers><DataTrigger TargetType="Border" Binding="{Binding UnreadCount}" Value="0"><Setter Property="IsVisible" Value="False" /></DataTrigger></Border.Triggers>
+                                                    <Label Text="{Binding UnreadCount}" TextColor="{DynamicResource HimoOnAccent}" FontSize="8.8" FontAttributes="Bold" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                                </Border>
+                                            </VerticalStackLayout>
+                                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2" FlowDirection="RightToLeft" HorizontalOptions="Fill">
+                                                <Label Text="{Binding Name}" FontSize="13.8" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" LineBreakMode="TailTruncation" MaxLines="1" HorizontalTextAlignment="Start" />
+                                                <Label Text="{Binding LastMessage}" FontSize="11.4" TextColor="{DynamicResource HimoTextSecondary}" LineBreakMode="TailTruncation" MaxLines="1" HorizontalTextAlignment="Start" />
+                                            </VerticalStackLayout>
+                                            <Grid Grid.Column="2" WidthRequest="44" HeightRequest="44" HorizontalOptions="End" VerticalOptions="Center">
+                                                <Border WidthRequest="42" HeightRequest="42" BackgroundColor="{DynamicResource HimoSurface}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.1">
+                                                    <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
                                                     <Grid>
-                                                        <Label Text="{Binding Initial}" IsVisible="{Binding ShowProfileInitial}" FontSize="21" FontAttributes="Bold" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
-                                                        <Image Source="{Binding ProfilePhotoPath}" IsVisible="{Binding HasLocalProfilePhoto}" Aspect="AspectFill" WidthRequest="54" HeightRequest="54">
-                                                            <Image.Clip><EllipseGeometry Center="27,27" RadiusX="27" RadiusY="27" /></Image.Clip>
+                                                        <Label Text="{Binding Initial}" IsVisible="{Binding ShowProfileInitial}" FontSize="17.5" FontAttributes="Bold" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                                        <Image Source="{Binding ProfilePhotoPath}" IsVisible="{Binding HasLocalProfilePhoto}" Aspect="AspectFill" WidthRequest="42" HeightRequest="42">
+                                                            <Image.Clip><EllipseGeometry Center="21,21" RadiusX="21" RadiusY="21" /></Image.Clip>
                                                         </Image>
-                                                        <Border IsVisible="{Binding IsSelected}" WidthRequest="22" HeightRequest="22"
-                                                                HorizontalOptions="Start" VerticalOptions="End" Margin="-2,0,0,-2"
-                                                                BackgroundColor="{DynamicResource HimoAccent}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.3" ZIndex="5">
-                                                            <Border.StrokeShape><RoundRectangle CornerRadius="11" /></Border.StrokeShape>
-                                                            <Label Text="✓" TextColor="{DynamicResource HimoPrimary}" FontSize="13" FontAttributes="Bold"
-                                                                   HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                                        <Border IsVisible="{Binding IsSelected}" WidthRequest="18" HeightRequest="18" HorizontalOptions="Start" VerticalOptions="End" Margin="-1,0,0,-1" BackgroundColor="{DynamicResource HimoAccent}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" ZIndex="5">
+                                                            <Border.StrokeShape><RoundRectangle CornerRadius="9" /></Border.StrokeShape>
+                                                            <Label Text="✓" TextColor="{DynamicResource HimoOnAccent}" FontSize="10.5" FontAttributes="Bold" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                                                         </Border>
                                                     </Grid>
                                                 </Border>
                                             </Grid>
-                                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4" FlowDirection="RightToLeft">
-                                                <Label Text="{Binding Name}" FontSize="15.2" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" LineBreakMode="TailTruncation" MaxLines="1" />
-                                                <Label Text="{Binding LastMessage}" FontSize="12.5" TextColor="{DynamicResource HimoPrimary}" LineBreakMode="TailTruncation" MaxLines="1" />
-                                            </VerticalStackLayout>
-                                            <VerticalStackLayout Grid.Column="2" VerticalOptions="Center" Spacing="5" HorizontalOptions="End" FlowDirection="RightToLeft">
-                                                <Label Text="{Binding Time}" FontSize="11.2" TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="End" />
-                                                <Border WidthRequest="24" HeightRequest="24" BackgroundColor="{DynamicResource HimoAccent}" StrokeThickness="0" HorizontalOptions="End">
-                                                    <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
-                                                    <Border.Triggers><DataTrigger TargetType="Border" Binding="{Binding UnreadCount}" Value="0"><Setter Property="IsVisible" Value="False" /></DataTrigger></Border.Triggers>
-                                                    <Label Text="{Binding UnreadCount}" TextColor="{DynamicResource HimoOnAccent}" FontSize="10" FontAttributes="Bold" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
-                                                </Border>
-                                            </VerticalStackLayout>
+                                            <BoxView Grid.ColumnSpan="3" HeightRequest="1" VerticalOptions="End" Margin="5,0" BackgroundColor="{DynamicResource HimoBorder}" Opacity="0.5" />
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
@@ -319,10 +360,15 @@
                                    Margin="0" />
                             <Image Source="home_search_neon.png" Grid.Column="1" WidthRequest="21" HeightRequest="21" Margin="7,0,3,0" VerticalOptions="Center" />
                         </Grid>
-                        <Button x:Name="PhoneSearchButton" Text="بحث" Clicked="PhoneSearchClicked"
-                                BackgroundColor="{DynamicResource HimoAccent}" TextColor="{DynamicResource HimoOnAccent}" FontAttributes="Bold"
-                                CornerRadius="16" HeightRequest="46">
-                        </Button>
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                            <Button x:Name="PhoneSearchButton" Grid.Column="0" Text="بحث" Clicked="PhoneSearchClicked"
+                                    BackgroundColor="{DynamicResource HimoAccent}" TextColor="{DynamicResource HimoOnAccent}" FontAttributes="Bold"
+                                    CornerRadius="16" HeightRequest="46" />
+                            <Button Grid.Column="1" Text="مسح QR" Clicked="OpenQrScannerClicked"
+                                    BackgroundColor="{DynamicResource HimoSoft}" TextColor="{DynamicResource HimoPrimary}" FontAttributes="Bold"
+                                    BorderColor="{DynamicResource HimoBorder}" BorderWidth="1"
+                                    CornerRadius="16" HeightRequest="46" />
+                        </Grid>
                         <Button x:Name="FindContactsButton" Text="البحث في جهات الاتصال"
                                 Clicked="FindContactsClicked" BackgroundColor="{DynamicResource HimoCard}"
                                 TextColor="{DynamicResource HimoTextSecondary}" FontSize="13" FontAttributes="Bold"
@@ -377,20 +423,20 @@
         </Grid>
 
         <!-- Five-item navigation bar -->
-        <Border Grid.Row="3" Margin="9,7,9,9" BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="4,5">
+        <Border x:Name="BottomNavigationBar" Grid.Row="3" Margin="9,7,9,9" HeightRequest="68" MinimumHeightRequest="68" MaximumHeightRequest="68" VerticalOptions="End" BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.1" Padding="3,4">
             <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
             <Grid ColumnDefinitions="*,*,*,*,*" FlowDirection="RightToLeft">
                 <Border x:Name="ChatsTabSurface" Grid.Column="0" Margin="2,0" Padding="2,5" BackgroundColor="{DynamicResource HimoSurface}" Stroke="{DynamicResource HimoAccent}" StrokeThickness="0.8">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
-                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
-                        <Image Source="home_home_neon.png" Style="{StaticResource NavIcon}" />
+                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
+                        <Image Source="home_chat_neon.png" Style="{StaticResource NavIcon}" />
                         <Label x:Name="ChatsTabLabel" Text="المحادثات" FontSize="10.5" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="ChatsTabClicked" /></Border.GestureRecognizers>
                 </Border>
                 <Border x:Name="CallsTabSurface" Grid.Column="1" Margin="2,0" Padding="2,5" BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
-                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
                         <Image Source="home_call_neon.png" Style="{StaticResource NavIcon}" />
                         <Label x:Name="CallsTabLabel" Text="المكالمات" FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
@@ -398,7 +444,7 @@
                 </Border>
                 <Border x:Name="PhoneTabSurface" Grid.Column="2" Margin="2,0" Padding="2,5" BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
-                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
                         <Image Source="home_search_neon.png" Style="{StaticResource NavIcon}" />
                         <Label x:Name="PhoneTabLabel" Text="بحث الأشخاص" FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
@@ -406,7 +452,7 @@
                 </Border>
                 <Border x:Name="ProfileTabSurface" Grid.Column="3" Margin="2,0" Padding="2,5" BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
-                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
                         <Image Source="home_user_neon.png" Style="{StaticResource NavIcon}" />
                         <Label Text="الملف" FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
@@ -414,7 +460,7 @@
                 </Border>
                 <Border x:Name="SettingsTabSurface" Grid.Column="4" Margin="2,0" Padding="2,5" BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
-                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
                         <Image Source="home_settings_neon.png" Style="{StaticResource NavIcon}" />
                         <Label Text="الإعدادات" FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>

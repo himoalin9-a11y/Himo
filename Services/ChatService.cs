@@ -12,7 +12,7 @@ public sealed class ChatService
     private readonly object _sync = new();
     private readonly Dictionary<int, ObservableCollection<ChatMessage>> _messages = new();
     private bool _loaded;
-    private readonly Task<ChatStore?> _storeLoadTask;
+    private readonly Task<PreparedChatStore?> _storeLoadTask;
 
     public ObservableCollection<Conversation> Conversations { get; } = new();
 
@@ -21,7 +21,9 @@ public sealed class ChatService
         _storePath = Path.Combine(FileSystem.Current.AppDataDirectory, StoreFileName);
         // The chat cache can grow substantially. Read and deserialize it away from
         // Android's UI thread so resolving App/ChatService cannot trigger a cold-start ANR.
-        _storeLoadTask = Task.Run(ReadStoreSnapshot);
+        // Deserialize and prepare the full cache on a worker. Chat histories can be
+        // large; grouping thousands of messages on the UI thread caused startup stalls.
+        _storeLoadTask = Task.Run(() => PrepareStoreSnapshot(ReadStoreSnapshot()));
     }
 
     /// <summary>
@@ -30,7 +32,7 @@ public sealed class ChatService
     /// </summary>
     public async Task InitializeAsync()
     {
-        ChatStore? snapshot;
+        PreparedChatStore? snapshot;
         try
         {
             snapshot = await _storeLoadTask.ConfigureAwait(false);
@@ -87,14 +89,30 @@ public sealed class ChatService
     public void ReplaceConversations(IEnumerable<Conversation> items)
     {
         EnsureLoaded();
+        var ordered = items.OrderByDescending(x => x.UpdatedAt).ToList();
         lock (_sync)
         {
-            Conversations.Clear();
-            foreach (var item in items.OrderByDescending(x => x.UpdatedAt)) Conversations.Add(item);
+            // Preserve Conversation object instances and only insert/move/remove the
+            // rows that truly changed. Clearing this ObservableCollection on every
+            // poll made CollectionView rebuild all native rows and caused visible lag.
+            for (var targetIndex = 0; targetIndex < ordered.Count; targetIndex++)
+            {
+                var wanted = ordered[targetIndex];
+                if (targetIndex < Conversations.Count &&
+                    ReferenceEquals(Conversations[targetIndex], wanted))
+                    continue;
+
+                var existingIndex = Conversations.IndexOf(wanted);
+                if (existingIndex >= 0)
+                    Conversations.Move(existingIndex, targetIndex);
+                else
+                    Conversations.Insert(targetIndex, wanted);
+            }
+
+            while (Conversations.Count > ordered.Count)
+                Conversations.RemoveAt(Conversations.Count - 1);
 
             // Drop cached messages that no longer belong to a server conversation.
-            // This keeps deleted/removed conversations from leaving orphaned data
-            // in the local store indefinitely.
             var activeIds = Conversations.Select(x => x.Id).ToHashSet();
             foreach (var staleId in _messages.Keys.Where(id => !activeIds.Contains(id)).ToList())
                 _messages.Remove(staleId);
@@ -549,29 +567,25 @@ public sealed class ChatService
         }
     }
 
-    // Caller holds _sync. It is safe to call repeatedly because a synchronous API may
-    // win the race against InitializeAsync while a page is opened from a notification.
-    private void ApplyStoreSnapshot(ChatStore? store)
+    private static PreparedChatStore? PrepareStoreSnapshot(ChatStore? store)
     {
-        if (_loaded)
-            return;
-
-        Volatile.Write(ref _loaded, true);
         if (store is null)
-            return;
+            return null;
 
-        foreach (var conversation in store.Conversations.OrderByDescending(x => x.UpdatedAt))
-            Conversations.Add(conversation);
+        var prepared = new PreparedChatStore
+        {
+            Conversations = store.Conversations.OrderByDescending(x => x.UpdatedAt).ToList()
+        };
 
+        // Group, deduplicate, and create message collections on the background worker.
+        // These collections are not bound to a page until a conversation is opened.
         foreach (var group in store.Messages.GroupBy(x => x.ConversationId))
         {
-            var messages = new ObservableCollection<ChatMessage>();
+            var messages = new List<ChatMessage>();
             var seenRemoteIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var message in group.OrderBy(x => x.SentAt).ThenBy(x => x.Id))
             {
-                // Preserve attachments in the durable outbox. Plain-text pending messages
-                // cannot resume after process death and are marked failed, as before.
                 if (message.IsPending && !message.IsAttachment)
                     message.DeliveryStatus = "failed";
 
@@ -583,8 +597,28 @@ public sealed class ChatService
             }
 
             if (messages.Count > 0)
-                _messages[group.Key] = messages;
+                prepared.Messages[group.Key] = new ObservableCollection<ChatMessage>(messages);
         }
+
+        return prepared;
+    }
+
+    // Caller holds _sync. Collection-bound conversations are published on the UI thread,
+    // while the expensive message grouping work is already complete on the worker.
+    private void ApplyStoreSnapshot(PreparedChatStore? store)
+    {
+        if (_loaded)
+            return;
+
+        Volatile.Write(ref _loaded, true);
+        if (store is null)
+            return;
+
+        foreach (var conversation in store.Conversations)
+            Conversations.Add(conversation);
+
+        foreach (var pair in store.Messages)
+            _messages[pair.Key] = pair.Value;
     }
 
     private void EnsureLoaded()
@@ -592,17 +626,16 @@ public sealed class ChatService
         if (Volatile.Read(ref _loaded))
             return;
 
-        // This path preserves the legacy synchronous public API. The expensive file
-        // read and JSON parse already happen on a worker; publish ObservableCollections
-        // on the UI thread whenever a non-UI event happens to be the first caller.
-        ChatStore? snapshot;
+        PreparedChatStore? snapshot;
         try
         {
+            // The task includes both JSON deserialization and message grouping on a
+            // worker, so this synchronous compatibility path only waits for prepared data.
             snapshot = _storeLoadTask.GetAwaiter().GetResult();
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Himo ChatStore] Synchronous cache fallback failed: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatStore] Cache initialization fallback failed: {ex.Message}");
             snapshot = null;
         }
 
@@ -668,6 +701,12 @@ public sealed class ChatService
                 Interlocked.Exchange(ref _saveWorkerRunning, 1) == 0)
                 _ = Task.Run(SaveWorkerAsync);
         }
+    }
+
+    private sealed class PreparedChatStore
+    {
+        public List<Conversation> Conversations { get; set; } = new();
+        public Dictionary<int, ObservableCollection<ChatMessage>> Messages { get; } = new();
     }
 
     private sealed class ChatStore

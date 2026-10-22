@@ -45,6 +45,7 @@ public partial class CameraPage : ContentPage
     public CameraPage(CameraCaptureMode initialMode = CameraCaptureMode.Photo)
     {
         InitializeComponent();
+        Himo.Services.AppLocalization.AttachToPage(this);
         _mode = initialMode;
         UpdateModeUi();
     }
@@ -88,9 +89,9 @@ public partial class CameraPage : ContentPage
             if (cameraPermission != PermissionStatus.Granted)
             {
                 await DisplayAlertAsync(
-                    "الكاميرا",
-                    "اسمح لـ Himo باستخدام الكاميرا ثم حاول مرة أخرى.",
-                    "حسنًا");
+                    Himo.Services.AppLocalization.TranslateSourceText("الكاميرا"),
+                    Himo.Services.AppLocalization.TranslateSourceText("اسمح لـ Himo باستخدام الكاميرا ثم حاول مرة أخرى."),
+                    Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 await CloseAsync(null);
                 return;
             }
@@ -102,9 +103,9 @@ public partial class CameraPage : ContentPage
         catch (Exception ex)
         {
             await DisplayAlertAsync(
-                "الكاميرا",
+                Himo.Services.AppLocalization.TranslateSourceText("الكاميرا"),
                 $"تعذر تشغيل كاميرا Himo: {ex.Message}",
-                "حسنًا");
+                Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             await CloseAsync(null);
         }
     }
@@ -214,9 +215,9 @@ public partial class CameraPage : ContentPage
                 if (microphone != PermissionStatus.Granted)
                 {
                     await DisplayAlertAsync(
-                        "الفيديو",
-                        "اسمح لـ Himo باستخدام الميكروفون لتسجيل صوت الفيديو.",
-                        "حسنًا");
+                        Himo.Services.AppLocalization.TranslateSourceText("الفيديو"),
+                        Himo.Services.AppLocalization.TranslateSourceText("اسمح لـ Himo باستخدام الميكروفون لتسجيل صوت الفيديو."),
+                        Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                     return;
                 }
 
@@ -253,9 +254,9 @@ public partial class CameraPage : ContentPage
             UpdateModeUi();
 
             await DisplayAlertAsync(
-                "الكاميرا",
+                Himo.Services.AppLocalization.TranslateSourceText("الكاميرا"),
                 $"تعذر التقاط الوسائط: {ex.Message}",
-                "حسنًا");
+                Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -290,9 +291,9 @@ public partial class CameraPage : ContentPage
         catch (Exception ex)
         {
             await DisplayAlertAsync(
-                "الفيديو",
+                Himo.Services.AppLocalization.TranslateSourceText("الفيديو"),
                 ex.Message,
-                "حسنًا");
+                Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -406,7 +407,7 @@ public partial class CameraPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الفلاش", $"تعذر تغيير الفلاش: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الفلاش"), $"تعذر تغيير الفلاش: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -475,9 +476,9 @@ public partial class CameraPage : ContentPage
         catch (Exception ex)
         {
             await DisplayAlertAsync(
-                "الكاميرا",
+                Himo.Services.AppLocalization.TranslateSourceText("الكاميرا"),
                 $"تعذر تبديل الكاميرا: {ex.Message}",
-                "حسنًا");
+                Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 

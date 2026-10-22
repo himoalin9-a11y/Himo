@@ -119,6 +119,33 @@
                     </Grid>
                 </Border>
 
+                <!-- Dedicated account-sharing entry; keeps friend search in the People section. -->
+                <Border BackgroundColor="{DynamicResource HimoCard}"
+                        Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.1"
+                        Padding="14,13">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
+                    <Grid ColumnDefinitions="*,56" ColumnSpacing="12" FlowDirection="LeftToRight">
+                        <VerticalStackLayout Grid.Column="0" Spacing="4"
+                                             VerticalOptions="Center" FlowDirection="RightToLeft">
+                            <Label Text="مشاركة الحساب" FontSize="16" FontAttributes="Bold"
+                                   TextColor="{DynamicResource HimoPrimary}" />
+                            <Label Text="اعرض رمز QR أو شارك رابط حسابك مع الآخرين" FontSize="12"
+                                   TextColor="{DynamicResource HimoTextSecondary}" />
+                        </VerticalStackLayout>
+                        <Border Grid.Column="1" WidthRequest="48" HeightRequest="48"
+                                BackgroundColor="{DynamicResource HimoSoft}"
+                                Stroke="{DynamicResource HimoBorder}" StrokeThickness="1"
+                                HorizontalOptions="End" VerticalOptions="Center">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
+                            <Image Source="himo_ui_share.png" WidthRequest="25" HeightRequest="25"
+                                   Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                    </Grid>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="ShareAccountTapped" />
+                    </Border.GestureRecognizers>
+                </Border>
+
                 <!-- Profile and app shortcuts -->
                 <Border BackgroundColor="{DynamicResource HimoCard}"
                         Stroke="{DynamicResource HimoBorder}" StrokeThickness="1"
@@ -264,7 +291,8 @@
         </ScrollView>
 
         <!-- The same five-item bottom navigation used in Home/Calls/Search. -->
-        <Border Grid.Row="2" Margin="9,6,9,9"
+        <Border x:Name="BottomNavigationBar" Grid.Row="2" Margin="9,7,9,9"
+                HeightRequest="68" MinimumHeightRequest="68" MaximumHeightRequest="68" VerticalOptions="End"
                 BackgroundColor="{DynamicResource HimoCard}"
                 Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.1"
                 Padding="3,4">
@@ -273,9 +301,9 @@
                 <Border Grid.Column="0" Margin="2,0" Padding="2,5"
                         BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
-                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
-                        <Image Source="settings_icon_chat.png" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" />
-                        <Label Text="المحادثات" FontSize="9.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
+                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
+                        <Image Source="home_chat_neon.png" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" />
+                        <Label Text="المحادثات" FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="ChatsNavTapped" /></Border.GestureRecognizers>
                 </Border>
@@ -283,8 +311,8 @@
                         BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
                     <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
-                        <Image Source="settings_icon_phone.png" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" />
-                        <Label Text="المكالمات" FontSize="9.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
+                        <Image Source="home_call_neon.png" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" />
+                        <Label Text="المكالمات" FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="CallsNavTapped" /></Border.GestureRecognizers>
                 </Border>
@@ -292,8 +320,8 @@
                         BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
                     <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
-                        <Image Source="settings_icon_contacts.png" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" />
-                        <Label Text="بحث الأشخاص" FontSize="9.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
+                        <Image Source="home_search_neon.png" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" />
+                        <Label Text="بحث الأشخاص" FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="PeopleNavTapped" /></Border.GestureRecognizers>
                 </Border>
@@ -302,8 +330,8 @@
                         Stroke="{DynamicResource HimoAccent}" StrokeThickness="1">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
                     <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
-                        <Image Source="settings_icon_user.png" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" />
-                        <Label Text="الملف الشخصي" FontSize="9.5" FontAttributes="Bold"
+                        <Image Source="home_user_neon.png" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" />
+                        <Label Text="الملف" FontSize="10.5" FontAttributes="Bold"
                                TextColor="{DynamicResource HimoAccent}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                 </Border>
@@ -311,8 +339,8 @@
                         BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
                     <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
-                        <Image Source="settings_icon_gear.png" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" />
-                        <Label Text="الإعدادات" FontSize="9.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
+                        <Image Source="home_settings_neon.png" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" />
+                        <Label Text="الإعدادات" FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="SettingsNavTapped" /></Border.GestureRecognizers>
                 </Border>

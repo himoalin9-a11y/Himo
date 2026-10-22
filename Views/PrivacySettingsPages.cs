@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
+using Himo.Services;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Storage;
 
@@ -12,15 +13,15 @@ namespace Himo.Views;
 /// Privacy settings screens. The current backend persists these choices locally;
 /// server enforcement is intentionally not implied by these controls.
 /// </summary>
-public abstract class PrivacyPageBase : ContentPage
+public abstract class PrivacyPageBase : Himo.Services.LocalizedContentPage
 {
-    protected static readonly Color PageColor = Color.FromArgb("#F7F4FF");
-    protected static readonly Color CardColor = Color.FromArgb("#FFFFFF");
-    protected static readonly Color BorderColor = Color.FromArgb("#D9CFF0");
-    protected static readonly Color MainText = Color.FromArgb("#291841");
-    protected static readonly Color SecondaryText = Color.FromArgb("#77718D");
-    protected static readonly Color SoftAccent = Color.FromArgb("#F1EAFF");
-    protected static readonly Color Accent = Color.FromArgb("#6C25D9");
+    protected static readonly Color PageColor = Color.FromArgb("#211333");
+    protected static readonly Color CardColor = Color.FromArgb("#2D1942");
+    protected static readonly Color BorderColor = Color.FromArgb("#594768");
+    protected static readonly Color MainText = Color.FromArgb("#F7E9FF");
+    protected static readonly Color SecondaryText = Color.FromArgb("#C7B8D8");
+    protected static readonly Color SoftAccent = Color.FromArgb("#39204F");
+    protected static readonly Color Accent = Color.FromArgb("#C76BFF");
 
     protected PrivacyPageBase(string title, string subtitle)
     {
@@ -31,10 +32,17 @@ public abstract class PrivacyPageBase : ContentPage
         Shell.SetNavBarIsVisible(this, false);
         PageTitle = title;
         PageSubtitle = subtitle;
+        _body.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        HimoAppearanceManager.ApplyToTree(this);
     }
 
     private string PageTitle { get; }
-    private string PageSubtitle { get; }
+        private string PageSubtitle { get; }
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(18, 8, 18, 26),
@@ -121,11 +129,14 @@ public abstract class PrivacyPageBase : ContentPage
 
         var scroll = new ScrollView
         {
+            BackgroundColor = PageColor,
             Content = _body,
             VerticalScrollBarVisibility = ScrollBarVisibility.Never
         };
+        scroll.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         var layout = new Grid
         {
+            BackgroundColor = PageColor,
             RowDefinitions = new RowDefinitionCollection
             {
                 new(GridLength.Auto), new(GridLength.Star)
@@ -133,6 +144,7 @@ public abstract class PrivacyPageBase : ContentPage
         };
         layout.Add(header, 0, 0);
         layout.Add(scroll, 0, 1);
+        layout.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         Content = layout;
     }
 
@@ -149,7 +161,7 @@ public abstract class PrivacyPageBase : ContentPage
             StrokeThickness = 1,
             HorizontalOptions = LayoutOptions.Center,
             VerticalOptions = LayoutOptions.Center,
-            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(size / 2) },
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(Math.Max(9, size * 0.27)) },
             Content = new Image
             {
                 Source = SettingsVisuals.IconForSetting(title),
@@ -267,6 +279,8 @@ public abstract class PrivacyPageBase : ContentPage
                 TextColor = MainText,
                 Scale = 0.9
             };
+            radio.SetDynamicResource(RadioButton.BorderColorProperty, "HimoAccent");
+            radio.SetDynamicResource(RadioButton.TextColorProperty, "HimoPrimary");
             var label = new Label
             {
                 Text = option,
@@ -302,6 +316,8 @@ public abstract class PrivacyPageBase : ContentPage
                 StrokeThickness = isSelected ? 1.4 : 1,
                 StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(14) }
             };
+            container.SetDynamicResource(VisualElement.BackgroundColorProperty, isSelected ? "HimoSoft" : "HimoCard");
+            container.SetDynamicResource(Border.StrokeProperty, isSelected ? "HimoAccent" : "HimoBorder");
             optionViews.Add((radio, container, label));
             radio.CheckedChanged += (_, args) =>
             {
@@ -312,8 +328,8 @@ public abstract class PrivacyPageBase : ContentPage
                 foreach (var item in optionViews)
                 {
                     var active = item.Radio.IsChecked;
-                    item.Container.BackgroundColor = active ? SoftAccent : CardColor;
-                    item.Container.Stroke = active ? Accent : BorderColor;
+                    item.Container.SetDynamicResource(VisualElement.BackgroundColorProperty, active ? "HimoSoft" : "HimoCard");
+                    item.Container.SetDynamicResource(Border.StrokeProperty, active ? "HimoAccent" : "HimoBorder");
                     item.Container.StrokeThickness = active ? 1.4 : 1;
                     item.Label.FontAttributes = active ? FontAttributes.Bold : FontAttributes.None;
                 }
@@ -336,6 +352,7 @@ public abstract class PrivacyPageBase : ContentPage
             VerticalOptions = LayoutOptions.Center,
             HorizontalOptions = LayoutOptions.Center
         };
+        toggle.SetDynamicResource(Switch.OnColorProperty, "HimoAccent");
         toggle.Toggled += (_, args) => Preferences.Default.Set(key, args.Value);
         var labels = new VerticalStackLayout
         {
@@ -398,12 +415,17 @@ public abstract class PrivacyPageBase : ContentPage
         return grid;
     }
 
-    protected static View Separator() => new BoxView
+    protected static View Separator()
     {
-        HeightRequest = 1,
-        BackgroundColor = BorderColor,
-        Margin = new Thickness(12, 0)
-    };
+        var divider = new BoxView
+        {
+            HeightRequest = 1,
+            BackgroundColor = BorderColor,
+            Margin = new Thickness(12, 0)
+        };
+        divider.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoDivider");
+        return divider;
+    }
 
     private async Task OpenRouteAsync(string route)
     {

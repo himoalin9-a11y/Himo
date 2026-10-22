@@ -11,6 +11,7 @@ public partial class AppLockPage : ContentPage
     public AppLockPage(AppLockService lockService, Func<Task> unlocked)
     {
         InitializeComponent();
+        Himo.Services.AppLocalization.AttachToPage(this);
         _lock = lockService;
         _unlocked = unlocked;
     }

@@ -44,6 +44,12 @@ public partial class CallPage : ContentPage
 #endif
     private bool _remoteAccepted;
     private string _peerName = "جهة اتصال";
+    private double _localPreviewPanX;
+    private double _localPreviewPanY;
+    private double _localPreviewPanStartX;
+    private double _localPreviewPanStartY;
+    private double _localPreviewScale = 1.0;
+    private double _localPreviewPinchStartScale = 1.0;
 
     public string ConversationId
     {
@@ -54,7 +60,58 @@ public partial class CallPage : ContentPage
     public string Mode
     {
         get => _mode == CallMode.Video ? "video" : "audio";
-        set => _mode = string.Equals(value, "video", StringComparison.OrdinalIgnoreCase) ? CallMode.Video : CallMode.Audio;
+        set
+        {
+            _mode = string.Equals(value, "video", StringComparison.OrdinalIgnoreCase) ? CallMode.Video : CallMode.Audio;
+            UpdateCallModeIcon();
+        }
+    }
+
+    private void LocalPreviewPanUpdated(object? sender, PanUpdatedEventArgs e)
+    {
+        if (LocalPreviewFrame is null) return;
+
+        switch (e.StatusType)
+        {
+            case GestureStatus.Started:
+                _localPreviewPanStartX = _localPreviewPanX;
+                _localPreviewPanStartY = _localPreviewPanY;
+                break;
+            case GestureStatus.Running:
+                // Keep the floating self-view movable while limiting extreme drags.
+                var maxX = Math.Max(0, (Width - LocalPreviewFrame.Width) / 2 - 8);
+                var maxY = Math.Max(0, (Height - LocalPreviewFrame.Height) / 2 - 24);
+                _localPreviewPanX = Math.Clamp(_localPreviewPanStartX + e.TotalX, -maxX, maxX);
+                _localPreviewPanY = Math.Clamp(_localPreviewPanStartY + e.TotalY, -maxY, maxY);
+                LocalPreviewFrame.TranslationX = _localPreviewPanX;
+                LocalPreviewFrame.TranslationY = _localPreviewPanY;
+                break;
+        }
+    }
+
+    private void LocalPreviewPinchUpdated(object? sender, PinchGestureUpdatedEventArgs e)
+    {
+        if (LocalPreviewFrame is null) return;
+
+        switch (e.Status)
+        {
+            case GestureStatus.Started:
+                _localPreviewPinchStartScale = _localPreviewScale;
+                break;
+            case GestureStatus.Running:
+                // Scale the draggable preview between compact and enlarged sizes.
+                _localPreviewScale = Math.Clamp(_localPreviewPinchStartScale * e.Scale, 0.75, 1.8);
+                LocalPreviewFrame.Scale = _localPreviewScale;
+                break;
+        }
+    }
+
+    private void UpdateCallModeIcon()
+    {
+        if (CallModeIcon is not null)
+            CallModeIcon.Source = ImageSource.FromFile(_mode == CallMode.Video
+                ? "himo_icon_chat_video_call.png"
+                : "himo_icon_chat_voice_call.png");
     }
 
     public string Incoming
@@ -134,6 +191,7 @@ public partial class CallPage : ContentPage
     public CallPage(ICallService calls, HimoRealtimeService realtime, WebRtcNegotiationCoordinator negotiation, ChatService chat, HimoApiClient api, INotificationService notifications)
     {
         InitializeComponent();
+        Himo.Services.AppLocalization.AttachToPage(this);
         _calls = calls;
         _realtime = realtime;
         _negotiation = negotiation;
@@ -321,7 +379,11 @@ public partial class CallPage : ContentPage
             CallControls.IsVisible = state.IsConnected;
             VideoSurface.IsVisible = _mode == CallMode.Video && state.IsConnected;
             ProfilePanel.IsVisible = !VideoSurface.IsVisible;
+            CameraControl.IsVisible = _mode == CallMode.Video && state.IsConnected;
+            CameraButton.IsVisible = _mode == CallMode.Video && state.IsConnected;
             CameraButton.IsEnabled = _mode == CallMode.Video && state.IsConnected;
+            SwitchCameraButton.IsVisible = _mode == CallMode.Video && state.IsConnected;
+            SwitchCameraButton.IsEnabled = _mode == CallMode.Video && state.IsConnected;
             CameraButton.Opacity = _mode == CallMode.Video ? 1.0 : 0.4;
             MuteActionLabel.Text = state.IsMuted ? "إلغاء الكتم" : "كتم الصوت";
             MuteButton.BackgroundColor = state.IsMuted ? ThemeColor("HimoDangerSoft", "#41162F") : ThemeColor("HimoSurface", "#160A27");
@@ -678,6 +740,10 @@ public partial class CallPage : ContentPage
 #endif
             StatusLabel.Text = "تعذر تجهيز المكالمة. تحقق من الاتصال ثم حاول مرة أخرى.";
             System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Start failed: {ex}");
+            // StartAsync can fail before CallService publishes a current call state,
+            // so no CallEnded event is guaranteed. Explicitly leave this page to avoid
+            // trapping the caller in a dead call screen.
+            await NavigateBackFromCallAsync();
         }
         finally
         {
@@ -1070,20 +1136,35 @@ public partial class CallPage : ContentPage
         {
             try
             {
-                var attached = false;
+                var localAttached = false;
+                var remoteAttached = false;
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
                     var engine = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services.GetService<IWebRtcMediaEngine>() as AndroidWebRtcMediaEngine;
                     if (engine is null || !engine.IsStarted) return;
-                    await engine.AttachRemoteVideoAsync(RemoteVideoHost);
+
+                    // Attach the self-view first so a remote renderer issue cannot prevent
+                    // the local/front-camera preview from appearing.
                     await engine.AttachLocalVideoAsync(LocalVideoHost);
-                    attached = true;
+                    localAttached = true;
+                    try
+                    {
+                        await engine.AttachRemoteVideoAsync(RemoteVideoHost);
+                        remoteAttached = true;
+                    }
+                    catch (Exception remoteEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Remote renderer attach failed: {remoteEx.Message}");
+                    }
                 });
 
-                if (attached)
+                if (localAttached)
                 {
-                    VideoWaitingOverlay.IsVisible = false;
-                    return;
+                    // Keep the waiting overlay until remote video is attached, but do not
+                    // let it block the floating local preview.
+                    if (remoteAttached)
+                        VideoWaitingOverlay.IsVisible = false;
+                    if (remoteAttached) return;
                 }
             }
             catch (Exception ex)
@@ -1241,7 +1322,7 @@ public partial class CallPage : ContentPage
             }
             else
             {
-                await DisplayAlertAsync("معلومات المكالمة", $"مكالمة صوتية\n{FormatDuration()}", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("معلومات المكالمة"), $"مكالمة صوتية\n{FormatDuration()}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             }
         }
         catch (Exception ex)
@@ -1260,7 +1341,8 @@ public partial class CallPage : ContentPage
         await engine.SetCameraEnabledAsync(_cameraEnabled);
         CameraButton.Source = _cameraEnabled ? ThemedCallIcon("himo_call_camera.png") : ThemedCallIcon("himo_call_camera_off.png");
         CameraActionLabel.Text = _cameraEnabled ? "إيقاف الكاميرا" : "تشغيل الكاميرا";
-        CameraButton.BackgroundColor = _cameraEnabled ? ThemeColor("HimoSurface", "#160A27") : ThemeColor("HimoDangerSoft", "#41162F");
+        CameraButton.BackgroundColor = _cameraEnabled ? Color.FromArgb("#26364A") : Color.FromArgb("#7F2634");
+        CameraButton.BorderColor = _cameraEnabled ? Color.FromArgb("#6B829D") : Color.FromArgb("#FF8795");
         CameraActionLabel.TextColor = _cameraEnabled ? ThemeColor("HimoTextSecondary", "#B7A2D2") : ThemeColor("HimoDanger", "#D9485F");
 #else
         await Task.CompletedTask;

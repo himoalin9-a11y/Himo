@@ -40,6 +40,8 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
 
     private object? _localRenderer;
     private object? _remoteRenderer;
+    private readonly HashSet<object> _initializedHostRenderers =
+        new(ReferenceEqualityComparer.Instance);
 
     private object? _remoteVideoTrack;
     private object? _remoteAudioTrack;
@@ -201,7 +203,7 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                     if (mode == CallMode.Video)
                         InitializeVideo();
                     cancellationToken.ThrowIfCancellationRequested();
-                    InitializePeerConnection(sessionGeneration);
+                    InitializePeerConnection(sessionGeneration, mode);
                 }
                 catch
                 {
@@ -445,8 +447,9 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                     null);
 
             var observer =
-                InvokeRequired(
+                GetRequiredPropertyValue(
                     _videoSource,
+                    "CapturerObserver",
                     "GetCapturerObserver");
 
             InvokeRequired(
@@ -487,15 +490,17 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             if (_videoTrack is not null &&
                 _localRenderer is not null)
             {
-                InvokeOptional(
+                InvokeCompatibleOptional(
                     _videoTrack,
                     "RemoveSink",
                     _localRenderer);
 
-                InvokeOptional(
+                var reboundSink = InvokeCompatibleOptional(
                     _videoTrack,
                     "AddSink",
                     _localRenderer);
+                System.Diagnostics.Debug.WriteLine(
+                    $"[Himo WebRTC] Local preview sink rebound after camera switch: methodFound={reboundSink.MethodFound}; success={reboundSink.Success}.");
             }
 
             return Task.CompletedTask;
@@ -523,15 +528,17 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
 
         if (_videoTrack is not null)
         {
-            InvokeOptional(
+            InvokeCompatibleOptional(
                 _videoTrack,
                 "RemoveSink",
                 _localRenderer);
 
-            InvokeOptional(
+            var localSink = InvokeCompatibleOptional(
                 _videoTrack,
                 "AddSink",
                 _localRenderer);
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo WebRTC] Local preview sink binding: methodFound={localSink.MethodFound}; success={localSink.Success}.");
         }
 
         return Task.CompletedTask;
@@ -588,24 +595,26 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
     public void SetRemoteVideoTrack(
         object? track)
     {
-        if (ReferenceEquals(
-            _remoteVideoTrack,
-            track))
-        {
-            BindRemoteVideoTrack();
+        if (ReferenceEquals(_remoteVideoTrack, track))
             return;
-        }
 
-        if (_remoteVideoTrack is not null &&
-            _remoteRenderer is not null)
+        if (_remoteVideoTrack is not null && _remoteRenderer is not null)
         {
-            InvokeOptional(
+            var removed = InvokeCompatibleOptional(
                 _remoteVideoTrack,
                 "RemoveSink",
                 _remoteRenderer);
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo WebRTC] Previous remote video sink detached: found={removed.MethodFound}; success={removed.Success}.");
         }
 
         _remoteVideoTrack = track;
+
+        System.Diagnostics.Debug.WriteLine(
+            $"[Himo WebRTC] Remote video track changed: {(track is null ? "null" : track.GetType().FullName)}; rendererReady={_remoteRenderer is not null}; paused={_videoPausedForBackground}");
+
+        if (_remoteVideoTrack is not null && !_videoPausedForBackground)
+            InvokeOptional(_remoteVideoTrack, "SetEnabled", true);
 
         BindRemoteVideoTrack();
     }
@@ -624,15 +633,17 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             return;
         }
 
-        InvokeOptional(
+        var removed = InvokeCompatibleOptional(
             _remoteVideoTrack,
             "RemoveSink",
             _remoteRenderer);
-
-        InvokeOptional(
+        var added = InvokeCompatibleOptional(
             _remoteVideoTrack,
             "AddSink",
             _remoteRenderer);
+
+        System.Diagnostics.Debug.WriteLine(
+            $"[Himo WebRTC] Remote video sink binding: track={_remoteVideoTrack.GetType().Name}; renderer={_remoteRenderer.GetType().Name}; addMethodFound={added.MethodFound}; addSucceeded={added.Success}; previousSinkRemoved={removed.Success}; paused={_videoPausedForBackground}");
     }
 
     public async Task<string?> CreateOfferAsync(
@@ -657,7 +668,9 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                 cancellationToken)
             .ConfigureAwait(false);
 
-        return GetSdpText(description);
+        var sdp = GetSdpText(description);
+        LogSdpMediaSummary("LOCAL OFFER", sdp);
+        return sdp;
     }
 
     public async Task<string?> CreateAnswerAsync(
@@ -682,7 +695,9 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                 cancellationToken)
             .ConfigureAwait(false);
 
-        return GetSdpText(description);
+        var sdp = GetSdpText(description);
+        LogSdpMediaSummary("LOCAL ANSWER", sdp);
+        return sdp;
     }
 
     public Task SetRemoteOfferAsync(
@@ -942,6 +957,8 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                 "SDP is required.",
                 nameof(sdp));
         }
+
+        LogSdpMediaSummary($"REMOTE {typeName.ToUpperInvariant()}", sdp);
 
         var sessionType =
             RequiredType(
@@ -1438,6 +1455,44 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             ?.ToString();
     }
 
+    // Log only SDP media lines and directions. ICE addresses and credentials are omitted.
+    private static void LogSdpMediaSummary(string label, string? sdp)
+    {
+        if (string.IsNullOrWhiteSpace(sdp))
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo WebRTC] {label} SDP is empty.");
+            return;
+        }
+
+        var lines = sdp.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+        var summaries = new List<string>();
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i].Trim();
+            if (!line.StartsWith("m=audio ", StringComparison.OrdinalIgnoreCase) &&
+                !line.StartsWith("m=video ", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var media = parts[0].Length > 2 ? parts[0][2..] : "unknown";
+            var port = parts.Length > 1 ? parts[1] : "?";
+            var direction = "sendrecv";
+            for (var j = i + 1; j < lines.Length && !lines[j].StartsWith("m=", StringComparison.OrdinalIgnoreCase); j++)
+            {
+                var attribute = lines[j].Trim();
+                if (attribute is "a=sendrecv" or "a=sendonly" or "a=recvonly" or "a=inactive")
+                {
+                    direction = attribute[2..];
+                    break;
+                }
+            }
+            summaries.Add($"{media}:port={port},direction={direction}");
+        }
+
+        System.Diagnostics.Debug.WriteLine(
+            $"[Himo WebRTC] {label} media: {(summaries.Count == 0 ? "no audio/video m-lines" : string.Join("; ", summaries))}");
+    }
+
     private sealed class SdpObserverBridge :
         Java.Lang.Object,
         Org.Webrtc.ISdpObserver
@@ -1552,14 +1607,22 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             RequiredType(
                 "Org.Webrtc.EglBase");
 
-        _eglBase =
+        // InitializeFactory creates this EGL context before constructing the
+        // video codec factories. Reuse it here instead of creating a second,
+        // unrelated context for the camera's texture pipeline.
+        _eglBase ??=
             InvokeRequiredStatic(
                 eglType,
                 "Create");
 
-        _eglContext =
-            InvokeRequired(
+        // Android Java bindings map Java's getEglBaseContext() method to the
+        // managed EglBaseContext property. Calling InvokeRequired("GetEglBaseContext")
+        // fails because that CLR method does not exist in this binding, even though
+        // the underlying Java API does expose getEglBaseContext().
+        _eglContext ??=
+            GetRequiredPropertyValue(
                 _eglBase,
+                "EglBaseContext",
                 "GetEglBaseContext");
 
         var helperType =
@@ -1633,8 +1696,9 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                 false);
 
         var observer =
-            InvokeRequired(
+            GetRequiredPropertyValue(
                 _videoSource,
+                "CapturerObserver",
                 "GetCapturerObserver");
 
         InvokeRequired(
@@ -1643,13 +1707,6 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             _surfaceTextureHelper,
             context,
             observer);
-
-        InvokeRequired(
-            _capturer,
-            "StartCapture",
-            1280,
-            720,
-            30);
 
         _videoTrack =
             InvokeRequired(
@@ -1662,10 +1719,25 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             _videoTrack,
             "SetEnabled",
             true);
+
+        // Start the camera only after the VideoTrack is fully connected to the source.
+        // This avoids losing the first frames on Android WebRTC bindings that require
+        // the source observer/track pipeline to be ready before capture begins.
+        System.Diagnostics.Debug.WriteLine(
+            $"[Himo WebRTC] Starting camera capture: {_cameraDeviceName}, 1280x720@30");
+        InvokeRequired(
+            _capturer,
+            "StartCapture",
+            1280,
+            720,
+            30);
+        System.Diagnostics.Debug.WriteLine(
+            "[Himo WebRTC] Camera capture started successfully.");
     }
 
     private void InitializePeerConnection(
-        long sessionGeneration)
+        long sessionGeneration,
+        CallMode mode)
     {
         var peerConnectionType =
             RequiredType(
@@ -1894,28 +1966,30 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             ?? throw new InvalidOperationException(
                 "Native PeerConnection could not be created.");
 
-        var streamIds =
-            new List<string>
-            {
-                "HimoStream"
-            };
-
+        // Use PeerConnection.AddTrack(MediaStreamTrack), a stable one-argument
+        // overload present in the bundled libwebrtc AAR. The older two-argument
+        // reflection call (track + List<string>) swallowed invocation failures,
+        // which allowed local camera preview without actually sending that track.
         if (_audioTrack is not null)
         {
-            InvokeOptional(
-                _peerConnection,
-                "AddTrack",
-                _audioTrack,
-                streamIds);
+            var audioSender = InvokeRequired(_peerConnection, "AddTrack", _audioTrack);
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo WebRTC] Local audio sender registered: sender={audioSender.GetType().Name}; track={_audioTrack.GetType().Name}.");
+        }
+        else
+        {
+            throw new InvalidOperationException("Local audio track was not initialized; cannot create a media PeerConnection.");
         }
 
         if (_videoTrack is not null)
         {
-            InvokeOptional(
-                _peerConnection,
-                "AddTrack",
-                _videoTrack,
-                streamIds);
+            var videoSender = InvokeRequired(_peerConnection, "AddTrack", _videoTrack);
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo WebRTC] Local video sender registered: sender={videoSender.GetType().Name}; track={_videoTrack.GetType().Name}; mode={mode}.");
+        }
+        else if (mode == CallMode.Video)
+        {
+            throw new InvalidOperationException("Video call mode is active, but no local VideoTrack exists to send.");
         }
     }
 
@@ -1968,6 +2042,64 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             ?? throw new InvalidOperationException(
                 "Java PeerConnectionFactory.builder() returned null.");
 
+        // The bundled WebRTC Builder leaves videoEncoderFactory and
+        // videoDecoderFactory null unless they are explicitly supplied. That
+        // allows the local camera preview to render, but creates/rejects the
+        // negotiated video m-line (m=video 0), so no remote video can flow.
+        // Use one EGL context for the encoder/decoder factories and the camera
+        // source/renderer; WebRTC texture frames must share this context.
+        var eglType = RequiredType("Org.Webrtc.EglBase");
+        _eglBase ??= InvokeRequiredStatic(eglType, "Create");
+        _eglContext ??= GetRequiredPropertyValue(
+            _eglBase,
+            "EglBaseContext",
+            "GetEglBaseContext");
+
+        var encoderFactory = CreateRequiredInstance(
+            RequiredType("Org.Webrtc.DefaultVideoEncoderFactory"),
+            _eglContext,
+            true,
+            true) as Java.Lang.Object
+            ?? throw new InvalidOperationException(
+                "DefaultVideoEncoderFactory could not be created.");
+
+        var decoderFactory = CreateRequiredInstance(
+            RequiredType("Org.Webrtc.DefaultVideoDecoderFactory"),
+            _eglContext) as Java.Lang.Object
+            ?? throw new InvalidOperationException(
+                "DefaultVideoDecoderFactory could not be created.");
+
+        var videoEncoderFactoryContract =
+            Java.Lang.Class.ForName(
+                "org.webrtc.VideoEncoderFactory",
+                false,
+                classLoader)
+            ?? throw new InvalidOperationException(
+                "WebRTC VideoEncoderFactory interface could not be loaded.");
+
+        var videoDecoderFactoryContract =
+            Java.Lang.Class.ForName(
+                "org.webrtc.VideoDecoderFactory",
+                false,
+                classLoader)
+            ?? throw new InvalidOperationException(
+                "WebRTC VideoDecoderFactory interface could not be loaded.");
+
+        InvokeJavaMethod(
+            javaBuilder,
+            "setVideoEncoderFactory",
+            videoEncoderFactoryContract,
+            encoderFactory);
+        InvokeJavaMethod(
+            javaBuilder,
+            "setVideoDecoderFactory",
+            videoDecoderFactoryContract,
+            decoderFactory);
+
+        System.Diagnostics.Debug.WriteLine(
+            "[Himo WebRTC] Video codec factories configured: " +
+            $"encoder={encoderFactory.GetType().Name}; decoder={decoderFactory.GetType().Name}; sharedEglContext=True.");
+
         var createFactoryMethod =
             javaBuilder.Class.GetMethod(
                 "createPeerConnectionFactory",
@@ -1992,6 +2124,71 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                 "The Java PeerConnectionFactory could not be wrapped by the FsWebRTC managed binding.");
 
         _factory = managedFactory;
+    }
+
+    private static object CreateRequiredInstance(
+        Type type,
+        params object?[] args)
+    {
+        var constructors = type.GetConstructors(
+            BindingFlags.Public | BindingFlags.Instance);
+
+        var constructor = constructors.FirstOrDefault(candidate =>
+        {
+            var parameters = candidate.GetParameters();
+            if (parameters.Length != args.Length)
+                return false;
+
+            for (var i = 0; i < parameters.Length; i++)
+            {
+                var argument = args[i];
+                var parameterType = parameters[i].ParameterType;
+                if (argument is null)
+                {
+                    if (parameterType.IsValueType &&
+                        Nullable.GetUnderlyingType(parameterType) is null)
+                        return false;
+                }
+                else if (!parameterType.IsInstanceOfType(argument))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        if (constructor is null)
+        {
+            var available = string.Join(
+                " | ",
+                constructors.Select(candidate => candidate.ToString()));
+            throw new MissingMethodException(
+                type.FullName ?? type.Name,
+                $"Compatible constructor not found. Available: {available}");
+        }
+
+        return constructor.Invoke(args)
+            ?? throw new InvalidOperationException(
+                $"Constructor for '{type.FullName}' returned null.");
+    }
+
+    private static void InvokeJavaMethod(
+        Java.Lang.Object target,
+        string methodName,
+        Java.Lang.Class parameterType,
+        Java.Lang.Object argument)
+    {
+        var method = target.Class.GetMethod(
+            methodName,
+            new[] { parameterType })
+            ?? throw new MissingMethodException(
+                target.Class.Name,
+                methodName);
+
+        method.Invoke(
+            target,
+            new Java.Lang.Object[] { argument });
     }
 
     private static void EnsurePeerConnectionFactoryInitialized(
@@ -2395,6 +2592,48 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             args);
     }
 
+    // Read a Java bean getter that the Xamarin/.NET Android binding exposes as
+    // a C# property. The final argument is retained as a compatibility fallback
+    // for binding versions that expose the getter as a method instead.
+    private static object GetRequiredPropertyValue(
+        object target,
+        string propertyName,
+        string fallbackMethodName)
+    {
+        var targetType = target.GetType();
+        var candidates = new[] { targetType }
+            .Concat(targetType.GetInterfaces())
+            .Distinct();
+
+        foreach (var candidate in candidates)
+        {
+            var property = candidate.GetProperties(
+                    BindingFlags.Public |
+                    BindingFlags.NonPublic |
+                    BindingFlags.Instance)
+                .FirstOrDefault(p =>
+                    string.Equals(
+                        p.Name,
+                        propertyName,
+                        StringComparison.OrdinalIgnoreCase) &&
+                    p.GetIndexParameters().Length == 0 &&
+                    p.GetMethod is not null);
+
+            if (property is null)
+                continue;
+
+            var value = property.GetValue(target);
+            if (value is not null)
+                return value;
+
+            throw new InvalidOperationException(
+                $"WebRTC property '{propertyName}' on '{targetType.FullName}' returned null.");
+        }
+
+        // Some bindings preserve the Java getter as a conventional C# method.
+        return InvokeRequired(target, fallbackMethodName);
+    }
+
     // Reflection returns null for a successfully invoked void method. Keep a
     // non-null sentinel so callers that intentionally ignore a void result do
     // not mistake successful WebRTC calls (for example SetLocalDescription)
@@ -2448,6 +2687,63 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                 args)
             ?? throw new InvalidOperationException(
                 $"WebRTC static method '{name}' returned null.");
+    }
+
+    private readonly record struct OptionalInvocationResult(
+        bool MethodFound,
+        bool Success);
+
+    // Resolve overloads by runtime parameter compatibility. The older helper
+    // chooses only by argument count, which can select an incompatible overload
+    // and silently swallow AddSink/RemoveSink failures.
+    private static OptionalInvocationResult InvokeCompatibleOptional(
+        object? target,
+        string name,
+        params object?[] args)
+    {
+        if (target is null)
+            return new(false, false);
+
+        var method = target.GetType()
+            .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            .FirstOrDefault(m =>
+            {
+                if (!string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase))
+                    return false;
+                var parameters = m.GetParameters();
+                if (parameters.Length != args.Length)
+                    return false;
+                for (var i = 0; i < parameters.Length; i++)
+                {
+                    var arg = args[i];
+                    if (arg is null)
+                    {
+                        if (parameters[i].ParameterType.IsValueType &&
+                            Nullable.GetUnderlyingType(parameters[i].ParameterType) is null)
+                            return false;
+                    }
+                    else if (!parameters[i].ParameterType.IsInstanceOfType(arg))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+        if (method is null)
+            return new(false, false);
+
+        try
+        {
+            method.Invoke(target, args);
+            return new(true, true);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo WebRTC] {name} invocation failed on {target.GetType().Name}: {ex.GetBaseException().Message}");
+            return new(true, false);
+        }
     }
 
     private static object? InvokeOptional(
@@ -2562,43 +2858,65 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
         bool mirror,
         object? existing)
     {
-        var platformHost =
-            host.Handler?.PlatformView
-                as global::Android.Views.ViewGroup
+        // The call page owns a real WebRtcRendererView. Its Android handler
+        // creates exactly one SurfaceViewRenderer in the native view hierarchy;
+        // initialize it here with the media engine's shared EGL context.
+        // The dedicated MAUI host creates exactly one renderer and keeps it
+        // outside MAUI's measurement surface. Reuse that renderer instead of
+        // creating another SurfaceViewRenderer.
+        if (host is Himo.Views.WebRtcRendererView rendererHost &&
+            rendererHost.NativeRenderer is global::Org.Webrtc.SurfaceViewRenderer readyRenderer)
+        {
+            if (_eglContext is null)
+                throw new InvalidOperationException(
+                    "The shared WebRTC EGL context is not ready for video rendering.");
+
+            // Use the same EGL context as the camera capturer/video source. A
+            // separately-created EGL context can receive frames but fail to render
+            // texture-backed frames on the SurfaceViewRenderer.
+            if (!_initializedHostRenderers.Contains(readyRenderer))
+            {
+                InvokeRequired(readyRenderer, "Init", _eglContext, null);
+                _initializedHostRenderers.Add(readyRenderer);
+            }
+
+            InvokeOptional(readyRenderer, "SetEnableHardwareScaler", true);
+            InvokeOptional(readyRenderer, "SetMirror", mirror);
+            InvokeOptional(readyRenderer, "SetZOrderMediaOverlay", mirror);
+            return readyRenderer;
+        }
+
+        var platformObject = host.Handler?.PlatformView
             ?? throw new InvalidOperationException(
-                "Video host is not ready on Android.");
+                "Video renderer host is not ready on Android.");
+
+        // Compatibility fallback for older layouts that still pass a ViewGroup.
+        var platformHost =
+            platformObject as global::Android.Views.ViewGroup
+            ?? throw new InvalidOperationException(
+                "Video host is not a compatible Android ViewGroup.");
 
         if (existing is global::Android.Views.View existingView)
         {
-            if (existingView.Parent
-                    is global::Android.Views.ViewGroup currentParent &&
-                !ReferenceEquals(
-                    currentParent,
-                    platformHost))
+            if (existingView.Parent is global::Android.Views.ViewGroup currentParent &&
+                !ReferenceEquals(currentParent, platformHost))
             {
-                currentParent.RemoveView(
-                    existingView);
+                currentParent.RemoveView(existingView);
             }
 
-            if (!ReferenceEquals(
-                existingView.Parent,
-                platformHost))
+            if (!ReferenceEquals(existingView.Parent, platformHost))
             {
                 existingView.LayoutParameters =
-                    new global::Android.Views.ViewGroup.LayoutParams(
-                        -1,
-                        -1);
+                    new global::Android.Views.ViewGroup.MarginLayoutParams(-1, -1);
 
-                platformHost.AddView(
-                    existingView);
+                platformHost.AddView(existingView);
             }
 
             return existing;
         }
 
         var rendererType =
-            RequiredType(
-                "Org.Webrtc.SurfaceViewRenderer");
+            RequiredType("Org.Webrtc.SurfaceViewRenderer");
 
         var renderer =
             Activator.CreateInstance(
@@ -2607,10 +2925,7 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             ?? throw new InvalidOperationException(
                 "SurfaceViewRenderer could not be created.");
 
-        InvokeOptional(
-            renderer,
-            "SetEnableHardwareScaler",
-            true);
+        InvokeOptional(renderer, "SetEnableHardwareScaler", true);
 
         if (_eglContext is not null)
         {
@@ -2621,21 +2936,15 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
                 null);
         }
 
-        InvokeOptional(
-            renderer,
-            "SetMirror",
-            mirror);
+        InvokeOptional(renderer, "SetMirror", mirror);
+        InvokeOptional(renderer, "SetZOrderMediaOverlay", mirror);
 
-        if (renderer
-            is global::Android.Views.View nativeView)
+        if (renderer is global::Android.Views.View nativeView)
         {
             nativeView.LayoutParameters =
-                new global::Android.Views.ViewGroup.LayoutParams(
-                    -1,
-                    -1);
+                new global::Android.Views.ViewGroup.MarginLayoutParams(-1, -1);
 
-            platformHost.AddView(
-                nativeView);
+            platformHost.AddView(nativeView);
         }
 
         return renderer;
@@ -2650,7 +2959,7 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
         if (_videoTrack is not null &&
             _localRenderer is not null)
         {
-            InvokeOptional(
+            InvokeCompatibleOptional(
                 _videoTrack,
                 "RemoveSink",
                 _localRenderer);
@@ -2663,7 +2972,7 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
         if (_remoteVideoTrack is not null &&
             _remoteRenderer is not null)
         {
-            InvokeOptional(
+            InvokeCompatibleOptional(
                 _remoteVideoTrack,
                 "RemoveSink",
                 _remoteRenderer);
@@ -2718,6 +3027,7 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
 
         _localRenderer = null;
         _remoteRenderer = null;
+        _initializedHostRenderers.Clear();
 
         _remoteVideoTrack = null;
         _remoteAudioTrack = null;
@@ -2737,19 +3047,39 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
         _remoteAudioEnabled = false;
     }
 
-    private static void RemoveRenderer(
-        object? renderer)
+    private static void RemoveRenderer(object? renderer)
     {
-        if (renderer
-            is global::Android.Views.View view &&
-            view.Parent
-                is global::Android.Views.ViewGroup parent)
+        if (renderer is null)
+            return;
+
+        void RemoveOnMainThread()
         {
-            parent.RemoveView(
-                view);
+            if (renderer is global::Android.Views.View view &&
+                view.Parent is global::Android.Views.ViewGroup parent)
+            {
+                parent.RemoveView(view);
+            }
+            TryDispose(renderer);
         }
 
-        TryDispose(renderer);
+        if (global::Microsoft.Maui.ApplicationModel.MainThread.IsMainThread)
+        {
+            RemoveOnMainThread();
+            return;
+        }
+
+        try
+        {
+            global::Microsoft.Maui.ApplicationModel.MainThread
+                .InvokeOnMainThreadAsync(RemoveOnMainThread)
+                .GetAwaiter()
+                .GetResult();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo WebRTC] Renderer cleanup on main thread failed: {ex.GetBaseException().Message}");
+        }
     }
 
     private static void TryDispose(
@@ -2955,10 +3285,11 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             var track =
                 receiver?.Track();
 
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo WebRTC] OnAddTrack: receiverTrack={(track is null ? "null" : track.GetType().FullName)}; streams={mediaStreams?.Length ?? 0}");
+
             if (track is not null)
-            {
                 _onRemoteTrack(track);
-            }
         }
 
         public void OnRemoveTrack(
@@ -2972,10 +3303,11 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             var track =
                 transceiver?.Receiver?.Track();
 
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo WebRTC] OnTrack: receiverTrack={(track is null ? "null" : track.GetType().FullName)}");
+
             if (track is not null)
-            {
                 _onRemoteTrack(track);
-            }
         }
     }
 

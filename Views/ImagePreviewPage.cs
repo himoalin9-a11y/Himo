@@ -7,7 +7,7 @@ namespace Himo.Views;
 /// Full-screen image viewer with pinch-to-zoom and pan gestures.
 /// Uses the shared white close icon so it remains legible over the dark viewer.
 /// </summary>
-public sealed class ImagePreviewPage : ContentPage
+public sealed class ImagePreviewPage : Himo.Services.LocalizedContentPage
 {
     private readonly Image _image;
     private double _startScale = 1;

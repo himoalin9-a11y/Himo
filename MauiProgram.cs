@@ -4,6 +4,7 @@ using Himo.ViewModels;
 using Microsoft.Maui.Hosting;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.LifecycleEvents;
+using ZXing.Net.Maui.Controls;
 #if ANDROID
 using Plugin.Firebase.CloudMessaging;
 using Plugin.Firebase.Core.Platforms.Android;
@@ -52,9 +53,9 @@ public static class MauiProgram
             if (activity.IsFinishing || activity.IsDestroyed)
                 return;
 
-            // Plugin.Firebase documents initialization in Android OnCreate. Keep
-            // it before MainActivity handles launch intents, rather than delaying
-            // it until after the first frame where it can cause a blank/white pause.
+            // Called from the Android OnCreate lifecycle hook, but scheduled after
+            // the first presentation so native Firebase initialization cannot block
+            // the initial Himo screen.
             CrossFirebase.Initialize(activity, () => activity);
             Volatile.Write(ref _firebaseStartupCompleted, 1);
             initialized = true;
@@ -82,12 +83,14 @@ public static class MauiProgram
         builder
             .UseMauiApp<App>()
             .UseMauiCommunityToolkit()
-            .UseMauiCommunityToolkitMediaElement();
+            .UseMauiCommunityToolkitMediaElement()
+            .UseBarcodeReader();
 
 #if ANDROID
         builder.ConfigureMauiHandlers(handlers =>
         {
             handlers.AddHandler<Views.CameraPreview, Platforms.Android.CameraPreviewHandler>();
+            handlers.AddHandler<Views.WebRtcRendererView, Platforms.Android.Services.WebRtcRendererViewHandler>();
         });
 
         builder.ConfigureLifecycleEvents(events =>
@@ -95,7 +98,35 @@ public static class MauiProgram
             events.AddAndroid(android => android.OnCreate((activity, _) =>
             {
                 FirebaseCloudMessagingImplementation.ChannelId = Platforms.Android.Services.NotificationService.MessageChannelId;
-                InitializeFirebaseOnCreate(activity);
+
+                // Firebase performs synchronous native setup. Queue it shortly
+                // after Android OnCreate instead of occupying the critical launch
+                // path while the first Himo screen is being prepared.
+                var decorView = activity.Window?.DecorView;
+                if (decorView is null)
+                {
+                    InitializeFirebaseOnCreate(activity);
+                    return;
+                }
+
+                var scheduled = decorView.PostDelayed(() =>
+                {
+                    InitializeFirebaseOnCreate(activity);
+                    // MainActivity may have observed the launch intent before the
+                    // deferred Firebase init completed; replay it once afterward.
+                    if (Volatile.Read(ref _firebaseStartupCompleted) != 0)
+                    {
+                        try { FirebaseCloudMessagingImplementation.OnNewIntent(activity.Intent); }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Himo Startup] Deferred Firebase launch-intent replay skipped: {ex.Message}");
+                        }
+                    }
+                }, 300);
+
+                // Defensive fallback for an activity whose decor view rejects posts.
+                if (!scheduled)
+                    InitializeFirebaseOnCreate(activity);
             }));
         });
 #endif
@@ -138,6 +169,8 @@ public static class MauiProgram
         builder.Services.AddTransient<Views.AccountPasswordPage>();
         builder.Services.AddTransient<Views.AddAccountPage>();
         builder.Services.AddTransient<Views.ProfilePage>();
+        builder.Services.AddTransient<Views.ShareAccountPage>();
+        builder.Services.AddTransient<Views.QrScannerPage>();
         builder.Services.AddTransient<Views.SearchPage>();
         builder.Services.AddTransient<Views.CallPage>();
         builder.Services.AddTransient<Views.CreateGroupPage>();

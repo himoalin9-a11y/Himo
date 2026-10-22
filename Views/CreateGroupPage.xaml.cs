@@ -44,6 +44,7 @@ public partial class CreateGroupPage : ContentPage
     public CreateGroupPage(HimoApiClient api, HomeViewModel home)
     {
         InitializeComponent();
+        Himo.Services.AppLocalization.AttachToPage(this);
         _api = api;
         _home = home;
         MembersView.ItemsSource = _members;
@@ -89,7 +90,7 @@ public partial class CreateGroupPage : ContentPage
         var query = MemberLookupEntry.Text?.Trim() ?? string.Empty;
         if (query.Length < 3)
         {
-            await DisplayAlertAsync("إضافة عضو", "أدخل ثلاثة أحرف على الأقل من الاسم، أو بريدًا إلكترونيًا أو رقم هاتف صحيحًا.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إضافة عضو"), "أدخل ثلاثة أحرف على الأقل من الاسم، أو بريدًا إلكترونيًا أو رقم هاتف صحيحًا.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -108,9 +109,9 @@ public partial class CreateGroupPage : ContentPage
 
             if (newMatches.Length == 0)
             {
-                await DisplayAlertAsync("إضافة عضو", matches.Count == 0
-                    ? "لم نعثر على حساب مطابق. تأكد من الرقم أو البريد وأن الحساب مسجل في Himo."
-                    : "تمت إضافة جميع الحسابات المطابقة بالفعل.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إضافة عضو"), matches.Count == 0
+                    ? Himo.Services.AppLocalization.TranslateSourceText("لم نعثر على حساب مطابق. تأكد من الرقم أو البريد وأن الحساب مسجل في Himo.")
+                    : Himo.Services.AppLocalization.TranslateSourceText("تمت إضافة جميع الحسابات المطابقة بالفعل."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
 
@@ -143,7 +144,7 @@ public partial class CreateGroupPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("إضافة عضو", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إضافة عضو"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -180,13 +181,13 @@ public partial class CreateGroupPage : ContentPage
         var name = GroupNameEntry.Text?.Trim() ?? string.Empty;
         if (!addingToExisting && (name.Length is < 2 or > 60))
         {
-            await DisplayAlertAsync("المجموعة", "اكتب اسمًا من حرفين إلى 60 حرفًا.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المجموعة"), "اكتب اسمًا من حرفين إلى 60 حرفًا.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
         if (_members.Count == 0)
         {
-            await DisplayAlertAsync(addingToExisting ? "إضافة أعضاء" : "المجموعة",
-                "أضف شخصًا واحدًا على الأقل قبل المتابعة.", "حسنًا");
+            await DisplayAlertAsync(addingToExisting ? Himo.Services.AppLocalization.TranslateSourceText("إضافة أعضاء") : Himo.Services.AppLocalization.TranslateSourceText("المجموعة"),
+                Himo.Services.AppLocalization.TranslateSourceText("أضف شخصًا واحدًا على الأقل قبل المتابعة."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -215,7 +216,7 @@ public partial class CreateGroupPage : ContentPage
                 var resultMessage = result.AddedCount > 0
                     ? $"تمت إضافة {result.AddedCount} عضو إلى المجموعة."
                     : "الأشخاص المحددون أعضاء في المجموعة بالفعل؛ لم تتم إضافة أعضاء جدد.";
-                await DisplayAlertAsync("إضافة أعضاء", resultMessage, "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إضافة أعضاء"), resultMessage, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 if (Shell.Current is { } existingShell)
                     await existingShell.GoToAsync("..", false);
                 return;
@@ -231,7 +232,7 @@ public partial class CreateGroupPage : ContentPage
             var shell = Shell.Current;
             if (shell is null)
             {
-                await DisplayAlertAsync("المجموعة", "تم إنشاء المجموعة بنجاح، لكن تعذر فتح المحادثة الآن. ارجع إلى قائمة المحادثات وحدّثها.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المجموعة"), "تم إنشاء المجموعة بنجاح، لكن تعذر فتح المحادثة الآن. ارجع إلى قائمة المحادثات وحدّثها.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
 
@@ -240,7 +241,7 @@ public partial class CreateGroupPage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo Groups] Create/add failed: {ex}");
-            await DisplayAlertAsync(addingToExisting ? "تعذرت إضافة الأعضاء" : "تعذر إنشاء المجموعة", ex.Message, "حسنًا");
+            await DisplayAlertAsync(addingToExisting ? Himo.Services.AppLocalization.TranslateSourceText("تعذرت إضافة الأعضاء") : Himo.Services.AppLocalization.TranslateSourceText("تعذر إنشاء المجموعة"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {

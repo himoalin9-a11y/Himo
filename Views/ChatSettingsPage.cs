@@ -20,7 +20,7 @@ namespace Himo.Views;
 /// change can be shipped as a small, self-contained patch without altering
 /// global navigation or other settings pages.
 /// </summary>
-public sealed class ChatSettingsPage : ContentPage
+public sealed class ChatSettingsPage : Himo.Services.LocalizedContentPage
 {
     public const string EnterToSendKey = "himo_chat_enter_to_send";
     public const string ShowMediaKey = "himo_chat_show_media";
@@ -33,15 +33,15 @@ public sealed class ChatSettingsPage : ContentPage
     public const string BackupFrequencyKey = "himo_chat_backup_frequency";
 
     private readonly ChatService _chat;
-    private static readonly Color IconTileColor = Color.FromArgb("#F0EAFE");
-    private static readonly Color IconTileBorderColor = Color.FromArgb("#E0D7F8");
+    private static readonly Color IconTileColor = Color.FromArgb("#39204F");
+    private static readonly Color IconTileBorderColor = Color.FromArgb("#594768");
 
     public ChatSettingsPage(ChatService chat)
     {
         _chat = chat ?? throw new ArgumentNullException(nameof(chat));
         Title = "الدردشات";
         FlowDirection = FlowDirection.RightToLeft;
-        BackgroundColor = Color.FromArgb("#F7F6FB");
+        BackgroundColor = Color.FromArgb("#211333");
         SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
 
         var content = new VerticalStackLayout
@@ -84,7 +84,16 @@ public sealed class ChatSettingsPage : ContentPage
         };
         footer.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
         content.Add(footer);
-        Content = new ScrollView { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Never };
+        content.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
+        var pageScroll = new ScrollView { BackgroundColor = Color.FromArgb("#211333"), Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Never };
+        pageScroll.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
+        Content = pageScroll;
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        HimoAppearanceManager.ApplyToTree(this);
     }
 
     private async Task ChooseFontSizeAsync(Button button)
@@ -95,7 +104,7 @@ public sealed class ChatSettingsPage : ContentPage
 
         Preferences.Default.Set(ChatFontSizeKey, chosen);
         button.Text = chosen;
-        await DisplayAlertAsync("حجم الخط", "تم حفظ التفضيل. سيُستخدم الحجم عند فتح المحادثة التالية.", "موافق");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حجم الخط"), "تم حفظ التفضيل. سيُستخدم الحجم عند فتح المحادثة التالية.", Himo.Services.AppLocalization.TranslateSourceText("موافق"));
     }
 
     private static View BuildHeading(string title, string subtitle, string iconName)
@@ -161,8 +170,8 @@ public sealed class ChatSettingsPage : ContentPage
         var border = new Border
         {
             Padding = new Thickness(12, 5),
-            BackgroundColor = Color.FromArgb("#FFFFFF"),
-            Stroke = new SolidColorBrush(Color.FromArgb("#E3DDEF")),
+            BackgroundColor = Color.FromArgb("#2D1942"),
+            Stroke = new SolidColorBrush(Color.FromArgb("#594768")),
             StrokeThickness = 1,
             StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(19) },
             Content = content
@@ -174,7 +183,7 @@ public sealed class ChatSettingsPage : ContentPage
 
     private static BoxView Divider()
     {
-        var divider = new BoxView { HeightRequest = 1, Margin = new Thickness(0, 1), BackgroundColor = Color.FromArgb("#EDE8F6") };
+        var divider = new BoxView { HeightRequest = 1, Margin = new Thickness(0, 1), BackgroundColor = Color.FromArgb("#594768") };
         divider.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoDivider");
         return divider;
     }
@@ -182,6 +191,7 @@ public sealed class ChatSettingsPage : ContentPage
     private static View ToggleRow(string title, string description, string iconName, string preferenceKey, bool defaultValue)
     {
         var toggle = new Microsoft.Maui.Controls.Switch { IsToggled = Preferences.Default.Get(preferenceKey, defaultValue), VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Center };
+        toggle.SetDynamicResource(Microsoft.Maui.Controls.Switch.OnColorProperty, "HimoAccent");
         toggle.Toggled += (_, e) => Preferences.Default.Set(preferenceKey, e.Value);
         return SettingRow(title, description, iconName, toggle);
     }
@@ -263,12 +273,12 @@ public sealed class ChatSettingsPage : ContentPage
             WidthRequest = size,
             HeightRequest = size,
             Padding = Math.Max(4, (size - iconSize) / 2),
-            BackgroundColor = IconTileColor,
-            Stroke = new SolidColorBrush(IconTileBorderColor),
-            StrokeThickness = 1,
+            BackgroundColor = Color.FromArgb("#39204F"),
+            Stroke = new SolidColorBrush(Color.FromArgb("#594768")),
+            StrokeThickness = 0.8,
             HorizontalOptions = LayoutOptions.Center,
             VerticalOptions = LayoutOptions.Center,
-            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(size / 2) },
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(size * 0.28) },
             Content = new Image
             {
                 Source = assetName,
@@ -279,14 +289,16 @@ public sealed class ChatSettingsPage : ContentPage
                 VerticalOptions = LayoutOptions.Center
             }
         };
+        badge.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoIconBackground");
+        badge.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
         return badge;
     }
 }
 
-public sealed class ChatBackupSettingsPage : ContentPage
+public sealed class ChatBackupSettingsPage : Himo.Services.LocalizedContentPage
 {
-    private static readonly Color IconTileColor = Color.FromArgb("#F0EAFE");
-    private static readonly Color IconTileBorderColor = Color.FromArgb("#E0D7F8");
+    private static readonly Color IconTileColor = Color.FromArgb("#39204F");
+    private static readonly Color IconTileBorderColor = Color.FromArgb("#594768");
     private readonly ChatService _chat;
     private readonly Picker _frequency = new() { Title = "اختر التكرار", ItemsSource = new List<string> { "يوميًا", "أسبوعيًا", "شهريًا", "فقط عند الضغط على نسخ احتياطي", "متوقف" }, WidthRequest = 150, FontSize = 11.5 };
     private readonly Microsoft.Maui.Controls.Switch _cellular = new();
@@ -298,12 +310,17 @@ public sealed class ChatBackupSettingsPage : ContentPage
         _chat = chat ?? throw new ArgumentNullException(nameof(chat));
         Title = "النسخ الاحتياطي";
         FlowDirection = FlowDirection.RightToLeft;
-        BackgroundColor = Color.FromArgb("#F7F6FB");
+        BackgroundColor = Color.FromArgb("#211333");
         SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         _status.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
         _frequency.SelectedItem = Preferences.Default.Get(ChatSettingsPage.BackupFrequencyKey, "فقط عند الضغط على نسخ احتياطي");
+        _frequency.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoInput");
+        _frequency.SetDynamicResource(Picker.TextColorProperty, "HimoPrimary");
+        _frequency.SetDynamicResource(Picker.TitleColorProperty, "HimoTextSecondary");
         _cellular.IsToggled = Preferences.Default.Get(ChatSettingsPage.BackupCellularKey, false);
         _videos.IsToggled = Preferences.Default.Get(ChatSettingsPage.BackupVideosKey, false);
+        _cellular.SetDynamicResource(Microsoft.Maui.Controls.Switch.OnColorProperty, "HimoAccent");
+        _videos.SetDynamicResource(Microsoft.Maui.Controls.Switch.OnColorProperty, "HimoAccent");
         _frequency.SelectedIndexChanged += (_, _) => Preferences.Default.Set(ChatSettingsPage.BackupFrequencyKey, _frequency.SelectedItem?.ToString() ?? "فقط عند الضغط على نسخ احتياطي");
         _cellular.Toggled += (_, e) => Preferences.Default.Set(ChatSettingsPage.BackupCellularKey, e.Value);
         _videos.Toggled += (_, e) => Preferences.Default.Set(ChatSettingsPage.BackupVideosKey, e.Value);
@@ -323,8 +340,8 @@ public sealed class ChatBackupSettingsPage : ContentPage
         var statusBorder = new Border
         {
             Padding = new Thickness(13, 11),
-            BackgroundColor = Color.FromArgb("#F0EAFE"),
-            Stroke = new SolidColorBrush(Color.FromArgb("#E0D7F8")),
+            BackgroundColor = Color.FromArgb("#39204F"),
+            Stroke = new SolidColorBrush(Color.FromArgb("#594768")),
             StrokeThickness = 1,
             StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(15) },
             Content = _status
@@ -332,7 +349,16 @@ public sealed class ChatBackupSettingsPage : ContentPage
         statusBorder.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoSoft");
         statusBorder.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
         content.Add(statusBorder);
-        Content = new ScrollView { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Never };
+        content.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
+        var pageScroll = new ScrollView { BackgroundColor = Color.FromArgb("#211333"), Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Never };
+        pageScroll.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
+        Content = pageScroll;
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        HimoAppearanceManager.ApplyToTree(this);
     }
 
     private static View BuildHeading(string title, string subtitle, string iconName)
@@ -364,7 +390,7 @@ public sealed class ChatBackupSettingsPage : ContentPage
                 body.Add(Divider());
             body.Add(rows[i]);
         }
-        var card = new Border { Padding = new Thickness(12, 5), BackgroundColor = Color.FromArgb("#FFFFFF"), Stroke = new SolidColorBrush(Color.FromArgb("#E3DDEF")), StrokeThickness = 1, StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(19) }, Content = body };
+        var card = new Border { Padding = new Thickness(12, 5), BackgroundColor = Color.FromArgb("#2D1942"), Stroke = new SolidColorBrush(Color.FromArgb("#594768")), StrokeThickness = 1, StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(19) }, Content = body };
         card.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoCard");
         card.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
         var stack = new VerticalStackLayout { Spacing = 8, FlowDirection = FlowDirection.RightToLeft };
@@ -375,7 +401,7 @@ public sealed class ChatBackupSettingsPage : ContentPage
 
     private static BoxView Divider()
     {
-        var divider = new BoxView { HeightRequest = 1, Margin = new Thickness(0, 1), BackgroundColor = Color.FromArgb("#EDE8F6") };
+        var divider = new BoxView { HeightRequest = 1, Margin = new Thickness(0, 1), BackgroundColor = Color.FromArgb("#594768") };
         divider.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoDivider");
         return divider;
     }
@@ -414,19 +440,22 @@ public sealed class ChatBackupSettingsPage : ContentPage
 
     private static Border IconBadge(string assetName, double size, double iconSize)
     {
-        return new Border
+        var badge = new Border
         {
             WidthRequest = size,
             HeightRequest = size,
             Padding = Math.Max(4, (size - iconSize) / 2),
-            BackgroundColor = IconTileColor,
-            Stroke = new SolidColorBrush(IconTileBorderColor),
-            StrokeThickness = 1,
+            BackgroundColor = Color.FromArgb("#39204F"),
+            Stroke = new SolidColorBrush(Color.FromArgb("#594768")),
+            StrokeThickness = 0.8,
             HorizontalOptions = LayoutOptions.Center,
             VerticalOptions = LayoutOptions.Center,
-            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(size / 2) },
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(size * 0.28) },
             Content = new Image { Source = assetName, WidthRequest = iconSize, HeightRequest = iconSize, Aspect = Aspect.AspectFit, HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center }
         };
+        badge.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoIconBackground");
+        badge.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+        return badge;
     }
 
     private async Task ExportBackupAsync()

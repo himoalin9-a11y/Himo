@@ -1,9 +1,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Linq;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
+using Himo.Views;
 
 namespace Himo.Services;
 
@@ -26,17 +26,17 @@ public static class SwipePageTransition
     }
 
     public static Task NavigateAsync(ContentPage page, string route, SwipeDirection direction) =>
-        NavigateCoreAsync(page, direction, async shell => await shell.GoToAsync(route, false), route, null);
+        NavigateCoreAsync(page, direction, async shell => await shell.GoToAsync(route, false), route, null, waitForTurn: true);
 
     public static Task GoBackAsync(ContentPage page, SwipeDirection direction) =>
-        NavigateCoreAsync(page, direction, async shell => await shell.GoToAsync("..", false), null, null);
+        NavigateCoreAsync(page, direction, async shell => await shell.GoToAsync("..", false), null, null, waitForTurn: true);
 
     /// <summary>Reliable back navigation for call termination, which must not be dropped during a transition.</summary>
     public static Task GoBackForCallAsync(ContentPage page) =>
         NavigateCoreAsync(page, SwipeDirection.Right, async shell => await shell.GoToAsync("..", false), null, null, waitForTurn: true);
 
     public static Task NavigateToHomeSectionAsync(ContentPage page, string section, SwipeDirection direction) =>
-        NavigateCoreAsync(page, direction, async shell => await shell.GoToAsync("//HomePage", false), "HomePage", section);
+        NavigateCoreAsync(page, direction, async shell => await shell.GoToAsync("//HomePage", false), "HomePage", section, waitForTurn: true);
 
     private static async Task NavigateCoreAsync(
         ContentPage page,
@@ -46,10 +46,28 @@ public static class SwipePageTransition
         string? homeSection,
         bool waitForTurn = false)
     {
+        // All Shell navigation and visual animation must run on the UI thread,
+        // including call-completion callbacks that may originate on a worker thread.
+        if (!MainThread.IsMainThread)
+        {
+            await MainThread.InvokeOnMainThreadAsync(
+                () => NavigateCoreAsync(page, direction, navigation, destinationRoute, homeSection, waitForTurn));
+            return;
+        }
+
+        // Do not silently drop navigation when another short transition is in
+        // progress. Previously QR and Share taps could appear to do nothing because
+        // the transition helper returned before Shell was asked to open the route.
+        var wasQueued = false;
         if (waitForTurn)
         {
             while (Interlocked.CompareExchange(ref _navigationInProgress, 1, 0) != 0)
-                await Task.Delay(16).ConfigureAwait(false);
+            {
+                wasQueued = true;
+                // Preserve the UI synchronization context; navigation and animation
+                // must remain on the MAUI UI thread after waiting for the active route.
+                await Task.Delay(16);
+            }
         }
         else if (Interlocked.CompareExchange(ref _navigationInProgress, 1, 0) != 0)
         {
@@ -57,7 +75,7 @@ public static class SwipePageTransition
         }
 
         var shell = Shell.Current;
-        var transitionTargets = GetTransitionTargets(page);
+        var content = page.Content;
         if (shell is null)
         {
             Interlocked.Exchange(ref _navigationInProgress, 0);
@@ -66,26 +84,28 @@ public static class SwipePageTransition
 
         try
         {
-            if (transitionTargets.Count > 0)
-            {
-                // Profile and Settings have larger visual trees than the home tabs.
-                // Keep their exit brief and movement-led, so navigation starts before
-                // a long fade can make the tap feel delayed. Other routes retain the
-                // established transition that already feels smooth for chats/search/calls.
-                var isAccountSection = IsAccountSectionRoute(destinationRoute);
-                var exitX = direction == SwipeDirection.Left ? -28d : 28d;
+            // If queued behind another route, ignore only stale taps from a page that
+            // has already been left. The first request is always allowed to execute;
+            // this prevents share/QR routes from being suppressed by a busy transition.
+            if (wasQueued && !IsActiveSourcePage(shell, page))
+                return;
 
-                if (isAccountSection)
-                {
-                    await Task.WhenAll(transitionTargets.Select(target =>
-                        target.TranslateToAsync(exitX * 0.72d, 0, 78, Easing.CubicOut)));
-                }
-                else
-                {
-                    await Task.WhenAll(transitionTargets.Select(target => Task.WhenAll(
-                        target.TranslateToAsync(exitX, 0, 150, Easing.CubicIn),
-                        target.FadeToAsync(0, 135, Easing.CubicIn))));
-                }
+            // Settings/Profile contain long, deeply nested visual trees. Fading and
+            // translating the entire hierarchy creates costly Android off-screen
+            // compositing on some GPUs, which matches the multi-second frame stalls
+            // in the device log. Keep navigation functional, but skip page-wide
+            // animations when entering/leaving either heavy page.
+            var skipHeavyPageAnimation =
+                page is ProfilePage or SettingsPage ||
+                string.Equals(destinationRoute, "profile", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(destinationRoute, "settings", StringComparison.OrdinalIgnoreCase);
+
+            if (content is not null && !skipHeavyPageAnimation)
+            {
+                var exitX = direction == SwipeDirection.Left ? -34d : 34d;
+                await Task.WhenAll(
+                    content.TranslateToAsync(exitX, 0, 145, Easing.CubicIn),
+                    content.FadeToAsync(0.80, 145, Easing.CubicIn));
             }
 
             lock (StateLock)
@@ -105,19 +125,34 @@ public static class SwipePageTransition
                 _pendingIncomingDirection = null;
                 _pendingHomeSection = null;
             }
-            System.Diagnostics.Debug.WriteLine($"[Himo Swipe] Page transition failed: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Himo Swipe] Page transition failed (source={page.GetType().Name}, route={destinationRoute ?? "back"}): {ex}");
+            try
+            {
+                await Microsoft.Maui.ApplicationModel.MainThread.InvokeOnMainThreadAsync(
+                    () => page.DisplayAlertAsync("تعذر فتح الصفحة", "لم يتمكن Himo من فتح الصفحة المطلوبة. حاول مرة أخرى.", "حسنًا"));
+            }
+            catch { /* Keep navigation recovery from causing a second UI failure. */ }
         }
         finally
         {
-            foreach (var target in transitionTargets)
+            if (content is not null)
             {
-                target.TranslationX = 0;
-                target.Opacity = 1;
+                content.TranslationX = 0;
+                content.Opacity = 1;
             }
             Interlocked.Exchange(ref _navigationInProgress, 0);
         }
     }
 
+
+    private static bool IsActiveSourcePage(Shell shell, ContentPage page)
+    {
+        if (ReferenceEquals(shell.CurrentPage, page))
+            return true;
+
+        var stack = shell.Navigation?.NavigationStack;
+        return stack is { Count: > 0 } && ReferenceEquals(stack[^1], page);
+    }
 
     /// <summary>Called from OnAppearing to animate a page in after a swipe or tab action.</summary>
     public static async Task AnimateIncomingAsync(ContentPage page, SwipeDirection? fallbackDirection = null)
@@ -138,70 +173,34 @@ public static class SwipePageTransition
         if (homeSection is not null && page is IHomeSwipeSectionHost host)
             host.SelectSectionAfterSwipeReturn(homeSection);
 
-        var transitionTargets = GetTransitionTargets(page);
-        if (transitionTargets.Count == 0)
+        var content = page.Content;
+        if (content is null)
             return;
 
+        // Do not animate the full settings/profile visual tree. These pages contain
+        // many Borders, images and controls; the fade forces an expensive full-tree
+        // redraw on affected Android devices.
+        if (page is ProfilePage or SettingsPage)
+        {
+            content.TranslationX = 0;
+            content.Opacity = 1;
+            return;
+        }
+
+        content.TranslationX = direction == SwipeDirection.Left ? 44 : -44;
+        content.Opacity = 0.78;
         try
         {
-            var isAccountSection = IsAccountSectionPage(page);
-            var offset = isAccountSection ? 28d : 48d;
-            var duration = isAccountSection ? 125u : 190u;
-
-            foreach (var target in transitionTargets)
-            {
-                target.TranslationX = direction == SwipeDirection.Left ? offset : -offset;
-                target.Opacity = 0;
-            }
-
-            await Task.WhenAll(transitionTargets.Select(target => Task.WhenAll(
-                target.TranslateToAsync(0, 0, duration, Easing.CubicOut),
-                target.FadeToAsync(1, duration, Easing.CubicOut))));
+            await Task.WhenAll(
+                content.TranslateToAsync(0, 0, 190, Easing.CubicOut),
+                content.FadeToAsync(1, 190, Easing.CubicOut));
         }
         catch (Exception ex)
         {
-            foreach (var target in transitionTargets)
-            {
-                target.TranslationX = 0;
-                target.Opacity = 1;
-            }
+            content.TranslationX = 0;
+            content.Opacity = 1;
             System.Diagnostics.Debug.WriteLine($"[Himo Swipe] Incoming animation failed: {ex.Message}");
         }
-    }
-
-    private static bool IsAccountSectionRoute(string? route) =>
-        string.Equals(route, "profile", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(route, "settings", StringComparison.OrdinalIgnoreCase);
-
-    private static bool IsAccountSectionPage(ContentPage page) =>
-        page.GetType().Name is "ProfilePage" or "SettingsPage";
-
-    /// <summary>
-    /// For the five primary tabs, keep the bottom bar stationary and animate only
-    /// the header plus the main content. Other routes retain a full-page transition.
-    /// </summary>
-    private static List<VisualElement> GetTransitionTargets(ContentPage page)
-    {
-        string[] names =
-        {
-            "HomeHeader", "ChatSearchCard", "MainSectionHost",
-            "ProfileHeader", "ProfileScrollContent",
-            "SettingsHeader", "SettingsScrollContent"
-        };
-
-        var targets = new List<VisualElement>();
-        foreach (var name in names)
-        {
-            var target = page.FindByName<VisualElement>(name);
-            if (target is not null && target.IsVisible && !targets.Contains(target))
-                targets.Add(target);
-        }
-
-        // Chat/call/search and secondary pages keep their established full-page motion.
-        if (targets.Count == 0 && page.Content is VisualElement content)
-            targets.Add(content);
-
-        return targets;
     }
 }
 

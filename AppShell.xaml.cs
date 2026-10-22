@@ -10,6 +10,8 @@ public partial class AppShell : Shell
 {
     private static readonly SettingsPageRouteFactory SettingsFactory = new();
     private static readonly ProfilePageRouteFactory ProfileFactory = new();
+    private static readonly QrScannerPageRouteFactory QrScannerFactory = new();
+    private static readonly ShareAccountPageRouteFactory ShareAccountFactory = new();
     private readonly IServiceProvider _services;
     private int _prewarmState;
 
@@ -19,6 +21,10 @@ public partial class AppShell : Shell
         Routing.RegisterRoute("CallPage", new CallPageRouteFactory());
         Routing.RegisterRoute("settings", SettingsFactory);
         Routing.RegisterRoute("profile", ProfileFactory);
+        Routing.RegisterRoute("qr-scanner", QrScannerFactory);
+        Routing.RegisterRoute("share-account", ShareAccountFactory);
+        Routing.RegisterRoute(nameof(QrScannerPage), QrScannerFactory);
+        Routing.RegisterRoute(nameof(ShareAccountPage), ShareAccountFactory);
         Routing.RegisterRoute("search", typeof(SearchPage));
         Routing.RegisterRoute("CreateGroupPage", new CreateGroupPageRouteFactory());
         Routing.RegisterRoute("icons-appearance", typeof(IconsAppearanceSettingsPage));
@@ -54,25 +60,31 @@ public partial class AppShell : Shell
     /// </summary>
     internal void PrewarmAccountPages()
     {
-        // The splash timer and the sign-in fallback can both request prewarming.
-        // Only one walk/creation pass should run for a Shell instance.
+        // Keep the public entry point for the existing splash/session flow, but do
+        // not construct both heavyweight pages in one UI-thread turn.
         if (Interlocked.CompareExchange(ref _prewarmState, 1, 0) != 0)
             return;
 
+        _ = PrewarmPagesInSeparateTurnsAsync();
+    }
+
+    private async Task PrewarmPagesInSeparateTurnsAsync()
+    {
         try
         {
-            var settings = SettingsFactory.Preload(_services);
-            HimoAppearanceManager.ApplyToTree(settings);
-
-            var profile = ProfileFactory.Preload(_services);
-            HimoAppearanceManager.ApplyToTree(profile);
+            // Each page constructor builds a large XAML tree. Separating the work
+            // gives Android a chance to render between pages instead of producing
+            // one long frame stall that can be felt during navigation.
+            await MainThread.InvokeOnMainThreadAsync(() => SettingsFactory.Preload(_services));
+            await Task.Delay(350).ConfigureAwait(false);
+            await MainThread.InvokeOnMainThreadAsync(() => ProfileFactory.Preload(_services));
             Volatile.Write(ref _prewarmState, 2);
         }
         catch (Exception ex)
         {
-            // Prewarming is an optimization only; normal lazy navigation remains a fallback.
+            // Prewarming is only an optimization; normal lazy navigation remains available.
             Volatile.Write(ref _prewarmState, 0);
-            System.Diagnostics.Debug.WriteLine($"[Himo PageCache] Prewarming skipped: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Himo PageCache] Staggered prewarming skipped: {ex.Message}");
         }
     }
 
@@ -80,8 +92,10 @@ public partial class AppShell : Shell
     {
         try
         {
-            await Task.Delay(320).ConfigureAwait(false);
-            if (Volatile.Read(ref _prewarmState) == 2)
+            // Wait longer than one frame burst and warm only one page per UI turn.
+            // If the user opens a page before it is warmed, normal navigation still works.
+            await Task.Delay(1400).ConfigureAwait(false);
+            if (Volatile.Read(ref _prewarmState) == 2 || Volatile.Read(ref _prewarmState) == 1)
                 return;
             await MainThread.InvokeOnMainThreadAsync(PrewarmAccountPages);
         }
@@ -203,4 +217,31 @@ internal sealed class CreateGroupPageRouteFactory : RouteFactory
 
     public override Element GetOrCreate(IServiceProvider services) =>
         services.GetRequiredService<CreateGroupPage>();
+}
+
+
+internal sealed class QrScannerPageRouteFactory : RouteFactory
+{
+    public override Element GetOrCreate()
+    {
+        var services = Application.Current?.Handler?.MauiContext?.Services
+            ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق عند فتح ماسح QR.");
+        return services.GetRequiredService<QrScannerPage>();
+    }
+
+    public override Element GetOrCreate(IServiceProvider services) =>
+        services.GetRequiredService<QrScannerPage>();
+}
+
+internal sealed class ShareAccountPageRouteFactory : RouteFactory
+{
+    public override Element GetOrCreate()
+    {
+        var services = Application.Current?.Handler?.MauiContext?.Services
+            ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق عند فتح مشاركة الحساب.");
+        return services.GetRequiredService<ShareAccountPage>();
+    }
+
+    public override Element GetOrCreate(IServiceProvider services) =>
+        services.GetRequiredService<ShareAccountPage>();
 }

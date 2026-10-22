@@ -11,6 +11,7 @@ public partial class MediaCapturePreviewPage : ContentPage
     private MediaCapturePreviewPage(CameraCaptureResult capture)
     {
         InitializeComponent();
+        Himo.Services.AppLocalization.AttachToPage(this);
         _capture = capture;
         PreviewImage.Source = ImageSource.FromFile(capture.FilePath);
         PreviewImage.Aspect = Aspect.AspectFit;
@@ -60,7 +61,7 @@ public partial class MediaCapturePreviewPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("التعديل", $"تعذر فتح محرر الصورة: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("التعديل"), $"تعذر فتح محرر الصورة: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 

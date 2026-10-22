@@ -67,21 +67,27 @@ public sealed class ConversationTapBehavior : Behavior<VisualElement>
 
     private void AttachTapHandler()
     {
-        DetachTapHandler();
         var element = _associatedElement;
         if (element is null)
             return;
 
 #if ANDROID
-        if (element.Handler?.PlatformView is Android.Views.View nativeView)
+        var nextNativeView = element.Handler?.PlatformView as Android.Views.View;
+        // HandlerChanged may fire multiple times for the same platform view. Do not
+        // detach and reattach the click delegate unless the native view actually changed.
+        if (ReferenceEquals(_nativeView, nextNativeView))
+            return;
+
+        DetachTapHandler();
+        if (nextNativeView is not null)
         {
-            _nativeView = nativeView;
-            _wasClickable = nativeView.Clickable;
-            nativeView.Clickable = true;
-            nativeView.Click += OnNativeClick;
-            System.Diagnostics.Debug.WriteLine("[Himo ChatTap] Native row click handler attached");
+            _nativeView = nextNativeView;
+            _wasClickable = nextNativeView.Clickable;
+            nextNativeView.Clickable = true;
+            nextNativeView.Click += OnNativeClick;
         }
 #else
+        DetachTapHandler();
         var fallbackTap = new TapGestureRecognizer();
         fallbackTap.Tapped += OnFallbackTapped;
         _fallbackTap = fallbackTap;

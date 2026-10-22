@@ -309,6 +309,12 @@ public partial class SearchPage : ContentPage
         }
     }
 
+    private async void OpenQrScannerClicked(object? sender, EventArgs e)
+    {
+        if (Shell.Current is not null)
+            await SwipePageTransition.NavigateAsync(this, "qr-scanner", SwipeDirection.Left);
+    }
+
     private async void BackClicked(object sender, EventArgs e)
     {
         if (Shell.Current is not null)

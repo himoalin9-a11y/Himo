@@ -85,6 +85,7 @@ public partial class MediaEditorPage : ContentPage
         bool cameraFlow = false)
     {
         InitializeComponent();
+        Himo.Services.AppLocalization.AttachToPage(this);
         CropVisual.Drawable = new CropOverlayDrawable(this);
         CropVisual.InputTransparent = false;
         CropVisual.IsEnabled = true;
@@ -201,7 +202,7 @@ public partial class MediaEditorPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("المحرر", $"تعذر تجهيز الملف للتحرير: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المحرر"), $"تعذر تجهيز الملف للتحرير: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             await CancelAndCloseAsync();
         }
     }
@@ -887,7 +888,7 @@ public partial class MediaEditorPage : ContentPage
             CaptureManualCrop();
             if (!_manualCrop.HasValue)
             {
-                await DisplayAlertAsync("القص", "حدد منطقة صالحة داخل الصورة أولًا.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("القص"), Himo.Services.AppLocalization.TranslateSourceText("حدد منطقة صالحة داخل الصورة أولًا."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
 
@@ -910,7 +911,7 @@ public partial class MediaEditorPage : ContentPage
             }
             catch (Exception ex)
             {
-                await DisplayAlertAsync("القص", $"تعذر تطبيق القص فعليًا: {ex.Message}", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("القص"), $"تعذر تطبيق القص فعليًا: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             }
             finally
             {
@@ -1203,7 +1204,7 @@ public partial class MediaEditorPage : ContentPage
         catch (Exception ex)
         {
             _closing = false;
-            await DisplayAlertAsync("التعديل", $"تعذر حفظ التعديلات: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("التعديل"), $"تعذر حفظ التعديلات: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -1261,11 +1262,11 @@ public partial class MediaEditorPage : ContentPage
             File.Copy(photo.FilePath, Path.Combine(pictures, photo.FileName), overwrite: true);
 #endif
 
-            await DisplayAlertAsync("تم الحفظ", "تم حفظ الصورة في مكتبة الصور.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تم الحفظ"), "تم حفظ الصورة في مكتبة الصور.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("حفظ الصورة", $"تعذر حفظ الصورة: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حفظ الصورة"), $"تعذر حفظ الصورة: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {

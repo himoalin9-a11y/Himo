@@ -33,10 +33,10 @@
                                  FlowDirection="RightToLeft">
                 <Label Text="إدارة الحساب" FontSize="24" FontAttributes="Bold"
                        TextColor="{DynamicResource HimoPrimary}"
-                       HorizontalTextAlignment="End" />
+                       HorizontalTextAlignment="Start" />
                 <Label Text="بياناتك الشخصية وأمان حسابك" FontSize="12.5"
                        TextColor="{DynamicResource HimoTextSecondary}"
-                       HorizontalTextAlignment="End" />
+                       HorizontalTextAlignment="Start" />
             </VerticalStackLayout>
             <BoxView Grid.Column="2" WidthRequest="42" HeightRequest="42" Opacity="0" />
         </Grid>
@@ -48,7 +48,7 @@
                         Stroke="{DynamicResource HimoBorder}" StrokeThickness="1"
                         Padding="14" MinimumHeightRequest="112">
                     <Border.StrokeShape><RoundRectangle CornerRadius="24" /></Border.StrokeShape>
-                    <Grid ColumnDefinitions="30,*,76" ColumnSpacing="11"
+                    <Grid ColumnDefinitions="26,*,66" ColumnSpacing="5"
                           FlowDirection="LeftToRight">
                         <Image Grid.Column="0" Source="himo_s8_account_chevron.png"
                                WidthRequest="18" HeightRequest="18" Aspect="AspectFit"
@@ -58,30 +58,30 @@
                             <Label x:Name="AccountNameSummaryLabel" Text="حسابك في Himo"
                                    FontSize="17" FontAttributes="Bold"
                                    TextColor="{DynamicResource HimoPrimary}"
-                                   HorizontalTextAlignment="End" LineBreakMode="TailTruncation" />
+                                   HorizontalTextAlignment="Start" LineBreakMode="TailTruncation" />
                             <Label x:Name="AccountEmailSummaryLabel" Text=""
                                    FontSize="12.5" TextColor="{DynamicResource HimoTextSecondary}"
-                                   HorizontalTextAlignment="End" LineBreakMode="TailTruncation" />
+                                   HorizontalTextAlignment="Start" LineBreakMode="TailTruncation" />
                             <HorizontalStackLayout Spacing="6" HorizontalOptions="End"
                                                    VerticalOptions="Center" FlowDirection="RightToLeft">
                                 <BoxView WidthRequest="7" HeightRequest="7" CornerRadius="4"
                                          Color="#39B980" VerticalOptions="Center" />
                                 <Label x:Name="AccountLoadStatusLabel" Text="بيانات حسابك محفوظة بأمان"
                                        FontSize="11" TextColor="{DynamicResource HimoTextSecondary}"
-                                       HorizontalTextAlignment="End" />
+                                       HorizontalTextAlignment="Start" />
                             </HorizontalStackLayout>
                         </VerticalStackLayout>
-                        <Border Grid.Column="2" WidthRequest="72" HeightRequest="72"
+                        <Border Grid.Column="2" WidthRequest="66" HeightRequest="66"
                                 BackgroundColor="{DynamicResource HimoSoft}"
                                 Stroke="{DynamicResource HimoBorder}" StrokeThickness="1"
                                 HorizontalOptions="End" VerticalOptions="Center">
-                            <Border.StrokeShape><RoundRectangle CornerRadius="36" /></Border.StrokeShape>
-                            <Grid WidthRequest="72" HeightRequest="72">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="33" /></Border.StrokeShape>
+                            <Grid WidthRequest="66" HeightRequest="66">
                                 <Image x:Name="AccountProfilePhotoImage"
-                                       WidthRequest="72" HeightRequest="72" Aspect="AspectFill"
+                                       WidthRequest="66" HeightRequest="66" Aspect="AspectFill"
                                        IsVisible="False">
                                     <Image.Clip>
-                                        <EllipseGeometry Center="36,36" RadiusX="36" RadiusY="36" />
+                                        <EllipseGeometry Center="33,33" RadiusX="33" RadiusY="33" />
                                     </Image.Clip>
                                 </Image>
                                 <Image x:Name="AccountPhotoPlaceholderLabel"
@@ -96,22 +96,22 @@
                 <!-- Personal information -->
                 <Label Text="المعلومات الشخصية" FontSize="14.5" FontAttributes="Bold"
                        TextColor="{DynamicResource HimoPrimary}"
-                       Margin="3,3,3,0" HorizontalTextAlignment="End" />
+                       Margin="3,3,3,0" HorizontalTextAlignment="Start" />
                 <Border BackgroundColor="{DynamicResource HimoCard}"
                         Stroke="{DynamicResource HimoBorder}" StrokeThickness="1"
                         Padding="8,2">
                     <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
                     <VerticalStackLayout Spacing="0">
-                        <Grid HeightRequest="76" ColumnDefinitions="32,*,52" ColumnSpacing="10"
+                        <Grid HeightRequest="76" ColumnDefinitions="24,*,44" ColumnSpacing="4"
                               FlowDirection="LeftToRight">
                             <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OpenUsernamePage" /></Grid.GestureRecognizers>
                             <Image Grid.Column="0" Source="himo_s8_account_chevron.png" WidthRequest="17" HeightRequest="17"
                                    Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
                             <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center" FlowDirection="RightToLeft">
                                 <Label Text="اسم المستخدم" FontSize="15" FontAttributes="Bold"
-                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="End" />
+                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
                                 <Label Text="تغيير الاسم الظاهر في Himo" FontSize="11.5"
-                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="End" />
+                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
                             </VerticalStackLayout>
                             <Border Grid.Column="2" WidthRequest="44" HeightRequest="44"
                                     BackgroundColor="{DynamicResource HimoSoft}"
@@ -123,16 +123,16 @@
                             </Border>
                         </Grid>
                         <BoxView HeightRequest="1" BackgroundColor="{DynamicResource HimoBorder}" Opacity="0.62" Margin="5,0" />
-                        <Grid HeightRequest="76" ColumnDefinitions="32,*,52" ColumnSpacing="10"
+                        <Grid HeightRequest="76" ColumnDefinitions="24,*,44" ColumnSpacing="4"
                               FlowDirection="LeftToRight">
                             <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OpenPhonePage" /></Grid.GestureRecognizers>
                             <Image Grid.Column="0" Source="himo_s8_account_chevron.png" WidthRequest="17" HeightRequest="17"
                                    Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
                             <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center" FlowDirection="RightToLeft">
                                 <Label Text="رقم الهاتف" FontSize="15" FontAttributes="Bold"
-                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="End" />
+                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
                                 <Label Text="رمز الدولة والخصوصية المرتبطة بالرقم" FontSize="11.5"
-                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="End" />
+                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
                             </VerticalStackLayout>
                             <Border Grid.Column="2" WidthRequest="44" HeightRequest="44"
                                     BackgroundColor="{DynamicResource HimoSoft}"
@@ -149,22 +149,22 @@
                 <!-- Sign-in and security -->
                 <Label Text="الدخول والأمان" FontSize="14.5" FontAttributes="Bold"
                        TextColor="{DynamicResource HimoPrimary}"
-                       Margin="3,3,3,0" HorizontalTextAlignment="End" />
+                       Margin="3,3,3,0" HorizontalTextAlignment="Start" />
                 <Border BackgroundColor="{DynamicResource HimoCard}"
                         Stroke="{DynamicResource HimoBorder}" StrokeThickness="1"
                         Padding="8,2">
                     <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
                     <VerticalStackLayout Spacing="0">
-                        <Grid HeightRequest="76" ColumnDefinitions="32,*,52" ColumnSpacing="10"
+                        <Grid HeightRequest="76" ColumnDefinitions="24,*,44" ColumnSpacing="4"
                               FlowDirection="LeftToRight">
                             <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OpenLoginDetailsPage" /></Grid.GestureRecognizers>
                             <Image Grid.Column="0" Source="himo_s8_account_chevron.png" WidthRequest="17" HeightRequest="17"
                                    Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
                             <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center" FlowDirection="RightToLeft">
                                 <Label Text="بيانات تسجيل الدخول" FontSize="15" FontAttributes="Bold"
-                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="End" />
+                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
                                 <Label Text="البريد الإلكتروني ومعلومات الدخول" FontSize="11.5"
-                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="End" />
+                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
                             </VerticalStackLayout>
                             <Border Grid.Column="2" WidthRequest="44" HeightRequest="44"
                                     BackgroundColor="{DynamicResource HimoSoft}"
@@ -176,16 +176,16 @@
                             </Border>
                         </Grid>
                         <BoxView HeightRequest="1" BackgroundColor="{DynamicResource HimoBorder}" Opacity="0.62" Margin="5,0" />
-                        <Grid HeightRequest="76" ColumnDefinitions="32,*,52" ColumnSpacing="10"
+                        <Grid HeightRequest="76" ColumnDefinitions="24,*,44" ColumnSpacing="4"
                               FlowDirection="LeftToRight">
                             <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OpenPasswordPage" /></Grid.GestureRecognizers>
                             <Image Grid.Column="0" Source="himo_s8_account_chevron.png" WidthRequest="17" HeightRequest="17"
                                    Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
                             <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center" FlowDirection="RightToLeft">
                                 <Label Text="كلمة المرور" FontSize="15" FontAttributes="Bold"
-                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="End" />
+                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
                                 <Label Text="تغيير كلمة المرور برمز تحقق آمن" FontSize="11.5"
-                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="End" />
+                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
                             </VerticalStackLayout>
                             <Border Grid.Column="2" WidthRequest="44" HeightRequest="44"
                                     BackgroundColor="{DynamicResource HimoSoft}"
@@ -197,16 +197,16 @@
                             </Border>
                         </Grid>
                         <BoxView HeightRequest="1" BackgroundColor="{DynamicResource HimoBorder}" Opacity="0.62" Margin="5,0" />
-                        <Grid HeightRequest="76" ColumnDefinitions="32,*,52" ColumnSpacing="10"
+                        <Grid HeightRequest="76" ColumnDefinitions="24,*,44" ColumnSpacing="4"
                               FlowDirection="LeftToRight">
                             <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OpenAddAccountPage" /></Grid.GestureRecognizers>
                             <Image Grid.Column="0" Source="himo_s8_account_chevron.png" WidthRequest="17" HeightRequest="17"
                                    Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
                             <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center" FlowDirection="RightToLeft">
                                 <Label Text="إضافة حساب" FontSize="15" FontAttributes="Bold"
-                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="End" />
+                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
                                 <Label Text="فتح صفحة تسجيل الدخول بحساب آخر" FontSize="11.5"
-                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="End" />
+                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
                             </VerticalStackLayout>
                             <Border Grid.Column="2" WidthRequest="44" HeightRequest="44"
                                     BackgroundColor="{DynamicResource HimoSoft}"
@@ -227,7 +227,7 @@
                     <Label Grid.Column="1"
                            Text="اختر أي قسم لإدارة بياناته. لن يتم حفظ التغييرات إلا بعد تأكيدك."
                            FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}"
-                           HorizontalTextAlignment="End" LineBreakMode="WordWrap" />
+                           HorizontalTextAlignment="Start" LineBreakMode="WordWrap" />
                 </Grid>
             </VerticalStackLayout>
         </ScrollView>

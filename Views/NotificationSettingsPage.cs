@@ -13,7 +13,7 @@ namespace Himo.Views;
 /// Notification preferences UI. Values are stored locally in Preferences.
 /// Android delivery channels should read the selected tone/vibration keys.
 /// </summary>
-public sealed class NotificationSettingsPage : ContentPage
+public sealed class NotificationSettingsPage : Himo.Services.LocalizedContentPage
 {
     private const string ConversationSoundsKey = "himo_notification_conversation_sounds";
     private const string RemindersKey = "himo_notification_reminders";
@@ -498,7 +498,7 @@ public sealed class NotificationSettingsPage : ContentPage
         {
             if (_appNotificationsSwitch is not null)
                 _appNotificationsSwitch.IsToggled = !enabled;
-            await DisplayAlertAsync("الإشعارات", "تعذر تغيير إعداد الإشعارات: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الإشعارات"), "تعذر تغيير إعداد الإشعارات: " + ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             UpdateAppNotificationStatus();
         }
     }
@@ -547,13 +547,13 @@ public sealed class NotificationSettingsPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الإشعارات", "تعذر الرجوع: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الإشعارات"), "تعذر الرجوع: " + ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 }
 
 /// <summary>A modal picker for vibration preferences with explicit cancel and confirm actions.</summary>
-internal sealed class VibrationPickerPage : ContentPage
+internal sealed class VibrationPickerPage : Himo.Services.LocalizedContentPage
 {
     private readonly TaskCompletionSource<string?> _completion =
         new(TaskCreationOptions.RunContinuationsAsynchronously);

@@ -1,4 +1,5 @@
 using CommunityToolkit.Maui.Views;
+using Himo.Services;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
@@ -10,12 +11,12 @@ namespace Himo.Views;
 /// Pages for chat themes, outgoing/incoming bubble colors and chat wallpaper selection.
 /// All selections are persisted in Preferences and consumed by ChatPage.
 /// </summary>
-public sealed class ChatThemePage : ContentPage
+public sealed class ChatThemePage : Himo.Services.LocalizedContentPage
 {
-    private static readonly Color PageBackground = Color.FromArgb("#F3EDFF");
-    private static readonly Color CardBackground = Color.FromArgb("#FFFFFF");
-    private static readonly Color CardBorder = Color.FromArgb("#D9C5F4");
-    private static readonly Color Muted = Color.FromArgb("#7A679B");
+    private static readonly Color PageBackground = Color.FromArgb("#211333");
+    private static readonly Color CardBackground = Color.FromArgb("#2D1942");
+    private static readonly Color CardBorder = Color.FromArgb("#594768");
+    private static readonly Color Muted = Color.FromArgb("#C7B8D8");
 
     public const string ThemeBackgroundKey = "himo_chat_theme_background_asset";
     public const string BackgroundModeKey = "himo_chat_background_mode";
@@ -116,7 +117,13 @@ public sealed class ChatThemePage : ContentPage
         }
 
         layout.Add(grid);
-        Content = new ScrollView { Content = layout };
+        Content = ChatAppearancePageStyle.CreateScroll(layout);
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        HimoAppearanceManager.ApplyToTree(this);
     }
 
     private async Task ApplyThemeAsync(ChatThemeOption theme)
@@ -130,7 +137,7 @@ public sealed class ChatThemePage : ContentPage
         Preferences.Default.Set(ChatBubbleSettingsPage.OutgoingEndKey, theme.OutEnd);
         Preferences.Default.Set(ChatBubbleSettingsPage.IncomingStartKey, theme.InStart);
         Preferences.Default.Set(ChatBubbleSettingsPage.IncomingEndKey, theme.InEnd);
-        await DisplayAlertAsync("سمة الدردشة", $"تم تطبيق سمة {theme.Name} كخلفية لونية مستقلة. لم يتغير اختيار الخلفية الفوتوغرافية المحفوظ.", "حسنًا");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("سمة الدردشة"), $"تم تطبيق سمة {theme.Name} كخلفية لونية مستقلة. لم يتغير اختيار الخلفية الفوتوغرافية المحفوظ.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     internal static async Task LoadPreviewAsync(Image image, string assetName)
@@ -152,24 +159,24 @@ public sealed class ChatThemePage : ContentPage
         }
         catch
         {
-            MainThread.BeginInvokeOnMainThread(() => image.BackgroundColor = Color.FromArgb("#EDE1FF"));
+            MainThread.BeginInvokeOnMainThread(() => image.BackgroundColor = Color.FromArgb("#39204F"));
         }
     }
 
     private sealed record ChatThemeOption(string Name, string Description, string BackgroundAsset, string OutStart, string OutEnd, string InStart, string InEnd);
 }
 
-public sealed class ChatBubbleSettingsPage : ContentPage
+public sealed class ChatBubbleSettingsPage : Himo.Services.LocalizedContentPage
 {
     public const string OutgoingStartKey = "himo_chat_bubble_out_start";
     public const string OutgoingEndKey = "himo_chat_bubble_out_end";
     public const string IncomingStartKey = "himo_chat_bubble_in_start";
     public const string IncomingEndKey = "himo_chat_bubble_in_end";
 
-    private static readonly Color PageBackground = Color.FromArgb("#F3EDFF");
-    private static readonly Color CardBackground = Color.FromArgb("#FFFFFF");
-    private static readonly Color CardBorder = Color.FromArgb("#D9C5F4");
-    private static readonly Color Muted = Color.FromArgb("#7A679B");
+    private static readonly Color PageBackground = Color.FromArgb("#211333");
+    private static readonly Color CardBackground = Color.FromArgb("#2D1942");
+    private static readonly Color CardBorder = Color.FromArgb("#594768");
+    private static readonly Color Muted = Color.FromArgb("#C7B8D8");
 
     private static readonly BubblePalette[] Palette =
     {
@@ -200,7 +207,13 @@ public sealed class ChatBubbleSettingsPage : ContentPage
         var note = new Label { Text = "تُحفظ اختياراتك تلقائيًا وتُطبق عند فتح المحادثة.", FontSize = 11, Margin = new Thickness(4, 0) };
         ChatAppearancePageStyle.ApplyMutedText(note);
         layout.Add(note);
-        Content = new ScrollView { Content = layout };
+        Content = ChatAppearancePageStyle.CreateScroll(layout);
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        HimoAppearanceManager.ApplyToTree(this);
     }
 
     private static View BuildPaletteSection(string title, string startKey, string endKey)
@@ -283,14 +296,14 @@ public sealed class ChatBubbleSettingsPage : ContentPage
     private sealed record BubblePalette(string Name, string Start, string End);
 }
 
-public sealed class ChatWallpaperSettingsPage : ContentPage
+public sealed class ChatWallpaperSettingsPage : Himo.Services.LocalizedContentPage
 {
     public const string GlobalWallpaperKey = "himo_chat_wallpaper_global";
 
-    private static readonly Color PageBackground = Color.FromArgb("#F3EDFF");
-    private static readonly Color CardBackground = Color.FromArgb("#FFFFFF");
-    private static readonly Color CardBorder = Color.FromArgb("#D9C5F4");
-    private static readonly Color Muted = Color.FromArgb("#7A679B");
+    private static readonly Color PageBackground = Color.FromArgb("#211333");
+    private static readonly Color CardBackground = Color.FromArgb("#2D1942");
+    private static readonly Color CardBorder = Color.FromArgb("#594768");
+    private static readonly Color Muted = Color.FromArgb("#C7B8D8");
 
     private static readonly WallpaperOption[] Wallpapers =
     {
@@ -390,7 +403,13 @@ public sealed class ChatWallpaperSettingsPage : ContentPage
         }
 
         layout.Add(grid);
-        Content = new ScrollView { Content = layout };
+        Content = ChatAppearancePageStyle.CreateScroll(layout);
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        HimoAppearanceManager.ApplyToTree(this);
     }
 
     private async Task ApplyWallpaperAsync(string wallpaperValue, string displayName)
@@ -399,7 +418,7 @@ public sealed class ChatWallpaperSettingsPage : ContentPage
         Preferences.Default.Set(ChatThemePage.BackgroundModeKey, "photo");
         RefreshWallpaperSelection(wallpaperValue);
         _status.Text = $"تم اختيار خلفية {displayName}. ستظهر في المحادثات التي لا تملك خلفية خاصة بها عند فتحها.";
-        await DisplayAlertAsync("خلفية الدردشة", "تم حفظ الخلفية الجديدة.", "حسنًا");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفية الدردشة"), "تم حفظ الخلفية الجديدة.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     private async Task PickImageFromGalleryAsync()
@@ -424,12 +443,12 @@ public sealed class ChatWallpaperSettingsPage : ContentPage
             Preferences.Default.Set(ChatThemePage.BackgroundModeKey, "photo");
             RefreshWallpaperSelection("local:" + destination);
             _status.Text = "تم حفظ الصورة المختارة وستُستخدم كخلفية للمحادثات.";
-            await DisplayAlertAsync("خلفية الدردشة", "تم اختيار الصورة وحفظها بنجاح.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفية الدردشة"), "تم اختيار الصورة وحفظها بنجاح.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
             _status.Text = "تعذر اختيار الصورة: " + ex.Message;
-            await DisplayAlertAsync("خلفية الدردشة", _status.Text, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفية الدردشة"), _status.Text, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -452,15 +471,15 @@ public sealed class ChatWallpaperSettingsPage : ContentPage
 /// Selects a global looping, muted video wallpaper. The setting is independent
 /// from the saved photo and abstract theme, so choosing one does not erase the others.
 /// </summary>
-public sealed class ChatAnimatedWallpaperPage : ContentPage
+public sealed class ChatAnimatedWallpaperPage : Himo.Services.LocalizedContentPage
 {
     public const string GlobalAnimatedWallpaperKey = "himo_chat_animated_wallpaper_global";
     public const string PreviousBackgroundModeKey = "himo_chat_background_mode_before_animated";
 
-    private static readonly Color PageBackground = Color.FromArgb("#F3EDFF");
-    private static readonly Color CardBackground = Color.FromArgb("#FFFFFF");
-    private static readonly Color CardBorder = Color.FromArgb("#D9C5F4");
-    private static readonly Color Muted = Color.FromArgb("#7A679B");
+    private static readonly Color PageBackground = Color.FromArgb("#211333");
+    private static readonly Color CardBackground = Color.FromArgb("#2D1942");
+    private static readonly Color CardBorder = Color.FromArgb("#594768");
+    private static readonly Color Muted = Color.FromArgb("#C7B8D8");
     private static readonly HttpClient VideoHttpClient = new() { Timeout = TimeSpan.FromMinutes(2) };
 
     // These are real live-action MP4 files hosted by Pexels, not animations generated
@@ -594,7 +613,7 @@ public sealed class ChatAnimatedWallpaperPage : ContentPage
             Text = "إيقاف الخلفية المتحركة",
             FontSize = 13,
             TextColor = Color.FromArgb("#300653"),
-            BackgroundColor = Color.FromArgb("#EDE1FF"),
+            BackgroundColor = Color.FromArgb("#39204F"),
             CornerRadius = 13,
             HeightRequest = 46
         };
@@ -603,7 +622,13 @@ public sealed class ChatAnimatedWallpaperPage : ContentPage
         content.Add(stopButton);
         content.Add(_status);
 
-        Content = new ScrollView { Content = content };
+        Content = ChatAppearancePageStyle.CreateScroll(content);
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        HimoAppearanceManager.ApplyToTree(this);
     }
 
     private async Task ApplyBuiltInAsync(AnimatedWallpaperOption option)
@@ -620,12 +645,12 @@ public sealed class ChatAnimatedWallpaperPage : ContentPage
             Preferences.Default.Set(ChatThemePage.BackgroundModeKey, "animated");
             RefreshAnimatedSelection(option.VideoUrl);
             _status.Text = $"تم اختيار فيديو {option.Name}. يلزم اتصال بالإنترنت لتشغيل المقطع الحقيقي داخل المحادثة.";
-            await DisplayAlertAsync("خلفيات متحركة", "تم حفظ الفيديو الحقيقي. يحتاج التشغيل إلى الإنترنت ويعمل بصمت في تكرار مستمر.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفيات متحركة"), "تم حفظ الفيديو الحقيقي. يحتاج التشغيل إلى الإنترنت ويعمل بصمت في تكرار مستمر.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
             _status.Text = "تعذر اختيار الفيديو: " + ex.Message;
-            await DisplayAlertAsync("خلفيات متحركة", _status.Text, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفيات متحركة"), _status.Text, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -638,7 +663,7 @@ public sealed class ChatAnimatedWallpaperPage : ContentPage
 
             if (!string.Equals(Path.GetExtension(picked.FileName), ".mp4", StringComparison.OrdinalIgnoreCase))
             {
-                await DisplayAlertAsync("خلفيات متحركة", "اختر ملف فيديو بصيغة MP4 لضمان أفضل توافق مع أجهزة أندرويد.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفيات متحركة"), "اختر ملف فيديو بصيغة MP4 لضمان أفضل توافق مع أجهزة أندرويد.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
 
@@ -651,7 +676,7 @@ public sealed class ChatAnimatedWallpaperPage : ContentPage
             if (info.Length == 0 || info.Length > 100L * 1024 * 1024)
             {
                 try { File.Delete(destination); } catch { }
-                await DisplayAlertAsync("خلفيات متحركة", "حجم الفيديو غير مناسب. اختر فيديو أقل من 100 ميجابايت.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفيات متحركة"), "حجم الفيديو غير مناسب. اختر فيديو أقل من 100 ميجابايت.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
 
@@ -660,12 +685,12 @@ public sealed class ChatAnimatedWallpaperPage : ContentPage
             Preferences.Default.Set(ChatThemePage.BackgroundModeKey, "animated");
             RefreshAnimatedSelection(null);
             _status.Text = "تم حفظ الفيديو المختار. سيعمل كخلفية صامتة للمحادثات التي لا تملك خلفية خاصة بها.";
-            await DisplayAlertAsync("خلفيات متحركة", "تم اختيار الفيديو بنجاح.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفيات متحركة"), Himo.Services.AppLocalization.TranslateSourceText("تم اختيار الفيديو بنجاح."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
             _status.Text = "تعذر استخدام الفيديو: " + ex.Message;
-            await DisplayAlertAsync("خلفيات متحركة", _status.Text, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفيات متحركة"), _status.Text, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -679,7 +704,7 @@ public sealed class ChatAnimatedWallpaperPage : ContentPage
         _status.Text = previousMode == "theme"
             ? "تم إيقاف الخلفية المتحركة. سيعود استخدام السمة اللونية المحددة سابقًا."
             : "تم إيقاف الخلفية المتحركة. سيعود استخدام الخلفية الفوتوغرافية المحددة سابقًا.";
-        await DisplayAlertAsync("خلفيات متحركة", _status.Text, "حسنًا");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفيات متحركة"), _status.Text, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     private void RefreshAnimatedSelection(string? videoUrl)
@@ -791,6 +816,20 @@ public sealed class ChatAnimatedWallpaperPage : ContentPage
 /// <summary>Consistent, palette-aware styling for chat appearance pages.</summary>
 internal static class ChatAppearancePageStyle
 {
+    public static ScrollView CreateScroll(View content)
+    {
+        if (content is VisualElement visual)
+            visual.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
+        var scroll = new ScrollView
+        {
+            BackgroundColor = Color.FromArgb("#211333"),
+            Content = content,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Never
+        };
+        scroll.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
+        return scroll;
+    }
+
     public static View TitleRow(string assetName, string text, double fontSize)
     {
         var row = SettingsVisuals.TitleRow(assetName, text, fontSize);

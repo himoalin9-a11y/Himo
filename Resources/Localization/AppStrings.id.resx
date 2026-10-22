@@ -1,0 +1,1017 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppName" xml:space="preserve">
+    <value>Himo</value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Memuat...</value>
+  </data>
+  <data name="PreparingAccount" xml:space="preserve">
+    <value>Menyiapkan akun Anda...</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Pengaturan</value>
+  </data>
+  <data name="SettingsSubtitle" xml:space="preserve">
+    <value>Kelola akun dan preferensi Anda</value>
+  </data>
+  <data name="Account" xml:space="preserve">
+    <value>Akun</value>
+  </data>
+  <data name="AccountManagement" xml:space="preserve">
+    <value>Manajemen akun</value>
+  </data>
+  <data name="Profile" xml:space="preserve">
+    <value>Profil</value>
+  </data>
+  <data name="ProfileTab" xml:space="preserve">
+    <value>Profil</value>
+  </data>
+  <data name="ProfileTitle" xml:space="preserve">
+    <value>Profil saya</value>
+  </data>
+  <data name="ProfileSubtitle" xml:space="preserve">
+    <value>Identitas dan ruang Anda di Himo</value>
+  </data>
+  <data name="PublicName" xml:space="preserve">
+    <value>Nama tampilan</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>Nama</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="About" xml:space="preserve">
+    <value>Tentang</value>
+  </data>
+  <data name="Username" xml:space="preserve">
+    <value>Nama pengguna</value>
+  </data>
+  <data name="PhoneNumber" xml:space="preserve">
+    <value>Nomor telepon</value>
+  </data>
+  <data name="Email" xml:space="preserve">
+    <value>Alamat email</value>
+  </data>
+  <data name="ChangePhoto" xml:space="preserve">
+    <value>Ubah foto</value>
+  </data>
+  <data name="RemovePhoto" xml:space="preserve">
+    <value>Hapus foto</value>
+  </data>
+  <data name="SaveChanges" xml:space="preserve">
+    <value>Simpan perubahan</value>
+  </data>
+  <data name="Messages" xml:space="preserve">
+    <value>Obrolan</value>
+  </data>
+  <data name="Calls" xml:space="preserve">
+    <value>Panggilan</value>
+  </data>
+  <data name="PeopleSearch" xml:space="preserve">
+    <value>Cari orang</value>
+  </data>
+  <data name="Back" xml:space="preserve">
+    <value>Kembali</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Tutup</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Batal</value>
+  </data>
+  <data name="OK" xml:space="preserve">
+    <value>Oke</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Simpan</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>Hapus</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>Konfirmasi</value>
+  </data>
+  <data name="Search" xml:space="preserve">
+    <value>Cari</value>
+  </data>
+  <data name="SearchConversations" xml:space="preserve">
+    <value>Cari obrolan Anda</value>
+  </data>
+  <data name="NoConversations" xml:space="preserve">
+    <value>Belum ada obrolan</value>
+  </data>
+  <data name="Notifications" xml:space="preserve">
+    <value>Notifikasi</value>
+  </data>
+  <data name="ChatSettings" xml:space="preserve">
+    <value>Pengaturan obrolan</value>
+  </data>
+  <data name="AppearanceAndIcons" xml:space="preserve">
+    <value>Tema dan ikon</value>
+  </data>
+  <data name="TextSize" xml:space="preserve">
+    <value>Ukuran teks</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Bahasa</value>
+  </data>
+  <data name="LanguageTitle" xml:space="preserve">
+    <value>Bahasa aplikasi</value>
+  </data>
+  <data name="LanguageSubtitle" xml:space="preserve">
+    <value>Pilih bahasa pilihan Anda</value>
+  </data>
+  <data name="AvailableLanguages" xml:space="preserve">
+    <value>Bahasa yang tersedia</value>
+  </data>
+  <data name="SaveLanguage" xml:space="preserve">
+    <value>Simpan bahasa</value>
+  </data>
+  <data name="LanguageSavedTitle" xml:space="preserve">
+    <value>Bahasa tersimpan</value>
+  </data>
+  <data name="LanguageSavedMessage" xml:space="preserve">
+    <value>Bahasa yang dipilih diterapkan pada layar yang didukung. Beberapa layar khusus mungkin tetap berbahasa Arab sampai diterjemahkan.</value>
+  </data>
+  <data name="Theme" xml:space="preserve">
+    <value>Tema</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>Privasi</value>
+  </data>
+  <data name="SecurityPrivacy" xml:space="preserve">
+    <value>Keamanan dan privasi</value>
+  </data>
+  <data name="StorageData" xml:space="preserve">
+    <value>Penyimpanan dan data</value>
+  </data>
+  <data name="HelpSupport" xml:space="preserve">
+    <value>Bantuan dan dukungan</value>
+  </data>
+  <data name="AboutApp" xml:space="preserve">
+    <value>Tentang aplikasi</value>
+  </data>
+  <data name="Logout" xml:space="preserve">
+    <value>Keluar</value>
+  </data>
+  <data name="LogoutAllDevices" xml:space="preserve">
+    <value>Keluar dari semua perangkat</value>
+  </data>
+  <data name="DeleteAccount" xml:space="preserve">
+    <value>Hapus akun secara permanen</value>
+  </data>
+  <data name="FontSmall" xml:space="preserve">
+    <value>Kecil</value>
+  </data>
+  <data name="FontMedium" xml:space="preserve">
+    <value>Sedang</value>
+  </data>
+  <data name="FontLarge" xml:space="preserve">
+    <value>Besar</value>
+  </data>
+  <data name="OnlineNow" xml:space="preserve">
+    <value>Sedang online</value>
+  </data>
+  <data name="Available" xml:space="preserve">
+    <value>Tersedia</value>
+  </data>
+  <data name="NotAvailable" xml:space="preserve">
+    <value>Tidak tersedia</value>
+  </data>
+  <data name="LeaveMessage" xml:space="preserve">
+    <value>Tinggalkan pesan</value>
+  </data>
+  <data name="Sleeping" xml:space="preserve">
+    <value>Sedang tidur</value>
+  </data>
+  <data name="AtWork" xml:space="preserve">
+    <value>Sedang bekerja</value>
+  </data>
+  <data name="Traveling" xml:space="preserve">
+    <value>Sedang bepergian</value>
+  </data>
+  <data name="ChangePassword" xml:space="preserve">
+    <value>Ubah kata sandi</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>Kata sandi</value>
+  </data>
+  <data name="ConfirmPassword" xml:space="preserve">
+    <value>Konfirmasi kata sandi</value>
+  </data>
+  <data name="Login" xml:space="preserve">
+    <value>Masuk</value>
+  </data>
+  <data name="CreateAccount" xml:space="preserve">
+    <value>Buat akun</value>
+  </data>
+  <data name="CreateNewAccount" xml:space="preserve">
+    <value>Buat akun baru</value>
+  </data>
+  <data name="ForgotPassword" xml:space="preserve">
+    <value>Lupa kata sandi?</value>
+  </data>
+  <data name="RecoverPassword" xml:space="preserve">
+    <value>Pulihkan kata sandi</value>
+  </data>
+  <data name="EmailInvalid" xml:space="preserve">
+    <value>Alamat email tidak valid.</value>
+  </data>
+  <data name="EnterEmail" xml:space="preserve">
+    <value>Masukkan alamat email</value>
+  </data>
+  <data name="EnterPassword" xml:space="preserve">
+    <value>Masukkan kata sandi</value>
+  </data>
+  <data name="SearchPeople" xml:space="preserve">
+    <value>Cari orang</value>
+  </data>
+  <data name="SearchContacts" xml:space="preserve">
+    <value>Cari kontak</value>
+  </data>
+  <data name="NoResults" xml:space="preserve">
+    <value>Tidak ada hasil</value>
+  </data>
+  <data name="TryAgain" xml:space="preserve">
+    <value>Coba lagi</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>Gagal menyimpan</value>
+  </data>
+  <data name="Saved" xml:space="preserve">
+    <value>Tersimpan</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Kesalahan</value>
+  </data>
+  <data name="Warning" xml:space="preserve">
+    <value>Peringatan</value>
+  </data>
+  <data name="All" xml:space="preserve">
+    <value>Semua</value>
+  </data>
+  <data name="Everyone" xml:space="preserve">
+    <value>Semua orang</value>
+  </data>
+  <data name="MyContacts" xml:space="preserve">
+    <value>Kontak saya</value>
+  </data>
+  <data name="Nobody" xml:space="preserve">
+    <value>Tidak seorang pun</value>
+  </data>
+  <data name="Groups" xml:space="preserve">
+    <value>Grup</value>
+  </data>
+  <data name="LastSeen" xml:space="preserve">
+    <value>Terakhir dilihat dan online</value>
+  </data>
+  <data name="ProfilePhoto" xml:space="preserve">
+    <value>Foto profil</value>
+  </data>
+  <data name="Contacts" xml:space="preserve">
+    <value>Kontak</value>
+  </data>
+  <data name="Cache" xml:space="preserve">
+    <value>Cache</value>
+  </data>
+  <data name="AppData" xml:space="preserve">
+    <value>Data aplikasi</value>
+  </data>
+  <data name="Media" xml:space="preserve">
+    <value>Media</value>
+  </data>
+  <data name="UsedStorage" xml:space="preserve">
+    <value>Penyimpanan terpakai</value>
+  </data>
+  <data name="ClearCache" xml:space="preserve">
+    <value>Bersihkan cache</value>
+  </data>
+  <data name="StorageSummary" xml:space="preserve">
+    <value>Ringkasan penyimpanan</value>
+  </data>
+  <data name="SystemIcons" xml:space="preserve">
+    <value>Ikon sistem</value>
+  </data>
+  <data name="GlassIcons" xml:space="preserve">
+    <value>Ikon kaca</value>
+  </data>
+  <data name="ProfessionalIcons" xml:space="preserve">
+    <value>Ikon profesional</value>
+  </data>
+  <data name="ChooseTheme" xml:space="preserve">
+    <value>Pilih tema</value>
+  </data>
+  <data name="CurrentTheme" xml:space="preserve">
+    <value>Tema saat ini</value>
+  </data>
+  <data name="ApplyTheme" xml:space="preserve">
+    <value>Terapkan tema</value>
+  </data>
+  <data name="Send" xml:space="preserve">
+    <value>Kirim</value>
+  </data>
+  <data name="Message" xml:space="preserve">
+    <value>Pesan</value>
+  </data>
+  <data name="TypeMessage" xml:space="preserve">
+    <value>Ketik pesan...</value>
+  </data>
+  <data name="Online" xml:space="preserve">
+    <value>Sedang online</value>
+  </data>
+  <data name="Offline" xml:space="preserve">
+    <value>Offline</value>
+  </data>
+  <data name="Audio" xml:space="preserve">
+    <value>Audio</value>
+  </data>
+  <data name="Video" xml:space="preserve">
+    <value>Video</value>
+  </data>
+  <data name="Photos" xml:space="preserve">
+    <value>Foto</value>
+  </data>
+  <data name="Camera" xml:space="preserve">
+    <value>Kamera</value>
+  </data>
+  <data name="Attachments" xml:space="preserve">
+    <value>Lampiran</value>
+  </data>
+  <data name="Forward" xml:space="preserve">
+    <value>Teruskan</value>
+  </data>
+  <data name="DeleteMessage" xml:space="preserve">
+    <value>Hapus pesan</value>
+  </data>
+  <data name="EditMessage" xml:space="preserve">
+    <value>Edit pesan</value>
+  </data>
+  <data name="MuteNotifications" xml:space="preserve">
+    <value>Bisukan notifikasi</value>
+  </data>
+  <data name="UnmuteNotifications" xml:space="preserve">
+    <value>Aktifkan notifikasi</value>
+  </data>
+  <data name="CreateGroup" xml:space="preserve">
+    <value>Buat grup</value>
+  </data>
+  <data name="GroupName" xml:space="preserve">
+    <value>Nama grup</value>
+  </data>
+  <data name="LeaveGroup" xml:space="preserve">
+    <value>Keluar dari grup</value>
+  </data>
+  <data name="Call" xml:space="preserve">
+    <value>Panggilan</value>
+  </data>
+  <data name="VoiceCall" xml:space="preserve">
+    <value>Panggilan suara</value>
+  </data>
+  <data name="VideoCall" xml:space="preserve">
+    <value>Panggilan video</value>
+  </data>
+  <data name="EndCall" xml:space="preserve">
+    <value>Akhiri panggilan</value>
+  </data>
+  <data name="Connecting" xml:space="preserve">
+    <value>Menghubungkan...</value>
+  </data>
+  <data name="IncomingCall" xml:space="preserve">
+    <value>Panggilan masuk</value>
+  </data>
+  <data name="Choose" xml:space="preserve">
+    <value>Pilih</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Hapus</value>
+  </data>
+  <data name="AvailableOnHimo" xml:space="preserve">
+    <value>Tersedia di Himo</value>
+  </data>
+  <data name="AccountInfo" xml:space="preserve">
+    <value>Informasi akun</value>
+  </data>
+  <data name="ChangeUsername" xml:space="preserve">
+    <value>Ubah nama pengguna</value>
+  </data>
+  <data name="ChangePhone" xml:space="preserve">
+    <value>Ubah nomor telepon</value>
+  </data>
+  <data name="ChangeEmail" xml:space="preserve">
+    <value>Ubah alamat email</value>
+  </data>
+  <data name="PrivacySettings" xml:space="preserve">
+    <value>Pengaturan privasi</value>
+  </data>
+  <data name="Backup" xml:space="preserve">
+    <value>Cadangan</value>
+  </data>
+  <data name="Restore" xml:space="preserve">
+    <value>Pulihkan</value>
+  </data>
+  <data name="NotificationsEnabled" xml:space="preserve">
+    <value>Notifikasi aktif.</value>
+  </data>
+  <data name="NotificationsDisabled" xml:space="preserve">
+    <value>Notifikasi nonaktif.</value>
+  </data>
+  <data name="PermissionDenied" xml:space="preserve">
+    <value>Izin tidak diberikan.</value>
+  </data>
+  <data name="Retry" xml:space="preserve">
+    <value>Coba lagi</value>
+  </data>
+  <data name="AreYouSure" xml:space="preserve">
+    <value>Apakah Anda yakin?</value>
+  </data>
+  <data name="NewGroup" xml:space="preserve">
+    <value>Grup baru</value>
+  </data>
+  <data name="WelcomeBack" xml:space="preserve">
+    <value>Selamat datang kembali</value>
+  </data>
+  <data name="UnlimitedCommunication" xml:space="preserve">
+    <value>Terhubung tanpa batas</value>
+  </data>
+  <data name="SelectedCount" xml:space="preserve">
+    <value>1 dipilih</value>
+  </data>
+  <data name="DeleteSelectedChats" xml:space="preserve">
+    <value>Hapus obrolan yang dipilih</value>
+  </data>
+  <data name="MuteSelectedChats" xml:space="preserve">
+    <value>Bisukan notifikasi obrolan yang dipilih</value>
+  </data>
+  <data name="ArchiveSelectedChats" xml:space="preserve">
+    <value>Arsipkan obrolan yang dipilih</value>
+  </data>
+  <data name="BlockSelectedPerson" xml:space="preserve">
+    <value>Blokir orang yang dipilih</value>
+  </data>
+  <data name="ClearSelection" xml:space="preserve">
+    <value>Hapus pilihan</value>
+  </data>
+  <data name="ArchivedChats" xml:space="preserve">
+    <value>Lihat obrolan yang diarsipkan</value>
+  </data>
+  <data name="StartConversation" xml:space="preserve">
+    <value>Mulai obrolan</value>
+  </data>
+  <data name="StartNewConversation" xml:space="preserve">
+    <value>Mulai obrolan baru</value>
+  </data>
+  <data name="CallHistory" xml:space="preserve">
+    <value>Riwayat panggilan</value>
+  </data>
+  <data name="RecentCalls" xml:space="preserve">
+    <value>Panggilan terbaru dan opsi panggil kembali</value>
+  </data>
+  <data name="NoCallsYet" xml:space="preserve">
+    <value>Belum ada panggilan</value>
+  </data>
+  <data name="CallFromChatHint" xml:space="preserve">
+    <value>Anda dapat melakukan panggilan suara atau video dari obrolan mana pun.</value>
+  </data>
+  <data name="ReturnToChats" xml:space="preserve">
+    <value>Kembali ke obrolan</value>
+  </data>
+  <data name="RedialAudio" xml:space="preserve">
+    <value>Panggil ulang (audio)</value>
+  </data>
+  <data name="RedialVideo" xml:space="preserve">
+    <value>Panggil ulang (video)</value>
+  </data>
+  <data name="FindPeople" xml:space="preserve">
+    <value>Cari orang</value>
+  </data>
+  <data name="UsePhoneOrEmail" xml:space="preserve">
+    <value>Gunakan satu kolom untuk mencari dengan nomor telepon atau email.</value>
+  </data>
+  <data name="PhoneOrEmail" xml:space="preserve">
+    <value>Nomor telepon atau email</value>
+  </data>
+  <data name="SearchLoading" xml:space="preserve">
+    <value>Mencari...</value>
+  </data>
+  <data name="ContactsHint" xml:space="preserve">
+    <value>Untuk melihat semua kontak, ketuk ikon pencarian di atas. Akun berdasarkan nomor hanya muncul jika pemilik mengizinkan pencarian.</value>
+  </data>
+  <data name="EnterPhoneEmail" xml:space="preserve">
+    <value>Masukkan nomor telepon atau email untuk memulai.</value>
+  </data>
+  <data name="SearchBeforeResults" xml:space="preserve">
+    <value>Hasil muncul setelah Anda mencari</value>
+  </data>
+  <data name="AccountActive" xml:space="preserve">
+    <value>Akun Anda aktif</value>
+  </data>
+  <data name="PhonePrivateHint" xml:space="preserve">
+    <value>Nomor telepon Anda disembunyikan dari pengguna lain. Anda dapat mengatur penemuan melalui nomor di Manajemen akun.</value>
+  </data>
+  <data name="EnableHimoNotifications" xml:space="preserve">
+    <value>Aktifkan notifikasi Himo</value>
+  </data>
+  <data name="NotificationToggleHint" xml:space="preserve">
+    <value>Aktifkan atau nonaktifkan notifikasi pesan dan panggilan</value>
+  </data>
+  <data name="OpenAndroidSettings" xml:space="preserve">
+    <value>Buka pengaturan Android</value>
+  </data>
+  <data name="ChatsAppearanceDescription" xml:space="preserve">
+    <value>Pengiriman, media, ukuran teks, arsip, dan cadangan</value>
+  </data>
+  <data name="ManageFilesAndNetwork" xml:space="preserve">
+    <value>Kelola file dan foto serta tinjau penggunaan jaringan</value>
+  </data>
+  <data name="IconThemeDescription" xml:space="preserve">
+    <value>Ubah warna antarmuka dan ikon dengan tema lengkap</value>
+  </data>
+  <data name="AppLock" xml:space="preserve">
+    <value>Kunci aplikasi</value>
+  </data>
+  <data name="SetPasscode" xml:space="preserve">
+    <value>Atur kode sandi untuk melindungi aplikasi</value>
+  </data>
+  <data name="NewPasscode" xml:space="preserve">
+    <value>Kode baru (4–6 digit)</value>
+  </data>
+  <data name="SaveLockCode" xml:space="preserve">
+    <value>Simpan kode kunci</value>
+  </data>
+  <data name="DisplayNameHint" xml:space="preserve">
+    <value>Gunakan nama yang jelas agar teman mudah menemukan Anda.</value>
+  </data>
+  <data name="StatusHint" xml:space="preserve">
+    <value>Tulis kalimat singkat tentang status Anda saat ini.</value>
+  </data>
+  <data name="ProfileSavedHint" xml:space="preserve">
+    <value>Foto Anda disimpan di akun dan tersedia saat Anda masuk kembali.</value>
+  </data>
+  <data name="PhotoFormatLimit" xml:space="preserve">
+    <value>JPG, PNG, WebP, atau HEIC · Maks. 4 MB</value>
+  </data>
+  <data name="FullName" xml:space="preserve">
+    <value>Nama lengkap</value>
+  </data>
+  <data name="EnterYourName" xml:space="preserve">
+    <value>Masukkan nama yang ingin ditampilkan</value>
+  </data>
+  <data name="OptionalPhone" xml:space="preserve">
+    <value>Nomor telepon (opsional)</value>
+  </data>
+  <data name="EightChars" xml:space="preserve">
+    <value>Minimal 8 karakter</value>
+  </data>
+  <data name="AgreeTo" xml:space="preserve">
+    <value>Saya menyetujui </value>
+  </data>
+  <data name="TermsOfUse" xml:space="preserve">
+    <value>Ketentuan penggunaan</value>
+  </data>
+  <data name="PrivacyPolicy" xml:space="preserve">
+    <value>Kebijakan privasi</value>
+  </data>
+  <data name="BeforeCreatingAccount" xml:space="preserve">
+    <value> sebelum membuat akun.</value>
+  </data>
+  <data name="VerificationCode" xml:space="preserve">
+    <value>Kode verifikasi</value>
+  </data>
+  <data name="SixDigitCode" xml:space="preserve">
+    <value>Kode verifikasi 6 digit</value>
+  </data>
+  <data name="VerificationEmailHint" xml:space="preserve">
+    <value>Masukkan kode yang kami kirim ke email untuk menyelesaikan pembuatan akun.</value>
+  </data>
+  <data name="ResendVerification" xml:space="preserve">
+    <value>Kirim ulang kode verifikasi</value>
+  </data>
+  <data name="AlreadyHaveAccount" xml:space="preserve">
+    <value>Sudah punya akun?</value>
+  </data>
+  <data name="NoAccount" xml:space="preserve">
+    <value>Belum punya akun?</value>
+  </data>
+  <data name="SignInToContinue" xml:space="preserve">
+    <value>Masuk untuk melanjutkan</value>
+  </data>
+  <data name="RecoverAccess" xml:space="preserve">
+    <value>Pulihkan akses akun dengan aman</value>
+  </data>
+  <data name="LetsGetBack" xml:space="preserve">
+    <value>Mari kembali ke akun Anda</value>
+  </data>
+  <data name="SendVerificationCode" xml:space="preserve">
+    <value>Kirim kode verifikasi</value>
+  </data>
+  <data name="CompleteRecovery" xml:space="preserve">
+    <value>Selesaikan pemulihan</value>
+  </data>
+  <data name="NewPassword" xml:space="preserve">
+    <value>Kata sandi baru</value>
+  </data>
+  <data name="EnterCodeSent" xml:space="preserve">
+    <value>Masukkan kode yang dikirim ke email Anda</value>
+  </data>
+  <data name="LoadingContacts" xml:space="preserve">
+    <value>Memuat kontak...</value>
+  </data>
+  <data name="NoContacts" xml:space="preserve">
+    <value>Tidak ada kontak untuk ditampilkan</value>
+  </data>
+  <data name="ContactsPermissionHint" xml:space="preserve">
+    <value>Pastikan ponsel memiliki kontak dan Himo mendapat izin untuk mengaksesnya.</value>
+  </data>
+  <data name="NoMessagesYet" xml:space="preserve">
+    <value>Belum ada pesan</value>
+  </data>
+  <data name="StartChatHint" xml:space="preserve">
+    <value>Mulai percakapan dengan mengirim pesan pertama</value>
+  </data>
+  <data name="NewMessages" xml:space="preserve">
+    <value>Pesan baru</value>
+  </data>
+  <data name="ReplyToMessage" xml:space="preserve">
+    <value>Balas pesan</value>
+  </data>
+  <data name="RecordingVoiceMessage" xml:space="preserve">
+    <value>Merekam pesan suara...</value>
+  </data>
+  <data name="TapToStopRecording" xml:space="preserve">
+    <value>Ketuk untuk menghentikan rekaman</value>
+  </data>
+  <data name="SendMedia" xml:space="preserve">
+    <value>Kirim media</value>
+  </data>
+  <data name="ChooseWhatToSend" xml:space="preserve">
+    <value>Pilih yang ingin dikirim</value>
+  </data>
+  <data name="VideoPlayer" xml:space="preserve">
+    <value>Pemutar video</value>
+  </data>
+  <data name="SecureCall" xml:space="preserve">
+    <value>Panggilan aman melalui Himo</value>
+  </data>
+  <data name="RejectCall" xml:space="preserve">
+    <value>Tolak panggilan</value>
+  </data>
+  <data name="AnswerCall" xml:space="preserve">
+    <value>Jawab panggilan</value>
+  </data>
+  <data name="CancelCall" xml:space="preserve">
+    <value>Batalkan panggilan</value>
+  </data>
+  <data name="MuteMicrophone" xml:space="preserve">
+    <value>Bisukan mikrofon</value>
+  </data>
+  <data name="ToggleCamera" xml:space="preserve">
+    <value>Nyalakan atau matikan kamera</value>
+  </data>
+  <data name="IncomingAudio" xml:space="preserve">
+    <value>Audio masuk</value>
+  </data>
+  <data name="IncomingVideo" xml:space="preserve">
+    <value>Menunggu video</value>
+  </data>
+  <data name="ShowPassword" xml:space="preserve">
+    <value>Tampilkan atau sembunyikan kata sandi</value>
+  </data>
+  <data name="ShowConfirmPassword" xml:space="preserve">
+    <value>Tampilkan atau sembunyikan konfirmasi kata sandi</value>
+  </data>
+  <data name="AccountPermissionHint" xml:space="preserve">
+    <value>Anda dapat mengelola izin perangkat kapan saja melalui Pengaturan.</value>
+  </data>
+  <data name="LanguageArabic" xml:space="preserve">
+    <value>Arab</value>
+  </data>
+  <data name="LanguageEnglish" xml:space="preserve">
+    <value>Inggris</value>
+  </data>
+  <data name="LanguageFrench" xml:space="preserve">
+    <value>Prancis</value>
+  </data>
+  <data name="LanguageTurkish" xml:space="preserve">
+    <value>Turki</value>
+  </data>
+  <data name="LanguageUrdu" xml:space="preserve">
+    <value>Urdu</value>
+  </data>
+  <data name="LanguageSpanish" xml:space="preserve">
+    <value>Spanyol</value>
+  </data>
+  <data name="LanguageIndonesian" xml:space="preserve">
+    <value>Bahasa Indonesia</value>
+  </data>
+  <data name="LanguageChangeNote" xml:space="preserve">
+    <value>Bahasa akan diterapkan pada layar yang memiliki sumber terjemahan.</value>
+  </data>
+  <data name="LanguageArabicFull" xml:space="preserve">
+    <value>Bahasa Arab</value>
+  </data>
+  <data name="HimoAccount" xml:space="preserve">
+    <value>Akun Himo Anda</value>
+  </data>
+  <data name="ProtectYourInfo" xml:space="preserve">
+    <value>Lindungi informasi Anda</value>
+  </data>
+  <data name="PrivacySecurityDescription" xml:space="preserve">
+    <value>Pengaturan privasi dan keamanan</value>
+  </data>
+  <data name="AccountFieldsDescription" xml:space="preserve">
+    <value>Telepon, nama, email, dan kata sandi</value>
+  </data>
+  <data name="CustomizeNotifications" xml:space="preserve">
+    <value>Sesuaikan notifikasi aplikasi</value>
+  </data>
+  <data name="AppearanceExperience" xml:space="preserve">
+    <value>Tampilan dan pengalaman</value>
+  </data>
+  <data name="SettingsTextSizeHint" xml:space="preserve">
+    <value>Atur ukuran teks pada halaman Pengaturan</value>
+  </data>
+  <data name="AppLockOff" xml:space="preserve">
+    <value>Kunci aplikasi nonaktif.</value>
+  </data>
+  <data name="ContactsSavedOnPhone" xml:space="preserve">
+    <value>Nama yang tersimpan di ponsel</value>
+  </data>
+  <data name="MatchingHimoAccounts" xml:space="preserve">
+    <value>Akun Himo yang cocok</value>
+  </data>
+  <data name="NumbersNotShared" xml:space="preserve">
+    <value>Nomor Anda tidak dibagikan tanpa persetujuan</value>
+  </data>
+  <data name="PrivacyCheckup" xml:space="preserve">
+    <value>Pemeriksaan privasi</value>
+  </data>
+  <data name="SavedOnThisDevice" xml:space="preserve">
+    <value>Pilihan Anda saat ini disimpan di perangkat ini. Penerapan aturan visibilitas ke pengguna lain memerlukan dukungan server.</value>
+  </data>
+  <data name="AccountSharing" xml:space="preserve">
+    <value>Berbagi akun</value>
+  </data>
+  <data name="BlockUnknownCallers" xml:space="preserve">
+    <value>Blokir penelepon tak dikenal</value>
+  </data>
+  <data name="BlockedAccounts" xml:space="preserve">
+    <value>Akun yang diblokir</value>
+  </data>
+  <data name="DefaultTone" xml:space="preserve">
+    <value>Nada dering default</value>
+  </data>
+  <data name="Vibration" xml:space="preserve">
+    <value>Getaran</value>
+  </data>
+  <data name="NotificationTone" xml:space="preserve">
+    <value>Nada notifikasi</value>
+  </data>
+  <data name="AppNotificationsEnabled" xml:space="preserve">
+    <value>Notifikasi aplikasi aktif.</value>
+  </data>
+  <data name="AppNotificationsStopped" xml:space="preserve">
+    <value>Notifikasi aplikasi nonaktif.</value>
+  </data>
+  <data name="DisappearingMessages" xml:space="preserve">
+    <value>Pesan menghilang</value>
+  </data>
+  <data name="SearchInMessages" xml:space="preserve">
+    <value>Cari pesan...</value>
+  </data>
+  <data name="ChatWallpaper" xml:space="preserve">
+    <value>Latar obrolan</value>
+  </data>
+  <data name="ChatTheme" xml:space="preserve">
+    <value>Tema obrolan</value>
+  </data>
+  <data name="TextSizeInChat" xml:space="preserve">
+    <value>Ukuran teks obrolan</value>
+  </data>
+  <data name="BackupNow" xml:space="preserve">
+    <value>Cadangkan sekarang</value>
+  </data>
+  <data name="BackupAutomatic" xml:space="preserve">
+    <value>Cadangan otomatis</value>
+  </data>
+  <data name="BackupNotAvailable" xml:space="preserve">
+    <value>Cadangan saat ini tidak tersedia</value>
+  </data>
+  <data name="StorageUnavailable" xml:space="preserve">
+    <value>Tidak tersedia di sistem ini</value>
+  </data>
+  <data name="DataReceived" xml:space="preserve">
+    <value>Data diterima</value>
+  </data>
+  <data name="DataSent" xml:space="preserve">
+    <value>Data terkirim</value>
+  </data>
+  <data name="StorageSpace" xml:space="preserve">
+    <value>Ruang penyimpanan</value>
+  </data>
+  <data name="NetworkUsage" xml:space="preserve">
+    <value>Penggunaan jaringan</value>
+  </data>
+  <data name="ResetStatistics" xml:space="preserve">
+    <value>Atur ulang statistik</value>
+  </data>
+  <data name="ResetComplete" xml:space="preserve">
+    <value>Pengaturan ulang selesai</value>
+  </data>
+  <data name="SystemStyle" xml:space="preserve">
+    <value>Tema antarmuka</value>
+  </data>
+  <data name="Icons" xml:space="preserve">
+    <value>Ikon</value>
+  </data>
+  <data name="InterfaceStyle" xml:space="preserve">
+    <value>Tampilan antarmuka</value>
+  </data>
+  <data name="Preview" xml:space="preserve">
+    <value>Pratinjau</value>
+  </data>
+  <data name="Selected" xml:space="preserve">
+    <value>Dipilih ✓</value>
+  </data>
+  <data name="ChooseIcon" xml:space="preserve">
+    <value>Pilih ikon</value>
+  </data>
+  <data name="ChooseAppearance" xml:space="preserve">
+    <value>Pilih tampilan</value>
+  </data>
+  <data name="StartChatOrFindFriends" xml:space="preserve">
+    <value>Mulai obrolan baru atau cari teman Anda</value>
+  </data>
+  <data name="ViewArchivedChats" xml:space="preserve">
+    <value>Lihat obrolan yang diarsipkan</value>
+  </data>
+  <data name="ProfileManagePhoto" xml:space="preserve">
+    <value>Kelola foto dan informasi Anda</value>
+  </data>
+  <data name="PersonalAccount" xml:space="preserve">
+    <value>Akun pribadi Anda</value>
+  </data>
+  <data name="HimoUser" xml:space="preserve">
+    <value>Pengguna Himo</value>
+  </data>
+  <data name="ProfilePhotoAndInfo" xml:space="preserve">
+    <value>Foto dan informasi Anda di Himo</value>
+  </data>
+  <data name="YourProfile" xml:space="preserve">
+    <value>Profil Anda</value>
+  </data>
+  <data name="ChangeProfilePhoto" xml:space="preserve">
+    <value>Ubah foto profil</value>
+  </data>
+  <data name="AddPhoto" xml:space="preserve">
+    <value>Tambah foto</value>
+  </data>
+  <data name="AccountInformation" xml:space="preserve">
+    <value>Informasi akun</value>
+  </data>
+  <data name="YourName" xml:space="preserve">
+    <value>Nama Anda</value>
+  </data>
+  <data name="StatusExample" xml:space="preserve">
+    <value>Contoh: tersedia sekarang</value>
+  </data>
+  <data name="TapToView" xml:space="preserve">
+    <value>Ketuk untuk melihat</value>
+  </data>
+  <data name="File" xml:space="preserve">
+    <value>File</value>
+  </data>
+  <data name="Contact" xml:space="preserve">
+    <value>Kontak</value>
+  </data>
+  <data name="CallStatusTimer" xml:space="preserve">
+    <value>Terhubung • 00:00</value>
+  </data>
+  <data name="PreparingConnection" xml:space="preserve">
+    <value>Menyiapkan koneksi...</value>
+  </data>
+  <data name="Reject" xml:space="preserve">
+    <value>Tolak</value>
+  </data>
+  <data name="Answer" xml:space="preserve">
+    <value>Jawab</value>
+  </data>
+  <data name="ConnectingToOther" xml:space="preserve">
+    <value>Menghubungkan ke orang lain</value>
+  </data>
+  <data name="WaitingForAnswer" xml:space="preserve">
+    <value>Menunggu jawaban dari orang lain...</value>
+  </data>
+  <data name="SearchByNameOrDetails" xml:space="preserve">
+    <value>Cari berdasarkan nama, nomor, atau email</value>
+  </data>
+  <data name="Or" xml:space="preserve">
+    <value>atau</value>
+  </data>
+  <data name="AccountAlreadyExists" xml:space="preserve">
+    <value>Sudah punya akun?</value>
+  </data>
+  <data name="ThemeAndAppearance" xml:space="preserve">
+    <value>Tampilan dan pengalaman</value>
+  </data>
+  <data name="LanguageArabicOption" xml:space="preserve">
+    <value>Arab</value>
+  </data>
+  <data name="Features" xml:space="preserve">
+    <value>Fitur</value>
+  </data>
+  <data name="AccountActionsDescription" xml:space="preserve">
+    <value>Keluar dari perangkat, keluar dari akun, atau hapus akun secara permanen</value>
+  </data>
+  <data name="Resend" xml:space="preserve">
+    <value>Kirim ulang</value>
+  </data>
+  <data name="Image" xml:space="preserve">
+    <value>Gambar</value>
+  </data>
+  <data name="Attachment" xml:space="preserve">
+    <value>Lampiran</value>
+  </data>
+  <data name="Conversation" xml:space="preserve">
+    <value>Obrolan</value>
+  </data>
+  <data name="TheVideo" xml:space="preserve">
+    <value>Video</value>
+  </data>
+  <data name="EndAndReturn" xml:space="preserve">
+    <value>Akhiri dan kembali</value>
+  </data>
+  <data name="MuteSound" xml:space="preserve">
+    <value>Bisukan suara</value>
+  </data>
+  <data name="TurnCameraOff" xml:space="preserve">
+    <value>Matikan kamera</value>
+  </data>
+  <data name="Speaker" xml:space="preserve">
+    <value>Speaker</value>
+  </data>
+  <data name="OtherPartyAudio" xml:space="preserve">
+    <value>Audio lawan bicara</value>
+  </data>
+  <data name="MoreCallOptions" xml:space="preserve">
+    <value>Opsi panggilan lainnya</value>
+  </data>
+  <data name="More" xml:space="preserve">
+    <value>Lainnya</value>
+  </data>
+  <data name="Match" xml:space="preserve">
+    <value>Cocokkan</value>
+  </data>
+  <data name="HimoTagline" xml:space="preserve">
+    <value>Himo · Terhubung tanpa batas</value>
+  </data>
+  <data name="CreateAccountShort" xml:space="preserve">
+    <value>Buat akun</value>
+  </data>
+  <data name="BackToLogin" xml:space="preserve">
+    <value>Kembali ke masuk</value>
+  </data>
+  <data name="JoinHimo" xml:space="preserve">
+    <value>Bergabung dengan Himo dan mulai terhubung dengan mudah</value>
+  </data>
+  <data name="RetypePassword" xml:space="preserve">
+    <value>Ketik ulang kata sandi</value>
+  </data>
+  <data name="And" xml:space="preserve">
+    <value>dan</value>
+  </data>
+  <data name="BackToLoginShort" xml:space="preserve">
+    <value>Kembali ke masuk</value>
+  </data>
+  <data name="SendPasswordResetEmail" xml:space="preserve">
+    <value>Masukkan email Anda dan kami akan mengirim kode untuk mengatur ulang kata sandi.</value>
+  </data>
+  <data name="VerificationCodeSix" xml:space="preserve">
+    <value>Kode verifikasi (6 digit)</value>
+  </data>
+  <data name="PasswordSecurityHint" xml:space="preserve">
+    <value>Gunakan kata sandi baru minimal 8 karakter. Jangan bagikan kode verifikasi Anda.</value>
+  </data>
+  <data name="SaveNewPassword" xml:space="preserve">
+    <value>Simpan kata sandi baru</value>
+  </data>
+  <data name="EmailNotReceivedHint" xml:space="preserve">
+    <value>Email belum diterima? Periksa folder spam sebelum meminta kode baru.</value>
+  </data>
+<data name="UIExtra001" xml:space="preserve"><value>Tambah akun</value></data><data name="UIExtra002" xml:space="preserve"><value>Pilih bagian untuk mengelola datanya. Perubahan hanya disimpan setelah Anda mengonfirmasi.</value></data><data name="UIExtra003" xml:space="preserve"><value>Email dan informasi masuk</value></data><data name="UIExtra004" xml:space="preserve"><value>Masuk dan keamanan</value></data><data name="UIExtra005" xml:space="preserve"><value>Informasi pribadi</value></data><data name="UIExtra006" xml:space="preserve"><value>Detail masuk</value></data><data name="UIExtra007" xml:space="preserve"><value>Informasi akun Anda disimpan dengan aman</value></data><data name="UIExtra008" xml:space="preserve"><value>Data pribadi dan keamanan akun Anda</value></data><data name="UIExtra009" xml:space="preserve"><value>Ubah nama yang ditampilkan di Himo</value></data><data name="UIExtra010" xml:space="preserve"><value>Ubah kata sandi dengan kode verifikasi aman</value></data><data name="UIExtra011" xml:space="preserve"><value>Kode negara dan privasi nomor</value></data><data name="UIExtra012" xml:space="preserve"><value>Buka halaman masuk dengan akun lain</value></data><data name="UIExtra013" xml:space="preserve"><value>Himo • Perlindungan akun Anda dimulai di sini</value></data><data name="UIExtra014" xml:space="preserve"><value>Masukkan kode kunci</value></data><data name="UIExtra015" xml:space="preserve"><value>Masukkan kode kunci untuk melanjutkan ke akun Anda</value></data><data name="UIExtra016" xml:space="preserve"><value>Aplikasi terkunci</value></data><data name="UIExtra017" xml:space="preserve"><value>Kode kunci</value></data><data name="UIExtra018" xml:space="preserve"><value>Kode Anda melindungi privasi obrolan dan data Anda</value></data><data name="UIExtra019" xml:space="preserve"><value>Buka kunci</value></data><data name="UIExtra020" xml:space="preserve"><value>Kunci Himo</value></data><data name="UIExtra021" xml:space="preserve"><value>Hitam putih</value></data><data name="UIExtra022" xml:space="preserve"><value>Kilau alami</value></data><data name="UIExtra023" xml:space="preserve"><value>Sejuk</value></data><data name="UIExtra024" xml:space="preserve"><value>Kulit bersih</value></data><data name="UIExtra025" xml:space="preserve"><value>Kulit lembut</value></data><data name="UIExtra026" xml:space="preserve"><value>Fokus</value></data><data name="UIExtra027" xml:space="preserve"><value>Kilau lembut</value></data><data name="UIExtra028" xml:space="preserve"><value>Cerah</value></data><data name="UIExtra029" xml:space="preserve"><value>Hangat</value></data><data name="UIExtra030" xml:space="preserve"><value>Sepia</value></data><data name="UIExtra031" xml:space="preserve"><value>Kisi</value></data><data name="UIExtra032" xml:space="preserve"><value>Foto berkualitas tinggi</value></data><data name="UIExtra033" xml:space="preserve"><value>Alami</value></data><data name="UIExtra034" xml:space="preserve"><value>Filter</value></data><data name="UIExtra035" xml:space="preserve"><value>Lampu kilat</value></data><data name="UIExtra036" xml:space="preserve"><value>Kamera Himo</value></data><data name="UIExtra037" xml:space="preserve"><value>Timer 0 dtk</value></data><data name="UIExtra038" xml:space="preserve"><value>Riasan lengkap</value></data><data name="UIExtra039" xml:space="preserve"><value>Riasan natural</value></data><data name="UIExtra040" xml:space="preserve"><value>0 anggota</value></data><data name="UIExtra041" xml:space="preserve"><value>Tambahkan anggota ke grup Anda</value></data><data name="UIExtra042" xml:space="preserve"><value>Anggota grup</value></data><data name="UIExtra043" xml:space="preserve"><value>Buat grup</value></data><data name="UIExtra044" xml:space="preserve"><value>Mulai obrolan grup dengan teman Anda</value></data><data name="UIExtra045" xml:space="preserve"><value>Masukkan nama, email, atau nomor telepon yang terdaftar di Himo, lalu ketuk Tambah.</value></data><data name="UIExtra046" xml:space="preserve"><value>Nama, email, atau nomor telepon</value></data><data name="UIExtra047" xml:space="preserve"><value>Pratinjau media</value></data><data name="UIExtra048" xml:space="preserve"><value>Tambahkan keterangan…</value></data><data name="UIExtra049" xml:space="preserve"><value>Mulai</value></data><data name="UIExtra050" xml:space="preserve"><value>Selesai</value></data><data name="UIExtra051" xml:space="preserve"><value>Menyiapkan file…</value></data><data name="UIExtra052" xml:space="preserve"><value>Simpan dan kirim</value></data><data name="UIExtra053" xml:space="preserve"><value>Video siap diedit</value></data><data name="UIExtra054" xml:space="preserve"><value>Potong video dan bisukan audio</value></data><data name="UIExtra055" xml:space="preserve"><value>Bisukan audio video</value></data><data name="UIExtra056" xml:space="preserve"><value>Kelola profil dan pengaturan Himo dari satu tempat</value></data><data name="UIExtra057" xml:space="preserve"><value>Suara, peringatan, dan getaran</value></data><data name="UIExtra058" xml:space="preserve"><value>Nama, status, dan detail kontak</value></data><data name="UIExtra059" xml:space="preserve"><value>Tampilan dan antarmuka</value></data><data name="UIExtra060" xml:space="preserve"><value>Sesuaikan warna dan ikon</value></data><data name="UIExtra061" xml:space="preserve"><value>Akun Himo Anda</value></data><data name="UIExtra062" xml:space="preserve"><value>Lindungi akun dan kelola informasi Anda</value></data><data name="UIExtra063" xml:space="preserve"><value>Langkah cepat mengatasi masalah aplikasi</value></data><data name="UIExtra064" xml:space="preserve"><value>Tentang Himo dan versi saat ini</value></data><data name="UIExtra065" xml:space="preserve"><value>Profil Himo</value></data><data name="UIExtra066" xml:space="preserve"><value>Oke</value></data><data name="UIExtra067" xml:space="preserve"><value>Masukkan alamat email yang valid.</value></data><data name="UIExtra068" xml:space="preserve"><value>Kata sandi tidak cocok.</value></data><data name="UIExtra069" xml:space="preserve"><value>Masukkan kode verifikasi 6 digit.</value></data><data name="UIExtra070" xml:space="preserve"><value>Kata sandi harus terdiri dari 8 hingga 128 karakter.</value></data><data name="UIExtra071" xml:space="preserve"><value>Masukkan nama sepanjang 1 hingga 60 karakter.</value></data><data name="UIExtra072" xml:space="preserve"><value>Foto diperbarui</value></data><data name="UIExtra073" xml:space="preserve"><value>Tidak dapat membuka halaman:</value></data><data name="UIExtra074" xml:space="preserve"><value>Silakan masuk terlebih dahulu.</value></data><data name="UIExtra075" xml:space="preserve"><value>Ambil foto dengan kamera</value></data><data name="UIExtra076" xml:space="preserve"><value>Pilih foto dari galeri</value></data><data name="UIExtra077" xml:space="preserve"><value>Pilih foto profil</value></data><data name="UIExtra078" xml:space="preserve"><value>Foto profil dihapus.</value></data><data name="UIExtra079" xml:space="preserve"><value>Apakah Anda ingin menghapus foto profil?</value></data><data name="UIExtra080" xml:space="preserve"><value>Foto profil berhasil diperbarui.</value></data><data name="UIExtra081" xml:space="preserve"><value>Masuk terlebih dahulu untuk mencari akun Himo.</value></data><data name="UIExtra082" xml:space="preserve"><value>Statistik yang ditampilkan telah direset. Tidak ada konten yang dihapus.</value></data><data name="UIExtra083" xml:space="preserve"><value>Pelacakan penggunaan jaringan, panggilan, pesan, dan media dimulai dari nol. Obrolan dan file tidak akan dihapus.</value></data><data name="UIExtra084" xml:space="preserve"><value>Tambah</value></data><data name="SubpageExtra001" xml:space="preserve"><value>Kembali ke pengaturan privasi</value></data><data name="SubpageExtra002" xml:space="preserve"><value>Hentikan latar animasi</value></data><data name="SubpageExtra003" xml:space="preserve"><value>Pilih gaya warna untuk obrolan. Tema warna terpisah dari latar foto.</value></data><data name="SubpageExtra004" xml:space="preserve"><value>Pilih gambar bawaan atau dari perangkat. Latar foto disimpan terpisah dari tema warna.</value></data><data name="SubpageExtra005" xml:space="preserve"><value>Pilih gambar latar obrolan</value></data><data name="SubpageExtra006" xml:space="preserve"><value>Pilih video MP4 untuk latar obrolan</value></data><data name="SubpageExtra007" xml:space="preserve"><value>Pilih video asli sebagai latar obrolan senyap. Klip bawaan memerlukan internet dan berhenti saat keluar dari obrolan.</value></data><data name="SubpageExtra008" xml:space="preserve"><value>Pilih video MP4 dari perangkat</value></data><data name="SubpageExtra009" xml:space="preserve"><value>Tidak dapat memilih gambar:</value></data><data name="SubpageExtra010" xml:space="preserve"><value>Tidak dapat memilih video:</value></data><data name="SubpageExtra011" xml:space="preserve"><value>Tidak dapat menggunakan video:</value></data><data name="SubpageExtra012" xml:space="preserve"><value>Gambar yang dipilih disimpan dan akan digunakan sebagai latar obrolan.</value></data><data name="SubpageExtra013" xml:space="preserve"><value>Video yang dipilih disimpan. Video akan menjadi latar senyap untuk obrolan tanpa latar sendiri.</value></data><data name="SubpageExtra014" xml:space="preserve"><value>Pilihan Anda disimpan otomatis dan diterapkan saat obrolan dibuka.</value></data><data name="SubpageExtra015" xml:space="preserve"><value>Atur warna pesan terkirim dan diterima secara terpisah. Pilihan tetap tersimpan saat aplikasi dibuka kembali.</value></data><data name="SubpageExtra016" xml:space="preserve"><value>Gelembung obrolan</value></data><data name="SubpageExtra017" xml:space="preserve"><value>Belum ada latar animasi yang diaktifkan.</value></data><data name="SubpageExtra018" xml:space="preserve"><value>＋ Pilih gambar dari galeri</value></data><data name="SubpageExtra019" xml:space="preserve"><value>Pilih interval pengulangan</value></data><data name="SubpageExtra020" xml:space="preserve"><value>Obrolan</value></data><data name="SubpageExtra021" xml:space="preserve"><value>Tidak dapat membuat cadangan:</value></data><data name="SubpageExtra022" xml:space="preserve"><value>Tidak dapat menyelesaikan operasi:</value></data><data name="SubpageExtra023" xml:space="preserve"><value>File cadangan dibuat dan menu berbagi dibuka.</value></data><data name="SubpageExtra024" xml:space="preserve"><value>Preferensi Anda disimpan otomatis di perangkat ini.</value></data><data name="SubpageExtra025" xml:space="preserve"><value>Cadangan obrolan</value></data><data name="SubpageExtra026" xml:space="preserve"><value>Tidak ada file lokal untuk ditampilkan.</value></data><data name="SubpageExtra027" xml:space="preserve"><value>Ringkasan penyimpanan dan penggunaan jaringan</value></data><data name="SubpageExtra028" xml:space="preserve"><value>Pilih pola getaran, lalu ketuk Oke untuk menyimpan.</value></data><data name="SubpageExtra029" xml:space="preserve"><value>Sesuaikan suara, peringatan, dan getaran</value></data><data name="SubpageExtra030" xml:space="preserve"><value>Kelola sesi dan tindakan akun Anda</value></data><data name="SubpageExtra031" xml:space="preserve"><value>Pilih tindakan. Penghapusan akun bersifat permanen dan tidak dapat dibatalkan.</value></data><data name="SubpageExtra032" xml:space="preserve"><value>Detail penggunaan data, panggilan, dan media</value></data><data name="SubpageExtra033" xml:space="preserve"><value>Tidak tersedia terpisah; total lalu lintas aplikasi mencakup panggilan</value></data><data name="SubpageExtra034" xml:space="preserve"><value>Statistik status terpisah tidak tersedia dalam versi ini</value></data><data name="SubpageExtra035" xml:space="preserve"><value>Ruang harian Anda</value></data><data name="SubpageExtra036" xml:space="preserve"><value>Latar animasi</value></data><data name="SubpageExtra037" xml:space="preserve"><value>Panggilan</value></data><data name="SubpageExtra038" xml:space="preserve"><value>Pesan suara</value></data><data name="SubpageExtra039" xml:space="preserve"><value>Percakapan</value></data><data name="SubpageExtra040" xml:space="preserve"><value>Grup</value></data><data name="SubpageExtra041" xml:space="preserve"><value>Tambah anggota</value></data><data name="SubpageExtra042" xml:space="preserve"><value>Hapus pesan</value></data><data name="SubpageExtra043" xml:space="preserve"><value>Teruskan pesan</value></data><data name="SubpageExtra044" xml:space="preserve"><value>Mengirim</value></data><data name="SubpageExtra045" xml:space="preserve"><value>Tidak dapat membuka percakapan</value></data><data name="SubpageExtra046" xml:space="preserve"><value>Dihapus</value></data><data name="SubpageExtra047" xml:space="preserve"><value>Atur ulang</value></data><data name="SubpageExtra048" xml:space="preserve"><value>Tidak dapat menghapus gambar</value></data><data name="SubpageExtra049" xml:space="preserve"><value>Tidak dapat memperbarui gambar</value></data><data name="SubpageExtra050" xml:space="preserve"><value>Nama pengguna diperbarui.</value></data><data name="SubpageExtra051" xml:space="preserve"><value>Verifikasi email</value></data><data name="SubpageExtra052" xml:space="preserve"><value>Privasi dan kontak</value></data><data name="SubpageExtra053" xml:space="preserve"><value>Tentang Himo</value></data><data name="SubpageExtra054" xml:space="preserve"><value>Hapus permanen</value></data><data name="SubpageExtra055" xml:space="preserve"><value>Buka file</value></data><data name="SubpageExtra056" xml:space="preserve"><value>Diubah</value></data><data name="SubpageExtra057" xml:space="preserve"><value>Hapus akun</value></data><data name="SubpageExtra058" xml:space="preserve"><value>Simpan gambar</value></data><data name="SubpageExtra059" xml:space="preserve"><value>Diperbarui</value></data><data name="SubpageExtra060" xml:space="preserve"><value>Blokir akun</value></data><data name="SubpageExtra061" xml:space="preserve"><value>Tidak dapat menghapus</value></data><data name="SubpageExtra062" xml:space="preserve"><value>Bersihkan memori</value></data><data name="SubpageExtra063" xml:space="preserve"><value>Ganti akun</value></data><data name="SubpageExtra064" xml:space="preserve"><value>Hapus percakapan</value></data><data name="SubpageExtra065" xml:space="preserve"><value>Edit media</value></data><data name="SubpageExtra066" xml:space="preserve"><value>Foto profil</value></data><data name="SubpageExtra067" xml:space="preserve"><value>Setuju dan lanjutkan</value></data><data name="SubpageExtra068" xml:space="preserve"><value>Bagikan pesan</value></data><data name="SubpageExtra069" xml:space="preserve"><value>Nama diperbarui.</value></data><data name="SubpageExtra070" xml:space="preserve"><value>Persetujuan diperlukan</value></data><data name="SubpageExtra071" xml:space="preserve"><value>Izin kamera</value></data><data name="SubpageExtra072" xml:space="preserve"><value>Informasi panggilan</value></data><data name="SubpageExtra073" xml:space="preserve"><value>Tidak dapat mengirim kode</value></data><data name="SubpageExtra074" xml:space="preserve"><value>Ikon dan tampilan</value></data><data name="SubpageExtra075" xml:space="preserve"><value>Laporan terkirim.</value></data><data name="SubpageExtra076" xml:space="preserve"><value>Percakapan diblokir.</value></data><data name="SubpageExtra077" xml:space="preserve"><value>Kirim ulang kode</value></data><data name="SubpageExtra078" xml:space="preserve"><value>Tidak dapat masuk</value></data><data name="SubpageExtra079" xml:space="preserve"><value>Cari berdasarkan nomor telepon</value></data><data name="SubpageExtra080" xml:space="preserve"><value>Pesan diteruskan.</value></data><data name="SubpageExtra081" xml:space="preserve"><value>Hapus salinan sementara</value></data><data name="SubpageExtra082" xml:space="preserve"><value>Pencocokan kontak</value></data><data name="SubpageExtra083" xml:space="preserve"><value>Tidak dapat menambahkan anggota</value></data><data name="SubpageExtra084" xml:space="preserve"><value>Tidak dapat membuat grup</value></data><data name="SubpageExtra085" xml:space="preserve"><value>Percakapan diarsipkan.</value></data><data name="SubpageExtra086" xml:space="preserve"><value>Blokir percakapan dibatalkan.</value></data><data name="SubpageExtra087" xml:space="preserve"><value>Status Anda diperbarui.</value></data><data name="SubpageExtra088" xml:space="preserve"><value>Latar baru disimpan.</value></data><data name="SubpageExtra089" xml:space="preserve"><value>Video berhasil dipilih.</value></data><data name="SubpageExtra090" xml:space="preserve"><value>Tidak dapat menyelesaikan beberapa tindakan</value></data><data name="SubpageExtra091" xml:space="preserve"><value>Gambar disimpan ke galeri foto.</value></data><data name="SubpageExtra092" xml:space="preserve"><value>Gambar berhasil dipilih dan disimpan.</value></data><data name="SubpageExtra093" xml:space="preserve"><value>Notifikasi percakapan dibunyikan kembali.</value></data><data name="SubpageExtra094" xml:space="preserve"><value>Notifikasi percakapan dibisukan.</value></data><data name="SubpageExtra095" xml:space="preserve"><value>Tidak ada percakapan lain yang tersedia.</value></data><data name="SubpageExtra096" xml:space="preserve"><value>Pilih area valid di dalam gambar terlebih dahulu.</value></data><data name="SubpageExtra097" xml:space="preserve"><value>Tambahkan setidaknya satu orang sebelum melanjutkan.</value></data><data name="SubpageExtra098" xml:space="preserve"><value>Tidak ada koneksi internet saat ini. Coba lagi setelah terhubung.</value></data><data name="SubpageExtra099" xml:space="preserve"><value>Akun yang cocok tidak ditemukan. Periksa nomor atau email dan pastikan akun terdaftar di Himo.</value></data><data name="Accessibility001" xml:space="preserve"><value>Tutup kamera</value></data><data name="Accessibility002" xml:space="preserve"><value>Ganti kamera</value></data><data name="Accessibility003" xml:space="preserve"><value>Hapus anggota</value></data><data name="Accessibility004" xml:space="preserve"><value>Kirim media ke percakapan</value></data><data name="Accessibility005" xml:space="preserve"><value>Tutup pratinjau</value></data><data name="Accessibility006" xml:space="preserve"><value>Edit gambar sebelum mengirim</value></data><data name="Accessibility007" xml:space="preserve"><value>Kirim media</value></data><data name="Accessibility008" xml:space="preserve"><value>Tambahkan teks dalam bahasa Arab atau Inggris</value></data><data name="Accessibility009" xml:space="preserve"><value>Tutup editor media</value></data><data name="Accessibility010" xml:space="preserve"><value>Batalkan gambar terakhir</value></data><data name="Accessibility011" xml:space="preserve"><value>Putar gambar 90 derajat</value></data><data name="Accessibility012" xml:space="preserve"><value>Putar pratinjau video</value></data><data name="Accessibility013" xml:space="preserve"><value>Perkecil ukuran pena</value></data><data name="Accessibility014" xml:space="preserve"><value>Perbesar ukuran pena</value></data><data name="Accessibility015" xml:space="preserve"><value>Simpan gambar ke galeri foto</value></data><data name="Accessibility016" xml:space="preserve"><value>Pangkas gambar; ketuk lagi untuk menerapkan</value></data><data name="Accessibility017" xml:space="preserve"><value>Pena bebas</value></data><data name="Accessibility018" xml:space="preserve"><value>Pena gambar bebas</value></data><data name="AlertExtra001" xml:space="preserve"><value>Lanjutkan</value></data><data name="AlertExtra002" xml:space="preserve"><value>Keluar</value></data><data name="AlertExtra003" xml:space="preserve"><value>Pangkas</value></data><data name="AlertExtra004" xml:space="preserve"><value>Navigasi</value></data><data name="AlertExtra005" xml:space="preserve"><value>Pengeditan</value></data><data name="AlertExtra006" xml:space="preserve"><value>Laporkan</value></data><data name="AlertExtra007" xml:space="preserve"><value>Tambah anggota</value></data><data name="AlertExtra008" xml:space="preserve"><value>Pesan suara</value></data><data name="AlertExtra009" xml:space="preserve"><value>Tidak dapat membuka halaman akun:</value></data><data name="AlertExtra010" xml:space="preserve"><value>Tidak dapat membuka detail akun.</value></data><data name="AlertExtra011" xml:space="preserve"><value>Percakapan belum terhubung ke server.</value></data><data name="AlertExtra012" xml:space="preserve"><value>Blokir</value></data><data name="AlertExtra013" xml:space="preserve"><value>Aktifkan</value></data><data name="AlertExtra014" xml:space="preserve"><value>Pemblokiran</value></data><data name="AlertExtra015" xml:space="preserve"><value>Editor</value></data><data name="AlertExtra016" xml:space="preserve"><value>Lampu kilat</value></data><data name="AlertExtra017" xml:space="preserve"><value>Gambar</value></data><data name="AlertExtra018" xml:space="preserve"><value>Lampiran</value></data><data name="AlertExtra019" xml:space="preserve"><value>Balas</value></data><data name="AlertExtra020" xml:space="preserve"><value>Tidak dapat kembali:</value></data><data name="AlertExtra021" xml:space="preserve"><value>Hapus media sementara</value></data><data name="AlertExtra022" xml:space="preserve"><value>Tidak dapat menggunakan gambar:</value></data><data name="AlertExtra023" xml:space="preserve"><value>Nama file terlalu panjang.</value></data><data name="AlertExtra024" xml:space="preserve"><value>Apakah Anda ingin menghapus pesan?</value></data><data name="AlertExtra025" xml:space="preserve"><value>Tidak dapat mengubah kata sandi</value></data><data name="AlertExtra026" xml:space="preserve"><value>Tidak dapat membuka pengaturan bahasa:</value></data><data name="AlertExtra027" xml:space="preserve"><value>Percakapan dibatalkan pengarsipannya.</value></data><data name="AlertExtra028" xml:space="preserve"><value>Tidak dapat membuka halaman yang diminta.</value></data><data name="AlertExtra029" xml:space="preserve"><value>Tidak dapat membuka halaman yang diminta:</value></data><data name="AlertExtra030" xml:space="preserve"><value>Pengaturan nomor telepon diperbarui.</value></data><data name="AlertExtra031" xml:space="preserve"><value>Tidak dapat membuka pengaturan privasi:</value></data><data name="AlertExtra032" xml:space="preserve"><value>Tidak dapat membuka pengaturan obrolan:</value></data><data name="AlertExtra033" xml:space="preserve"><value>Tidak dapat kembali ke halaman sebelumnya:</value></data><data name="AlertExtra034" xml:space="preserve"><value>Kata sandi berhasil diubah.</value></data><data name="AlertExtra035" xml:space="preserve"><value>Tidak dapat membuka pengaturan notifikasi:</value></data><data name="AlertExtra036" xml:space="preserve"><value>Tidak dapat mengubah pengaturan notifikasi:</value></data><data name="AlertExtra037" xml:space="preserve"><value>Tidak dapat membuka file di perangkat ini:</value></data><data name="AlertExtra038" xml:space="preserve"><value>Tidak dapat membuka halaman penyimpanan dan data:</value></data><data name="AlertExtra039" xml:space="preserve"><value>Masukkan kode verifikasi 6 digit.</value></data><data name="AlertExtra040" xml:space="preserve"><value>Masukkan nama sepanjang 2 hingga 60 karakter.</value></data><data name="AlertExtra041" xml:space="preserve"><value>Masuk terlebih dahulu untuk mencari teman.</value></data><data name="AlertExtra042" xml:space="preserve"><value>Apakah Anda ingin keluar dari perangkat ini?</value></data><data name="AlertExtra043" xml:space="preserve"><value>Pilih hanya satu pesan untuk dibalas.</value></data><data name="AlertExtra044" xml:space="preserve"><value>Perekaman audio saat ini hanya tersedia di Android.</value></data><data name="AlertExtra045" xml:space="preserve"><value>Masukkan nama valid maksimal 60 karakter.</value></data><data name="AlertExtra046" xml:space="preserve"><value>Masukkan kata sandi valid minimal 8 karakter.</value></data><data name="AlertExtra047" xml:space="preserve"><value>Grup akan dibuat dari layar Grup.</value></data><data name="AlertExtra048" xml:space="preserve"><value>Pemilihan gambar tidak didukung di perangkat ini.</value></data><data name="AlertExtra049" xml:space="preserve"><value>Apakah Anda ingin keluar hanya dari perangkat ini?</value></data><data name="AlertExtra050" xml:space="preserve"><value>Tidak dapat membuka halaman pemulihan. Coba lagi.</value></data><data name="AlertExtra051" xml:space="preserve"><value>Semua akun yang cocok sudah ditambahkan.</value></data><data name="AlertExtra052" xml:space="preserve"><value>File tidak lagi tersedia di penyimpanan lokal.</value></data><data name="AlertExtra053" xml:space="preserve"><value>Pemilihan video tidak didukung di perangkat ini.</value></data><data name="AlertExtra054" xml:space="preserve"><value>Fitur ini tidak didukung di perangkat saat ini.</value></data><data name="AlertExtra055" xml:space="preserve"><value>Kata sandi harus memiliki minimal 8 karakter.</value></data><data name="AlertExtra056" xml:space="preserve"><value>Pesan terlalu panjang. Batasnya 4.000 karakter.</value></data><data name="AlertExtra057" xml:space="preserve"><value>Anda hanya dapat memblokir akun individu, bukan seluruh grup.</value></data><data name="AlertExtra058" xml:space="preserve"><value>Masukkan nomor telepon sebelum mengaktifkan pencarian nomor.</value></data><data name="AlertExtra059" xml:space="preserve"><value>Rekaman gagal dikirim atau ukurannya melebihi 25 MB.</value></data><data name="AlertExtra060" xml:space="preserve"><value>Email baru telah diverifikasi dan akun Anda diperbarui.</value></data><data name="AlertExtra061" xml:space="preserve"><value>Izinkan Himo menggunakan kamera, lalu coba lagi.</value></data><data name="AlertExtra062" xml:space="preserve"><value>Anda belum menambahkan foto. Ketuk tombol kamera untuk memilih foto.</value></data><data name="AlertExtra063" xml:space="preserve"><value>Navigasi belum siap. Tutup lalu buka kembali halaman.</value></data><data name="AlertExtra064" xml:space="preserve"><value>Izin mikrofon diperlukan untuk merekam pesan suara.</value></data><data name="AlertExtra065" xml:space="preserve"><value>Pencarian kontak saat ini hanya tersedia di Android.</value></data><data name="AlertExtra066" xml:space="preserve"><value>Izinkan Himo menggunakan mikrofon untuk merekam audio video.</value></data><data name="AlertExtra067" xml:space="preserve"><value>Akses media diperlukan. Izinkan akses lalu coba lagi.</value></data><data name="AlertExtra068" xml:space="preserve"><value>Ukuran video terlalu besar. Pilih video di bawah 100 MB.</value></data><data name="AlertExtra069" xml:space="preserve"><value>Preferensi disimpan. Ukuran akan digunakan saat obrolan berikutnya dibuka.</value></data><data name="AlertExtra070" xml:space="preserve"><value>Pilih video MP4 agar kompatibel dengan perangkat Android.</value></data><data name="AlertExtra071" xml:space="preserve"><value>Izinkan Himo menggunakan kamera dan mikrofon, lalu coba lagi.</value></data><data name="AlertExtra072" xml:space="preserve"><value>Foto tidak dapat diakses. Izinkan akses aplikasi lalu coba lagi.</value></data><data name="AlertExtra073" xml:space="preserve"><value>ID percakapan tidak valid. Segarkan daftar obrolan lalu coba lagi.</value></data><data name="AlertExtra074" xml:space="preserve"><value>Video tidak dapat diakses. Izinkan akses aplikasi lalu coba lagi.</value></data><data name="AlertExtra075" xml:space="preserve"><value>Sesi masuk tidak tersedia. Masuk kembali lalu kirim ulang.</value></data><data name="AlertExtra076" xml:space="preserve"><value>Pesan ini belum memiliki ID server, jadi belum dapat dihapus.</value></data><data name="AlertExtra077" xml:space="preserve"><value>Percakapan tidak dapat terhubung ke server. Tunggu sebentar lalu kirim kembali.</value></data><data name="AlertExtra078" xml:space="preserve"><value>Masukkan nomor telepon valid 7–15 digit atau kosongkan karena opsional.</value></data><data name="AlertExtra079" xml:space="preserve"><value>Percakapan untuk panggilan ini tidak tersedia. Buka dari daftar terlebih dahulu.</value></data><data name="AlertExtra080" xml:space="preserve"><value>Salinan lokal untuk diunggah ulang tidak ada. Pilih kembali file dari lampiran.</value></data><data name="AlertExtra081" xml:space="preserve"><value>Tidak ada nomor valid untuk pencocokan. Kontak lain tetap terlihat di daftar.</value></data><data name="AlertExtra082" xml:space="preserve"><value>Terjadi kesalahan saat membuka percakapan. Coba lagi; jika berulang, periksa log aplikasi.</value></data><data name="AlertExtra083" xml:space="preserve"><value>Semua sesi Himo akan berakhir dan notifikasi perangkat terdaftar dihentikan. Lanjutkan?</value></data><data name="AlertExtra084" xml:space="preserve"><value>Baca dan setujui Ketentuan Penggunaan serta Kebijakan Privasi sebelum membuat akun.</value></data><data name="AlertExtra085" xml:space="preserve"><value>Masukkan setidaknya tiga karakter nama, atau email atau nomor telepon yang valid.</value></data><data name="AlertExtra086" xml:space="preserve"><value>Video disimpan. Pemutaran memerlukan internet dan berulang tanpa suara.</value></data><data name="AlertExtra087" xml:space="preserve"><value>Orang yang menyimpan nomor Anda dapat menemukan akun Anda, tetapi tidak melihat nomor Anda.</value></data><data name="AlertExtra088" xml:space="preserve"><value>Kode verifikasi 6 digit dikirim ke email Anda. Masukkan untuk menyelesaikan pembuatan akun.</value></data><data name="AlertExtra089" xml:space="preserve"><value>Masuk akan mengaktifkan akun baru di perangkat ini. Lanjutkan?</value></data><data name="AlertExtra090" xml:space="preserve"><value>Akun, data, dan obrolan Anda akan dihapus permanen dari server. Tindakan ini tidak dapat dibatalkan.</value></data><data name="AlertExtra091" xml:space="preserve"><value>Grup berhasil dibuat, tetapi percakapan belum terbuka. Kembali ke daftar obrolan dan segarkan.</value></data><data name="AlertExtra092" xml:space="preserve"><value>Anda keluar dari perangkat ini, tetapi proses server belum selesai. Anda dapat masuk lagi nanti.</value></data><data name="AlertExtra093" xml:space="preserve"><value>Anda keluar dari perangkat ini, tetapi proses server belum selesai. Anda dapat masuk lagi nanti.</value></data><data name="AlertExtra094" xml:space="preserve"><value>Pesan pilihan belum memiliki ID server. Kirim, tunggu selesai, lalu coba hapus lagi.</value></data><data name="AlertExtra095" xml:space="preserve"><value>Server saat ini belum memiliki proses aman untuk mengganti email setelah verifikasi. Tidak ada perubahan.</value></data><data name="AlertExtra096" xml:space="preserve"><value>Hanya salinan file cache yang dihapus. Obrolan dan unggahan tertunda tetap ada; media mungkin diunduh ulang saat dibuka.</value></data><data name="AlertExtra097" xml:space="preserve"><value>Untuk pencocokan, Himo hanya mengirim nomor telepon kontak melalui koneksi aman. Nama dan email tidak dikirim, dan server tidak menyimpan buku alamat. Hanya akun yang mengizinkan pencarian yang ditampilkan.</value></data><data name="AlertExtra098" xml:space="preserve"><value>Himo membaca nomor telepon di kontak Anda dan mengirim hanya nomor yang diperlukan untuk pencocokan melalui koneksi aman. Server tidak menyimpan buku alamat dan hanya mengembalikan akun Himo cocok yang mengizinkan pencarian.</value></data><data name="AlertExtra099" xml:space="preserve"><value>Jika Himo bermasalah, periksa koneksi internet serta izin notifikasi, kamera, dan mikrofon. Tinjau privasi dan tampilan di sini, lalu buka ulang aplikasi jika antarmuka berhenti diperbarui.</value></data><data name="RuntimeUI001" xml:space="preserve"><value>Tidak dapat dibaca</value></data><data name="RuntimeUI002" xml:space="preserve"><value>Buka</value></data><data name="RuntimeUI003" xml:space="preserve"><value>Dilindungi</value></data><data name="RuntimeUI004" xml:space="preserve"><value>Hapus file sementara</value></data><data name="RuntimeUI005" xml:space="preserve"><value>Data tidak dapat diperbarui; menampilkan informasi yang tersimpan secara lokal.</value></data><data name="RuntimeUI006" xml:space="preserve"><value>Memperbarui informasi akun…</value></data><data name="RuntimeUI007" xml:space="preserve"><value>Masuk untuk melihat informasi akun.</value></data><data name="RuntimeUI008" xml:space="preserve"><value>Jika email terdaftar, Anda akan menerima kode verifikasi. Periksa kotak masuk dan spam.</value></data><data name="RuntimeUI009" xml:space="preserve"><value>Kirim kode verifikasi ke email</value></data><data name="RuntimeUI010" xml:space="preserve"><value>Tidak dapat mengirim kode.</value></data><data name="RuntimeUI011" xml:space="preserve"><value>Tidak dapat menentukan alamat email saat ini.</value></data><data name="RuntimeUI012" xml:space="preserve"><value>Tidak dapat memuat nama:</value></data><data name="RuntimeUI013" xml:space="preserve"><value>Tidak dapat memuat nomor:</value></data><data name="RuntimeUI014" xml:space="preserve"><value>Tidak dapat masuk dengan akun lain.</value></data><data name="RuntimeUI015" xml:space="preserve"><value>Anda berhasil masuk, tetapi layar utama tidak dapat dibuka ulang otomatis.</value></data><data name="RuntimeUI016" xml:space="preserve"><value>Nama pengguna berhasil disimpan.</value></data><data name="RuntimeUI017" xml:space="preserve"><value>Mengirim…</value></data><data name="RuntimeUI018" xml:space="preserve"><value>Memperbarui…</value></data><data name="RuntimeUI019" xml:space="preserve"><value>Menyimpan…</value></data><data name="RuntimeUI020" xml:space="preserve"><value>Sedang masuk…</value></data><data name="RuntimeUI021" xml:space="preserve"><value>Simpan nama pengguna</value></data><data name="RuntimeUI022" xml:space="preserve"><value>Simpan nomor telepon</value></data><data name="RuntimeUI023" xml:space="preserve"><value>Masuk terlebih dahulu untuk mengelola nomor telepon.</value></data><data name="RuntimeUI024" xml:space="preserve"><value>Masuk terlebih dahulu untuk melihat informasi Anda.</value></data><data name="RuntimeUI025" xml:space="preserve"><value>Anda dapat mengedit nama lalu menyimpannya.</value></data><data name="RuntimeUI026" xml:space="preserve"><value>Kode kunci salah.</value></data><data name="RuntimeUI027" xml:space="preserve"><value>Panggilan berakhir</value></data><data name="RuntimeUI028" xml:space="preserve"><value>Nyalakan kamera</value></data><data name="RuntimeUI029" xml:space="preserve"><value>Tidak dapat menerima panggilan.</value></data><data name="RuntimeUI030" xml:space="preserve"><value>Panggilan tidak dapat disiapkan. Periksa koneksi dan coba lagi.</value></data><data name="RuntimeUI031" xml:space="preserve"><value>Tidak dapat menjawab panggilan. Coba lagi.</value></data><data name="RuntimeUI032" xml:space="preserve"><value>Dijawab, menghubungkan…</value></data><data name="RuntimeUI033" xml:space="preserve"><value>Menyiapkan audio</value></data><data name="RuntimeUI034" xml:space="preserve"><value>Menyiapkan audio dan video</value></data><data name="RuntimeUI035" xml:space="preserve"><value>Menyiapkan audio</value></data><data name="RuntimeUI036" xml:space="preserve"><value>Izin kamera dan mikrofon diperlukan</value></data><data name="RuntimeUI037" xml:space="preserve"><value>Izin mikrofon diperlukan untuk menjawab panggilan</value></data><data name="RuntimeUI038" xml:space="preserve"><value>Selesai</value></data><data name="RuntimeUI039" xml:space="preserve"><value>Ⅱ Dijeda</value></data><data name="RuntimeUI040" xml:space="preserve"><value>Pilih gambar</value></data><data name="RuntimeUI041" xml:space="preserve"><value>Pilih gambar untuk latar percakapan ini</value></data><data name="RuntimeUI042" xml:space="preserve"><value>Pilih video</value></data><data name="RuntimeUI043" xml:space="preserve"><value>Pilih file</value></data><data name="RuntimeUI044" xml:space="preserve"><value>Bagikan pesan</value></data><data name="RuntimeUI045" xml:space="preserve"><value>Bagikan lampiran</value></data><data name="RuntimeUI046" xml:space="preserve"><value>Cari nama negara atau kode panggilan</value></data><data name="RuntimeUI047" xml:space="preserve"><value>Pilih negara</value></data><data name="RuntimeUI048" xml:space="preserve"><value>Coba nama negara atau kode panggilan lain.</value></data><data name="RuntimeUI049" xml:space="preserve"><value>Kode negara</value></data><data name="RuntimeUI050" xml:space="preserve"><value>Contoh: Arab Saudi atau +966</value></data><data name="RuntimeUI051" xml:space="preserve"><value>Cari nomor</value></data><data name="RuntimeUI052" xml:space="preserve"><value>Pencarian gagal. Periksa koneksi server lalu coba lagi.</value></data><data name="RuntimeUI053" xml:space="preserve"><value>Tidak dapat mencari kontak. Periksa koneksi server lalu coba lagi.</value></data><data name="RuntimeUI054" xml:space="preserve"><value>Tidak dapat memulai percakapan.</value></data><data name="RuntimeUI055" xml:space="preserve"><value>Tidak dapat membaca kontak dari ponsel.</value></data><data name="RuntimeUI056" xml:space="preserve"><value>Menyiapkan percakapan…</value></data><data name="RuntimeUI057" xml:space="preserve"><value>Meminta izin dan membaca kontak…</value></data><data name="RuntimeUI058" xml:space="preserve"><value>Membaca nama…</value></data><data name="RuntimeUI059" xml:space="preserve"><value>Tidak ditemukan nomor telepon valid di kontak Anda.</value></data><data name="RuntimeUI060" xml:space="preserve"><value>Tidak ada akun yang cocok dengan nomor ini. Nomor mungkin belum terdaftar atau pencarian dinonaktifkan.</value></data><data name="RuntimeUI061" xml:space="preserve"><value>Izin kontak tidak diberikan. Aktifkan di pengaturan Android lalu coba lagi.</value></data><data name="RuntimeUI062" xml:space="preserve"><value>Mencari akun yang mengizinkan ditemukan…</value></data><data name="RuntimeUI063" xml:space="preserve"><value>Gunakan dua jari untuk memperbesar, lalu seret gambar</value></data><data name="RuntimeUI064" xml:space="preserve"><value>Baca semua ketentuan sebelum melanjutkan</value></data><data name="RuntimeUI065" xml:space="preserve"><value>Kembali ke pembuatan akun</value></data><data name="RuntimeUI066" xml:space="preserve"><value>Seret bingkai atau sudutnya, lalu ketuk ✓ untuk menerapkan pangkasan.</value></data><data name="RuntimeUI067" xml:space="preserve"><value>Seret teks ke posisi yang diinginkan</value></data><data name="RuntimeUI068" xml:space="preserve"><value>Pangkas, putar, tambahkan teks, dan gambar sebelum mengirim</value></data><data name="RuntimeUI069" xml:space="preserve"><value>Gambar terakhir dibatalkan</value></data><data name="RuntimeUI070" xml:space="preserve"><value>Gambar saat ini dibatalkan</value></data><data name="RuntimeUI071" xml:space="preserve"><value>Pangkas diterapkan. Kini Anda dapat mengedit lalu mengirim.</value></data><data name="RuntimeUI072" xml:space="preserve"><value>Menerapkan pangkasan…</value></data><data name="RuntimeUI073" xml:space="preserve"><value>Menyimpan gambar ke galeri foto…</value></data><data name="RuntimeUI074" xml:space="preserve"><value>Pena bebas — gambar di mana saja pada gambar dengan jari</value></data><data name="RuntimeUI075" xml:space="preserve"><value>Email saat ini:</value></data><data name="RuntimeUI076" xml:space="preserve"><value>Verifikasi dan ubah email</value></data><data name="RuntimeUI077" xml:space="preserve"><value>Tidak dapat memverifikasi email:</value></data><data name="RuntimeUI078" xml:space="preserve"><value>Tidak dapat menyimpan status:</value></data><data name="RuntimeUI080" xml:space="preserve"><value>Memverifikasi…</value></data><data name="RuntimeUI081" xml:space="preserve"><value>Simpan nama</value></data><data name="RuntimeUI082" xml:space="preserve"><value>Simpan status</value></data><data name="RuntimeUI083" xml:space="preserve"><value>Masuk untuk mengedit nama pengguna.</value></data><data name="RuntimeUI084" xml:space="preserve"><value>Mencocokkan kontak…</value></data><data name="RuntimeUI085" xml:space="preserve"><value>Memuat…</value></data><data name="RuntimeUI086" xml:space="preserve"><value>Server menemukan akun, tetapi belum dapat menghubungkannya dengan nama. Terapkan pembaruan Himo.Api lalu cocokkan lagi.</value></data><data name="RuntimeUI087" xml:space="preserve"><value>Tampilan kontak saat ini hanya tersedia di Android.</value></data><data name="RuntimeUI088" xml:space="preserve"><value>Izin kontak tidak diberikan. Aktifkan di pengaturan Android lalu buka ulang halaman ini.</value></data><data name="RuntimeUI089" xml:space="preserve"><value>Masukkan kode baru lalu ketuk Simpan.</value></data><data name="RuntimeUI090" xml:space="preserve"><value>Izin sistem tidak diperlukan pada versi Android ini.</value></data><data name="RuntimeUI091" xml:space="preserve"><value>Notifikasi Himo dinonaktifkan di dalam aplikasi.</value></data><data name="RuntimeUI092" xml:space="preserve"><value>Kunci aplikasi diaktifkan.</value></data><data name="FinalUI001" xml:space="preserve"><value>Kontak tidak dapat dimuat. Periksa izin Android lalu coba lagi.</value></data><data name="FinalUI002" xml:space="preserve"><value>Kontak tidak dapat dicocokkan. Periksa koneksi server lalu coba lagi.</value></data><data name="FinalUI003" xml:space="preserve"><value>Nama tidak dapat disimpan.</value></data><data name="FinalUI004" xml:space="preserve"><value>Nomor telepon tidak dapat disimpan.</value></data><data name="FinalUI005" xml:space="preserve"><value>Kata sandi tidak dapat diubah.</value></data><data name="FinalUI006" xml:space="preserve"><value>Masukkan nomor telepon valid 7–15 digit, termasuk kode negara bila diperlukan.</value></data><data name="FinalUI007" xml:space="preserve"><value>Kirim ulang kode baru</value></data><data name="FinalUI008" xml:space="preserve"><value>Nama tidak dapat disimpan:</value></data><data name="FinalUI009" xml:space="preserve"><value>Tidak dapat menyimpan:</value></data><data name="FinalUI010" xml:space="preserve"><value>Nama pengguna disimpan: @</value></data><data name="FinalUI011" xml:space="preserve"><value>Kode pengembangan:</value></data><data name="FinalUI012" xml:space="preserve"><value>Tidak dapat mengirim kode:</value></data><data name="CodeBuiltUI001" xml:space="preserve"><value>Masukkan detail akun yang ingin Anda gunakan untuk masuk.</value></data><data name="CodeBuiltUI002" xml:space="preserve"><value>Keamanan akun</value></data><data name="CodeBuiltUI003" xml:space="preserve"><value>Kelola kata sandi</value></data><data name="CodeBuiltUI004" xml:space="preserve"><value>Jika kode tidak tiba, periksa folder spam sebelum meminta kode lain.</value></data><data name="CodeBuiltUI005" xml:space="preserve"><value>Pilih negara melalui bendera dan kode panggil, lalu masukkan nomor lokal tanpa kode negara.</value></data><data name="CodeBuiltUI006" xml:space="preserve"><value>Gunakan nama yang jelas sepanjang 1 hingga 60 karakter.</value></data><data name="CodeBuiltUI007" xml:space="preserve"><value>Masukkan nama pengguna</value></data><data name="CodeBuiltUI008" xml:space="preserve"><value>Versi saat ini hanya menyimpan satu sesi aktif. Jika masuk ke akun lain berhasil, akun baru akan menggantikan akun saat ini. Peralihan hanya dilakukan setelah Anda mengonfirmasi.</value></data><data name="CodeBuiltUI009" xml:space="preserve"><value>Email terdaftar</value></data><data name="CodeBuiltUI010" xml:space="preserve"><value>Email yang terhubung ke akun</value></data><data name="CodeBuiltUI011" xml:space="preserve"><value>Izinkan akun saya ditemukan melalui telepon</value></data><data name="CodeBuiltUI012" xml:space="preserve"><value>Konfirmasi kata sandi baru</value></data><data name="CodeBuiltUI013" xml:space="preserve"><value>Masuk dengan akun lain</value></data><data name="CodeBuiltUI014" xml:space="preserve"><value>Perubahan email belum diaktifkan di server saat ini; verifikasi aman untuk alamat baru harus ditambahkan terlebih dahulu.</value></data><data name="CodeBuiltUI015" xml:space="preserve"><value>Menentukan alamat email…</value></data><data name="CodeBuiltUI016" xml:space="preserve"><value>Memuat email…</value></data><data name="CodeBuiltUI017" xml:space="preserve"><value>Memuat informasi akun…</value></data><data name="CodeBuiltUI018" xml:space="preserve"><value>Memuat nomor telepon…</value></data><data name="CodeBuiltUI019" xml:space="preserve"><value>Orang yang cocok akan melihat nama akun Anda, bukan nomor Anda.</value></data><data name="CodeBuiltUI020" xml:space="preserve"><value>Nomor internasional akan muncul di sini sebelum disimpan.</value></data><data name="CodeBuiltUI021" xml:space="preserve"><value>Kata sandi baru (minimal 8 karakter)</value></data><data name="CodeBuiltUI022" xml:space="preserve"><value>Nama diterapkan setelah server mengonfirmasi bahwa penyimpanan berhasil.</value></data><data name="CodeBuiltUI023" xml:space="preserve"><value>Informasi penting</value></data><data name="CodeBuiltUI024" xml:space="preserve"><value>Nomor disimpan dalam format internasional, misalnya ‎+9665xxxxxxxx.</value></data><data name="CodeBuiltUI025" xml:space="preserve"><value>Pilih status yang menggambarkan kegiatan Anda saat ini.</value></data><data name="CodeBuiltUI026" xml:space="preserve"><value>Ketuk foto untuk melihat ukuran penuh, atau kamera untuk menggantinya</value></data><data name="CodeBuiltUI027" xml:space="preserve"><value>Masukkan nama tampilan</value></data><data name="CodeBuiltUI028" xml:space="preserve"><value>Email baru</value></data><data name="CodeBuiltUI029" xml:space="preserve"><value>Email saat ini: memuat…</value></data><data name="CodeBuiltUI030" xml:space="preserve"><value>Perubahan disimpan ke akun saat koneksi ke server berhasil.</value></data><data name="CodeBuiltUI031" xml:space="preserve"><value>Kode verifikasi akan dikirim ke email baru sebelum perubahan diterapkan.</value></data><data name="CodeBuiltUI032" xml:space="preserve"><value>Belum ditambahkan</value></data><data name="CodeBuiltUI033" xml:space="preserve"><value>Email terdaftar hanya berubah setelah Anda memasukkan kode valid yang dikirim ke alamat baru.</value></data><data name="CodeBuiltUI034" xml:space="preserve"><value>Belum ditetapkan</value></data><data name="CodeBuiltUI035" xml:space="preserve"><value>Apa yang sedang Anda lakukan?</value></data><data name="CodeBuiltUI036" xml:space="preserve"><value>Contoh: ahmed_22</value></data><data name="CodeBuiltUI037" xml:space="preserve"><value>Gunakan 3–24 huruf Inggris, angka, garis bawah (_) atau titik (.). Nama pengguna harus tersedia.</value></data><data name="CodeBuiltUI038" xml:space="preserve"><value>Nama Anda muncul di profil dan percakapan.</value></data><data name="CodeBuiltUI039" xml:space="preserve"><value>Total data aplikasi</value></data><data name="CodeBuiltUI040" xml:space="preserve"><value>Jelajahi file dalam cache dan lampiran chat. Menghapus salinan lokal tidak menghapus pesan di server.</value></data><data name="CodeBuiltUI041" xml:space="preserve"><value>Penggunaan penyimpanan</value></data><data name="CodeBuiltUI042" xml:space="preserve"><value>Roaming</value></data><data name="CodeBuiltUI043" xml:space="preserve"><value>Cache digunakan</value></data><data name="CodeBuiltUI044" xml:space="preserve"><value>Pesan</value></data><data name="CodeBuiltUI045" xml:space="preserve"><value>File lokal</value></data><data name="CodeBuiltUI046" xml:space="preserve"><value>Halaman ini hanya menampilkan total penggunaan, bukan nama atau isi file.</value></data><data name="CodeBuiltUI047" xml:space="preserve"><value>Menampilkan jumlah pesan dan lampiran yang disimpan aplikasi secara lokal untuk tiap chat.</value></data><data name="CodeBuiltUI048" xml:space="preserve"><value>Ukuran media tersimpan</value></data><data name="CodeBuiltUI049" xml:space="preserve"><value>Daftar chat</value></data><data name="CodeBuiltUI050" xml:space="preserve"><value>Tidak ada chat yang tersimpan secara lokal.</value></data><data name="CodeBuiltUI051" xml:space="preserve"><value>Anda dapat menghapus salinan cache untuk mengosongkan ruang. Chat tidak akan dihapus dari server.</value></data><data name="CodeBuiltUI052" xml:space="preserve"><value>Total penggunaan jaringan</value></data><data name="CodeBuiltUI053" xml:space="preserve"><value>Data masuk dan keluar diambil dari penghitung aplikasi Android sejak reset terakhir. Ukuran media dan penyimpanan dihitung dari file lokal, bukan ukuran pasti lalu lintas jaringan untuk tiap kategori.</value></data><data name="CodeBuiltUI054" xml:space="preserve"><value>Media lokal</value></data><data name="CodeBuiltUI055" xml:space="preserve"><value>Detail penggunaan</value></data><data name="CodeBuiltUI056" xml:space="preserve"><value>Pilih satu opsi dari daftar berikut.</value></data><data name="CodeBuiltUI057" xml:space="preserve"><value>Tinjau preferensi privasi yang dipilih di perangkat ini.</value></data><data name="CodeBuiltUI058" xml:space="preserve"><value>Daftar akun yang diblokir akan muncul di sini setelah terhubung ke API server. Untuk saat ini, Anda dapat memblokir akun dari opsi chat.</value></data><data name="CodeBuiltUI059" xml:space="preserve"><value>Penggunaan jaringan seluler</value></data><data name="CodeBuiltUI060" xml:space="preserve"><value>Sertakan file video</value></data><data name="CallThemeChat001" xml:space="preserve"><value>Sedang membaca…</value></data><data name="CallThemeChat002" xml:space="preserve"><value>Otomatis</value></data><data name="CallThemeChat003" xml:space="preserve"><value>Dipilih ✓</value></data><data name="CallThemeChat004" xml:space="preserve"><value>Latar saat ini ✓</value></data><data name="CallThemeChat005" xml:space="preserve"><value>Gunakan latar</value></data><data name="CallThemeChat006" xml:space="preserve"><value>Dokumen</value></data><data name="CallThemeChat007" xml:space="preserve"><value>Menunggu panggilan diterima…</value></data><data name="CallThemeChat008" xml:space="preserve"><value>Biru elektrik</value></data><data name="CallThemeChat009" xml:space="preserve"><value>Telepon</value></data><data name="CallThemeChat010" xml:space="preserve"><value>Hanya saat mengetuk Cadangkan</value></data><data name="CallThemeChat011" xml:space="preserve"><value>File</value></data><data name="CallThemeChat012" xml:space="preserve"><value>Lainnya</value></data><data name="CallThemeChat013" xml:space="preserve"><value>Laporkan chat</value></data><data name="CallThemeChat014" xml:space="preserve"><value>Pesan terlampir</value></data><data name="CallThemeChat015" xml:space="preserve"><value>Panggilan masuk…</value></data><data name="CallThemeChat016" xml:space="preserve"><value>Bunyikan</value></data><data name="CallThemeChat017" xml:space="preserve"><value>Video tidak tersedia</value></data><data name="CallThemeChat018" xml:space="preserve"><value>Matikan speaker</value></data><data name="CallThemeChat019" xml:space="preserve"><value>Bisukan audio masuk</value></data><data name="CallThemeChat020" xml:space="preserve"><value>Aktifkan audio masuk</value></data><data name="CallThemeChat021" xml:space="preserve"><value>Status dan kegiatan Anda saat ini</value></data><data name="CallThemeChat022" xml:space="preserve"><value>Tidak ditentukan</value></data><data name="CallThemeChat023" xml:space="preserve"><value>Pilih gambar berukuran maksimal 4 MB.</value></data><data name="CallThemeChat024" xml:space="preserve"><value>Emas kerajaan</value></data><data name="CallThemeChat025" xml:space="preserve"><value>Aurora</value></data><data name="CallThemeChat026" xml:space="preserve"><value>Tema saat ini ✓</value></data><data name="CallThemeChat027" xml:space="preserve"><value>Pratinjau gambar</value></data><data name="CallThemeChat028" xml:space="preserve"><value>Berhenti</value></data><data name="CallThemeChat029" xml:space="preserve"><value>Terakhir dilihat</value></data><data name="CallThemeChat030" xml:space="preserve"><value>URL video latar tidak valid.</value></data><data name="CallThemeChat031" xml:space="preserve"><value>Masuk</value></data><data name="CallThemeChat032" xml:space="preserve"><value>Pengguna</value></data><data name="CallThemeChat033" xml:space="preserve"><value>Nama</value></data><data name="CallThemeChat034" xml:space="preserve"><value>Email</value></data><data name="CallThemeChat035" xml:space="preserve"><value>Elektronik</value></data><data name="CallThemeChat036" xml:space="preserve"><value>Keamanan</value></data><data name="CallThemeChat037" xml:space="preserve"><value>Perlindungan</value></data><data name="CallThemeChat038" xml:space="preserve"><value>Urdu</value></data><data name="CallThemeChat039" xml:space="preserve"><value>Hentikan</value></data><data name="CallThemeChat040" xml:space="preserve"><value>Foto</value></data><data name="CallThemeChat041" xml:space="preserve"><value>Cari dalam chat</value></data><data name="CallThemeChat042" xml:space="preserve"><value>Buka blokir chat</value></data><data name="CallThemeChat043" xml:space="preserve"><value>Blokir chat</value></data><data name="CallThemeChat044" xml:space="preserve"><value>Batalkan arsip chat</value></data><data name="CallThemeChat045" xml:space="preserve"><value>Arsipkan chat</value></data><data name="CallThemeChat046" xml:space="preserve"><value>🌸 Bunga ungu</value></data><data name="CallThemeChat047" xml:space="preserve"><value>🌄 Matahari terbenam di pegunungan</value></data><data name="CallThemeChat048" xml:space="preserve"><value>🌙 Danau bulan</value></data><data name="CallThemeChat049" xml:space="preserve"><value>🌺 Bunga jarak dekat</value></data><data name="CallThemeChat050" xml:space="preserve"><value>🌊 Danau tenang</value></data><data name="CallThemeChat051" xml:space="preserve"><value>〰️ Riak laut</value></data><data name="CallThemeChat052" xml:space="preserve"><value>🌲 Hutan zamrud</value></data><data name="CallThemeChat053" xml:space="preserve"><value>🌃 Kota bercahaya</value></data><data name="CallThemeChat054" xml:space="preserve"><value>🌸 Kota sakura</value></data><data name="CallThemeChat055" xml:space="preserve"><value>🏜️ Matahari terbenam keemasan</value></data><data name="CallThemeChat056" xml:space="preserve"><value>🖼️ Pilih gambar dari galeri</value></data><data name="CallThemeChat057" xml:space="preserve"><value>Tidak dapat membuka layar panggilan:</value></data><data name="CallThemeChat058" xml:space="preserve"><value>Gambar tidak diunduh dengan benar.</value></data><data name="CallThemeChat059" xml:space="preserve"><value>Pilih</value></data><data name="CallThemeChat060" xml:space="preserve"><value>Panggilan masuk — ketuk Jawab untuk mulai</value></data><data name="CallThemeChat061" xml:space="preserve"><value>Sudah berakhir</value></data><data name="CallThemeChat062" xml:space="preserve"><value>Panggilan lain sedang aktif atau berlangsung</value></data><data name="CallThemeChat063" xml:space="preserve"><value>Terhubung</value></data><data name="CallThemeChat065" xml:space="preserve"><value>Opsi panggilan</value></data><data name="CallThemeChat066" xml:space="preserve"><value>Audio masuk aktif</value></data><data name="CallThemeChat067" xml:space="preserve"><value>Audio masuk dibisukan</value></data><data name="CallThemeChat068" xml:space="preserve"><value>Speaker aktif</value></data><data name="CallThemeChat069" xml:space="preserve"><value>Speaker mati</value></data><data name="DynamicStatus002" xml:space="preserve"><value>Tidak dapat menghapus akun:</value></data><data name="DynamicStatus003" xml:space="preserve"><value>Akun, data, dan chat Anda akan dihapus permanen dari server. Tindakan ini tidak dapat dibatalkan.</value></data><data name="DynamicStatus004" xml:space="preserve"><value>Akun Anda dapat ditemukan melalui telepon.</value></data><data name="DynamicStatus005" xml:space="preserve"><value>Anda dapat mengaktifkan penemuan melalui telepon secara opsional.</value></data><data name="DynamicStatus006" xml:space="preserve"><value>Nomor telepon telah dihapus dari akun.</value></data><data name="DynamicStatus007" xml:space="preserve"><value>Tersimpan; penemuan melalui telepon aktif.</value></data><data name="DynamicStatus008" xml:space="preserve"><value>Nomor tersimpan; penemuan melalui telepon nonaktif.</value></data><data name="DynamicStatus009" xml:space="preserve"><value>Tidak ada akun yang masuk.</value></data><data name="DynamicStatus010" xml:space="preserve"><value>Tidak dapat memuat alamat email.</value></data><data name="DynamicStatus011" xml:space="preserve"><value>Email tidak dapat ditentukan; silakan masuk lagi.</value></data><data name="DynamicStatus012" xml:space="preserve"><value>Tidak dapat memulai kamera Himo:</value></data><data name="DynamicStatus013" xml:space="preserve"><value>Tidak dapat mengambil media:</value></data><data name="DynamicStatus014" xml:space="preserve"><value>Tidak dapat mengubah lampu kilat:</value></data><data name="DynamicStatus015" xml:space="preserve"><value>Tidak dapat mengganti kamera:</value></data><data name="DynamicStatus017" xml:space="preserve"><value>Menerapkan filter kecantikan…</value></data><data name="DynamicStatus018" xml:space="preserve"><value>Meningkatkan gambar…</value></data><data name="DynamicStatus020" xml:space="preserve"><value>Video + audio</value></data><data name="DynamicStatus021" xml:space="preserve"><value>Kunci aplikasi aktif.</value></data><data name="DynamicStatus022" xml:space="preserve"><value>Kunci aplikasi nonaktif.</value></data><data name="DynamicStatus023" xml:space="preserve"><value>Status izin sistem: diizinkan ✓</value></data><data name="DynamicStatus024" xml:space="preserve"><value>Status izin sistem: tidak diizinkan — aktifkan di pengaturan Android jika notifikasi tidak muncul.</value></data><data name="DynamicStatus025" xml:space="preserve"><value>Meminta izin kontak…</value></data><data name="DynamicStatus026" xml:space="preserve"><value>Satu kontak dari ponsel dimuat. Daftar tetap lokal dan tidak diunggah ke server.</value></data><data name="DynamicStatus027" xml:space="preserve"><value>Mencocokkan nomor telepon dengan akun Himo…</value></data><data name="DynamicStatus028" xml:space="preserve"><value>Mengaktifkan…</value></data></root>

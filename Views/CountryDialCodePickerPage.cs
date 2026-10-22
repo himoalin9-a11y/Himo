@@ -14,7 +14,7 @@ public sealed record CountryDialCode(string Name, string Flag, string DialCode)
 }
 
 /// <summary>Theme-aware country selector with a compact, RTL Arabic layout.</summary>
-public sealed class CountryDialCodePickerPage : ContentPage
+public sealed class CountryDialCodePickerPage : Himo.Services.LocalizedContentPage
 {
     private readonly IReadOnlyList<CountryDialCode> _countries;
     private readonly ObservableCollection<CountryDialCode> _visibleCountries = new();

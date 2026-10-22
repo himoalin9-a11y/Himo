@@ -1,4 +1,4 @@
-#if ANDROID
+﻿#if ANDROID
 using Himo.Views;
 using Microsoft.Maui.Handlers;
 using Org.Webrtc;
@@ -7,48 +7,107 @@ namespace Himo.Platforms.Android.Services;
 
 #pragma warning disable CS0618
 
-public sealed class WebRtcRendererViewHandler : ViewHandler<WebRtcRendererView, SurfaceViewRenderer>
+/// <summary>
+/// Hosts SurfaceViewRenderer inside a normal Android FrameLayout.
+/// Do not expose SurfaceViewRenderer itself as the MAUI PlatformView because
+/// MAUI may measure a handler while its Java View is being detached, which can
+/// result in PlatformInterop.measureAndGetWidthAndHeight receiving null.
+/// </summary>
+public sealed class WebRtcRendererViewHandler : ViewHandler<WebRtcRendererView, global::Android.Widget.FrameLayout>
 {
     public static readonly IPropertyMapper<WebRtcRendererView, WebRtcRendererViewHandler> Mapper =
         new PropertyMapper<WebRtcRendererView, WebRtcRendererViewHandler>(ViewHandler.ViewMapper);
 
+    private SurfaceViewRenderer? _renderer;
+
     public WebRtcRendererViewHandler() : base(Mapper) { }
 
-    private IEglBase? _eglBase;
-
-    protected override SurfaceViewRenderer CreatePlatformView()
+    protected override global::Android.Widget.FrameLayout CreatePlatformView()
     {
-        var renderer = new SurfaceViewRenderer(Context);
-        renderer.SetZOrderMediaOverlay(false);
-        return renderer;
+        return new global::Android.Widget.FrameLayout(Context)
+        {
+            LayoutParameters = new global::Android.Widget.FrameLayout.LayoutParams(
+                global::Android.Views.ViewGroup.LayoutParams.MatchParent,
+                global::Android.Views.ViewGroup.LayoutParams.MatchParent)
+        };
     }
 
-    protected override void ConnectHandler(SurfaceViewRenderer platformView)
+    protected override void ConnectHandler(global::Android.Widget.FrameLayout platformView)
     {
         base.ConnectHandler(platformView);
 
-        var eglBase = EglBase.Create();
-        if (eglBase is null)
-            throw new InvalidOperationException("Failed to create WebRTC EGL base.");
+        var renderer = new SurfaceViewRenderer(Context)
+        {
+            LayoutParameters = new global::Android.Widget.FrameLayout.LayoutParams(
+                global::Android.Views.ViewGroup.LayoutParams.MatchParent,
+                global::Android.Views.ViewGroup.LayoutParams.MatchParent)
+        };
 
-        _eglBase = eglBase;
+        renderer.SetEnableHardwareScaler(true);
+        renderer.SetZOrderMediaOverlay(false);
+        // The media engine initializes this renderer with the same EGL context
+        // used by the camera capturer and WebRTC video tracks.
 
-        platformView.SetEnableHardwareScaler(true);
-        platformView.Init(eglBase.EglBaseContext, null);
+        _renderer = renderer;
+        platformView.RemoveAllViews();
+        platformView.AddView(renderer);
 
-        VirtualView.NotifyPlatformViewReady(platformView);
+        VirtualView.SetNativeRenderer(renderer);
+
+        platformView.Post(() =>
+        {
+            try
+            {
+                platformView.RequestLayout();
+                renderer.RequestLayout();
+                VirtualView.SetNativeRenderer(renderer);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[Himo WebRTC] Renderer post-layout failed: {ex.Message}");
+            }
+        });
     }
 
-    protected override void DisconnectHandler(SurfaceViewRenderer platformView)
+    protected override void DisconnectHandler(global::Android.Widget.FrameLayout platformView)
     {
-        VirtualView.NotifyPlatformViewDetached(platformView);
+        // SurfaceViewRenderer.surfaceDestroyed() asserts the Android main thread.
+        // MAUI teardown can race with asynchronous WebRTC cleanup, so never remove
+        // or release the SurfaceView from a worker thread.
+        if (!global::Microsoft.Maui.ApplicationModel.MainThread.IsMainThread)
+        {
+            try
+            {
+                global::Microsoft.Maui.ApplicationModel.MainThread
+                    .InvokeOnMainThreadAsync(() => DisconnectHandlerOnMainThread(platformView))
+                    .GetAwaiter()
+                    .GetResult();
+                return;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[Himo WebRTC] Renderer handler disconnect failed: {ex.GetBaseException().Message}");
+                platformView.Post(() => DisconnectHandlerOnMainThread(platformView));
+                return;
+            }
+        }
 
-        try { platformView.ClearImage(); } catch { }
-        try { platformView.Release(); } catch { }
+        DisconnectHandlerOnMainThread(platformView);
+    }
 
-        try { _eglBase?.Dispose(); } catch { }
-        _eglBase = null;
+    private void DisconnectHandlerOnMainThread(global::Android.Widget.FrameLayout platformView)
+    {
+        var renderer = _renderer;
+        if (renderer is not null)
+            VirtualView.NotifyPlatformViewDetached(renderer);
 
+        try { platformView.RemoveAllViews(); } catch { }
+        try { renderer?.ClearImage(); } catch { }
+        try { renderer?.Release(); } catch { }
+
+        _renderer = null;
         base.DisconnectHandler(platformView);
     }
 }

@@ -12,6 +12,7 @@ public partial class LoginPage : ContentPage
     public LoginPage(AccountService account, HimoApiClient api)
     {
         InitializeComponent();
+        Himo.Services.AppLocalization.AttachToPage(this);
         _account = account;
         _api = api;
         if (PasswordEyeButton is not null)
@@ -37,13 +38,13 @@ public partial class LoginPage : ContentPage
 
         if (!IsValidEmail(email))
         {
-            await DisplayAlertAsync("تنبيه", "أدخل بريدًا إلكترونيًا صحيحًا.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تنبيه"), Himo.Services.AppLocalization.TranslateSourceText("أدخل بريدًا إلكترونيًا صحيحًا."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             emailEntry.Focus();
             return;
         }
         if (password.Length < 8)
         {
-            await DisplayAlertAsync("تنبيه", "كلمة المرور يجب أن تكون 8 أحرف على الأقل.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تنبيه"), "كلمة المرور يجب أن تكون 8 أحرف على الأقل.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             passwordEntry.Focus();
             return;
         }
@@ -61,7 +62,7 @@ public partial class LoginPage : ContentPage
         {
             System.Diagnostics.Debug.WriteLine($"[Himo Login] Failed: {ex}");
             SetStatus("تعذر تسجيل الدخول.");
-            await DisplayAlertAsync("تسجيل الدخول", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تسجيل الدخول"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -97,7 +98,7 @@ public partial class LoginPage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo Password Reset] Unable to open recovery page: {ex}");
-            await DisplayAlertAsync("استعادة كلمة المرور", "تعذر فتح صفحة الاستعادة. حاول مرة أخرى.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("استعادة كلمة المرور"), "تعذر فتح صفحة الاستعادة. حاول مرة أخرى.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 

@@ -20,12 +20,12 @@ internal static class SettingsVisuals
             WidthRequest = size,
             HeightRequest = size,
             Padding = Math.Max(5, (size - safeIconSize) / 2),
-            BackgroundColor = Color.FromArgb("#F2EAFF"),
-            Stroke = new SolidColorBrush(Color.FromArgb("#D9C7F4")),
-            StrokeThickness = 0,
+            BackgroundColor = Color.FromArgb("#39204F"),
+            Stroke = new SolidColorBrush(Color.FromArgb("#594768")),
+            StrokeThickness = 0.8,
             HorizontalOptions = LayoutOptions.Center,
             VerticalOptions = LayoutOptions.Center,
-            StrokeShape = new Ellipse(),
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(Math.Max(9, size * 0.27)) },
             Content = new Image
             {
                 Source = assetName,
@@ -45,29 +45,28 @@ internal static class SettingsVisuals
 
     public static View TitleRow(string assetName, string text, double fontSize = 16)
     {
+        var title = new Label
+        {
+            Text = text,
+            FontSize = fontSize,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = GetThemeColor("HimoPrimary", Color.FromArgb("#F7E9FF")),
+            VerticalTextAlignment = TextAlignment.Center,
+            HorizontalTextAlignment = TextAlignment.Start,
+            VerticalOptions = LayoutOptions.Center,
+            HorizontalOptions = LayoutOptions.Fill,
+            FlowDirection = FlowDirection.RightToLeft,
+            LineBreakMode = LineBreakMode.WordWrap
+        };
+        title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+
         return new HorizontalStackLayout
         {
             FlowDirection = FlowDirection.RightToLeft,
-            Spacing = 12,
+            Spacing = 9,
             VerticalOptions = LayoutOptions.Center,
             HorizontalOptions = LayoutOptions.Fill,
-            Children =
-            {
-                IconBadge(assetName, 36, 20),
-                new Label
-                {
-                    Text = text,
-                    FontSize = fontSize,
-                    FontAttributes = FontAttributes.Bold,
-                    TextColor = GetThemeColor("HimoPrimary", Color.FromArgb("#30205A")),
-                    VerticalTextAlignment = TextAlignment.Center,
-                    HorizontalTextAlignment = TextAlignment.Start,
-                    VerticalOptions = LayoutOptions.Center,
-                    HorizontalOptions = LayoutOptions.Fill,
-                    FlowDirection = FlowDirection.RightToLeft,
-                    LineBreakMode = LineBreakMode.WordWrap
-                }
-            }
+            Children = { IconBadge(assetName, 36, 20), title }
         };
     }
 

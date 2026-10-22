@@ -1,0 +1,1017 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppName" xml:space="preserve">
+    <value>Himo</value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Cargando...</value>
+  </data>
+  <data name="PreparingAccount" xml:space="preserve">
+    <value>Preparando tu cuenta...</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Ajustes</value>
+  </data>
+  <data name="SettingsSubtitle" xml:space="preserve">
+    <value>Administra tu cuenta y preferencias</value>
+  </data>
+  <data name="Account" xml:space="preserve">
+    <value>Cuenta</value>
+  </data>
+  <data name="AccountManagement" xml:space="preserve">
+    <value>Administración de la cuenta</value>
+  </data>
+  <data name="Profile" xml:space="preserve">
+    <value>Perfil</value>
+  </data>
+  <data name="ProfileTab" xml:space="preserve">
+    <value>Perfil</value>
+  </data>
+  <data name="ProfileTitle" xml:space="preserve">
+    <value>Mi perfil</value>
+  </data>
+  <data name="ProfileSubtitle" xml:space="preserve">
+    <value>Tu identidad y espacio en Himo</value>
+  </data>
+  <data name="PublicName" xml:space="preserve">
+    <value>Nombre visible</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>Nombre</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>Estado</value>
+  </data>
+  <data name="About" xml:space="preserve">
+    <value>Acerca de</value>
+  </data>
+  <data name="Username" xml:space="preserve">
+    <value>Nombre de usuario</value>
+  </data>
+  <data name="PhoneNumber" xml:space="preserve">
+    <value>Número de teléfono</value>
+  </data>
+  <data name="Email" xml:space="preserve">
+    <value>Correo electrónico</value>
+  </data>
+  <data name="ChangePhoto" xml:space="preserve">
+    <value>Cambiar foto</value>
+  </data>
+  <data name="RemovePhoto" xml:space="preserve">
+    <value>Quitar foto</value>
+  </data>
+  <data name="SaveChanges" xml:space="preserve">
+    <value>Guardar cambios</value>
+  </data>
+  <data name="Messages" xml:space="preserve">
+    <value>Chats</value>
+  </data>
+  <data name="Calls" xml:space="preserve">
+    <value>Llamadas</value>
+  </data>
+  <data name="PeopleSearch" xml:space="preserve">
+    <value>Buscar personas</value>
+  </data>
+  <data name="Back" xml:space="preserve">
+    <value>Volver</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Cerrar</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="OK" xml:space="preserve">
+    <value>Aceptar</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Guardar</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>Eliminar</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>Editar</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>Confirmar</value>
+  </data>
+  <data name="Search" xml:space="preserve">
+    <value>Buscar</value>
+  </data>
+  <data name="SearchConversations" xml:space="preserve">
+    <value>Buscar en tus chats</value>
+  </data>
+  <data name="NoConversations" xml:space="preserve">
+    <value>Aún no hay chats</value>
+  </data>
+  <data name="Notifications" xml:space="preserve">
+    <value>Notificaciones</value>
+  </data>
+  <data name="ChatSettings" xml:space="preserve">
+    <value>Ajustes de chat</value>
+  </data>
+  <data name="AppearanceAndIcons" xml:space="preserve">
+    <value>Temas e iconos</value>
+  </data>
+  <data name="TextSize" xml:space="preserve">
+    <value>Tamaño del texto</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Idioma</value>
+  </data>
+  <data name="LanguageTitle" xml:space="preserve">
+    <value>Idioma de la aplicación</value>
+  </data>
+  <data name="LanguageSubtitle" xml:space="preserve">
+    <value>Elige tu idioma preferido</value>
+  </data>
+  <data name="AvailableLanguages" xml:space="preserve">
+    <value>Idiomas disponibles</value>
+  </data>
+  <data name="SaveLanguage" xml:space="preserve">
+    <value>Guardar idioma</value>
+  </data>
+  <data name="LanguageSavedTitle" xml:space="preserve">
+    <value>Idioma guardado</value>
+  </data>
+  <data name="LanguageSavedMessage" xml:space="preserve">
+    <value>El idioma elegido se aplicó a las pantallas compatibles. Algunas pantallas especializadas pueden seguir en árabe hasta que se traduzcan.</value>
+  </data>
+  <data name="Theme" xml:space="preserve">
+    <value>Tema</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>Privacidad</value>
+  </data>
+  <data name="SecurityPrivacy" xml:space="preserve">
+    <value>Seguridad y privacidad</value>
+  </data>
+  <data name="StorageData" xml:space="preserve">
+    <value>Almacenamiento y datos</value>
+  </data>
+  <data name="HelpSupport" xml:space="preserve">
+    <value>Ayuda y soporte</value>
+  </data>
+  <data name="AboutApp" xml:space="preserve">
+    <value>Acerca de la aplicación</value>
+  </data>
+  <data name="Logout" xml:space="preserve">
+    <value>Cerrar sesión</value>
+  </data>
+  <data name="LogoutAllDevices" xml:space="preserve">
+    <value>Cerrar sesión en todos los dispositivos</value>
+  </data>
+  <data name="DeleteAccount" xml:space="preserve">
+    <value>Eliminar cuenta permanentemente</value>
+  </data>
+  <data name="FontSmall" xml:space="preserve">
+    <value>Pequeño</value>
+  </data>
+  <data name="FontMedium" xml:space="preserve">
+    <value>Mediano</value>
+  </data>
+  <data name="FontLarge" xml:space="preserve">
+    <value>Grande</value>
+  </data>
+  <data name="OnlineNow" xml:space="preserve">
+    <value>En línea ahora</value>
+  </data>
+  <data name="Available" xml:space="preserve">
+    <value>Disponible</value>
+  </data>
+  <data name="NotAvailable" xml:space="preserve">
+    <value>No disponible</value>
+  </data>
+  <data name="LeaveMessage" xml:space="preserve">
+    <value>Dejar un mensaje</value>
+  </data>
+  <data name="Sleeping" xml:space="preserve">
+    <value>Durmiendo</value>
+  </data>
+  <data name="AtWork" xml:space="preserve">
+    <value>En el trabajo</value>
+  </data>
+  <data name="Traveling" xml:space="preserve">
+    <value>De viaje</value>
+  </data>
+  <data name="ChangePassword" xml:space="preserve">
+    <value>Cambiar contraseña</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>Contraseña</value>
+  </data>
+  <data name="ConfirmPassword" xml:space="preserve">
+    <value>Confirmar contraseña</value>
+  </data>
+  <data name="Login" xml:space="preserve">
+    <value>Iniciar sesión</value>
+  </data>
+  <data name="CreateAccount" xml:space="preserve">
+    <value>Crear cuenta</value>
+  </data>
+  <data name="CreateNewAccount" xml:space="preserve">
+    <value>Crear una cuenta nueva</value>
+  </data>
+  <data name="ForgotPassword" xml:space="preserve">
+    <value>¿Olvidaste tu contraseña?</value>
+  </data>
+  <data name="RecoverPassword" xml:space="preserve">
+    <value>Recuperar contraseña</value>
+  </data>
+  <data name="EmailInvalid" xml:space="preserve">
+    <value>Dirección de correo no válida.</value>
+  </data>
+  <data name="EnterEmail" xml:space="preserve">
+    <value>Introduce tu correo electrónico</value>
+  </data>
+  <data name="EnterPassword" xml:space="preserve">
+    <value>Introduce la contraseña</value>
+  </data>
+  <data name="SearchPeople" xml:space="preserve">
+    <value>Buscar personas</value>
+  </data>
+  <data name="SearchContacts" xml:space="preserve">
+    <value>Buscar contactos</value>
+  </data>
+  <data name="NoResults" xml:space="preserve">
+    <value>Sin resultados</value>
+  </data>
+  <data name="TryAgain" xml:space="preserve">
+    <value>Inténtalo de nuevo</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>No se pudo guardar</value>
+  </data>
+  <data name="Saved" xml:space="preserve">
+    <value>Guardado</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Warning" xml:space="preserve">
+    <value>Aviso</value>
+  </data>
+  <data name="All" xml:space="preserve">
+    <value>Todo</value>
+  </data>
+  <data name="Everyone" xml:space="preserve">
+    <value>Todos</value>
+  </data>
+  <data name="MyContacts" xml:space="preserve">
+    <value>Mis contactos</value>
+  </data>
+  <data name="Nobody" xml:space="preserve">
+    <value>Nadie</value>
+  </data>
+  <data name="Groups" xml:space="preserve">
+    <value>Grupos</value>
+  </data>
+  <data name="LastSeen" xml:space="preserve">
+    <value>Última vez y en línea</value>
+  </data>
+  <data name="ProfilePhoto" xml:space="preserve">
+    <value>Foto de perfil</value>
+  </data>
+  <data name="Contacts" xml:space="preserve">
+    <value>Contactos</value>
+  </data>
+  <data name="Cache" xml:space="preserve">
+    <value>Caché</value>
+  </data>
+  <data name="AppData" xml:space="preserve">
+    <value>Datos de la aplicación</value>
+  </data>
+  <data name="Media" xml:space="preserve">
+    <value>Archivos multimedia</value>
+  </data>
+  <data name="UsedStorage" xml:space="preserve">
+    <value>Espacio utilizado</value>
+  </data>
+  <data name="ClearCache" xml:space="preserve">
+    <value>Borrar caché</value>
+  </data>
+  <data name="StorageSummary" xml:space="preserve">
+    <value>Resumen de almacenamiento</value>
+  </data>
+  <data name="SystemIcons" xml:space="preserve">
+    <value>Iconos del sistema</value>
+  </data>
+  <data name="GlassIcons" xml:space="preserve">
+    <value>Iconos de cristal</value>
+  </data>
+  <data name="ProfessionalIcons" xml:space="preserve">
+    <value>Iconos profesionales</value>
+  </data>
+  <data name="ChooseTheme" xml:space="preserve">
+    <value>Elegir tema</value>
+  </data>
+  <data name="CurrentTheme" xml:space="preserve">
+    <value>Tema actual</value>
+  </data>
+  <data name="ApplyTheme" xml:space="preserve">
+    <value>Aplicar tema</value>
+  </data>
+  <data name="Send" xml:space="preserve">
+    <value>Enviar</value>
+  </data>
+  <data name="Message" xml:space="preserve">
+    <value>Mensaje</value>
+  </data>
+  <data name="TypeMessage" xml:space="preserve">
+    <value>Escribe un mensaje...</value>
+  </data>
+  <data name="Online" xml:space="preserve">
+    <value>En línea ahora</value>
+  </data>
+  <data name="Offline" xml:space="preserve">
+    <value>Desconectado</value>
+  </data>
+  <data name="Audio" xml:space="preserve">
+    <value>Audio</value>
+  </data>
+  <data name="Video" xml:space="preserve">
+    <value>Vídeo</value>
+  </data>
+  <data name="Photos" xml:space="preserve">
+    <value>Fotos</value>
+  </data>
+  <data name="Camera" xml:space="preserve">
+    <value>Cámara</value>
+  </data>
+  <data name="Attachments" xml:space="preserve">
+    <value>Adjuntos</value>
+  </data>
+  <data name="Forward" xml:space="preserve">
+    <value>Reenviar</value>
+  </data>
+  <data name="DeleteMessage" xml:space="preserve">
+    <value>Eliminar mensaje</value>
+  </data>
+  <data name="EditMessage" xml:space="preserve">
+    <value>Editar mensaje</value>
+  </data>
+  <data name="MuteNotifications" xml:space="preserve">
+    <value>Silenciar notificaciones</value>
+  </data>
+  <data name="UnmuteNotifications" xml:space="preserve">
+    <value>Activar notificaciones</value>
+  </data>
+  <data name="CreateGroup" xml:space="preserve">
+    <value>Crear grupo</value>
+  </data>
+  <data name="GroupName" xml:space="preserve">
+    <value>Nombre del grupo</value>
+  </data>
+  <data name="LeaveGroup" xml:space="preserve">
+    <value>Salir del grupo</value>
+  </data>
+  <data name="Call" xml:space="preserve">
+    <value>Llamada</value>
+  </data>
+  <data name="VoiceCall" xml:space="preserve">
+    <value>Llamada de voz</value>
+  </data>
+  <data name="VideoCall" xml:space="preserve">
+    <value>Videollamada</value>
+  </data>
+  <data name="EndCall" xml:space="preserve">
+    <value>Finalizar llamada</value>
+  </data>
+  <data name="Connecting" xml:space="preserve">
+    <value>Conectando...</value>
+  </data>
+  <data name="IncomingCall" xml:space="preserve">
+    <value>Llamada entrante</value>
+  </data>
+  <data name="Choose" xml:space="preserve">
+    <value>Elegir</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Quitar</value>
+  </data>
+  <data name="AvailableOnHimo" xml:space="preserve">
+    <value>Disponible en Himo</value>
+  </data>
+  <data name="AccountInfo" xml:space="preserve">
+    <value>Información de la cuenta</value>
+  </data>
+  <data name="ChangeUsername" xml:space="preserve">
+    <value>Cambiar nombre de usuario</value>
+  </data>
+  <data name="ChangePhone" xml:space="preserve">
+    <value>Cambiar número de teléfono</value>
+  </data>
+  <data name="ChangeEmail" xml:space="preserve">
+    <value>Cambiar correo electrónico</value>
+  </data>
+  <data name="PrivacySettings" xml:space="preserve">
+    <value>Ajustes de privacidad</value>
+  </data>
+  <data name="Backup" xml:space="preserve">
+    <value>Copia de seguridad</value>
+  </data>
+  <data name="Restore" xml:space="preserve">
+    <value>Restaurar</value>
+  </data>
+  <data name="NotificationsEnabled" xml:space="preserve">
+    <value>Las notificaciones están activadas.</value>
+  </data>
+  <data name="NotificationsDisabled" xml:space="preserve">
+    <value>Las notificaciones están desactivadas.</value>
+  </data>
+  <data name="PermissionDenied" xml:space="preserve">
+    <value>No se concedió el permiso.</value>
+  </data>
+  <data name="Retry" xml:space="preserve">
+    <value>Reintentar</value>
+  </data>
+  <data name="AreYouSure" xml:space="preserve">
+    <value>¿Estás seguro?</value>
+  </data>
+  <data name="NewGroup" xml:space="preserve">
+    <value>Nuevo grupo</value>
+  </data>
+  <data name="WelcomeBack" xml:space="preserve">
+    <value>Bienvenido de nuevo</value>
+  </data>
+  <data name="UnlimitedCommunication" xml:space="preserve">
+    <value>Conéctate sin límites</value>
+  </data>
+  <data name="SelectedCount" xml:space="preserve">
+    <value>1 seleccionado</value>
+  </data>
+  <data name="DeleteSelectedChats" xml:space="preserve">
+    <value>Eliminar chats seleccionados</value>
+  </data>
+  <data name="MuteSelectedChats" xml:space="preserve">
+    <value>Silenciar notificaciones de chats seleccionados</value>
+  </data>
+  <data name="ArchiveSelectedChats" xml:space="preserve">
+    <value>Archivar chats seleccionados</value>
+  </data>
+  <data name="BlockSelectedPerson" xml:space="preserve">
+    <value>Bloquear a la persona seleccionada</value>
+  </data>
+  <data name="ClearSelection" xml:space="preserve">
+    <value>Quitar selección</value>
+  </data>
+  <data name="ArchivedChats" xml:space="preserve">
+    <value>Ver chats archivados</value>
+  </data>
+  <data name="StartConversation" xml:space="preserve">
+    <value>Iniciar chat</value>
+  </data>
+  <data name="StartNewConversation" xml:space="preserve">
+    <value>Iniciar un nuevo chat</value>
+  </data>
+  <data name="CallHistory" xml:space="preserve">
+    <value>Historial de llamadas</value>
+  </data>
+  <data name="RecentCalls" xml:space="preserve">
+    <value>Llamadas recientes y opciones para devolver la llamada</value>
+  </data>
+  <data name="NoCallsYet" xml:space="preserve">
+    <value>Aún no hay llamadas</value>
+  </data>
+  <data name="CallFromChatHint" xml:space="preserve">
+    <value>Puedes hacer una llamada de voz o vídeo desde cualquier chat.</value>
+  </data>
+  <data name="ReturnToChats" xml:space="preserve">
+    <value>Volver a los chats</value>
+  </data>
+  <data name="RedialAudio" xml:space="preserve">
+    <value>Volver a llamar por audio</value>
+  </data>
+  <data name="RedialVideo" xml:space="preserve">
+    <value>Volver a llamar por vídeo</value>
+  </data>
+  <data name="FindPeople" xml:space="preserve">
+    <value>Encontrar personas</value>
+  </data>
+  <data name="UsePhoneOrEmail" xml:space="preserve">
+    <value>Usa un solo campo para buscar por teléfono o correo electrónico.</value>
+  </data>
+  <data name="PhoneOrEmail" xml:space="preserve">
+    <value>Teléfono o correo electrónico</value>
+  </data>
+  <data name="SearchLoading" xml:space="preserve">
+    <value>Buscando...</value>
+  </data>
+  <data name="ContactsHint" xml:space="preserve">
+    <value>Para ver todos los contactos, toca el icono de búsqueda de arriba. Las cuentas por número solo aparecen si su propietario permite que lo encuentren.</value>
+  </data>
+  <data name="EnterPhoneEmail" xml:space="preserve">
+    <value>Introduce un teléfono o correo para empezar.</value>
+  </data>
+  <data name="SearchBeforeResults" xml:space="preserve">
+    <value>Los resultados aparecerán después de buscar</value>
+  </data>
+  <data name="AccountActive" xml:space="preserve">
+    <value>Tu cuenta está activa</value>
+  </data>
+  <data name="PhonePrivateHint" xml:space="preserve">
+    <value>Tu número está oculto para otros usuarios. Puedes gestionar la búsqueda por teléfono en Administración de la cuenta.</value>
+  </data>
+  <data name="EnableHimoNotifications" xml:space="preserve">
+    <value>Activar notificaciones de Himo</value>
+  </data>
+  <data name="NotificationToggleHint" xml:space="preserve">
+    <value>Activa o desactiva las notificaciones de mensajes y llamadas</value>
+  </data>
+  <data name="OpenAndroidSettings" xml:space="preserve">
+    <value>Abrir ajustes de Android</value>
+  </data>
+  <data name="ChatsAppearanceDescription" xml:space="preserve">
+    <value>Envío, medios, tamaño de texto, archivo y copia de seguridad</value>
+  </data>
+  <data name="ManageFilesAndNetwork" xml:space="preserve">
+    <value>Gestiona archivos y fotos y revisa el uso de red</value>
+  </data>
+  <data name="IconThemeDescription" xml:space="preserve">
+    <value>Cambia los colores e iconos de la interfaz con un tema completo</value>
+  </data>
+  <data name="AppLock" xml:space="preserve">
+    <value>Bloqueo de la aplicación</value>
+  </data>
+  <data name="SetPasscode" xml:space="preserve">
+    <value>Configura un código para proteger la aplicación</value>
+  </data>
+  <data name="NewPasscode" xml:space="preserve">
+    <value>Nuevo código (4–6 dígitos)</value>
+  </data>
+  <data name="SaveLockCode" xml:space="preserve">
+    <value>Guardar código de bloqueo</value>
+  </data>
+  <data name="DisplayNameHint" xml:space="preserve">
+    <value>Usa un nombre claro para que tus amigos te encuentren fácilmente.</value>
+  </data>
+  <data name="StatusHint" xml:space="preserve">
+    <value>Escribe una frase breve sobre tu estado actual.</value>
+  </data>
+  <data name="ProfileSavedHint" xml:space="preserve">
+    <value>Tu foto se guarda en tu cuenta y estará disponible cuando vuelvas a iniciar sesión.</value>
+  </data>
+  <data name="PhotoFormatLimit" xml:space="preserve">
+    <value>JPG, PNG, WebP o HEIC · Máximo 4 MB</value>
+  </data>
+  <data name="FullName" xml:space="preserve">
+    <value>Nombre completo</value>
+  </data>
+  <data name="EnterYourName" xml:space="preserve">
+    <value>Escribe el nombre que quieres mostrar</value>
+  </data>
+  <data name="OptionalPhone" xml:space="preserve">
+    <value>Teléfono (opcional)</value>
+  </data>
+  <data name="EightChars" xml:space="preserve">
+    <value>Al menos 8 caracteres</value>
+  </data>
+  <data name="AgreeTo" xml:space="preserve">
+    <value>Acepto los </value>
+  </data>
+  <data name="TermsOfUse" xml:space="preserve">
+    <value>Términos de uso</value>
+  </data>
+  <data name="PrivacyPolicy" xml:space="preserve">
+    <value>Política de privacidad</value>
+  </data>
+  <data name="BeforeCreatingAccount" xml:space="preserve">
+    <value> antes de crear una cuenta.</value>
+  </data>
+  <data name="VerificationCode" xml:space="preserve">
+    <value>Código de verificación</value>
+  </data>
+  <data name="SixDigitCode" xml:space="preserve">
+    <value>Código de verificación de 6 dígitos</value>
+  </data>
+  <data name="VerificationEmailHint" xml:space="preserve">
+    <value>Introduce el código enviado a tu correo para terminar de crear la cuenta.</value>
+  </data>
+  <data name="ResendVerification" xml:space="preserve">
+    <value>Reenviar código de verificación</value>
+  </data>
+  <data name="AlreadyHaveAccount" xml:space="preserve">
+    <value>¿Ya tienes una cuenta?</value>
+  </data>
+  <data name="NoAccount" xml:space="preserve">
+    <value>¿No tienes una cuenta?</value>
+  </data>
+  <data name="SignInToContinue" xml:space="preserve">
+    <value>Inicia sesión para continuar</value>
+  </data>
+  <data name="RecoverAccess" xml:space="preserve">
+    <value>Recupera el acceso a tu cuenta de forma segura</value>
+  </data>
+  <data name="LetsGetBack" xml:space="preserve">
+    <value>Volvamos a tu cuenta</value>
+  </data>
+  <data name="SendVerificationCode" xml:space="preserve">
+    <value>Enviar código de verificación</value>
+  </data>
+  <data name="CompleteRecovery" xml:space="preserve">
+    <value>Completar recuperación</value>
+  </data>
+  <data name="NewPassword" xml:space="preserve">
+    <value>Nueva contraseña</value>
+  </data>
+  <data name="EnterCodeSent" xml:space="preserve">
+    <value>Introduce el código enviado a tu correo</value>
+  </data>
+  <data name="LoadingContacts" xml:space="preserve">
+    <value>Cargando contactos...</value>
+  </data>
+  <data name="NoContacts" xml:space="preserve">
+    <value>No hay contactos para mostrar</value>
+  </data>
+  <data name="ContactsPermissionHint" xml:space="preserve">
+    <value>Asegúrate de tener contactos en el teléfono y de dar permiso a Himo.</value>
+  </data>
+  <data name="NoMessagesYet" xml:space="preserve">
+    <value>Aún no hay mensajes</value>
+  </data>
+  <data name="StartChatHint" xml:space="preserve">
+    <value>Empieza la conversación enviando el primer mensaje</value>
+  </data>
+  <data name="NewMessages" xml:space="preserve">
+    <value>Mensajes nuevos</value>
+  </data>
+  <data name="ReplyToMessage" xml:space="preserve">
+    <value>Responder a un mensaje</value>
+  </data>
+  <data name="RecordingVoiceMessage" xml:space="preserve">
+    <value>Grabando mensaje de voz...</value>
+  </data>
+  <data name="TapToStopRecording" xml:space="preserve">
+    <value>Toca para detener la grabación</value>
+  </data>
+  <data name="SendMedia" xml:space="preserve">
+    <value>Enviar archivos multimedia</value>
+  </data>
+  <data name="ChooseWhatToSend" xml:space="preserve">
+    <value>Elige qué quieres enviar</value>
+  </data>
+  <data name="VideoPlayer" xml:space="preserve">
+    <value>Reproductor de vídeo</value>
+  </data>
+  <data name="SecureCall" xml:space="preserve">
+    <value>Llamada segura mediante Himo</value>
+  </data>
+  <data name="RejectCall" xml:space="preserve">
+    <value>Rechazar llamada</value>
+  </data>
+  <data name="AnswerCall" xml:space="preserve">
+    <value>Responder llamada</value>
+  </data>
+  <data name="CancelCall" xml:space="preserve">
+    <value>Cancelar llamada</value>
+  </data>
+  <data name="MuteMicrophone" xml:space="preserve">
+    <value>Silenciar micrófono</value>
+  </data>
+  <data name="ToggleCamera" xml:space="preserve">
+    <value>Activar o desactivar cámara</value>
+  </data>
+  <data name="IncomingAudio" xml:space="preserve">
+    <value>Audio entrante</value>
+  </data>
+  <data name="IncomingVideo" xml:space="preserve">
+    <value>Esperando el vídeo</value>
+  </data>
+  <data name="ShowPassword" xml:space="preserve">
+    <value>Mostrar u ocultar contraseña</value>
+  </data>
+  <data name="ShowConfirmPassword" xml:space="preserve">
+    <value>Mostrar u ocultar la confirmación de contraseña</value>
+  </data>
+  <data name="AccountPermissionHint" xml:space="preserve">
+    <value>Puedes administrar los permisos del dispositivo desde Ajustes en cualquier momento.</value>
+  </data>
+  <data name="LanguageArabic" xml:space="preserve">
+    <value>Árabe</value>
+  </data>
+  <data name="LanguageEnglish" xml:space="preserve">
+    <value>Inglés</value>
+  </data>
+  <data name="LanguageFrench" xml:space="preserve">
+    <value>Francés</value>
+  </data>
+  <data name="LanguageTurkish" xml:space="preserve">
+    <value>Turco</value>
+  </data>
+  <data name="LanguageUrdu" xml:space="preserve">
+    <value>Urdu</value>
+  </data>
+  <data name="LanguageSpanish" xml:space="preserve">
+    <value>Español</value>
+  </data>
+  <data name="LanguageIndonesian" xml:space="preserve">
+    <value>Indonesio</value>
+  </data>
+  <data name="LanguageChangeNote" xml:space="preserve">
+    <value>El idioma se aplicará a las pantallas que tengan recursos de traducción.</value>
+  </data>
+  <data name="LanguageArabicFull" xml:space="preserve">
+    <value>Idioma árabe</value>
+  </data>
+  <data name="HimoAccount" xml:space="preserve">
+    <value>Tu cuenta de Himo</value>
+  </data>
+  <data name="ProtectYourInfo" xml:space="preserve">
+    <value>Protege tu información</value>
+  </data>
+  <data name="PrivacySecurityDescription" xml:space="preserve">
+    <value>Ajustes de privacidad y seguridad</value>
+  </data>
+  <data name="AccountFieldsDescription" xml:space="preserve">
+    <value>Teléfono, nombre, correo y contraseña</value>
+  </data>
+  <data name="CustomizeNotifications" xml:space="preserve">
+    <value>Personalizar notificaciones de la aplicación</value>
+  </data>
+  <data name="AppearanceExperience" xml:space="preserve">
+    <value>Apariencia y experiencia</value>
+  </data>
+  <data name="SettingsTextSizeHint" xml:space="preserve">
+    <value>Define el tamaño del texto en Ajustes</value>
+  </data>
+  <data name="AppLockOff" xml:space="preserve">
+    <value>El bloqueo de la aplicación está desactivado.</value>
+  </data>
+  <data name="ContactsSavedOnPhone" xml:space="preserve">
+    <value>Nombres guardados en tu teléfono</value>
+  </data>
+  <data name="MatchingHimoAccounts" xml:space="preserve">
+    <value>Cuentas de Himo coincidentes</value>
+  </data>
+  <data name="NumbersNotShared" xml:space="preserve">
+    <value>Tus números no se compartirán sin tu permiso</value>
+  </data>
+  <data name="PrivacyCheckup" xml:space="preserve">
+    <value>Revisión de privacidad</value>
+  </data>
+  <data name="SavedOnThisDevice" xml:space="preserve">
+    <value>Tus opciones se guardan actualmente en este dispositivo. Aplicar reglas de visibilidad a otros usuarios requiere soporte del servidor.</value>
+  </data>
+  <data name="AccountSharing" xml:space="preserve">
+    <value>Compartir cuenta</value>
+  </data>
+  <data name="BlockUnknownCallers" xml:space="preserve">
+    <value>Bloquear llamadas desconocidas</value>
+  </data>
+  <data name="BlockedAccounts" xml:space="preserve">
+    <value>Cuentas bloqueadas</value>
+  </data>
+  <data name="DefaultTone" xml:space="preserve">
+    <value>Tono predeterminado</value>
+  </data>
+  <data name="Vibration" xml:space="preserve">
+    <value>Vibración</value>
+  </data>
+  <data name="NotificationTone" xml:space="preserve">
+    <value>Tono de notificación</value>
+  </data>
+  <data name="AppNotificationsEnabled" xml:space="preserve">
+    <value>Las notificaciones de la aplicación están activadas.</value>
+  </data>
+  <data name="AppNotificationsStopped" xml:space="preserve">
+    <value>Las notificaciones de la aplicación están desactivadas.</value>
+  </data>
+  <data name="DisappearingMessages" xml:space="preserve">
+    <value>Mensajes temporales</value>
+  </data>
+  <data name="SearchInMessages" xml:space="preserve">
+    <value>Buscar mensajes...</value>
+  </data>
+  <data name="ChatWallpaper" xml:space="preserve">
+    <value>Fondo del chat</value>
+  </data>
+  <data name="ChatTheme" xml:space="preserve">
+    <value>Tema del chat</value>
+  </data>
+  <data name="TextSizeInChat" xml:space="preserve">
+    <value>Tamaño del texto del chat</value>
+  </data>
+  <data name="BackupNow" xml:space="preserve">
+    <value>Hacer copia ahora</value>
+  </data>
+  <data name="BackupAutomatic" xml:space="preserve">
+    <value>Copia de seguridad automática</value>
+  </data>
+  <data name="BackupNotAvailable" xml:space="preserve">
+    <value>La copia de seguridad no está disponible ahora</value>
+  </data>
+  <data name="StorageUnavailable" xml:space="preserve">
+    <value>No disponible en este sistema</value>
+  </data>
+  <data name="DataReceived" xml:space="preserve">
+    <value>Datos recibidos</value>
+  </data>
+  <data name="DataSent" xml:space="preserve">
+    <value>Datos enviados</value>
+  </data>
+  <data name="StorageSpace" xml:space="preserve">
+    <value>Espacio de almacenamiento</value>
+  </data>
+  <data name="NetworkUsage" xml:space="preserve">
+    <value>Uso de red</value>
+  </data>
+  <data name="ResetStatistics" xml:space="preserve">
+    <value>Restablecer estadísticas</value>
+  </data>
+  <data name="ResetComplete" xml:space="preserve">
+    <value>Restablecimiento completado</value>
+  </data>
+  <data name="SystemStyle" xml:space="preserve">
+    <value>Temas de interfaz</value>
+  </data>
+  <data name="Icons" xml:space="preserve">
+    <value>Iconos</value>
+  </data>
+  <data name="InterfaceStyle" xml:space="preserve">
+    <value>Apariencia de la interfaz</value>
+  </data>
+  <data name="Preview" xml:space="preserve">
+    <value>Vista previa</value>
+  </data>
+  <data name="Selected" xml:space="preserve">
+    <value>Seleccionado ✓</value>
+  </data>
+  <data name="ChooseIcon" xml:space="preserve">
+    <value>Elegir icono</value>
+  </data>
+  <data name="ChooseAppearance" xml:space="preserve">
+    <value>Elegir apariencia</value>
+  </data>
+  <data name="StartChatOrFindFriends" xml:space="preserve">
+    <value>Inicia un chat nuevo o encuentra a tus amigos</value>
+  </data>
+  <data name="ViewArchivedChats" xml:space="preserve">
+    <value>Ver chats archivados</value>
+  </data>
+  <data name="ProfileManagePhoto" xml:space="preserve">
+    <value>Administra tu foto e información</value>
+  </data>
+  <data name="PersonalAccount" xml:space="preserve">
+    <value>Tu cuenta personal</value>
+  </data>
+  <data name="HimoUser" xml:space="preserve">
+    <value>Usuario de Himo</value>
+  </data>
+  <data name="ProfilePhotoAndInfo" xml:space="preserve">
+    <value>Tu foto e información en Himo</value>
+  </data>
+  <data name="YourProfile" xml:space="preserve">
+    <value>Tu perfil</value>
+  </data>
+  <data name="ChangeProfilePhoto" xml:space="preserve">
+    <value>Cambiar foto de perfil</value>
+  </data>
+  <data name="AddPhoto" xml:space="preserve">
+    <value>Añadir foto</value>
+  </data>
+  <data name="AccountInformation" xml:space="preserve">
+    <value>Información de la cuenta</value>
+  </data>
+  <data name="YourName" xml:space="preserve">
+    <value>Tu nombre</value>
+  </data>
+  <data name="StatusExample" xml:space="preserve">
+    <value>Ejemplo: disponible ahora</value>
+  </data>
+  <data name="TapToView" xml:space="preserve">
+    <value>Toca para ver</value>
+  </data>
+  <data name="File" xml:space="preserve">
+    <value>Archivo</value>
+  </data>
+  <data name="Contact" xml:space="preserve">
+    <value>Contacto</value>
+  </data>
+  <data name="CallStatusTimer" xml:space="preserve">
+    <value>Conectado • 00:00</value>
+  </data>
+  <data name="PreparingConnection" xml:space="preserve">
+    <value>Preparando conexión...</value>
+  </data>
+  <data name="Reject" xml:space="preserve">
+    <value>Rechazar</value>
+  </data>
+  <data name="Answer" xml:space="preserve">
+    <value>Responder</value>
+  </data>
+  <data name="ConnectingToOther" xml:space="preserve">
+    <value>Conectando con la otra persona</value>
+  </data>
+  <data name="WaitingForAnswer" xml:space="preserve">
+    <value>Esperando respuesta de la otra persona...</value>
+  </data>
+  <data name="SearchByNameOrDetails" xml:space="preserve">
+    <value>Buscar por nombre, número o correo</value>
+  </data>
+  <data name="Or" xml:space="preserve">
+    <value>o</value>
+  </data>
+  <data name="AccountAlreadyExists" xml:space="preserve">
+    <value>¿Ya tienes una cuenta?</value>
+  </data>
+  <data name="ThemeAndAppearance" xml:space="preserve">
+    <value>Apariencia y experiencia</value>
+  </data>
+  <data name="LanguageArabicOption" xml:space="preserve">
+    <value>Árabe</value>
+  </data>
+  <data name="Features" xml:space="preserve">
+    <value>Funciones</value>
+  </data>
+  <data name="AccountActionsDescription" xml:space="preserve">
+    <value>Cierra sesiones de dispositivos, sal de tu cuenta o elimínala permanentemente</value>
+  </data>
+  <data name="Resend" xml:space="preserve">
+    <value>Reenviar</value>
+  </data>
+  <data name="Image" xml:space="preserve">
+    <value>Imagen</value>
+  </data>
+  <data name="Attachment" xml:space="preserve">
+    <value>Adjunto</value>
+  </data>
+  <data name="Conversation" xml:space="preserve">
+    <value>Chat</value>
+  </data>
+  <data name="TheVideo" xml:space="preserve">
+    <value>Vídeo</value>
+  </data>
+  <data name="EndAndReturn" xml:space="preserve">
+    <value>Finalizar y volver</value>
+  </data>
+  <data name="MuteSound" xml:space="preserve">
+    <value>Silenciar sonido</value>
+  </data>
+  <data name="TurnCameraOff" xml:space="preserve">
+    <value>Apagar cámara</value>
+  </data>
+  <data name="Speaker" xml:space="preserve">
+    <value>Altavoz</value>
+  </data>
+  <data name="OtherPartyAudio" xml:space="preserve">
+    <value>Audio de la otra persona</value>
+  </data>
+  <data name="MoreCallOptions" xml:space="preserve">
+    <value>Más opciones de llamada</value>
+  </data>
+  <data name="More" xml:space="preserve">
+    <value>Más</value>
+  </data>
+  <data name="Match" xml:space="preserve">
+    <value>Coincidir</value>
+  </data>
+  <data name="HimoTagline" xml:space="preserve">
+    <value>Himo · Conéctate sin límites</value>
+  </data>
+  <data name="CreateAccountShort" xml:space="preserve">
+    <value>Crear cuenta</value>
+  </data>
+  <data name="BackToLogin" xml:space="preserve">
+    <value>Volver al inicio de sesión</value>
+  </data>
+  <data name="JoinHimo" xml:space="preserve">
+    <value>Únete a Himo y empieza a conectar fácilmente</value>
+  </data>
+  <data name="RetypePassword" xml:space="preserve">
+    <value>Vuelve a escribir la contraseña</value>
+  </data>
+  <data name="And" xml:space="preserve">
+    <value>y</value>
+  </data>
+  <data name="BackToLoginShort" xml:space="preserve">
+    <value>Volver a iniciar sesión</value>
+  </data>
+  <data name="SendPasswordResetEmail" xml:space="preserve">
+    <value>Introduce tu correo y te enviaremos un código para restablecer la contraseña.</value>
+  </data>
+  <data name="VerificationCodeSix" xml:space="preserve">
+    <value>Código de verificación (6 dígitos)</value>
+  </data>
+  <data name="PasswordSecurityHint" xml:space="preserve">
+    <value>Usa una contraseña nueva de al menos 8 caracteres. No compartas tu código de verificación.</value>
+  </data>
+  <data name="SaveNewPassword" xml:space="preserve">
+    <value>Guardar nueva contraseña</value>
+  </data>
+  <data name="EmailNotReceivedHint" xml:space="preserve">
+    <value>¿No recibiste el correo? Revisa el spam antes de pedir otro código.</value>
+  </data>
+<data name="UIExtra001" xml:space="preserve"><value>Añadir cuenta</value></data><data name="UIExtra002" xml:space="preserve"><value>Elige una sección para administrar sus datos. Los cambios solo se guardarán después de confirmarlos.</value></data><data name="UIExtra003" xml:space="preserve"><value>Correo electrónico e información de inicio de sesión</value></data><data name="UIExtra004" xml:space="preserve"><value>Inicio de sesión y seguridad</value></data><data name="UIExtra005" xml:space="preserve"><value>Información personal</value></data><data name="UIExtra006" xml:space="preserve"><value>Datos de inicio de sesión</value></data><data name="UIExtra007" xml:space="preserve"><value>Los datos de tu cuenta se guardan de forma segura</value></data><data name="UIExtra008" xml:space="preserve"><value>Tus datos personales y la seguridad de tu cuenta</value></data><data name="UIExtra009" xml:space="preserve"><value>Cambiar el nombre que aparece en Himo</value></data><data name="UIExtra010" xml:space="preserve"><value>Cambiar la contraseña con un código de verificación seguro</value></data><data name="UIExtra011" xml:space="preserve"><value>Código de país y privacidad del número</value></data><data name="UIExtra012" xml:space="preserve"><value>Abrir el inicio de sesión con otra cuenta</value></data><data name="UIExtra013" xml:space="preserve"><value>Himo • La protección de tu cuenta empieza aquí</value></data><data name="UIExtra014" xml:space="preserve"><value>Introduce el código de bloqueo</value></data><data name="UIExtra015" xml:space="preserve"><value>Introduce el código para continuar a tu cuenta</value></data><data name="UIExtra016" xml:space="preserve"><value>Aplicación bloqueada</value></data><data name="UIExtra017" xml:space="preserve"><value>Código de bloqueo</value></data><data name="UIExtra018" xml:space="preserve"><value>Tu código protege la privacidad de tus chats y datos</value></data><data name="UIExtra019" xml:space="preserve"><value>Desbloquear</value></data><data name="UIExtra020" xml:space="preserve"><value>Bloqueo de Himo</value></data><data name="UIExtra021" xml:space="preserve"><value>Blanco y negro</value></data><data name="UIExtra022" xml:space="preserve"><value>Brillo natural</value></data><data name="UIExtra023" xml:space="preserve"><value>Frío</value></data><data name="UIExtra024" xml:space="preserve"><value>Piel limpia</value></data><data name="UIExtra025" xml:space="preserve"><value>Piel aterciopelada</value></data><data name="UIExtra026" xml:space="preserve"><value>Enfoque</value></data><data name="UIExtra027" xml:space="preserve"><value>Brillo sedoso</value></data><data name="UIExtra028" xml:space="preserve"><value>Vívido</value></data><data name="UIExtra029" xml:space="preserve"><value>Cálido</value></data><data name="UIExtra030" xml:space="preserve"><value>Sepia</value></data><data name="UIExtra031" xml:space="preserve"><value>Cuadrícula</value></data><data name="UIExtra032" xml:space="preserve"><value>Foto de alta calidad</value></data><data name="UIExtra033" xml:space="preserve"><value>Natural</value></data><data name="UIExtra034" xml:space="preserve"><value>Filtros</value></data><data name="UIExtra035" xml:space="preserve"><value>Flash</value></data><data name="UIExtra036" xml:space="preserve"><value>Cámara Himo</value></data><data name="UIExtra037" xml:space="preserve"><value>Temporizador 0 s</value></data><data name="UIExtra038" xml:space="preserve"><value>Maquillaje completo</value></data><data name="UIExtra039" xml:space="preserve"><value>Maquillaje suave</value></data><data name="UIExtra040" xml:space="preserve"><value>0 miembros</value></data><data name="UIExtra041" xml:space="preserve"><value>Añade miembros a tu grupo</value></data><data name="UIExtra042" xml:space="preserve"><value>Miembros del grupo</value></data><data name="UIExtra043" xml:space="preserve"><value>Crear grupo</value></data><data name="UIExtra044" xml:space="preserve"><value>Inicia un chat grupal con tus amigos</value></data><data name="UIExtra045" xml:space="preserve"><value>Escribe el nombre, correo o teléfono registrado en Himo y pulsa Añadir.</value></data><data name="UIExtra046" xml:space="preserve"><value>Nombre, correo electrónico o teléfono</value></data><data name="UIExtra047" xml:space="preserve"><value>Vista previa de medios</value></data><data name="UIExtra048" xml:space="preserve"><value>Añade un pie de foto…</value></data><data name="UIExtra049" xml:space="preserve"><value>Inicio</value></data><data name="UIExtra050" xml:space="preserve"><value>Fin</value></data><data name="UIExtra051" xml:space="preserve"><value>Preparando archivo…</value></data><data name="UIExtra052" xml:space="preserve"><value>Guardar y enviar</value></data><data name="UIExtra053" xml:space="preserve"><value>Vídeo listo para editar</value></data><data name="UIExtra054" xml:space="preserve"><value>Recortar vídeo y silenciar audio</value></data><data name="UIExtra055" xml:space="preserve"><value>Silenciar audio del vídeo</value></data><data name="UIExtra056" xml:space="preserve"><value>Administra tu perfil y los ajustes de Himo desde un solo lugar</value></data><data name="UIExtra057" xml:space="preserve"><value>Sonidos, alertas y vibración</value></data><data name="UIExtra058" xml:space="preserve"><value>Nombre, estado y datos de contacto</value></data><data name="UIExtra059" xml:space="preserve"><value>Apariencia e interfaz</value></data><data name="UIExtra060" xml:space="preserve"><value>Personalizar colores e iconos</value></data><data name="UIExtra061" xml:space="preserve"><value>Tu cuenta de Himo</value></data><data name="UIExtra062" xml:space="preserve"><value>Protege tu cuenta y administra tu información</value></data><data name="UIExtra063" xml:space="preserve"><value>Pasos rápidos para resolver problemas de la aplicación</value></data><data name="UIExtra064" xml:space="preserve"><value>Información de Himo y la versión actual</value></data><data name="UIExtra065" xml:space="preserve"><value>Perfil de Himo</value></data><data name="UIExtra066" xml:space="preserve"><value>Aceptar</value></data><data name="UIExtra067" xml:space="preserve"><value>Introduce una dirección de correo válida.</value></data><data name="UIExtra068" xml:space="preserve"><value>Las contraseñas no coinciden.</value></data><data name="UIExtra069" xml:space="preserve"><value>Introduce el código de verificación de 6 dígitos.</value></data><data name="UIExtra070" xml:space="preserve"><value>La contraseña debe tener entre 8 y 128 caracteres.</value></data><data name="UIExtra071" xml:space="preserve"><value>Introduce un nombre de entre 1 y 60 caracteres.</value></data><data name="UIExtra072" xml:space="preserve"><value>Foto actualizada</value></data><data name="UIExtra073" xml:space="preserve"><value>No se pudo abrir la página:</value></data><data name="UIExtra074" xml:space="preserve"><value>Inicia sesión primero.</value></data><data name="UIExtra075" xml:space="preserve"><value>Tomar una foto con la cámara</value></data><data name="UIExtra076" xml:space="preserve"><value>Elegir una foto de la galería</value></data><data name="UIExtra077" xml:space="preserve"><value>Elige una foto de perfil</value></data><data name="UIExtra078" xml:space="preserve"><value>Se eliminó la foto de perfil.</value></data><data name="UIExtra079" xml:space="preserve"><value>¿Quieres eliminar tu foto de perfil?</value></data><data name="UIExtra080" xml:space="preserve"><value>La foto de perfil se actualizó correctamente.</value></data><data name="UIExtra081" xml:space="preserve"><value>Inicia sesión primero para buscar cuentas de Himo.</value></data><data name="UIExtra082" xml:space="preserve"><value>Se restablecieron las estadísticas mostradas. No se eliminó contenido.</value></data><data name="UIExtra083" xml:space="preserve"><value>El seguimiento de red, llamadas, mensajes y medios empezará desde cero. No se eliminarán chats ni archivos.</value></data><data name="UIExtra084" xml:space="preserve"><value>Añadir</value></data><data name="SubpageExtra001" xml:space="preserve"><value>Volver a los ajustes de privacidad</value></data><data name="SubpageExtra002" xml:space="preserve"><value>Detener el fondo animado</value></data><data name="SubpageExtra003" xml:space="preserve"><value>Elige un estilo de color para tus chats. Los temas de color son independientes de los fondos fotográficos.</value></data><data name="SubpageExtra004" xml:space="preserve"><value>Elige una imagen predeterminada o una de tu dispositivo. Los fondos fotográficos se guardan por separado de los temas de color.</value></data><data name="SubpageExtra005" xml:space="preserve"><value>Elige una imagen de fondo del chat</value></data><data name="SubpageExtra006" xml:space="preserve"><value>Elige un vídeo MP4 para el fondo del chat</value></data><data name="SubpageExtra007" xml:space="preserve"><value>Elige un vídeo real como fondo silencioso del chat. Los clips incluidos necesitan Internet y se detienen al salir del chat.</value></data><data name="SubpageExtra008" xml:space="preserve"><value>Elegir un vídeo MP4 del dispositivo</value></data><data name="SubpageExtra009" xml:space="preserve"><value>No se pudo seleccionar la imagen:</value></data><data name="SubpageExtra010" xml:space="preserve"><value>No se pudo seleccionar el vídeo:</value></data><data name="SubpageExtra011" xml:space="preserve"><value>No se pudo usar el vídeo:</value></data><data name="SubpageExtra012" xml:space="preserve"><value>La imagen seleccionada se guardó y se usará como fondo del chat.</value></data><data name="SubpageExtra013" xml:space="preserve"><value>El vídeo seleccionado se guardó. Será el fondo silencioso de los chats sin fondo propio.</value></data><data name="SubpageExtra014" xml:space="preserve"><value>Tus opciones se guardan automáticamente y se aplican al abrir un chat.</value></data><data name="SubpageExtra015" xml:space="preserve"><value>Personaliza por separado los colores de los mensajes enviados y recibidos. Tus opciones se conservarán al reabrir la aplicación.</value></data><data name="SubpageExtra016" xml:space="preserve"><value>Burbuja de chat</value></data><data name="SubpageExtra017" xml:space="preserve"><value>Aún no se ha activado ningún fondo animado.</value></data><data name="SubpageExtra018" xml:space="preserve"><value>＋ Elegir una imagen de la galería</value></data><data name="SubpageExtra019" xml:space="preserve"><value>Elige el intervalo de repetición</value></data><data name="SubpageExtra020" xml:space="preserve"><value>Chats</value></data><data name="SubpageExtra021" xml:space="preserve"><value>No se pudo crear la copia de seguridad:</value></data><data name="SubpageExtra022" xml:space="preserve"><value>No se pudo completar la operación:</value></data><data name="SubpageExtra023" xml:space="preserve"><value>Se creó el archivo de copia de seguridad y se abrió el menú para compartir.</value></data><data name="SubpageExtra024" xml:space="preserve"><value>Tus preferencias se guardan automáticamente en este dispositivo.</value></data><data name="SubpageExtra025" xml:space="preserve"><value>Copia de seguridad del chat</value></data><data name="SubpageExtra026" xml:space="preserve"><value>No hay archivos locales para mostrar.</value></data><data name="SubpageExtra027" xml:space="preserve"><value>Resumen de almacenamiento y uso de red</value></data><data name="SubpageExtra028" xml:space="preserve"><value>Elige un patrón de vibración y pulsa Aceptar para guardarlo.</value></data><data name="SubpageExtra029" xml:space="preserve"><value>Personaliza sonidos, alertas y vibración</value></data><data name="SubpageExtra030" xml:space="preserve"><value>Administra tus sesiones y acciones de cuenta</value></data><data name="SubpageExtra031" xml:space="preserve"><value>Elige una acción. La eliminación de la cuenta es permanente e irreversible.</value></data><data name="SubpageExtra032" xml:space="preserve"><value>Detalles del uso de datos, llamadas y medios</value></data><data name="SubpageExtra033" xml:space="preserve"><value>No disponible por separado; el tráfico total de la aplicación incluye llamadas</value></data><data name="SubpageExtra034" xml:space="preserve"><value>No hay estadísticas de estado separadas en esta versión</value></data><data name="SubpageExtra035" xml:space="preserve"><value>Tu espacio diario</value></data><data name="SubpageExtra036" xml:space="preserve"><value>Fondos animados</value></data><data name="SubpageExtra037" xml:space="preserve"><value>Llamada</value></data><data name="SubpageExtra038" xml:space="preserve"><value>Mensajes de voz</value></data><data name="SubpageExtra039" xml:space="preserve"><value>Conversación</value></data><data name="SubpageExtra040" xml:space="preserve"><value>Grupo</value></data><data name="SubpageExtra041" xml:space="preserve"><value>Añadir miembro</value></data><data name="SubpageExtra042" xml:space="preserve"><value>Eliminar mensajes</value></data><data name="SubpageExtra043" xml:space="preserve"><value>Reenviar mensaje</value></data><data name="SubpageExtra044" xml:space="preserve"><value>Envío</value></data><data name="SubpageExtra045" xml:space="preserve"><value>No se pudo abrir la conversación</value></data><data name="SubpageExtra046" xml:space="preserve"><value>Eliminado</value></data><data name="SubpageExtra047" xml:space="preserve"><value>Restablecer</value></data><data name="SubpageExtra048" xml:space="preserve"><value>No se pudo eliminar la imagen</value></data><data name="SubpageExtra049" xml:space="preserve"><value>No se pudo actualizar la imagen</value></data><data name="SubpageExtra050" xml:space="preserve"><value>Nombre de usuario actualizado.</value></data><data name="SubpageExtra051" xml:space="preserve"><value>Verificación del correo electrónico</value></data><data name="SubpageExtra052" xml:space="preserve"><value>Privacidad y contactos</value></data><data name="SubpageExtra053" xml:space="preserve"><value>Acerca de Himo</value></data><data name="SubpageExtra054" xml:space="preserve"><value>Eliminar definitivamente</value></data><data name="SubpageExtra055" xml:space="preserve"><value>Abrir archivo</value></data><data name="SubpageExtra056" xml:space="preserve"><value>Cambiado</value></data><data name="SubpageExtra057" xml:space="preserve"><value>Eliminar cuenta</value></data><data name="SubpageExtra058" xml:space="preserve"><value>Guardar imagen</value></data><data name="SubpageExtra059" xml:space="preserve"><value>Actualizado</value></data><data name="SubpageExtra060" xml:space="preserve"><value>Bloquear cuenta</value></data><data name="SubpageExtra061" xml:space="preserve"><value>No se pudo eliminar</value></data><data name="SubpageExtra062" xml:space="preserve"><value>Borrar memoria</value></data><data name="SubpageExtra063" xml:space="preserve"><value>Cambiar cuenta</value></data><data name="SubpageExtra064" xml:space="preserve"><value>Eliminar conversaciones</value></data><data name="SubpageExtra065" xml:space="preserve"><value>Editar medios</value></data><data name="SubpageExtra066" xml:space="preserve"><value>Foto de perfil</value></data><data name="SubpageExtra067" xml:space="preserve"><value>Aceptar y continuar</value></data><data name="SubpageExtra068" xml:space="preserve"><value>Compartir mensaje</value></data><data name="SubpageExtra069" xml:space="preserve"><value>Nombre actualizado.</value></data><data name="SubpageExtra070" xml:space="preserve"><value>Se requiere consentimiento</value></data><data name="SubpageExtra071" xml:space="preserve"><value>Permiso de cámara</value></data><data name="SubpageExtra072" xml:space="preserve"><value>Información de la llamada</value></data><data name="SubpageExtra073" xml:space="preserve"><value>No se pudo enviar el código</value></data><data name="SubpageExtra074" xml:space="preserve"><value>Iconos y apariencia</value></data><data name="SubpageExtra075" xml:space="preserve"><value>Informe enviado.</value></data><data name="SubpageExtra076" xml:space="preserve"><value>Conversación bloqueada.</value></data><data name="SubpageExtra077" xml:space="preserve"><value>Reenviar código</value></data><data name="SubpageExtra078" xml:space="preserve"><value>No se pudo iniciar sesión</value></data><data name="SubpageExtra079" xml:space="preserve"><value>Buscar por número de teléfono</value></data><data name="SubpageExtra080" xml:space="preserve"><value>Mensaje reenviado.</value></data><data name="SubpageExtra081" xml:space="preserve"><value>Eliminar copia temporal</value></data><data name="SubpageExtra082" xml:space="preserve"><value>Coincidencia de contactos</value></data><data name="SubpageExtra083" xml:space="preserve"><value>No se pudieron añadir miembros</value></data><data name="SubpageExtra084" xml:space="preserve"><value>No se pudo crear el grupo</value></data><data name="SubpageExtra085" xml:space="preserve"><value>Conversación archivada.</value></data><data name="SubpageExtra086" xml:space="preserve"><value>Se desbloqueó la conversación.</value></data><data name="SubpageExtra087" xml:space="preserve"><value>Tu estado se actualizó.</value></data><data name="SubpageExtra088" xml:space="preserve"><value>Se guardó el nuevo fondo.</value></data><data name="SubpageExtra089" xml:space="preserve"><value>Vídeo seleccionado correctamente.</value></data><data name="SubpageExtra090" xml:space="preserve"><value>No se pudieron completar algunas acciones</value></data><data name="SubpageExtra091" xml:space="preserve"><value>Imagen guardada en la biblioteca de fotos.</value></data><data name="SubpageExtra092" xml:space="preserve"><value>Imagen seleccionada y guardada correctamente.</value></data><data name="SubpageExtra093" xml:space="preserve"><value>Se activaron las notificaciones de la conversación.</value></data><data name="SubpageExtra094" xml:space="preserve"><value>Se silenciaron las notificaciones de la conversación.</value></data><data name="SubpageExtra095" xml:space="preserve"><value>No hay más conversaciones disponibles.</value></data><data name="SubpageExtra096" xml:space="preserve"><value>Selecciona primero un área válida dentro de la imagen.</value></data><data name="SubpageExtra097" xml:space="preserve"><value>Añade al menos una persona antes de continuar.</value></data><data name="SubpageExtra098" xml:space="preserve"><value>No hay conexión a Internet. Inténtalo de nuevo cuando te conectes.</value></data><data name="SubpageExtra099" xml:space="preserve"><value>No se encontró una cuenta coincidente. Comprueba el número o correo y que la cuenta esté registrada en Himo.</value></data><data name="Accessibility001" xml:space="preserve"><value>Cerrar cámara</value></data><data name="Accessibility002" xml:space="preserve"><value>Cambiar cámara</value></data><data name="Accessibility003" xml:space="preserve"><value>Quitar miembro</value></data><data name="Accessibility004" xml:space="preserve"><value>Enviar medios a la conversación</value></data><data name="Accessibility005" xml:space="preserve"><value>Cerrar vista previa</value></data><data name="Accessibility006" xml:space="preserve"><value>Editar la imagen antes de enviarla</value></data><data name="Accessibility007" xml:space="preserve"><value>Enviar medios</value></data><data name="Accessibility008" xml:space="preserve"><value>Añadir texto en árabe o inglés</value></data><data name="Accessibility009" xml:space="preserve"><value>Cerrar editor de medios</value></data><data name="Accessibility010" xml:space="preserve"><value>Deshacer el último dibujo</value></data><data name="Accessibility011" xml:space="preserve"><value>Girar imagen 90 grados</value></data><data name="Accessibility012" xml:space="preserve"><value>Reproducir vista previa del vídeo</value></data><data name="Accessibility013" xml:space="preserve"><value>Reducir el tamaño del lápiz</value></data><data name="Accessibility014" xml:space="preserve"><value>Aumentar el tamaño del lápiz</value></data><data name="Accessibility015" xml:space="preserve"><value>Guardar imagen en la biblioteca de fotos</value></data><data name="Accessibility016" xml:space="preserve"><value>Recortar imagen; toca otra vez para aplicar el recorte</value></data><data name="Accessibility017" xml:space="preserve"><value>Lápiz a mano alzada</value></data><data name="Accessibility018" xml:space="preserve"><value>Lápiz de dibujo a mano alzada</value></data><data name="AlertExtra001" xml:space="preserve"><value>Continuar</value></data><data name="AlertExtra002" xml:space="preserve"><value>Cerrar sesión</value></data><data name="AlertExtra003" xml:space="preserve"><value>Recortar</value></data><data name="AlertExtra004" xml:space="preserve"><value>Navegación</value></data><data name="AlertExtra005" xml:space="preserve"><value>Edición</value></data><data name="AlertExtra006" xml:space="preserve"><value>Denunciar</value></data><data name="AlertExtra007" xml:space="preserve"><value>Añadir miembros</value></data><data name="AlertExtra008" xml:space="preserve"><value>Mensaje de voz</value></data><data name="AlertExtra009" xml:space="preserve"><value>No se pudo abrir la página de la cuenta:</value></data><data name="AlertExtra010" xml:space="preserve"><value>No se pudieron abrir los detalles de la cuenta.</value></data><data name="AlertExtra011" xml:space="preserve"><value>La conversación aún no está conectada al servidor.</value></data><data name="AlertExtra012" xml:space="preserve"><value>Bloquear</value></data><data name="AlertExtra013" xml:space="preserve"><value>Activar</value></data><data name="AlertExtra014" xml:space="preserve"><value>Bloqueo</value></data><data name="AlertExtra015" xml:space="preserve"><value>Editor</value></data><data name="AlertExtra016" xml:space="preserve"><value>Flash</value></data><data name="AlertExtra017" xml:space="preserve"><value>Imagen</value></data><data name="AlertExtra018" xml:space="preserve"><value>Adjunto</value></data><data name="AlertExtra019" xml:space="preserve"><value>Responder</value></data><data name="AlertExtra020" xml:space="preserve"><value>No se pudo volver:</value></data><data name="AlertExtra021" xml:space="preserve"><value>Borrar medios temporales</value></data><data name="AlertExtra022" xml:space="preserve"><value>No se pudo usar la imagen:</value></data><data name="AlertExtra023" xml:space="preserve"><value>El nombre del archivo es demasiado largo.</value></data><data name="AlertExtra024" xml:space="preserve"><value>¿Quieres eliminar el mensaje?</value></data><data name="AlertExtra025" xml:space="preserve"><value>No se pudo cambiar la contraseña</value></data><data name="AlertExtra026" xml:space="preserve"><value>No se pudieron abrir los ajustes de idioma:</value></data><data name="AlertExtra027" xml:space="preserve"><value>Conversación desarchivada.</value></data><data name="AlertExtra028" xml:space="preserve"><value>No se pudo abrir la página solicitada.</value></data><data name="AlertExtra029" xml:space="preserve"><value>No se pudo abrir la página solicitada:</value></data><data name="AlertExtra030" xml:space="preserve"><value>Se actualizó el ajuste del número de teléfono.</value></data><data name="AlertExtra031" xml:space="preserve"><value>No se pudieron abrir los ajustes de privacidad:</value></data><data name="AlertExtra032" xml:space="preserve"><value>No se pudieron abrir los ajustes de chat:</value></data><data name="AlertExtra033" xml:space="preserve"><value>No se pudo volver a la página anterior:</value></data><data name="AlertExtra034" xml:space="preserve"><value>La contraseña se cambió correctamente.</value></data><data name="AlertExtra035" xml:space="preserve"><value>No se pudieron abrir los ajustes de notificaciones:</value></data><data name="AlertExtra036" xml:space="preserve"><value>No se pudo cambiar el ajuste de notificaciones:</value></data><data name="AlertExtra037" xml:space="preserve"><value>No se pudo abrir el archivo en este dispositivo:</value></data><data name="AlertExtra038" xml:space="preserve"><value>No se pudo abrir la página de almacenamiento y datos:</value></data><data name="AlertExtra039" xml:space="preserve"><value>Introduce un código de verificación de 6 dígitos.</value></data><data name="AlertExtra040" xml:space="preserve"><value>Escribe un nombre de entre 2 y 60 caracteres.</value></data><data name="AlertExtra041" xml:space="preserve"><value>Inicia sesión primero para buscar amigos.</value></data><data name="AlertExtra042" xml:space="preserve"><value>¿Quieres cerrar sesión en este dispositivo?</value></data><data name="AlertExtra043" xml:space="preserve"><value>Selecciona solo un mensaje para responder.</value></data><data name="AlertExtra044" xml:space="preserve"><value>La grabación de audio solo está disponible actualmente en Android.</value></data><data name="AlertExtra045" xml:space="preserve"><value>Introduce un nombre válido de hasta 60 caracteres.</value></data><data name="AlertExtra046" xml:space="preserve"><value>Introduce una contraseña válida de al menos 8 caracteres.</value></data><data name="AlertExtra047" xml:space="preserve"><value>El grupo se creará desde la pantalla Grupos.</value></data><data name="AlertExtra048" xml:space="preserve"><value>La selección de imágenes no es compatible con este dispositivo.</value></data><data name="AlertExtra049" xml:space="preserve"><value>¿Quieres cerrar sesión solo en este dispositivo?</value></data><data name="AlertExtra050" xml:space="preserve"><value>No se pudo abrir la página de recuperación. Inténtalo de nuevo.</value></data><data name="AlertExtra051" xml:space="preserve"><value>Ya se añadieron todas las cuentas coincidentes.</value></data><data name="AlertExtra052" xml:space="preserve"><value>El archivo ya no está en el almacenamiento local.</value></data><data name="AlertExtra053" xml:space="preserve"><value>La selección de vídeo no es compatible con este dispositivo.</value></data><data name="AlertExtra054" xml:space="preserve"><value>Esta función no es compatible con este dispositivo.</value></data><data name="AlertExtra055" xml:space="preserve"><value>Kata sandi harus memiliki minimal 8 karakter.</value></data><data name="AlertExtra056" xml:space="preserve"><value>Pesan terlalu panjang. Batasnya 4.000 karakter.</value></data><data name="AlertExtra057" xml:space="preserve"><value>Anda dapat memblokir akun individu, bukan seluruh grup.</value></data><data name="AlertExtra058" xml:space="preserve"><value>Masukkan nomor telepon sebelum mengaktifkan pencarian nomor.</value></data><data name="AlertExtra059" xml:space="preserve"><value>Rekaman tidak dapat dikirim atau ukurannya melebihi 25 MB.</value></data><data name="AlertExtra060" xml:space="preserve"><value>Email baru Anda diverifikasi dan akun diperbarui.</value></data><data name="AlertExtra061" xml:space="preserve"><value>Izinkan Himo menggunakan kamera, lalu coba lagi.</value></data><data name="AlertExtra062" xml:space="preserve"><value>Anda belum menambahkan foto. Ketuk tombol kamera untuk memilih foto.</value></data><data name="AlertExtra063" xml:space="preserve"><value>Navigasi belum siap. Tutup lalu buka kembali halaman.</value></data><data name="AlertExtra064" xml:space="preserve"><value>Akses mikrofon diperlukan untuk merekam pesan suara.</value></data><data name="AlertExtra065" xml:space="preserve"><value>Pencarian kontak saat ini hanya tersedia di Android.</value></data><data name="AlertExtra066" xml:space="preserve"><value>Izinkan Himo memakai mikrofon untuk merekam audio video.</value></data><data name="AlertExtra067" xml:space="preserve"><value>Akses media diperlukan. Izinkan lalu coba lagi.</value></data><data name="AlertExtra068" xml:space="preserve"><value>Video terlalu besar. Pilih video di bawah 100 MB.</value></data><data name="AlertExtra069" xml:space="preserve"><value>Preferensi disimpan. Ukuran digunakan saat percakapan berikutnya dibuka.</value></data><data name="AlertExtra070" xml:space="preserve"><value>Pilih video MP4 agar kompatibel dengan perangkat Android.</value></data><data name="AlertExtra071" xml:space="preserve"><value>Izinkan Himo menggunakan kamera dan mikrofon, lalu coba lagi.</value></data><data name="AlertExtra072" xml:space="preserve"><value>Tidak dapat mengakses foto. Izinkan akses aplikasi lalu coba lagi.</value></data><data name="AlertExtra073" xml:space="preserve"><value>ID percakapan tidak valid. Perbarui daftar obrolan lalu coba lagi.</value></data><data name="AlertExtra074" xml:space="preserve"><value>Tidak dapat mengakses video. Izinkan akses aplikasi lalu coba lagi.</value></data><data name="AlertExtra075" xml:space="preserve"><value>Sesi masuk tidak tersedia. Masuk lagi lalu kirim ulang.</value></data><data name="AlertExtra076" xml:space="preserve"><value>Pesan ini belum mendapat ID server sehingga belum dapat dihapus.</value></data><data name="AlertExtra077" xml:space="preserve"><value>Tidak dapat menghubungkan percakapan ke server. Tunggu sebentar lalu kirim lagi.</value></data><data name="AlertExtra078" xml:space="preserve"><value>Masukkan nomor 7–15 digit yang valid, atau kosongkan karena opsional.</value></data><data name="AlertExtra079" xml:space="preserve"><value>Percakapan untuk panggilan ini tidak tersedia. Buka dari daftar terlebih dahulu.</value></data><data name="AlertExtra080" xml:space="preserve"><value>Tidak ada salinan lokal untuk diunggah ulang. Pilih kembali dari lampiran.</value></data><data name="AlertExtra081" xml:space="preserve"><value>Tidak ada nomor valid untuk pencocokan. Kontak lain tetap terlihat.</value></data><data name="AlertExtra082" xml:space="preserve"><value>Terjadi kesalahan saat membuka percakapan. Coba lagi; jika berulang, periksa log aplikasi.</value></data><data name="AlertExtra083" xml:space="preserve"><value>Semua sesi Himo akan berakhir dan notifikasi perangkat terdaftar akan dihentikan. Lanjutkan?</value></data><data name="AlertExtra084" xml:space="preserve"><value>Harap baca dan setujui Ketentuan Penggunaan serta Kebijakan Privasi sebelum membuat akun.</value></data><data name="AlertExtra085" xml:space="preserve"><value>Masukkan setidaknya tiga karakter nama, atau email atau nomor telepon valid.</value></data><data name="AlertExtra086" xml:space="preserve"><value>Video disimpan. Pemutaran membutuhkan internet dan berulang tanpa suara.</value></data><data name="AlertExtra087" xml:space="preserve"><value>Orang yang menyimpan nomor Anda dapat menemukan akun Anda, tetapi tidak akan melihat nomor telepon.</value></data><data name="AlertExtra088" xml:space="preserve"><value>Kami mengirim kode verifikasi 6 digit ke email Anda. Masukkan untuk menyelesaikan pembuatan akun.</value></data><data name="AlertExtra089" xml:space="preserve"><value>Masuk akan menjadikan akun baru aktif di perangkat ini. Lanjutkan?</value></data><data name="AlertExtra090" xml:space="preserve"><value>Akun, data, dan obrolan Anda akan dihapus permanen dari server. Tindakan ini tidak dapat dibatalkan.</value></data><data name="AlertExtra091" xml:space="preserve"><value>Grup berhasil dibuat, tetapi percakapan belum dapat dibuka. Kembali ke daftar obrolan dan segarkan.</value></data><data name="AlertExtra092" xml:space="preserve"><value>Anda keluar dari perangkat ini, tetapi proses server belum selesai. Anda dapat masuk lagi nanti.</value></data><data name="AlertExtra093" xml:space="preserve"><value>Anda keluar dari perangkat ini, tetapi proses server belum selesai. Anda dapat masuk lagi nanti.</value></data><data name="AlertExtra094" xml:space="preserve"><value>Pesan terpilih belum memiliki ID server. Kirim, tunggu hingga selesai, lalu coba hapus lagi.</value></data><data name="AlertExtra095" xml:space="preserve"><value>Server saat ini tidak memiliki alur aman untuk mengganti email setelah verifikasi. Tidak ada perubahan.</value></data><data name="AlertExtra096" xml:space="preserve"><value>Hanya salinan cache yang dihapus. Obrolan dan unggahan tertunda tetap ada; media mungkin diunduh ulang.</value></data><data name="AlertExtra097" xml:space="preserve"><value>Untuk pencocokan, Himo mengirim hanya nomor telepon kontak melalui koneksi aman. Nama dan email tidak dikirim, dan server tidak menyimpan buku alamat. Hanya akun yang mengizinkan pencarian yang ditampilkan.</value></data><data name="AlertExtra098" xml:space="preserve"><value>Himo lee los teléfonos de tus contactos y envía solo los necesarios para comparar mediante una conexión segura. El servidor no guarda la agenda y devuelve únicamente cuentas Himo coincidentes que permiten ser encontradas.</value></data><data name="AlertExtra099" xml:space="preserve"><value>Si tienes un problema con Himo, comprueba primero la conexión y los permisos de notificaciones, cámara y micrófono. Revisa aquí la privacidad y apariencia, y vuelve a abrir la app si la interfaz deja de actualizarse.</value></data><data name="RuntimeUI001" xml:space="preserve"><value>No se pudo leer</value></data><data name="RuntimeUI002" xml:space="preserve"><value>Abrir</value></data><data name="RuntimeUI003" xml:space="preserve"><value>Protegido</value></data><data name="RuntimeUI004" xml:space="preserve"><value>Borrar archivos temporales</value></data><data name="RuntimeUI005" xml:space="preserve"><value>No se pudieron actualizar los datos; se muestra la información guardada localmente.</value></data><data name="RuntimeUI006" xml:space="preserve"><value>Actualizando los datos de la cuenta…</value></data><data name="RuntimeUI007" xml:space="preserve"><value>Inicia sesión para ver los datos de la cuenta.</value></data><data name="RuntimeUI008" xml:space="preserve"><value>Si el correo está registrado, recibirás un código. Revisa la bandeja de entrada y el spam.</value></data><data name="RuntimeUI009" xml:space="preserve"><value>Enviar código de verificación al correo</value></data><data name="RuntimeUI010" xml:space="preserve"><value>No se pudo enviar el código.</value></data><data name="RuntimeUI011" xml:space="preserve"><value>No se pudo determinar el correo electrónico actual.</value></data><data name="RuntimeUI012" xml:space="preserve"><value>No se pudo cargar el nombre:</value></data><data name="RuntimeUI013" xml:space="preserve"><value>No se pudo cargar el número:</value></data><data name="RuntimeUI014" xml:space="preserve"><value>No se pudo iniciar sesión con la otra cuenta.</value></data><data name="RuntimeUI015" xml:space="preserve"><value>Iniciaste sesión, pero no se pudo reabrir la pantalla principal automáticamente.</value></data><data name="RuntimeUI016" xml:space="preserve"><value>Nombre de usuario guardado correctamente.</value></data><data name="RuntimeUI017" xml:space="preserve"><value>Enviando…</value></data><data name="RuntimeUI018" xml:space="preserve"><value>Actualizando…</value></data><data name="RuntimeUI019" xml:space="preserve"><value>Guardando…</value></data><data name="RuntimeUI020" xml:space="preserve"><value>Iniciando sesión…</value></data><data name="RuntimeUI021" xml:space="preserve"><value>Guardar nombre de usuario</value></data><data name="RuntimeUI022" xml:space="preserve"><value>Guardar número de teléfono</value></data><data name="RuntimeUI023" xml:space="preserve"><value>Inicia sesión primero para administrar tu número de teléfono.</value></data><data name="RuntimeUI024" xml:space="preserve"><value>Inicia sesión primero para ver tus datos.</value></data><data name="RuntimeUI025" xml:space="preserve"><value>Puedes editar tu nombre y guardarlo.</value></data><data name="RuntimeUI026" xml:space="preserve"><value>Código de bloqueo incorrecto.</value></data><data name="RuntimeUI027" xml:space="preserve"><value>Llamada finalizada</value></data><data name="RuntimeUI028" xml:space="preserve"><value>Activar cámara</value></data><data name="RuntimeUI029" xml:space="preserve"><value>No se pudo recibir la llamada.</value></data><data name="RuntimeUI030" xml:space="preserve"><value>No se pudo preparar la llamada. Comprueba la conexión e inténtalo de nuevo.</value></data><data name="RuntimeUI031" xml:space="preserve"><value>No se pudo responder la llamada. Inténtalo de nuevo.</value></data><data name="RuntimeUI032" xml:space="preserve"><value>Respondida, conectando…</value></data><data name="RuntimeUI033" xml:space="preserve"><value>Preparando audio</value></data><data name="RuntimeUI034" xml:space="preserve"><value>Preparando audio y vídeo</value></data><data name="RuntimeUI035" xml:space="preserve"><value>Configurando audio</value></data><data name="RuntimeUI036" xml:space="preserve"><value>Se requieren permisos de cámara y micrófono</value></data><data name="RuntimeUI037" xml:space="preserve"><value>Se necesita permiso de micrófono para responder la llamada</value></data><data name="RuntimeUI038" xml:space="preserve"><value>Hecho</value></data><data name="RuntimeUI039" xml:space="preserve"><value>Ⅱ En pausa</value></data><data name="RuntimeUI040" xml:space="preserve"><value>Elegir imagen</value></data><data name="RuntimeUI041" xml:space="preserve"><value>Elige una imagen para el fondo de este chat</value></data><data name="RuntimeUI042" xml:space="preserve"><value>Elegir vídeo</value></data><data name="RuntimeUI043" xml:space="preserve"><value>Elegir archivo</value></data><data name="RuntimeUI044" xml:space="preserve"><value>Compartir mensajes</value></data><data name="RuntimeUI045" xml:space="preserve"><value>Compartir adjunto</value></data><data name="RuntimeUI046" xml:space="preserve"><value>Busca por país o prefijo telefónico</value></data><data name="RuntimeUI047" xml:space="preserve"><value>Elegir país</value></data><data name="RuntimeUI048" xml:space="preserve"><value>Prueba otro país o prefijo telefónico.</value></data><data name="RuntimeUI049" xml:space="preserve"><value>Código de país</value></data><data name="RuntimeUI050" xml:space="preserve"><value>Ejemplo: Arabia Saudí o +966</value></data><data name="RuntimeUI051" xml:space="preserve"><value>Buscar número</value></data><data name="RuntimeUI052" xml:space="preserve"><value>No se pudo buscar. Comprueba la conexión al servidor e inténtalo otra vez.</value></data><data name="RuntimeUI053" xml:space="preserve"><value>No se pudieron buscar contactos. Comprueba el servidor e inténtalo otra vez.</value></data><data name="RuntimeUI054" xml:space="preserve"><value>No se pudo iniciar la conversación.</value></data><data name="RuntimeUI055" xml:space="preserve"><value>No se pudieron leer los contactos del teléfono.</value></data><data name="RuntimeUI056" xml:space="preserve"><value>Preparando conversación…</value></data><data name="RuntimeUI057" xml:space="preserve"><value>Solicitando permiso y leyendo contactos…</value></data><data name="RuntimeUI058" xml:space="preserve"><value>Leyendo nombres…</value></data><data name="RuntimeUI059" xml:space="preserve"><value>No se encontraron teléfonos válidos en tus contactos.</value></data><data name="RuntimeUI060" xml:space="preserve"><value>No se encontró una cuenta para este número. Puede que no esté registrado o que la búsqueda esté desactivada.</value></data><data name="RuntimeUI061" xml:space="preserve"><value>No se concedió permiso para contactos. Actívalo en los ajustes de Android e inténtalo otra vez.</value></data><data name="RuntimeUI062" xml:space="preserve"><value>Buscando cuentas que permiten ser encontradas…</value></data><data name="RuntimeUI063" xml:space="preserve"><value>Usa dos dedos para ampliar y arrastra la imagen ampliada</value></data><data name="RuntimeUI064" xml:space="preserve"><value>Lee todas las condiciones antes de continuar</value></data><data name="RuntimeUI065" xml:space="preserve"><value>Volver a crear la cuenta</value></data><data name="RuntimeUI066" xml:space="preserve"><value>Arrastra el marco o sus esquinas y pulsa ✓ para aplicar el recorte.</value></data><data name="RuntimeUI067" xml:space="preserve"><value>Arrastra el texto al lugar que quieras</value></data><data name="RuntimeUI068" xml:space="preserve"><value>Recorta, gira, añade texto y dibuja antes de enviar</value></data><data name="RuntimeUI069" xml:space="preserve"><value>Se deshizo el último dibujo</value></data><data name="RuntimeUI070" xml:space="preserve"><value>Se deshizo el dibujo actual</value></data><data name="RuntimeUI071" xml:space="preserve"><value>Recorte aplicado. Ahora puedes editar y enviar.</value></data><data name="RuntimeUI072" xml:space="preserve"><value>Aplicando recorte…</value></data><data name="RuntimeUI073" xml:space="preserve"><value>Guardando imagen en la biblioteca de fotos…</value></data><data name="RuntimeUI074" xml:space="preserve"><value>Lápiz libre: dibuja en cualquier parte de la imagen con el dedo</value></data><data name="RuntimeUI075" xml:space="preserve"><value>Correo actual:</value></data><data name="RuntimeUI076" xml:space="preserve"><value>Verificar y cambiar correo</value></data><data name="RuntimeUI077" xml:space="preserve"><value>No se pudo verificar el correo:</value></data><data name="RuntimeUI078" xml:space="preserve"><value>No se pudo guardar el estado:</value></data><data name="RuntimeUI080" xml:space="preserve"><value>Verificando…</value></data><data name="RuntimeUI081" xml:space="preserve"><value>Guardar nombre</value></data><data name="RuntimeUI082" xml:space="preserve"><value>Guardar estado</value></data><data name="RuntimeUI083" xml:space="preserve"><value>Inicia sesión para editar tu nombre de usuario.</value></data><data name="RuntimeUI084" xml:space="preserve"><value>Comparando contactos…</value></data><data name="RuntimeUI085" xml:space="preserve"><value>Cargando…</value></data><data name="RuntimeUI086" xml:space="preserve"><value>El servidor encontró cuentas, pero aún no puede vincularlas a nombres. Publica la actualización de Himo.Api y vuelve a comparar.</value></data><data name="RuntimeUI087" xml:space="preserve"><value>La visualización de contactos solo está disponible actualmente en Android.</value></data><data name="RuntimeUI088" xml:space="preserve"><value>No se concedió permiso para contactos. Actívalo en Android y vuelve a abrir esta página.</value></data><data name="RuntimeUI089" xml:space="preserve"><value>Introduce un código nuevo y pulsa Guardar.</value></data><data name="RuntimeUI090" xml:space="preserve"><value>No se necesita permiso del sistema en esta versión de Android.</value></data><data name="RuntimeUI091" xml:space="preserve"><value>Las notificaciones de Himo están desactivadas dentro de la aplicación.</value></data><data name="RuntimeUI092" xml:space="preserve"><value>Bloqueo de la aplicación activado.</value></data><data name="FinalUI001" xml:space="preserve"><value>No se pudieron cargar los contactos. Comprueba el permiso de Android e inténtalo de nuevo.</value></data><data name="FinalUI002" xml:space="preserve"><value>No se pudieron comparar los contactos. Comprueba la conexión al servidor e inténtalo de nuevo.</value></data><data name="FinalUI003" xml:space="preserve"><value>No se pudo guardar el nombre.</value></data><data name="FinalUI004" xml:space="preserve"><value>No se pudo guardar el número de teléfono.</value></data><data name="FinalUI005" xml:space="preserve"><value>No se pudo cambiar la contraseña.</value></data><data name="FinalUI006" xml:space="preserve"><value>Introduce un número válido de 7 a 15 dígitos, incluido el prefijo del país cuando sea necesario.</value></data><data name="FinalUI007" xml:space="preserve"><value>Reenviar un código nuevo</value></data><data name="FinalUI008" xml:space="preserve"><value>No se pudo guardar el nombre:</value></data><data name="FinalUI009" xml:space="preserve"><value>No se pudo guardar:</value></data><data name="FinalUI010" xml:space="preserve"><value>Nombre de usuario guardado: @</value></data><data name="FinalUI011" xml:space="preserve"><value>Código de desarrollo:</value></data><data name="FinalUI012" xml:space="preserve"><value>No se pudo enviar el código:</value></data><data name="CodeBuiltUI001" xml:space="preserve"><value>Introduce los datos de la cuenta con la que quieres iniciar sesión.</value></data><data name="CodeBuiltUI002" xml:space="preserve"><value>Seguridad de la cuenta</value></data><data name="CodeBuiltUI003" xml:space="preserve"><value>Administrar contraseña</value></data><data name="CodeBuiltUI004" xml:space="preserve"><value>Si no recibes el código, revisa el spam antes de solicitar otro.</value></data><data name="CodeBuiltUI005" xml:space="preserve"><value>Elige el país por su bandera y prefijo, luego introduce el número local sin el código del país.</value></data><data name="CodeBuiltUI006" xml:space="preserve"><value>Usa un nombre claro de 1 a 60 caracteres.</value></data><data name="CodeBuiltUI007" xml:space="preserve"><value>Escribe el nombre de usuario</value></data><data name="CodeBuiltUI008" xml:space="preserve"><value>La versión actual mantiene una sola sesión activa. Si accedes correctamente con otra cuenta, la nueva sustituirá a la actual. El cambio solo se realizará tras tu confirmación.</value></data><data name="CodeBuiltUI009" xml:space="preserve"><value>Correo registrado</value></data><data name="CodeBuiltUI010" xml:space="preserve"><value>Correo vinculado a la cuenta</value></data><data name="CodeBuiltUI011" xml:space="preserve"><value>Permitir encontrar mi cuenta por teléfono</value></data><data name="CodeBuiltUI012" xml:space="preserve"><value>Confirmar la nueva contraseña</value></data><data name="CodeBuiltUI013" xml:space="preserve"><value>Iniciar sesión con otra cuenta</value></data><data name="CodeBuiltUI014" xml:space="preserve"><value>El cambio de correo no está habilitado en el servidor actual; primero debe añadirse una verificación segura de la nueva dirección.</value></data><data name="CodeBuiltUI015" xml:space="preserve"><value>Identificando el correo electrónico…</value></data><data name="CodeBuiltUI016" xml:space="preserve"><value>Cargando correo electrónico…</value></data><data name="CodeBuiltUI017" xml:space="preserve"><value>Cargando la información de la cuenta…</value></data><data name="CodeBuiltUI018" xml:space="preserve"><value>Cargando número de teléfono…</value></data><data name="CodeBuiltUI019" xml:space="preserve"><value>Las personas coincidentes verán el nombre de tu cuenta, no tu número.</value></data><data name="CodeBuiltUI020" xml:space="preserve"><value>El número internacional aparecerá aquí antes de guardar.</value></data><data name="CodeBuiltUI021" xml:space="preserve"><value>Nueva contraseña (al menos 8 caracteres)</value></data><data name="CodeBuiltUI022" xml:space="preserve"><value>El nombre se aplicará solo cuando el servidor confirme que se guardó correctamente.</value></data><data name="CodeBuiltUI023" xml:space="preserve"><value>Información importante</value></data><data name="CodeBuiltUI024" xml:space="preserve"><value>El número se guarda en formato internacional, por ejemplo ‎+9665xxxxxxxx.</value></data><data name="CodeBuiltUI025" xml:space="preserve"><value>Elige el estado que describa lo que haces ahora.</value></data><data name="CodeBuiltUI026" xml:space="preserve"><value>Toca la foto para verla a tamaño completo o la cámara para cambiarla</value></data><data name="CodeBuiltUI027" xml:space="preserve"><value>Escribe el nombre visible</value></data><data name="CodeBuiltUI028" xml:space="preserve"><value>Correo nuevo</value></data><data name="CodeBuiltUI029" xml:space="preserve"><value>Correo actual: cargando…</value></data><data name="CodeBuiltUI030" xml:space="preserve"><value>Los cambios se guardan en la cuenta cuando la conexión al servidor funciona.</value></data><data name="CodeBuiltUI031" xml:space="preserve"><value>Se enviará un código de verificación al nuevo correo antes de aplicar el cambio.</value></data><data name="CodeBuiltUI032" xml:space="preserve"><value>No añadido</value></data><data name="CodeBuiltUI033" xml:space="preserve"><value>El correo registrado solo cambia tras introducir un código válido enviado a la nueva dirección.</value></data><data name="CodeBuiltUI034" xml:space="preserve"><value>Aún no definido</value></data><data name="CodeBuiltUI035" xml:space="preserve"><value>¿Qué estás haciendo ahora?</value></data><data name="CodeBuiltUI036" xml:space="preserve"><value>Ejemplo: ahmed_22</value></data><data name="CodeBuiltUI037" xml:space="preserve"><value>Usa de 3 a 24 letras inglesas, números, guiones bajos (_) o puntos (.). El nombre debe estar disponible.</value></data><data name="CodeBuiltUI038" xml:space="preserve"><value>Tu nombre aparece en tu perfil y en los chats.</value></data><data name="CodeBuiltUI039" xml:space="preserve"><value>Datos totales de la aplicación</value></data><data name="CodeBuiltUI040" xml:space="preserve"><value>Explora archivos en la caché y adjuntos de chat. Eliminar una copia local no borra los mensajes del servidor.</value></data><data name="CodeBuiltUI041" xml:space="preserve"><value>Uso del almacenamiento</value></data><data name="CodeBuiltUI042" xml:space="preserve"><value>Itinerancia</value></data><data name="CodeBuiltUI043" xml:space="preserve"><value>Caché utilizada</value></data><data name="CodeBuiltUI044" xml:space="preserve"><value>Mensajes</value></data><data name="CodeBuiltUI045" xml:space="preserve"><value>Archivos locales</value></data><data name="CodeBuiltUI046" xml:space="preserve"><value>Esta página solo muestra totales de uso, no nombres ni contenido de archivos.</value></data><data name="CodeBuiltUI047" xml:space="preserve"><value>Muestra el número de mensajes y adjuntos que la aplicación conserva localmente por chat.</value></data><data name="CodeBuiltUI048" xml:space="preserve"><value>Tamaño de los archivos multimedia almacenados</value></data><data name="CodeBuiltUI049" xml:space="preserve"><value>Lista de chats</value></data><data name="CodeBuiltUI050" xml:space="preserve"><value>No hay chats guardados localmente.</value></data><data name="CodeBuiltUI051" xml:space="preserve"><value>Puedes borrar copias en caché para liberar espacio. Los chats no se eliminarán del servidor.</value></data><data name="CodeBuiltUI052" xml:space="preserve"><value>Uso total de red</value></data><data name="CodeBuiltUI053" xml:space="preserve"><value>Los datos recibidos y enviados provienen del contador de Android de la aplicación desde el último reinicio. Los tamaños de medios y almacenamiento se calculan a partir de archivos locales y no miden exactamente el tráfico de red por categoría.</value></data><data name="CodeBuiltUI054" xml:space="preserve"><value>Archivos multimedia locales</value></data><data name="CodeBuiltUI055" xml:space="preserve"><value>Detalles de uso</value></data><data name="CodeBuiltUI056" xml:space="preserve"><value>Elige una opción de la lista siguiente.</value></data><data name="CodeBuiltUI057" xml:space="preserve"><value>Revisa las preferencias de privacidad elegidas en este dispositivo.</value></data><data name="CodeBuiltUI058" xml:space="preserve"><value>La lista de cuentas bloqueadas aparecerá aquí al conectarse a la API del servidor. Por ahora, puedes bloquear una cuenta desde las opciones del chat.</value></data><data name="CodeBuiltUI059" xml:space="preserve"><value>Uso de red móvil</value></data><data name="CodeBuiltUI060" xml:space="preserve"><value>Incluir archivos de vídeo</value></data><data name="CallThemeChat001" xml:space="preserve"><value>Leyendo…</value></data><data name="CallThemeChat002" xml:space="preserve"><value>Automático</value></data><data name="CallThemeChat003" xml:space="preserve"><value>Seleccionado ✓</value></data><data name="CallThemeChat004" xml:space="preserve"><value>Fondo actual ✓</value></data><data name="CallThemeChat005" xml:space="preserve"><value>Usar fondo</value></data><data name="CallThemeChat006" xml:space="preserve"><value>Documento</value></data><data name="CallThemeChat007" xml:space="preserve"><value>Esperando a que se acepte la llamada…</value></data><data name="CallThemeChat008" xml:space="preserve"><value>Azul eléctrico</value></data><data name="CallThemeChat009" xml:space="preserve"><value>Teléfono</value></data><data name="CallThemeChat010" xml:space="preserve"><value>Solo al pulsar Hacer copia de seguridad</value></data><data name="CallThemeChat011" xml:space="preserve"><value>Archivos</value></data><data name="CallThemeChat012" xml:space="preserve"><value>Otro</value></data><data name="CallThemeChat013" xml:space="preserve"><value>Denunciar chat</value></data><data name="CallThemeChat014" xml:space="preserve"><value>Mensaje adjunto</value></data><data name="CallThemeChat015" xml:space="preserve"><value>Llamada entrante…</value></data><data name="CallThemeChat016" xml:space="preserve"><value>Activar sonido</value></data><data name="CallThemeChat017" xml:space="preserve"><value>Vídeo no disponible</value></data><data name="CallThemeChat018" xml:space="preserve"><value>Apagar altavoz</value></data><data name="CallThemeChat019" xml:space="preserve"><value>Silenciar audio entrante</value></data><data name="CallThemeChat020" xml:space="preserve"><value>Activar audio entrante</value></data><data name="CallThemeChat021" xml:space="preserve"><value>Tu estado y lo que haces ahora</value></data><data name="CallThemeChat022" xml:space="preserve"><value>Sin especificar</value></data><data name="CallThemeChat023" xml:space="preserve"><value>Elige una imagen de hasta 4 MB.</value></data><data name="CallThemeChat024" xml:space="preserve"><value>Oro real</value></data><data name="CallThemeChat025" xml:space="preserve"><value>Aurora boreal</value></data><data name="CallThemeChat026" xml:space="preserve"><value>Tema actual ✓</value></data><data name="CallThemeChat027" xml:space="preserve"><value>Vista previa de imagen</value></data><data name="CallThemeChat028" xml:space="preserve"><value>Detenido</value></data><data name="CallThemeChat029" xml:space="preserve"><value>Última vez</value></data><data name="CallThemeChat030" xml:space="preserve"><value>La URL del vídeo de fondo no es válida.</value></data><data name="CallThemeChat031" xml:space="preserve"><value>Iniciar sesión</value></data><data name="CallThemeChat032" xml:space="preserve"><value>Usuario</value></data><data name="CallThemeChat033" xml:space="preserve"><value>Nombre</value></data><data name="CallThemeChat034" xml:space="preserve"><value>Correo</value></data><data name="CallThemeChat035" xml:space="preserve"><value>Electrónico</value></data><data name="CallThemeChat036" xml:space="preserve"><value>Seguridad</value></data><data name="CallThemeChat037" xml:space="preserve"><value>Protección</value></data><data name="CallThemeChat038" xml:space="preserve"><value>Urdu</value></data><data name="CallThemeChat039" xml:space="preserve"><value>Detener</value></data><data name="CallThemeChat040" xml:space="preserve"><value>Fotos</value></data><data name="CallThemeChat041" xml:space="preserve"><value>Buscar en el chat</value></data><data name="CallThemeChat042" xml:space="preserve"><value>Desbloquear chat</value></data><data name="CallThemeChat043" xml:space="preserve"><value>Bloquear chat</value></data><data name="CallThemeChat044" xml:space="preserve"><value>Desarchivar chat</value></data><data name="CallThemeChat045" xml:space="preserve"><value>Archivar chat</value></data><data name="CallThemeChat046" xml:space="preserve"><value>🌸 Flores moradas</value></data><data name="CallThemeChat047" xml:space="preserve"><value>🌄 Atardecer en las montañas</value></data><data name="CallThemeChat048" xml:space="preserve"><value>🌙 Lago de luna</value></data><data name="CallThemeChat049" xml:space="preserve"><value>🌺 Flores de cerca</value></data><data name="CallThemeChat050" xml:space="preserve"><value>🌊 Lago tranquilo</value></data><data name="CallThemeChat051" xml:space="preserve"><value>〰️ Ondas del mar</value></data><data name="CallThemeChat052" xml:space="preserve"><value>🌲 Bosque esmeralda</value></data><data name="CallThemeChat053" xml:space="preserve"><value>🌃 Ciudad iluminada</value></data><data name="CallThemeChat054" xml:space="preserve"><value>🌸 Ciudad sakura</value></data><data name="CallThemeChat055" xml:space="preserve"><value>🏜️ Atardecer dorado</value></data><data name="CallThemeChat056" xml:space="preserve"><value>🖼️ Elegir imagen de la galería</value></data><data name="CallThemeChat057" xml:space="preserve"><value>No se pudo abrir la pantalla de llamada:</value></data><data name="CallThemeChat058" xml:space="preserve"><value>La imagen no se descargó correctamente.</value></data><data name="CallThemeChat059" xml:space="preserve"><value>Seleccionar</value></data><data name="CallThemeChat060" xml:space="preserve"><value>Llamada entrante: pulsa Responder para comenzar</value></data><data name="CallThemeChat061" xml:space="preserve"><value>Ya terminó</value></data><data name="CallThemeChat062" xml:space="preserve"><value>Hay otra llamada activa o en curso</value></data><data name="CallThemeChat063" xml:space="preserve"><value>Conectado</value></data><data name="CallThemeChat065" xml:space="preserve"><value>Opciones de llamada</value></data><data name="CallThemeChat066" xml:space="preserve"><value>Audio entrante activado</value></data><data name="CallThemeChat067" xml:space="preserve"><value>Audio entrante silenciado</value></data><data name="CallThemeChat068" xml:space="preserve"><value>Altavoz activado</value></data><data name="CallThemeChat069" xml:space="preserve"><value>Altavoz apagado</value></data><data name="DynamicStatus002" xml:space="preserve"><value>No se pudo eliminar la cuenta:</value></data><data name="DynamicStatus003" xml:space="preserve"><value>Tu cuenta, sus datos y tus chats se eliminarán permanentemente del servidor. Esta acción no se puede deshacer.</value></data><data name="DynamicStatus004" xml:space="preserve"><value>Se puede encontrar tu cuenta por teléfono.</value></data><data name="DynamicStatus005" xml:space="preserve"><value>Puedes activar opcionalmente la búsqueda por teléfono.</value></data><data name="DynamicStatus006" xml:space="preserve"><value>Se eliminó el número de teléfono de la cuenta.</value></data><data name="DynamicStatus007" xml:space="preserve"><value>Guardado; la búsqueda por teléfono está activada.</value></data><data name="DynamicStatus008" xml:space="preserve"><value>Número guardado; la búsqueda por teléfono está desactivada.</value></data><data name="DynamicStatus009" xml:space="preserve"><value>No hay ninguna cuenta iniciada.</value></data><data name="DynamicStatus010" xml:space="preserve"><value>No se pudo cargar el correo electrónico.</value></data><data name="DynamicStatus011" xml:space="preserve"><value>No se pudo determinar el correo; inicia sesión de nuevo.</value></data><data name="DynamicStatus012" xml:space="preserve"><value>No se pudo iniciar la cámara de Himo:</value></data><data name="DynamicStatus013" xml:space="preserve"><value>No se pudo capturar el contenido multimedia:</value></data><data name="DynamicStatus014" xml:space="preserve"><value>No se pudo cambiar el flash:</value></data><data name="DynamicStatus015" xml:space="preserve"><value>No se pudo cambiar de cámara:</value></data><data name="DynamicStatus017" xml:space="preserve"><value>Aplicando filtro de belleza…</value></data><data name="DynamicStatus018" xml:space="preserve"><value>Mejorando la imagen…</value></data><data name="DynamicStatus020" xml:space="preserve"><value>Vídeo + audio</value></data><data name="DynamicStatus021" xml:space="preserve"><value>El bloqueo de la aplicación está activado.</value></data><data name="DynamicStatus022" xml:space="preserve"><value>El bloqueo de la aplicación está desactivado.</value></data><data name="DynamicStatus023" xml:space="preserve"><value>Estado del permiso del sistema: permitido ✓</value></data><data name="DynamicStatus024" xml:space="preserve"><value>Estado del permiso del sistema: no permitido; actívalo en los ajustes de Android si no aparecen notificaciones.</value></data><data name="DynamicStatus025" xml:space="preserve"><value>Solicitando permiso de contactos…</value></data><data name="DynamicStatus026" xml:space="preserve"><value>Se cargó un contacto del teléfono. La lista es local y no se sube al servidor.</value></data><data name="DynamicStatus027" xml:space="preserve"><value>Comparando números de teléfono con cuentas de Himo…</value></data><data name="DynamicStatus028" xml:space="preserve"><value>Activando…</value></data></root>

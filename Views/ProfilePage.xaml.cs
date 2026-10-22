@@ -39,8 +39,8 @@ public partial class ProfilePage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this);
-        _ = SwipePageTransition.AnimateIncomingAsync(this);
+        // Keep navigation lightweight: the blue icons are defined by the page assets,
+        // so do not rescan the entire visual tree or animate every element on entry.
         LoadProfile();
     }
 
@@ -135,6 +135,12 @@ public partial class ProfilePage : ContentPage
         {
             await DisplayAlertAsync("الملف الشخصي", "تعذر فتح تفاصيل الحساب. " + ex.Message, "حسنًا");
         }
+    }
+
+    private async void ShareAccountTapped(object? sender, TappedEventArgs e)
+    {
+        await UiMotion.PressAsync(sender as VisualElement);
+        await OpenProfileRouteAsync("share-account", "تعذر فتح صفحة مشاركة الحساب.");
     }
 
     private async void SecurityPrivacyTapped(object? sender, TappedEventArgs e) =>

@@ -29,6 +29,13 @@ public sealed class HomeViewModel
         _chat = chat; _api = api; SearchCommand = new Command(Filter); Filter();
     }
 
+    /// <summary>Load the local conversation snapshot without blocking the UI, then publish it before network refresh.</summary>
+    public async Task InitializeLocalCacheAsync()
+    {
+        await _chat.InitializeAsync().ConfigureAwait(false);
+        await MainThread.InvokeOnMainThreadAsync(Filter);
+    }
+
     public async Task<bool> RefreshFromServerAsync()
     {
         if (!_api.HasToken) return false;

@@ -209,275 +209,123 @@ public partial class App : Application
     }
 
 
-    private async Task RestorePersistedSessionAsync(Window window)
+    /// <summary>
+    /// Creates the unlock page without adding an intermediate welcome page to the
+    /// startup pipeline. The Android native splash stays visible until this first
+    /// real screen is ready, avoiding splash -> welcome -> blank -> destination.
+    /// </summary>
+    private Page CreateStartupAppLockPage(Window window)
     {
-        try
+        return new Views.AppLockPage(_appLock, async () =>
         {
-            await _api.TokenInitialization.ConfigureAwait(false);
-
-            await MainThread.InvokeOnMainThreadAsync(() =>
+            _sessionUnlocked = true;
+            try
             {
-                if (!_account.IsSignedIn || !_api.HasToken)
-                {
-                    _sessionUnlocked = false;
-                    window.Page = new Views.LoginPage(_account, _api);
-                    return;
-                }
-
-                try
-                {
-                    if (_appLock.IsEnabled && !_sessionUnlocked)
-                    {
-                        window.Page = new Views.AppLockPage(_appLock, async () =>
-                        {
-                            _sessionUnlocked = true;
-                            try
-                            {
-                                window.Page = new AppShell();
-                            }
-                            catch (Exception ex)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"AppShell recovery after session restore failed: {ex}");
-                                _sessionUnlocked = false;
-                                window.Page = new Views.LoginPage(_account, _api);
-                            }
-#if ANDROID
-                            _ = RegisterCurrentPushTokenAsync();
-                            MainActivity.TryNavigateToPendingConversation();
-#endif
-                            await Task.CompletedTask;
-                        });
-                    }
-                    else
-                    {
-                        _sessionUnlocked = true;
-                        window.Page = new AppShell();
-#if ANDROID
-                        _ = RegisterCurrentPushTokenAsync();
-#endif
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Persisted session restore failed: {ex}");
-                    _sessionUnlocked = false;
-                    window.Page = new Views.LoginPage(_account, _api);
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Persisted token initialization failed: {ex}");
-            await MainThread.InvokeOnMainThreadAsync(() =>
+                window.Page = new AppShell();
+            }
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"AppShell recovery after startup unlock failed: {ex}");
                 _sessionUnlocked = false;
                 window.Page = new Views.LoginPage(_account, _api);
-            });
-        }
-    }
-
-    private static readonly TimeSpan WelcomeScreenDuration = TimeSpan.FromSeconds(2);
-
-    private ContentPage CreateWelcomePage()
-    {
-        // Use the approved Himo welcome artwork as the in-app two-second splash.
-        // The asset is included as a MauiImage under Resources/Images.
-        const string splashBackground = "#060B2D";
-
-        return new ContentPage
-        {
-            Title = "Himo",
-            Padding = 0,
-            BackgroundColor = Color.FromArgb(splashBackground),
-            FlowDirection = FlowDirection.LeftToRight,
-            Content = new Grid
-            {
-                Padding = 0,
-                BackgroundColor = Color.FromArgb(splashBackground),
-                Children =
-                {
-                    new Image
-                    {
-                        Source = ImageSource.FromFile("himo_welcome.png"),
-                        Aspect = Aspect.AspectFill,
-                        HorizontalOptions = LayoutOptions.Fill,
-                        VerticalOptions = LayoutOptions.Fill
-                    }
-                }
             }
-        };
-    }
-
-    private Window CreateWindowWithWelcome(Page destination)
-    {
-        var welcome = CreateWelcomePage();
-        var window = new Window(welcome);
-        _ = RevealPageAfterWelcomeAsync(window, welcome, destination);
-        return window;
-    }
-
-    private async Task RevealPageAfterWelcomeAsync(Window window, Page welcome, Page destination)
-    {
-        // Keep exactly one in-app welcome screen, then navigate directly to the
-        // already-selected destination. AppShell owns its own delayed page prewarm;
-        // do not run a second synchronous prewarm from the splash timer because it
-        // can block the UI thread and make the welcome screen appear longer than 2s.
-        await Task.Delay(WelcomeScreenDuration).ConfigureAwait(false);
-        await MainThread.InvokeOnMainThreadAsync(() =>
-        {
-            if (ReferenceEquals(window.Page, welcome))
-                window.Page = destination;
+#if ANDROID
+            _ = RegisterCurrentPushTokenAsync();
+            MainActivity.TryNavigateToPendingConversation();
+#endif
+            await Task.CompletedTask;
         });
     }
 
-    private async Task ShowWelcomeThenRestoreAsync(Window window, Page welcome)
+    private async Task ValidateStartupTokenAsync(Window window, Page initialDestination)
     {
-        // Keep a single branded welcome screen while session/token restoration runs.
-        // Android's platform splash is handled separately by Resources/Splash/splash.png.
-        var minimumWelcomeDuration = Task.Delay(WelcomeScreenDuration);
-
         try
         {
             await _api.TokenInitialization.ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            // RestorePersistedSessionAsync handles the failed-token path and shows LoginPage.
-            System.Diagnostics.Debug.WriteLine($"Token initialization during welcome failed: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Himo Startup] Token initialization failed: {ex.Message}");
         }
 
-        await minimumWelcomeDuration.ConfigureAwait(false);
+        if (_api.HasToken)
+        {
+#if ANDROID
+            _ = RegisterCurrentPushTokenAsync();
+#endif
+            return;
+        }
 
-        // Do not override the page if another navigation path has already taken ownership.
-        var stillShowingWelcome = await MainThread.InvokeOnMainThreadAsync(
-            () => ReferenceEquals(window.Page, welcome));
-        if (stillShowingWelcome)
-            await RestorePersistedSessionAsync(window).ConfigureAwait(false);
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            if (ReferenceEquals(window.Page, initialDestination) && _account.IsSignedIn)
+            {
+                _sessionUnlocked = false;
+                window.Page = new Views.LoginPage(_account, _api);
+            }
+        });
     }
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        // Startup is deliberately defensive: a stale/corrupt session or an
-        // optional page/plugin failure must never terminate the whole app.
+        // Create the native Window once, then assign the first real MAUI page before
+        // returning it. The temporary page is never drawn and is not a second splash.
+        var window = new Window(new ContentPage
+        {
+            BackgroundColor = Color.FromArgb("#10071A")
+        });
+
         try
         {
-            var accountSignedIn = false;
-            var tokenAvailable = false;
-
-            try
+            // Do not create a second, page-based splash screen. Android already
+            // displays Maui.SplashTheme; there is no fixed 2-second pause or
+            // subsequent page replacement after a welcome screen.
+            if (!_account.IsSignedIn)
             {
-                accountSignedIn = _account.IsSignedIn;
-                tokenAvailable = _api.HasToken;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Session state could not be restored: {ex}");
-                accountSignedIn = false;
-                tokenAvailable = false;
+                _sessionUnlocked = false;
+                window.Page = new Views.LoginPage(_account, _api);
+                return window;
             }
 
-            // SecureStorage is asynchronous. On a cold Android start the persisted
-            // AccountService state can be available a moment before the bearer token.
-            // Never treat that temporary mismatch as a logout. Wait for token
-            // initialization and then restore the existing session.
-            if (accountSignedIn && !_api.TokenInitialization.IsCompleted)
+            Page initialDestination;
+            if (_appLock.IsEnabled && !_sessionUnlocked)
             {
-                var welcome = CreateWelcomePage();
-                var welcomeWindow = new Window(welcome);
-                _ = ShowWelcomeThenRestoreAsync(welcomeWindow, welcome);
-                return welcomeWindow;
-            }
-
-            Page page;
-            if (accountSignedIn && tokenAvailable)
-            {
-                try
-                {
-                    if (_appLock.IsEnabled && !_sessionUnlocked)
-                    {
-                        page = new Views.AppLockPage(_appLock, async () =>
-                        {
-                            _sessionUnlocked = true;
-                            var window = Windows.FirstOrDefault();
-                            if (window is not null)
-                            {
-                                try
-                                {
-                                    window.Page = new AppShell();
-                                }
-                                catch (Exception ex)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"AppShell recovery after unlock failed: {ex}");
-                                    try { _account.SignOut(); } catch { }
-                                    try { _api.ClearToken(); } catch { }
-                                    _sessionUnlocked = false;
-                                    window.Page = new Views.LoginPage(_account, _api);
-                                }
-                            }
-                            await Task.CompletedTask;
-#if ANDROID
-                            _ = RegisterCurrentPushTokenAsync();
-                            MainActivity.TryNavigateToPendingConversation();
-#endif
-                        });
-                    }
-                    else
-                    {
-                        _sessionUnlocked = true;
-                        page = new AppShell();
-#if ANDROID
-                        _ = RegisterCurrentPushTokenAsync();
-#endif
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // A broken persisted session/AppShell must not cause an
-                    // Android cold-start crash loop. Reset only the local
-                    // session state and return to the known-good Login page.
-                    System.Diagnostics.Debug.WriteLine($"Recovered from startup page failure: {ex}");
-                    try { _account.SignOut(); } catch { }
-                    try { _api.ClearToken(); } catch { }
-                    _sessionUnlocked = false;
-                    page = new Views.LoginPage(_account, _api);
-                }
+                initialDestination = CreateStartupAppLockPage(window);
             }
             else
             {
-                _sessionUnlocked = false;
-                page = new Views.LoginPage(_account, _api);
+                _sessionUnlocked = true;
+                initialDestination = new AppShell();
             }
 
-            return CreateWindowWithWelcome(page);
+            window.Page = initialDestination;
+
+            // Token restoration/validation remains asynchronous and does not hold
+            // the native splash or delay first-page creation.
+            _ = ValidateStartupTokenAsync(window, initialDestination);
+            System.Diagnostics.Debug.WriteLine($"[Himo Startup] First page created directly: {initialDestination.GetType().Name}");
+            return window;
         }
         catch (Exception ex)
         {
-            // Last-resort recovery for any startup dependency. This path keeps
-            // the process alive and presents a simple, usable login surface.
-            System.Diagnostics.Debug.WriteLine($"Fatal startup recovery path: {ex}");
-            try
+            System.Diagnostics.Debug.WriteLine($"[Himo Startup] Initial page creation failed: {ex}");
+            window.Page = new ContentPage
             {
-                _sessionUnlocked = false;
-                return CreateWindowWithWelcome(new Views.LoginPage(_account, _api));
-            }
-            catch (Exception loginEx)
-            {
-                System.Diagnostics.Debug.WriteLine($"Login page recovery failed: {loginEx}");
-                return new Window(new ContentPage
+                Title = "Himo",
+                BackgroundColor = Color.FromArgb("#10071A"),
+                Content = new VerticalStackLayout
                 {
-                    BackgroundColor = Color.FromArgb("#16052F"),
-                    Content = new VerticalStackLayout
+                    Padding = 28,
+                    VerticalOptions = LayoutOptions.Center,
+                    Children =
                     {
-                        Padding = 28,
-                        VerticalOptions = LayoutOptions.Center,
-                        Children =
-                        {
-                            new Label { Text = "Himo", FontSize = 34, FontAttributes = FontAttributes.Bold, TextColor = Colors.White, HorizontalTextAlignment = TextAlignment.Center },
-                            new Label { Text = "تعذر استعادة الجلسة. أعد فتح التطبيق أو سجّل الدخول من جديد.", FontSize = 15, TextColor = Color.FromArgb("#E9DEFF"), HorizontalTextAlignment = TextAlignment.Center, Margin = new Thickness(0, 14) }
-                        }
+                        new Label { Text = "Himo", FontSize = 34, FontAttributes = FontAttributes.Bold, TextColor = Colors.White, HorizontalTextAlignment = TextAlignment.Center },
+                        new Label { Text = "تعذر فتح التطبيق. يرجى إعادة المحاولة.", FontSize = 15, TextColor = Color.FromArgb("#E9DEFF"), HorizontalTextAlignment = TextAlignment.Center, Margin = new Thickness(0, 14) }
                     }
-                });
-            }
+                }
+            };
+            return window;
         }
     }
+
 }

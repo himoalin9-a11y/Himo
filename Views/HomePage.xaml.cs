@@ -16,6 +16,9 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private readonly ProfileService _profile;
     private readonly CallHistoryService _callHistory;
     private readonly ObservableCollection<ContactMatchDto> _phoneMatches = new();
+    private readonly ObservableCollection<Conversation> _visibleConversations = new();
+    private string _activeConversationFilter = "all";
+    private bool _conversationListRefreshQueued;
     private CancellationTokenSource? _pollCts;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private bool _phoneSearchBusy;
@@ -42,21 +45,122 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         });
         ConversationLongPressCommand = new Command<Conversation>(BeginConversationSelection);
         InitializeComponent();
+        // Android's native Entry drawable adds an underline even when the XAML background is transparent.
+        // Remove it when the handler is attached, keeping only the surrounding Himo search card border.
+        Search.HandlerChanged += SearchHandlerChanged;
         _vm = vm;
         _api = api;
         _profile = profile;
         _callHistory = callHistory;
         BindingContext = vm;
+        ConversationsCollection.ItemsSource = _visibleConversations;
+        _vm.FilteredConversations.CollectionChanged += FilteredConversationsCollectionChanged;
         CallsCollection.ItemsSource = _callHistory.Entries;
         PhoneSearchResults.ItemsSource = _phoneMatches;
         DisplayOwnProfilePhoto(_profile.Profile.PhotoPath);
+        RefreshDisplayedConversations();
         ShowSection("chats");
+        UpdateConversationFilterChipStyles();
+        RemoveSearchUnderline();
+    }
+
+    private void SearchHandlerChanged(object? sender, EventArgs e) => RemoveSearchUnderline();
+
+    private void RemoveSearchUnderline()
+    {
+#if ANDROID
+        if (Search?.Handler?.PlatformView is Android.Widget.EditText nativeEntry)
+        {
+            nativeEntry.Background = null;
+            nativeEntry.BackgroundTintList = Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
+        }
+#endif
+    }
+
+    private void FilteredConversationsCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        if (_conversationListRefreshQueued) return;
+        _conversationListRefreshQueued = true;
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            _conversationListRefreshQueued = false;
+            RefreshDisplayedConversations();
+        });
+    }
+
+    private void RefreshDisplayedConversations()
+    {
+        if (_vm is null || _visibleConversations is null) return;
+
+        IEnumerable<Conversation> items = _vm.FilteredConversations;
+        items = _activeConversationFilter switch
+        {
+            "unread" => items.Where(item => item.UnreadCount > 0),
+            "groups" => items.Where(item => item.IsGroup),
+            _ => items
+        };
+
+        var filtered = items.ToList();
+        _visibleConversations.Clear();
+        foreach (var item in filtered)
+            _visibleConversations.Add(item);
+    }
+
+    private void AllConversationsFilterTapped(object? sender, TappedEventArgs e) => SetConversationFilter("all");
+    private void UnreadConversationsFilterTapped(object? sender, TappedEventArgs e) => SetConversationFilter("unread");
+    private void GroupConversationsFilterTapped(object? sender, TappedEventArgs e) => SetConversationFilter("groups");
+    private void ArchivedConversationsFilterTapped(object? sender, TappedEventArgs e) => SetConversationFilter("archived");
+
+    private void SetConversationFilter(string filter)
+    {
+        if (_currentSection != "chats") return;
+
+        _activeConversationFilter = filter;
+        var shouldShowArchived = filter == "archived";
+        if (_vm.ShowArchived != shouldShowArchived)
+            _vm.ToggleArchiveView();
+        else
+            _vm.Filter();
+
+        RefreshDisplayedConversations();
+        UpdateConversationFilterChipStyles();
+        UpdateSectionChrome(_currentSection);
+        UpdateEmptyState();
+    }
+
+    private void UpdateConversationFilterChipStyles()
+    {
+        if (FilterAllChip is null) return;
+
+        var accent = GetThemeColor("HimoAccent", Color.FromArgb("#6C25D9"));
+        var card = GetThemeColor("HimoCard", Colors.White);
+        var border = GetThemeColor("HimoBorder", Color.FromArgb("#D9CFEF"));
+        var selectedText = GetThemeColor("HimoOnAccent", Colors.White);
+        var normalText = GetThemeColor("HimoTextSecondary", Color.FromArgb("#827A92"));
+
+        var unreadTotal = _vm.FilteredConversations.Where(item => item.UnreadCount > 0).Sum(item => item.UnreadCount);
+        FilterUnreadCountLabel.Text = unreadTotal > 99 ? "99+" : unreadTotal.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        FilterUnreadCountBadge.IsVisible = unreadTotal > 0;
+
+        SetChip(FilterAllChip, FilterAllLabel, _activeConversationFilter == "all");
+        SetChip(FilterUnreadChip, FilterUnreadLabel, _activeConversationFilter == "unread");
+        SetChip(FilterGroupsChip, FilterGroupsLabel, _activeConversationFilter == "groups");
+        SetChip(FilterArchivedChip, FilterArchivedLabel, _activeConversationFilter == "archived");
+
+        void SetChip(Border chip, Label label, bool selected)
+        {
+            chip.BackgroundColor = selected ? accent : card;
+            chip.Stroke = new SolidColorBrush(selected ? accent : border);
+            chip.StrokeThickness = selected ? 1.2 : 1;
+            label.TextColor = selected ? selectedText : normalText;
+        }
     }
 
     private void SearchTextChanged(object sender, TextChangedEventArgs e)
     {
         _vm.SearchText = e.NewTextValue ?? string.Empty;
         _vm.Filter();
+        RefreshDisplayedConversations();
         UpdateEmptyState();
     }
 
@@ -231,7 +335,9 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        HimoAppearanceManager.ApplyToTree(this);
+        // Do not recolor and rescan the full HomePage tree synchronously before
+        // Android has drawn the first frame. This pass is batched by the manager.
+        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this);
         _ = SwipePageTransition.AnimateIncomingAsync(this);
         UpdateEmptyState();
         DisplayOwnProfilePhoto(_profile.Profile.PhotoPath);
@@ -283,7 +389,30 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
 
     private async Task InitializeHomeAsync()
     {
-        await Task.Yield();
+        try
+        {
+            // Publish the locally cached conversation list first so the screen is
+            // populated immediately; server refresh continues afterward.
+            await _vm.InitializeLocalCacheAsync();
+            await MainThread.InvokeOnMainThreadAsync(UpdateEmptyState);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo Home] Local conversation cache load failed: {ex.Message}");
+        }
+
+        // The startup welcome no longer waits for SecureStorage. Let the home
+        // page appear immediately, then wait here (off the startup transition)
+        // for the token read before the first server refresh.
+        try
+        {
+            await _api.TokenInitialization;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo Home] Token initialization skipped: {ex.Message}");
+        }
+
         try
         {
             await RefreshAsync();
@@ -292,6 +421,10 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         {
             System.Diagnostics.Debug.WriteLine($"[Himo Home] Initial refresh failed: {ex}");
         }
+
+        // OnAppearing may have run before SecureStorage supplied the token, so
+        // retry starting polling after initialization has completed.
+        StartPolling();
     }
 
     protected override void OnDisappearing()
@@ -309,6 +442,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
             RefreshIndicator.IsRunning = true;
 
             var connected = await _vm.RefreshFromServerAsync();
+            RefreshDisplayedConversations();
             UpdateEmptyState();
             ConnectionLabel.Text = connected ? "متصل بالخادم" : "غير متصل بالخادم";
             RetryButton.IsVisible = !connected;
@@ -324,15 +458,22 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private void UpdateEmptyState()
     {
         var hasSearch = !string.IsNullOrWhiteSpace(_vm.SearchText);
-        var hasResults = _vm.FilteredConversations.Count > 0;
+        var hasResults = _visibleConversations.Count > 0;
+        var categoryHasNoResults = !hasResults && !hasSearch && _activeConversationFilter is "unread" or "groups";
         EmptyTitle.Text = hasSearch && !hasResults
             ? "لا توجد نتائج"
-            : _vm.ShowArchived ? "لا توجد محادثات مؤرشفة" : "لا توجد محادثات بعد";
+            : categoryHasNoResults
+                ? "لا توجد محادثات ضمن هذا التصنيف"
+                : _vm.ShowArchived ? "لا توجد محادثات مؤرشفة" : "لا توجد محادثات بعد";
         EmptyHint.Text = hasSearch && !hasResults
             ? "جرّب اسمًا أو كلمة بحث أخرى."
-            : _vm.ShowArchived
-                ? "تظهر المحادثات المؤرشفة هنا ويمكنك إعادتها إلى القائمة الرئيسية."
-                : "ابدأ محادثة جديدة أو ابحث عن أصدقائك برقم الهاتف.";
+            : categoryHasNoResults && _activeConversationFilter == "unread"
+                ? "لا توجد محادثات غير مقروءة حاليًا."
+                : categoryHasNoResults && _activeConversationFilter == "groups"
+                    ? "ستظهر هنا محادثات المجموعات عند توفرها."
+                    : _vm.ShowArchived
+                        ? "تظهر المحادثات المؤرشفة هنا ويمكنك إعادتها إلى القائمة الرئيسية."
+                        : "ابدأ محادثة جديدة أو ابحث عن أصدقائك برقم الهاتف.";
     }
 
     private void StartPolling()
@@ -400,6 +541,12 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     {
         OverflowMenu.IsVisible = false;
         await Shell.Current.GoToAsync("CreateGroupPage");
+    }
+
+    private async void OpenQrScannerClicked(object? sender, EventArgs e)
+    {
+        if (Shell.Current is not null)
+            await SwipePageTransition.NavigateAsync(this, "qr-scanner", SwipeDirection.Left);
     }
 
     private async void SearchUserClicked(object sender, EventArgs e)
@@ -564,6 +711,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         Search.Placeholder = _vm.ShowArchived ? "البحث في المحادثات المؤرشفة" : "البحث في محادثاتك";
         ArchiveListButton.Source = _vm.ShowArchived ? "selection_unarchive.png" : "selection_archive.png";
         ArchiveListButton.BackgroundColor = _vm.ShowArchived ? GetThemeColor("HimoSoft", Color.FromArgb("#F0E8FF")) : Colors.Transparent;
+        UpdateConversationFilterChipStyles();
         UpdateSelectionToolbar();
 
         // Base tab colors on the active Himo palette so all 14 themes remain coherent.
@@ -588,7 +736,9 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private void ArchiveListClicked(object? sender, EventArgs e)
     {
         ClearConversationSelection();
+        _activeConversationFilter = _vm.ShowArchived ? "all" : "archived";
         _vm.ToggleArchiveView();
+        RefreshDisplayedConversations();
         UpdateSectionChrome(_currentSection);
         UpdateEmptyState();
     }
@@ -921,6 +1071,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
 
         ClearConversationSelection();
         _vm.Filter();
+        RefreshDisplayedConversations();
         UpdateEmptyState();
 
         // Refresh the flags from the server after persisting per-account actions.

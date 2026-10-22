@@ -155,7 +155,7 @@ internal sealed class ProfileDetailsPage : ProfileEditorPageBase
         value.FontSize = 13;
         value.LineBreakMode = LineBreakMode.TailTruncation;
         value.MaxLines = 1;
-        value.HorizontalTextAlignment = TextAlignment.End;
+        value.HorizontalTextAlignment = TextAlignment.Start;
         value.VerticalTextAlignment = TextAlignment.Center;
         var text = new VerticalStackLayout
         {
@@ -165,22 +165,22 @@ internal sealed class ProfileDetailsPage : ProfileEditorPageBase
             FlowDirection = FlowDirection.RightToLeft,
             Children =
             {
-                new Label { Text = title, FontSize = 15, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.End },
-                new Label { Text = subtitle, FontSize = 11, HorizontalTextAlignment = TextAlignment.End }
+                new Label { Text = title, FontSize = 15, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Start, FlowDirection = FlowDirection.RightToLeft },
+                new Label { Text = subtitle, FontSize = 11, HorizontalTextAlignment = TextAlignment.Start, FlowDirection = FlowDirection.RightToLeft }
             }
         };
         ((Label)text.Children[0]).SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
         ((Label)text.Children[1]).SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
-        var values = new VerticalStackLayout { Spacing = 3, HorizontalOptions = LayoutOptions.Fill, Children = { value } };
+        var values = new VerticalStackLayout { Spacing = 2, HorizontalOptions = LayoutOptions.Fill, FlowDirection = FlowDirection.RightToLeft, Children = { value } };
         var inner = new Grid
         {
-            Padding = new Thickness(8, 12),
+            Padding = new Thickness(8, 9),
             ColumnDefinitions = new ColumnDefinitionCollection { new(GridLength.Star), new(new GridLength(44)) },
-            ColumnSpacing = 12,
+            ColumnSpacing = 6,
             FlowDirection = FlowDirection.LeftToRight,
-            MinimumHeightRequest = 78
+            MinimumHeightRequest = 70
         };
-        var left = new VerticalStackLayout { Spacing = 5, Children = { text, values } };
+        var left = new VerticalStackLayout { Spacing = 4, HorizontalOptions = LayoutOptions.Fill, VerticalOptions = LayoutOptions.Center, FlowDirection = FlowDirection.RightToLeft, Children = { text, values } };
         inner.Add(left, 0, 0);
         var iconBorder = new Border
         {

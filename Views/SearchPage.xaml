@@ -7,7 +7,7 @@
              FlowDirection="RightToLeft"
              BackgroundColor="{DynamicResource HimoBackground}"
              Shell.NavBarIsVisible="False">
-    <Grid RowDefinitions="Auto,Auto,Auto,*"
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*"
           RowSpacing="0"
           BackgroundColor="{DynamicResource HimoBackground}">
 
@@ -66,8 +66,15 @@
             </Grid>
         </Border>
 
+        <!-- Scan Himo profile QR without uploading the phone contact list. -->
+        <Button Grid.Row="2" Margin="14,0,14,9" Text="مسح رمز QR لحساب Himo"
+                Clicked="OpenQrScannerClicked" HeightRequest="44" CornerRadius="14"
+                BackgroundColor="{DynamicResource HimoSoft}"
+                BorderColor="{DynamicResource HimoBorder}" BorderWidth="1"
+                TextColor="{DynamicResource HimoPrimary}" FontAttributes="Bold" FontSize="13" />
+
         <!-- Explicit opt-in matching card -->
-        <Border Grid.Row="2" Margin="14,0,14,9" Padding="10,10"
+        <Border Grid.Row="3" Margin="14,0,14,9" Padding="10,10"
                 BackgroundColor="{DynamicResource HimoSurface}"
                 Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
             <Border.StrokeShape><RoundRectangle CornerRadius="17" /></Border.StrokeShape>
@@ -98,7 +105,7 @@
         </Border>
 
         <!-- Results -->
-        <Grid Grid.Row="3" Margin="12,0,12,8" RowDefinitions="Auto,*" RowSpacing="5">
+        <Grid Grid.Row="4" Margin="12,0,12,8" RowDefinitions="Auto,*" RowSpacing="5">
             <Label x:Name="ContactsStatusLabel" Grid.Row="0"
                    Text="جارٍ تحميل جهات الاتصال..." FontSize="11.5"
                    TextColor="{DynamicResource HimoTextSecondary}" Margin="5,1,5,4"

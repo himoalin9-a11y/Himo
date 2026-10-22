@@ -6,6 +6,7 @@
   <uses-permission android:name="android.permission.CAMERA" />
   <uses-permission android:name="android.permission.RECORD_AUDIO" />
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
   <uses-permission android:name="android.permission.VIBRATE" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -47,7 +48,14 @@
     </provider>
 
     <!-- Stable native activity name used by Visual Studio/debugging; launcher icons are handled by aliases below. -->
-    <activity android:name="com.companyname.himo.LauncherIconDefault" android:theme="@style/Maui.SplashTheme" android:enabled="true" android:exported="true" />
+    <activity android:name="com.companyname.himo.LauncherIconDefault" android:theme="@style/Maui.SplashTheme" android:enabled="true" android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="himo" android:host="user" />
+      </intent-filter>
+    </activity>
 
     <activity-alias
       android:name="com.companyname.himo.LauncherIconHomeDefault"

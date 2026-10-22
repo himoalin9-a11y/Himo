@@ -175,12 +175,12 @@ public class MainActivity : MauiAppCompatActivity
     {
         try
         {
-            var background = global::Android.Graphics.Color.ParseColor("#060B2D");
+            var background = global::Android.Graphics.Color.ParseColor("#10071A");
             if (Window is null) return;
             Window.SetBackgroundDrawable(new global::Android.Graphics.Drawables.ColorDrawable(background));
 #pragma warning disable CA1422 // Android 15+ controls these bars through edge-to-edge APIs; retain compatibility with earlier Android versions.
             Window.SetStatusBarColor(background);
-            Window.SetNavigationBarColor(global::Android.Graphics.Color.ParseColor("#090511"));
+            Window.SetNavigationBarColor(global::Android.Graphics.Color.ParseColor("#10071A"));
 #pragma warning restore CA1422
             Window.DecorView?.SetBackgroundColor(background);
         }

@@ -18,7 +18,7 @@ namespace Himo.Views;
 /// labelled by their source so unsupported per-category network counters are not
 /// presented as if Android provided them.
 /// </summary>
-public sealed class NetworkUsageSettingsPage : ContentPage
+public sealed class NetworkUsageSettingsPage : Himo.Services.LocalizedContentPage
 {
     private const string RxBaselineKey = "himo_data_usage_uid_rx_baseline_v1";
     private const string TxBaselineKey = "himo_data_usage_uid_tx_baseline_v1";
@@ -41,10 +41,18 @@ public sealed class NetworkUsageSettingsPage : ContentPage
         _chat = chat ?? throw new ArgumentNullException(nameof(chat));
         Title = "استخدام الشبكة";
         FlowDirection = FlowDirection.RightToLeft;
-        BackgroundColor = Color.FromArgb("#F3EDFF");
+        BackgroundColor = Color.FromArgb("#211333");
+        SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         Shell.SetNavBarIsVisible(this, false);
         EnsureInitialUsageBaseline();
         Content = BuildLayout();
+        RefreshStatistics();
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        HimoAppearanceManager.ApplyToTree(this);
         RefreshStatistics();
     }
 
@@ -57,15 +65,18 @@ public sealed class NetworkUsageSettingsPage : ContentPage
                 new RowDefinition { Height = GridLength.Auto },
                 new RowDefinition { Height = GridLength.Star }
             },
-            BackgroundColor = Color.FromArgb("#F3EDFF")
+            BackgroundColor = Color.FromArgb("#211333")
         };
+        root.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         root.Add(BuildHeader(), 0, 0);
 
         var content = new VerticalStackLayout
         {
             Padding = new Thickness(16, 8, 16, 24),
-            Spacing = 13
+            Spacing = 13,
+            BackgroundColor = Color.FromArgb("#211333")
         };
+        content.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         content.Add(BuildTrafficSummaryCard());
         content.Add(BuildUsageBreakdownCard());
         content.Add(BodyLabel("البيانات المستلمة والمرسلة مأخوذة من عدّاد Android الخاص بالتطبيق منذ آخر إعادة تعيين. أحجام الوسائط والتخزين محسوبة من الملفات المحلية، وليست قياسًا دقيقًا لحركة الشبكة لكل فئة."));
@@ -83,14 +94,20 @@ public sealed class NetworkUsageSettingsPage : ContentPage
             BorderWidth = 1,
             Margin = new Thickness(0, 4, 0, 0)
         };
+        reset.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoAccent");
+        reset.SetDynamicResource(Button.TextColorProperty, "HimoOnAccent");
+        reset.SetDynamicResource(Button.BorderColorProperty, "HimoBorder");
         reset.Clicked += ResetStatisticsClicked;
         content.Add(reset);
 
-        root.Add(new ScrollView
+        var scroll = new ScrollView
         {
+            BackgroundColor = Color.FromArgb("#211333"),
             VerticalScrollBarVisibility = ScrollBarVisibility.Never,
             Content = content
-        }, 0, 1);
+        };
+        scroll.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
+        root.Add(scroll, 0, 1);
         return root;
     }
 
@@ -117,6 +134,9 @@ public sealed class NetworkUsageSettingsPage : ContentPage
             BorderColor = Color.FromArgb("#D9C5F4"), BorderWidth = 1, CornerRadius = 15,
             HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Center
         };
+        back.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoSoft");
+        back.SetDynamicResource(Button.TextColorProperty, "HimoPrimary");
+        back.SetDynamicResource(Button.BorderColorProperty, "HimoBorder");
         back.Clicked += BackClicked;
         header.Add(back, 0, 0);
 
@@ -127,16 +147,20 @@ public sealed class NetworkUsageSettingsPage : ContentPage
             VerticalOptions = LayoutOptions.Center,
             FlowDirection = FlowDirection.RightToLeft
         };
-        labels.Add(new Label
+        var title = new Label
         {
             Text = "استخدام الشبكة", FontSize = 23, FontAttributes = FontAttributes.Bold,
-            TextColor = Color.FromArgb("#300653"), HorizontalTextAlignment = TextAlignment.Start
-        });
-        labels.Add(new Label
+            TextColor = Color.FromArgb("#F7E9FF"), HorizontalTextAlignment = TextAlignment.Start
+        };
+        title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        labels.Add(title);
+        var subtitle = new Label
         {
             Text = "تفاصيل استهلاك البيانات والمكالمات والوسائط", FontSize = 11.5,
-            TextColor = Color.FromArgb("#7A679B"), HorizontalTextAlignment = TextAlignment.Start
-        });
+            TextColor = Color.FromArgb("#C7B8D8"), HorizontalTextAlignment = TextAlignment.Start
+        };
+        subtitle.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        labels.Add(subtitle);
         header.Add(labels, 1, 0);
         header.Add(SettingsVisuals.IconBadge("himo_pro_ui_settings_icon_network.png", 42, 24), 2, 0);
         return header;
@@ -151,7 +175,7 @@ public sealed class NetworkUsageSettingsPage : ContentPage
         content.Add(StatRow("البيانات المستلمة", _receivedValue));
         content.Add(ThinDivider());
         content.Add(StatRow("البيانات المرسلة", _sentValue));
-        return Card(content, Color.FromArgb("#FFFFFF"), Color.FromArgb("#D9C5F4"));
+        return Card(content);
     }
 
     private View BuildUsageBreakdownCard()
@@ -319,9 +343,9 @@ public sealed class NetworkUsageSettingsPage : ContentPage
     private async void ResetStatisticsClicked(object? sender, EventArgs e)
     {
         var accepted = await DisplayAlertAsync(
-            "إعادة تعيين الإحصائيات",
-            "سيبدأ حساب استخدام الشبكة والمكالمات والرسائل والوسائط من الصفر. لن تُحذف المحادثات أو الملفات.",
-            "إعادة تعيين", "إلغاء");
+            Himo.Services.AppLocalization.TranslateSourceText("إعادة تعيين الإحصائيات"),
+            Himo.Services.AppLocalization.TranslateSourceText("سيبدأ حساب استخدام الشبكة والمكالمات والرسائل والوسائط من الصفر. لن تُحذف المحادثات أو الملفات."),
+            Himo.Services.AppLocalization.TranslateSourceText("إعادة تعيين"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
         if (!accepted) return;
 
         Preferences.Default.Set(ResetTicksKey, DateTimeOffset.UtcNow.UtcDateTime.Ticks);
@@ -337,7 +361,7 @@ public sealed class NetworkUsageSettingsPage : ContentPage
         catch { }
 #endif
         RefreshStatistics();
-        await DisplayAlertAsync("تمت إعادة التعيين", "تم تصفير الإحصائيات المعروضة. لم يتم حذف أي محتوى.", "موافق");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تمت إعادة التعيين"), Himo.Services.AppLocalization.TranslateSourceText("تم تصفير الإحصائيات المعروضة. لم يتم حذف أي محتوى."), Himo.Services.AppLocalization.TranslateSourceText("موافق"));
     }
 
     private async void BackClicked(object? sender, EventArgs e)
@@ -354,12 +378,6 @@ public sealed class NetworkUsageSettingsPage : ContentPage
             }
         }
         catch { }
-    }
-
-    protected override void OnAppearing()
-    {
-        base.OnAppearing();
-        RefreshStatistics();
     }
 
     private static DateTimeOffset GetResetTimeUtc()
@@ -407,40 +425,49 @@ public sealed class NetworkUsageSettingsPage : ContentPage
         return $"{duration.Minutes:00}:{duration.Seconds:00}";
     }
 
-    private static Border Card(View content, Color? background = null, Color? border = null) => new()
+    private static Border Card(View content, Color? background = null, Color? border = null)
     {
-        Background = new SolidColorBrush(background ?? Color.FromArgb("#FFFFFF")),
-        Stroke = new SolidColorBrush(border ?? Color.FromArgb("#D9C5F4")),
-        StrokeThickness = 1,
-        Padding = 14,
-        Content = content,
-        StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(20) }
-    };
+        var card = new Border
+        {
+            BackgroundColor = background ?? Color.FromArgb("#2D1942"),
+            Stroke = new SolidColorBrush(border ?? Color.FromArgb("#594768")),
+            StrokeThickness = 1,
+            Padding = 14,
+            Content = content,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(20) }
+        };
+        card.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoCard");
+        card.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+        return card;
+    }
 
-    private static Label SectionTitle(string text) => new()
+    private static Label SectionTitle(string text)
     {
-        Text = text, FontSize = 14, FontAttributes = FontAttributes.Bold,
-        TextColor = Color.FromArgb("#300653"), HorizontalTextAlignment = TextAlignment.End
-    };
+        var label = new Label { Text = text, FontSize = 14, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#F7E9FF"), HorizontalTextAlignment = TextAlignment.Start, FlowDirection = FlowDirection.RightToLeft };
+        label.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        return label;
+    }
 
-    private static Label BodyLabel(string text) => new()
+    private static Label BodyLabel(string text)
     {
-        Text = text, FontSize = 11.5, TextColor = Color.FromArgb("#7A679B"),
-        HorizontalTextAlignment = TextAlignment.End, LineBreakMode = LineBreakMode.WordWrap
-    };
+        var label = new Label { Text = text, FontSize = 11.5, TextColor = Color.FromArgb("#C7B8D8"), HorizontalTextAlignment = TextAlignment.Start, FlowDirection = FlowDirection.RightToLeft, LineBreakMode = LineBreakMode.WordWrap };
+        label.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        return label;
+    }
 
-    private static Label StatValueLabel(string text) => new()
+    private static Label StatValueLabel(string text)
     {
-        Text = text, FontSize = 11.5, FontAttributes = FontAttributes.Bold,
-        TextColor = Color.FromArgb("#300653"), HorizontalTextAlignment = TextAlignment.Start,
-        VerticalTextAlignment = TextAlignment.Center, WidthRequest = 150, MaximumWidthRequest = 150,
-        LineBreakMode = LineBreakMode.WordWrap, MaxLines = 4
-    };
+        var label = new Label { Text = text, FontSize = 11.5, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#F7E9FF"), HorizontalTextAlignment = TextAlignment.Start, VerticalTextAlignment = TextAlignment.Center, WidthRequest = 150, MaximumWidthRequest = 150, FlowDirection = FlowDirection.LeftToRight, LineBreakMode = LineBreakMode.WordWrap, MaxLines = 4 };
+        label.SetDynamicResource(Label.TextColorProperty, "HimoAccent");
+        return label;
+    }
 
-    private static View ThinDivider() => new BoxView
+    private static View ThinDivider()
     {
-        HeightRequest = 1, Color = Color.FromArgb("#D9C5F4"), Margin = new Thickness(0)
-    };
+        var divider = new BoxView { HeightRequest = 1, Color = Color.FromArgb("#594768"), Margin = new Thickness(0) };
+        divider.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoDivider");
+        return divider;
+    }
 
     private static Grid StatRow(string title, Label value)
     {
@@ -457,14 +484,17 @@ public sealed class NetworkUsageSettingsPage : ContentPage
             MinimumHeightRequest = 36
         };
         row.Add(SettingsVisuals.IconBadge(SettingsVisuals.IconForSetting(title), 34, 20), 0, 0);
-        row.Add(new Label
+        var titleLabel = new Label
         {
-            Text = title, FontSize = 12, TextColor = Color.FromArgb("#300653"),
+            Text = title, FontSize = 12, TextColor = Color.FromArgb("#F7E9FF"),
             VerticalTextAlignment = TextAlignment.Center,
-            HorizontalTextAlignment = TextAlignment.End,
+            HorizontalTextAlignment = TextAlignment.Start,
+            FlowDirection = FlowDirection.RightToLeft,
             LineBreakMode = LineBreakMode.WordWrap,
             MaxLines = 2
-        }, 1, 0);
+        };
+        titleLabel.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        row.Add(titleLabel, 1, 0);
         row.Add(value, 2, 0);
         return row;
     }

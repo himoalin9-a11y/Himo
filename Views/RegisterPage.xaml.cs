@@ -21,6 +21,7 @@ public partial class RegisterPage : ContentPage
     public RegisterPage(AccountService account, HimoApiClient api)
     {
         InitializeComponent();
+        Himo.Services.AppLocalization.AttachToPage(this);
         _account = account;
         _api = api;
         NavigationPage.SetHasNavigationBar(this, false);
@@ -51,38 +52,38 @@ public partial class RegisterPage : ContentPage
 
         if (string.IsNullOrWhiteSpace(name) || name.Length > 60)
         {
-            await DisplayAlertAsync("الاسم", "أدخل اسمًا صحيحًا لا يتجاوز 60 حرفًا.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الاسم"), "أدخل اسمًا صحيحًا لا يتجاوز 60 حرفًا.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             NameEntry?.Focus();
             return;
         }
         if (!IsValidEmail(email))
         {
-            await DisplayAlertAsync("البريد الإلكتروني", "أدخل بريدًا إلكترونيًا صحيحًا.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("البريد الإلكتروني"), Himo.Services.AppLocalization.TranslateSourceText("أدخل بريدًا إلكترونيًا صحيحًا."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             EmailEntry?.Focus();
             return;
         }
         if (!IsValidOptionalPhone(phone))
         {
-            await DisplayAlertAsync("رقم الهاتف", "أدخل رقم هاتف صحيحًا من 7 إلى 15 رقمًا، أو اترك الحقل فارغًا لأنه اختياري.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("رقم الهاتف"), "أدخل رقم هاتف صحيحًا من 7 إلى 15 رقمًا، أو اترك الحقل فارغًا لأنه اختياري.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             PhoneEntry?.Focus();
             return;
         }
         if (password.Length < 8 || password.Length > 128)
         {
-            await DisplayAlertAsync("كلمة المرور", "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("كلمة المرور"), "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             PasswordEntry?.Focus();
             return;
         }
         if (password != confirmPassword)
         {
-            await DisplayAlertAsync("تأكيد كلمة المرور", "كلمتا المرور غير متطابقتين.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تأكيد كلمة المرور"), Himo.Services.AppLocalization.TranslateSourceText("كلمتا المرور غير متطابقتين."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             ConfirmPasswordEntry?.Focus();
             return;
         }
         if (TermsCheckBox?.IsChecked != true)
         {
             SetStatus("يجب الموافقة على شروط الاستخدام وسياسة الخصوصية للمتابعة.");
-            await DisplayAlertAsync("الموافقة مطلوبة", "يرجى قراءة شروط الاستخدام وسياسة الخصوصية والموافقة عليهما قبل إنشاء الحساب.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الموافقة مطلوبة"), "يرجى قراءة شروط الاستخدام وسياسة الخصوصية والموافقة عليهما قبل إنشاء الحساب.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -109,15 +110,15 @@ public partial class RegisterPage : ContentPage
             ApplyVerificationState();
             SetStatus("أُرسل رمز التحقق. أدخل الرمز لإكمال إنشاء حسابك.");
             await DisplayAlertAsync(
-                "تحقق البريد الإلكتروني",
-                "أرسلنا رمز تحقق من 6 أرقام إلى بريدك الإلكتروني. أدخل الرمز لإكمال إنشاء الحساب.",
-                "حسنًا");
+                Himo.Services.AppLocalization.TranslateSourceText("تحقق البريد الإلكتروني"),
+                Himo.Services.AppLocalization.TranslateSourceText("أرسلنا رمز تحقق من 6 أرقام إلى بريدك الإلكتروني. أدخل الرمز لإكمال إنشاء الحساب."),
+                Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             VerificationCodeEntry?.Focus();
         }
         catch (Exception ex)
         {
             SetStatus("تعذر إرسال رمز التحقق.");
-            await DisplayAlertAsync("إنشاء الحساب", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إنشاء الحساب"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -130,7 +131,7 @@ public partial class RegisterPage : ContentPage
         var code = VerificationCodeEntry?.Text?.Trim() ?? string.Empty;
         if (code.Length != 6 || code.Any(ch => ch < '0' || ch > '9'))
         {
-            await DisplayAlertAsync("رمز التحقق", "أدخل رمز التحقق المكوّن من 6 أرقام.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("رمز التحقق"), Himo.Services.AppLocalization.TranslateSourceText("أدخل رمز التحقق المكوّن من 6 أرقام."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             VerificationCodeEntry?.Focus();
             return;
         }
@@ -145,7 +146,7 @@ public partial class RegisterPage : ContentPage
         catch (Exception ex)
         {
             SetStatus("رمز التحقق غير صحيح أو منتهي الصلاحية.");
-            await DisplayAlertAsync("تحقق البريد الإلكتروني", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تحقق البريد الإلكتروني"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -174,7 +175,7 @@ public partial class RegisterPage : ContentPage
         catch (Exception ex)
         {
             SetStatus("تعذر إعادة إرسال رمز التحقق.");
-            await DisplayAlertAsync("إعادة إرسال الرمز", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إعادة إرسال الرمز"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {

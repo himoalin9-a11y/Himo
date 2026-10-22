@@ -1,0 +1,1017 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppName" xml:space="preserve">
+    <value>Himo</value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>لوڈ ہو رہا ہے...</value>
+  </data>
+  <data name="PreparingAccount" xml:space="preserve">
+    <value>آپ کا اکاؤنٹ تیار ہو رہا ہے...</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>ترتیبات</value>
+  </data>
+  <data name="SettingsSubtitle" xml:space="preserve">
+    <value>اپنے اکاؤنٹ اور ترجیحات کا نظم کریں</value>
+  </data>
+  <data name="Account" xml:space="preserve">
+    <value>اکاؤنٹ</value>
+  </data>
+  <data name="AccountManagement" xml:space="preserve">
+    <value>اکاؤنٹ کا انتظام</value>
+  </data>
+  <data name="Profile" xml:space="preserve">
+    <value>پروفائل</value>
+  </data>
+  <data name="ProfileTab" xml:space="preserve">
+    <value>پروفائل</value>
+  </data>
+  <data name="ProfileTitle" xml:space="preserve">
+    <value>میری پروفائل</value>
+  </data>
+  <data name="ProfileSubtitle" xml:space="preserve">
+    <value>Himo پر آپ کی شناخت اور جگہ</value>
+  </data>
+  <data name="PublicName" xml:space="preserve">
+    <value>ظاہری نام</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>نام</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>اسٹیٹس</value>
+  </data>
+  <data name="About" xml:space="preserve">
+    <value>تعارف</value>
+  </data>
+  <data name="Username" xml:space="preserve">
+    <value>صارف نام</value>
+  </data>
+  <data name="PhoneNumber" xml:space="preserve">
+    <value>فون نمبر</value>
+  </data>
+  <data name="Email" xml:space="preserve">
+    <value>ای میل پتہ</value>
+  </data>
+  <data name="ChangePhoto" xml:space="preserve">
+    <value>تصویر تبدیل کریں</value>
+  </data>
+  <data name="RemovePhoto" xml:space="preserve">
+    <value>تصویر ہٹائیں</value>
+  </data>
+  <data name="SaveChanges" xml:space="preserve">
+    <value>تبدیلیاں محفوظ کریں</value>
+  </data>
+  <data name="Messages" xml:space="preserve">
+    <value>چیٹس</value>
+  </data>
+  <data name="Calls" xml:space="preserve">
+    <value>کالز</value>
+  </data>
+  <data name="PeopleSearch" xml:space="preserve">
+    <value>لوگ تلاش کریں</value>
+  </data>
+  <data name="Back" xml:space="preserve">
+    <value>واپس</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>بند کریں</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>منسوخ کریں</value>
+  </data>
+  <data name="OK" xml:space="preserve">
+    <value>ٹھیک ہے</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>محفوظ کریں</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>حذف کریں</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>ترمیم کریں</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>تصدیق کریں</value>
+  </data>
+  <data name="Search" xml:space="preserve">
+    <value>تلاش کریں</value>
+  </data>
+  <data name="SearchConversations" xml:space="preserve">
+    <value>اپنی چیٹس میں تلاش کریں</value>
+  </data>
+  <data name="NoConversations" xml:space="preserve">
+    <value>ابھی کوئی چیٹ نہیں</value>
+  </data>
+  <data name="Notifications" xml:space="preserve">
+    <value>اطلاعات</value>
+  </data>
+  <data name="ChatSettings" xml:space="preserve">
+    <value>چیٹ کی ترتیبات</value>
+  </data>
+  <data name="AppearanceAndIcons" xml:space="preserve">
+    <value>تھیمز اور آئیکنز</value>
+  </data>
+  <data name="TextSize" xml:space="preserve">
+    <value>متن کا سائز</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>زبان</value>
+  </data>
+  <data name="LanguageTitle" xml:space="preserve">
+    <value>ایپ کی زبان</value>
+  </data>
+  <data name="LanguageSubtitle" xml:space="preserve">
+    <value>اپنی پسندیدہ زبان منتخب کریں</value>
+  </data>
+  <data name="AvailableLanguages" xml:space="preserve">
+    <value>دستیاب زبانیں</value>
+  </data>
+  <data name="SaveLanguage" xml:space="preserve">
+    <value>زبان محفوظ کریں</value>
+  </data>
+  <data name="LanguageSavedTitle" xml:space="preserve">
+    <value>زبان محفوظ ہو گئی</value>
+  </data>
+  <data name="LanguageSavedMessage" xml:space="preserve">
+    <value>منتخب زبان معاونت یافتہ اسکرینوں پر لاگو ہو گئی ہے۔ کچھ مخصوص اسکرینیں ترجمہ مکمل ہونے تک عربی میں رہ سکتی ہیں۔</value>
+  </data>
+  <data name="Theme" xml:space="preserve">
+    <value>تھیم</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>رازداری</value>
+  </data>
+  <data name="SecurityPrivacy" xml:space="preserve">
+    <value>سیکیورٹی اور رازداری</value>
+  </data>
+  <data name="StorageData" xml:space="preserve">
+    <value>اسٹوریج اور ڈیٹا</value>
+  </data>
+  <data name="HelpSupport" xml:space="preserve">
+    <value>مدد اور معاونت</value>
+  </data>
+  <data name="AboutApp" xml:space="preserve">
+    <value>ایپ کے بارے میں</value>
+  </data>
+  <data name="Logout" xml:space="preserve">
+    <value>لاگ آؤٹ</value>
+  </data>
+  <data name="LogoutAllDevices" xml:space="preserve">
+    <value>تمام آلات سے لاگ آؤٹ</value>
+  </data>
+  <data name="DeleteAccount" xml:space="preserve">
+    <value>اکاؤنٹ مستقل حذف کریں</value>
+  </data>
+  <data name="FontSmall" xml:space="preserve">
+    <value>چھوٹا</value>
+  </data>
+  <data name="FontMedium" xml:space="preserve">
+    <value>درمیانہ</value>
+  </data>
+  <data name="FontLarge" xml:space="preserve">
+    <value>بڑا</value>
+  </data>
+  <data name="OnlineNow" xml:space="preserve">
+    <value>ابھی آن لائن</value>
+  </data>
+  <data name="Available" xml:space="preserve">
+    <value>دستیاب</value>
+  </data>
+  <data name="NotAvailable" xml:space="preserve">
+    <value>دستیاب نہیں</value>
+  </data>
+  <data name="LeaveMessage" xml:space="preserve">
+    <value>پیغام چھوڑیں</value>
+  </data>
+  <data name="Sleeping" xml:space="preserve">
+    <value>سو رہا ہوں</value>
+  </data>
+  <data name="AtWork" xml:space="preserve">
+    <value>کام پر</value>
+  </data>
+  <data name="Traveling" xml:space="preserve">
+    <value>سفر میں</value>
+  </data>
+  <data name="ChangePassword" xml:space="preserve">
+    <value>پاس ورڈ تبدیل کریں</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>پاس ورڈ</value>
+  </data>
+  <data name="ConfirmPassword" xml:space="preserve">
+    <value>پاس ورڈ کی تصدیق</value>
+  </data>
+  <data name="Login" xml:space="preserve">
+    <value>لاگ ان</value>
+  </data>
+  <data name="CreateAccount" xml:space="preserve">
+    <value>اکاؤنٹ بنائیں</value>
+  </data>
+  <data name="CreateNewAccount" xml:space="preserve">
+    <value>نیا اکاؤنٹ بنائیں</value>
+  </data>
+  <data name="ForgotPassword" xml:space="preserve">
+    <value>پاس ورڈ بھول گئے؟</value>
+  </data>
+  <data name="RecoverPassword" xml:space="preserve">
+    <value>پاس ورڈ بحال کریں</value>
+  </data>
+  <data name="EmailInvalid" xml:space="preserve">
+    <value>ای میل پتہ درست نہیں۔</value>
+  </data>
+  <data name="EnterEmail" xml:space="preserve">
+    <value>ای میل پتہ درج کریں</value>
+  </data>
+  <data name="EnterPassword" xml:space="preserve">
+    <value>پاس ورڈ درج کریں</value>
+  </data>
+  <data name="SearchPeople" xml:space="preserve">
+    <value>لوگ تلاش کریں</value>
+  </data>
+  <data name="SearchContacts" xml:space="preserve">
+    <value>رابطوں میں تلاش کریں</value>
+  </data>
+  <data name="NoResults" xml:space="preserve">
+    <value>کوئی نتیجہ نہیں</value>
+  </data>
+  <data name="TryAgain" xml:space="preserve">
+    <value>دوبارہ کوشش کریں</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>محفوظ نہیں ہو سکا</value>
+  </data>
+  <data name="Saved" xml:space="preserve">
+    <value>محفوظ ہو گیا</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>خرابی</value>
+  </data>
+  <data name="Warning" xml:space="preserve">
+    <value>انتباہ</value>
+  </data>
+  <data name="All" xml:space="preserve">
+    <value>سب</value>
+  </data>
+  <data name="Everyone" xml:space="preserve">
+    <value>ہر کوئی</value>
+  </data>
+  <data name="MyContacts" xml:space="preserve">
+    <value>میرے رابطے</value>
+  </data>
+  <data name="Nobody" xml:space="preserve">
+    <value>کوئی نہیں</value>
+  </data>
+  <data name="Groups" xml:space="preserve">
+    <value>گروپس</value>
+  </data>
+  <data name="LastSeen" xml:space="preserve">
+    <value>آخری بار دیکھا اور آن لائن</value>
+  </data>
+  <data name="ProfilePhoto" xml:space="preserve">
+    <value>پروفائل تصویر</value>
+  </data>
+  <data name="Contacts" xml:space="preserve">
+    <value>رابطے</value>
+  </data>
+  <data name="Cache" xml:space="preserve">
+    <value>کیش</value>
+  </data>
+  <data name="AppData" xml:space="preserve">
+    <value>ایپ ڈیٹا</value>
+  </data>
+  <data name="Media" xml:space="preserve">
+    <value>میڈیا</value>
+  </data>
+  <data name="UsedStorage" xml:space="preserve">
+    <value>استعمال شدہ جگہ</value>
+  </data>
+  <data name="ClearCache" xml:space="preserve">
+    <value>کیش صاف کریں</value>
+  </data>
+  <data name="StorageSummary" xml:space="preserve">
+    <value>اسٹوریج کا خلاصہ</value>
+  </data>
+  <data name="SystemIcons" xml:space="preserve">
+    <value>سسٹم آئیکنز</value>
+  </data>
+  <data name="GlassIcons" xml:space="preserve">
+    <value>گلاس آئیکنز</value>
+  </data>
+  <data name="ProfessionalIcons" xml:space="preserve">
+    <value>پروفیشنل آئیکنز</value>
+  </data>
+  <data name="ChooseTheme" xml:space="preserve">
+    <value>تھیم منتخب کریں</value>
+  </data>
+  <data name="CurrentTheme" xml:space="preserve">
+    <value>موجودہ تھیم</value>
+  </data>
+  <data name="ApplyTheme" xml:space="preserve">
+    <value>تھیم لاگو کریں</value>
+  </data>
+  <data name="Send" xml:space="preserve">
+    <value>بھیجیں</value>
+  </data>
+  <data name="Message" xml:space="preserve">
+    <value>پیغام</value>
+  </data>
+  <data name="TypeMessage" xml:space="preserve">
+    <value>پیغام لکھیں...</value>
+  </data>
+  <data name="Online" xml:space="preserve">
+    <value>ابھی آن لائن</value>
+  </data>
+  <data name="Offline" xml:space="preserve">
+    <value>آف لائن</value>
+  </data>
+  <data name="Audio" xml:space="preserve">
+    <value>آڈیو</value>
+  </data>
+  <data name="Video" xml:space="preserve">
+    <value>ویڈیو</value>
+  </data>
+  <data name="Photos" xml:space="preserve">
+    <value>تصاویر</value>
+  </data>
+  <data name="Camera" xml:space="preserve">
+    <value>کیمرہ</value>
+  </data>
+  <data name="Attachments" xml:space="preserve">
+    <value>منسلکات</value>
+  </data>
+  <data name="Forward" xml:space="preserve">
+    <value>فارورڈ کریں</value>
+  </data>
+  <data name="DeleteMessage" xml:space="preserve">
+    <value>پیغام حذف کریں</value>
+  </data>
+  <data name="EditMessage" xml:space="preserve">
+    <value>پیغام میں ترمیم کریں</value>
+  </data>
+  <data name="MuteNotifications" xml:space="preserve">
+    <value>اطلاعات خاموش کریں</value>
+  </data>
+  <data name="UnmuteNotifications" xml:space="preserve">
+    <value>اطلاعات بحال کریں</value>
+  </data>
+  <data name="CreateGroup" xml:space="preserve">
+    <value>گروپ بنائیں</value>
+  </data>
+  <data name="GroupName" xml:space="preserve">
+    <value>گروپ کا نام</value>
+  </data>
+  <data name="LeaveGroup" xml:space="preserve">
+    <value>گروپ چھوڑیں</value>
+  </data>
+  <data name="Call" xml:space="preserve">
+    <value>کال</value>
+  </data>
+  <data name="VoiceCall" xml:space="preserve">
+    <value>آڈیو کال</value>
+  </data>
+  <data name="VideoCall" xml:space="preserve">
+    <value>ویڈیو کال</value>
+  </data>
+  <data name="EndCall" xml:space="preserve">
+    <value>کال ختم کریں</value>
+  </data>
+  <data name="Connecting" xml:space="preserve">
+    <value>کنیکٹ ہو رہا ہے...</value>
+  </data>
+  <data name="IncomingCall" xml:space="preserve">
+    <value>آنے والی کال</value>
+  </data>
+  <data name="Choose" xml:space="preserve">
+    <value>منتخب کریں</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>ہٹائیں</value>
+  </data>
+  <data name="AvailableOnHimo" xml:space="preserve">
+    <value>Himo پر دستیاب</value>
+  </data>
+  <data name="AccountInfo" xml:space="preserve">
+    <value>اکاؤنٹ کی معلومات</value>
+  </data>
+  <data name="ChangeUsername" xml:space="preserve">
+    <value>صارف نام تبدیل کریں</value>
+  </data>
+  <data name="ChangePhone" xml:space="preserve">
+    <value>فون نمبر تبدیل کریں</value>
+  </data>
+  <data name="ChangeEmail" xml:space="preserve">
+    <value>ای میل پتہ تبدیل کریں</value>
+  </data>
+  <data name="PrivacySettings" xml:space="preserve">
+    <value>رازداری کی ترتیبات</value>
+  </data>
+  <data name="Backup" xml:space="preserve">
+    <value>بیک اپ</value>
+  </data>
+  <data name="Restore" xml:space="preserve">
+    <value>بحال کریں</value>
+  </data>
+  <data name="NotificationsEnabled" xml:space="preserve">
+    <value>اطلاعات فعال ہیں۔</value>
+  </data>
+  <data name="NotificationsDisabled" xml:space="preserve">
+    <value>اطلاعات بند ہیں۔</value>
+  </data>
+  <data name="PermissionDenied" xml:space="preserve">
+    <value>اجازت نہیں دی گئی۔</value>
+  </data>
+  <data name="Retry" xml:space="preserve">
+    <value>دوبارہ کوشش کریں</value>
+  </data>
+  <data name="AreYouSure" xml:space="preserve">
+    <value>کیا آپ کو یقین ہے؟</value>
+  </data>
+  <data name="NewGroup" xml:space="preserve">
+    <value>نیا گروپ</value>
+  </data>
+  <data name="WelcomeBack" xml:space="preserve">
+    <value>واپس خوش آمدید</value>
+  </data>
+  <data name="UnlimitedCommunication" xml:space="preserve">
+    <value>بلا حدود رابطہ کریں</value>
+  </data>
+  <data name="SelectedCount" xml:space="preserve">
+    <value>1 منتخب</value>
+  </data>
+  <data name="DeleteSelectedChats" xml:space="preserve">
+    <value>منتخب چیٹس حذف کریں</value>
+  </data>
+  <data name="MuteSelectedChats" xml:space="preserve">
+    <value>منتخب چیٹس کی اطلاعات خاموش کریں</value>
+  </data>
+  <data name="ArchiveSelectedChats" xml:space="preserve">
+    <value>منتخب چیٹس آرکائیو کریں</value>
+  </data>
+  <data name="BlockSelectedPerson" xml:space="preserve">
+    <value>منتخب شخص کو بلاک کریں</value>
+  </data>
+  <data name="ClearSelection" xml:space="preserve">
+    <value>انتخاب ختم کریں</value>
+  </data>
+  <data name="ArchivedChats" xml:space="preserve">
+    <value>آرکائیو چیٹس دیکھیں</value>
+  </data>
+  <data name="StartConversation" xml:space="preserve">
+    <value>چیٹ شروع کریں</value>
+  </data>
+  <data name="StartNewConversation" xml:space="preserve">
+    <value>نئی چیٹ شروع کریں</value>
+  </data>
+  <data name="CallHistory" xml:space="preserve">
+    <value>کال ہسٹری</value>
+  </data>
+  <data name="RecentCalls" xml:space="preserve">
+    <value>حالیہ کالز اور دوبارہ کال کے اختیارات</value>
+  </data>
+  <data name="NoCallsYet" xml:space="preserve">
+    <value>ابھی کوئی کال نہیں</value>
+  </data>
+  <data name="CallFromChatHint" xml:space="preserve">
+    <value>آپ کسی بھی چیٹ سے آڈیو یا ویڈیو کال کر سکتے ہیں۔</value>
+  </data>
+  <data name="ReturnToChats" xml:space="preserve">
+    <value>چیٹس پر واپس جائیں</value>
+  </data>
+  <data name="RedialAudio" xml:space="preserve">
+    <value>آڈیو دوبارہ کال کریں</value>
+  </data>
+  <data name="RedialVideo" xml:space="preserve">
+    <value>ویڈیو دوبارہ کال کریں</value>
+  </data>
+  <data name="FindPeople" xml:space="preserve">
+    <value>لوگ تلاش کریں</value>
+  </data>
+  <data name="UsePhoneOrEmail" xml:space="preserve">
+    <value>فون نمبر یا ای میل کے لیے ایک ہی سرچ فیلڈ استعمال کریں۔</value>
+  </data>
+  <data name="PhoneOrEmail" xml:space="preserve">
+    <value>فون نمبر یا ای میل</value>
+  </data>
+  <data name="SearchLoading" xml:space="preserve">
+    <value>تلاش جاری ہے...</value>
+  </data>
+  <data name="ContactsHint" xml:space="preserve">
+    <value>تمام رابطے دیکھنے کے لیے اوپر سرچ آئیکن دبائیں۔ فون نمبر والے اکاؤنٹس صرف تب دکھائی دیتے ہیں جب مالک نے تلاش کی اجازت دی ہو۔</value>
+  </data>
+  <data name="EnterPhoneEmail" xml:space="preserve">
+    <value>شروع کرنے کے لیے فون نمبر یا ای میل درج کریں۔</value>
+  </data>
+  <data name="SearchBeforeResults" xml:space="preserve">
+    <value>تلاش کرنے سے پہلے نتائج نہیں دکھیں گے</value>
+  </data>
+  <data name="AccountActive" xml:space="preserve">
+    <value>آپ کا اکاؤنٹ فعال ہے</value>
+  </data>
+  <data name="PhonePrivateHint" xml:space="preserve">
+    <value>آپ کا فون نمبر دوسرے صارفین کو نظر نہیں آتا۔ آپ اکاؤنٹ مینجمنٹ میں فون کے ذریعے تلاش ہونے کی اجازت بدل سکتے ہیں۔</value>
+  </data>
+  <data name="EnableHimoNotifications" xml:space="preserve">
+    <value>Himo اطلاعات فعال کریں</value>
+  </data>
+  <data name="NotificationToggleHint" xml:space="preserve">
+    <value>پیغام اور کال کی اطلاعات آن یا آف کریں</value>
+  </data>
+  <data name="OpenAndroidSettings" xml:space="preserve">
+    <value>Android ترتیبات کھولیں</value>
+  </data>
+  <data name="ChatsAppearanceDescription" xml:space="preserve">
+    <value>ارسال، میڈیا، متن کا سائز، آرکائیو اور بیک اپ</value>
+  </data>
+  <data name="ManageFilesAndNetwork" xml:space="preserve">
+    <value>فائلز اور تصاویر کا انتظام اور نیٹ ورک استعمال دیکھیں</value>
+  </data>
+  <data name="IconThemeDescription" xml:space="preserve">
+    <value>مکمل تھیم منتخب کر کے انٹرفیس کے رنگ اور آئیکنز بدلیں</value>
+  </data>
+  <data name="AppLock" xml:space="preserve">
+    <value>ایپ لاک</value>
+  </data>
+  <data name="SetPasscode" xml:space="preserve">
+    <value>ایپ کی حفاظت کے لیے پاس کوڈ مقرر کریں</value>
+  </data>
+  <data name="NewPasscode" xml:space="preserve">
+    <value>نیا کوڈ (4–6 ہندسے)</value>
+  </data>
+  <data name="SaveLockCode" xml:space="preserve">
+    <value>لاک کوڈ محفوظ کریں</value>
+  </data>
+  <data name="DisplayNameHint" xml:space="preserve">
+    <value>ایسا واضح نام رکھیں تاکہ دوست آپ کو آسانی سے تلاش کر سکیں۔</value>
+  </data>
+  <data name="StatusHint" xml:space="preserve">
+    <value>اپنی موجودہ حالت کے بارے میں مختصر جملہ لکھیں۔</value>
+  </data>
+  <data name="ProfileSavedHint" xml:space="preserve">
+    <value>آپ کی تصویر اکاؤنٹ میں محفوظ ہوتی ہے اور دوبارہ لاگ ان کرنے پر دستیاب رہے گی۔</value>
+  </data>
+  <data name="PhotoFormatLimit" xml:space="preserve">
+    <value>JPG، PNG، WebP یا HEIC · زیادہ سے زیادہ 4 MB</value>
+  </data>
+  <data name="FullName" xml:space="preserve">
+    <value>پورا نام</value>
+  </data>
+  <data name="EnterYourName" xml:space="preserve">
+    <value>وہ نام لکھیں جو آپ دکھانا چاہتے ہیں</value>
+  </data>
+  <data name="OptionalPhone" xml:space="preserve">
+    <value>فون نمبر (اختیاری)</value>
+  </data>
+  <data name="EightChars" xml:space="preserve">
+    <value>کم از کم 8 حروف</value>
+  </data>
+  <data name="AgreeTo" xml:space="preserve">
+    <value>میں اتفاق کرتا ہوں: </value>
+  </data>
+  <data name="TermsOfUse" xml:space="preserve">
+    <value>استعمال کی شرائط</value>
+  </data>
+  <data name="PrivacyPolicy" xml:space="preserve">
+    <value>پرائیویسی پالیسی</value>
+  </data>
+  <data name="BeforeCreatingAccount" xml:space="preserve">
+    <value> اکاؤنٹ بنانے سے پہلے۔</value>
+  </data>
+  <data name="VerificationCode" xml:space="preserve">
+    <value>تصدیقی کوڈ</value>
+  </data>
+  <data name="SixDigitCode" xml:space="preserve">
+    <value>6 ہندسوں کا تصدیقی کوڈ</value>
+  </data>
+  <data name="VerificationEmailHint" xml:space="preserve">
+    <value>اکاؤنٹ بنانے کے لیے ای میل پر بھیجا گیا کوڈ درج کریں۔</value>
+  </data>
+  <data name="ResendVerification" xml:space="preserve">
+    <value>تصدیقی کوڈ دوبارہ بھیجیں</value>
+  </data>
+  <data name="AlreadyHaveAccount" xml:space="preserve">
+    <value>کیا آپ کا اکاؤنٹ پہلے سے ہے؟</value>
+  </data>
+  <data name="NoAccount" xml:space="preserve">
+    <value>اکاؤنٹ نہیں ہے؟</value>
+  </data>
+  <data name="SignInToContinue" xml:space="preserve">
+    <value>جاری رکھنے کے لیے لاگ ان کریں</value>
+  </data>
+  <data name="RecoverAccess" xml:space="preserve">
+    <value>محفوظ طریقے سے اپنے اکاؤنٹ تک رسائی بحال کریں</value>
+  </data>
+  <data name="LetsGetBack" xml:space="preserve">
+    <value>آئیے آپ کے اکاؤنٹ تک رسائی بحال کریں</value>
+  </data>
+  <data name="SendVerificationCode" xml:space="preserve">
+    <value>تصدیقی کوڈ بھیجیں</value>
+  </data>
+  <data name="CompleteRecovery" xml:space="preserve">
+    <value>بحالی مکمل کریں</value>
+  </data>
+  <data name="NewPassword" xml:space="preserve">
+    <value>نیا پاس ورڈ</value>
+  </data>
+  <data name="EnterCodeSent" xml:space="preserve">
+    <value>ای میل پر بھیجا گیا کوڈ درج کریں</value>
+  </data>
+  <data name="LoadingContacts" xml:space="preserve">
+    <value>رابطے لوڈ ہو رہے ہیں...</value>
+  </data>
+  <data name="NoContacts" xml:space="preserve">
+    <value>دکھانے کے لیے کوئی رابطہ نہیں</value>
+  </data>
+  <data name="ContactsPermissionHint" xml:space="preserve">
+    <value>یقینی بنائیں کہ فون میں رابطے موجود ہیں اور Himo کو رسائی کی اجازت ہے۔</value>
+  </data>
+  <data name="NoMessagesYet" xml:space="preserve">
+    <value>ابھی کوئی پیغام نہیں</value>
+  </data>
+  <data name="StartChatHint" xml:space="preserve">
+    <value>پہلا پیغام بھیج کر گفتگو شروع کریں</value>
+  </data>
+  <data name="NewMessages" xml:space="preserve">
+    <value>نئے پیغامات</value>
+  </data>
+  <data name="ReplyToMessage" xml:space="preserve">
+    <value>پیغام کا جواب دیں</value>
+  </data>
+  <data name="RecordingVoiceMessage" xml:space="preserve">
+    <value>وائس میسج ریکارڈ ہو رہا ہے...</value>
+  </data>
+  <data name="TapToStopRecording" xml:space="preserve">
+    <value>ریکارڈنگ روکنے کے لیے ٹیپ کریں</value>
+  </data>
+  <data name="SendMedia" xml:space="preserve">
+    <value>میڈیا بھیجیں</value>
+  </data>
+  <data name="ChooseWhatToSend" xml:space="preserve">
+    <value>منتخب کریں کہ کیا بھیجنا ہے</value>
+  </data>
+  <data name="VideoPlayer" xml:space="preserve">
+    <value>ویڈیو پلیئر</value>
+  </data>
+  <data name="SecureCall" xml:space="preserve">
+    <value>Himo کے ذریعے محفوظ کال</value>
+  </data>
+  <data name="RejectCall" xml:space="preserve">
+    <value>کال مسترد کریں</value>
+  </data>
+  <data name="AnswerCall" xml:space="preserve">
+    <value>کال کا جواب دیں</value>
+  </data>
+  <data name="CancelCall" xml:space="preserve">
+    <value>کال منسوخ کریں</value>
+  </data>
+  <data name="MuteMicrophone" xml:space="preserve">
+    <value>مائیکروفون خاموش کریں</value>
+  </data>
+  <data name="ToggleCamera" xml:space="preserve">
+    <value>کیمرہ آن یا آف کریں</value>
+  </data>
+  <data name="IncomingAudio" xml:space="preserve">
+    <value>آنے والی آڈیو</value>
+  </data>
+  <data name="IncomingVideo" xml:space="preserve">
+    <value>ویڈیو کا انتظار ہے</value>
+  </data>
+  <data name="ShowPassword" xml:space="preserve">
+    <value>پاس ورڈ دکھائیں یا چھپائیں</value>
+  </data>
+  <data name="ShowConfirmPassword" xml:space="preserve">
+    <value>پاس ورڈ کی تصدیق دکھائیں یا چھپائیں</value>
+  </data>
+  <data name="AccountPermissionHint" xml:space="preserve">
+    <value>آپ کسی بھی وقت ترتیبات میں ڈیوائس کی اجازتیں کنٹرول کر سکتے ہیں۔</value>
+  </data>
+  <data name="LanguageArabic" xml:space="preserve">
+    <value>عربی</value>
+  </data>
+  <data name="LanguageEnglish" xml:space="preserve">
+    <value>انگریزی</value>
+  </data>
+  <data name="LanguageFrench" xml:space="preserve">
+    <value>فرانسیسی</value>
+  </data>
+  <data name="LanguageTurkish" xml:space="preserve">
+    <value>ترکی</value>
+  </data>
+  <data name="LanguageUrdu" xml:space="preserve">
+    <value>اردو</value>
+  </data>
+  <data name="LanguageSpanish" xml:space="preserve">
+    <value>ہسپانوی</value>
+  </data>
+  <data name="LanguageIndonesian" xml:space="preserve">
+    <value>انڈونیشیائی</value>
+  </data>
+  <data name="LanguageChangeNote" xml:space="preserve">
+    <value>زبان ان اسکرینوں پر لاگو ہوگی جن کے لیے ترجمے کے وسائل موجود ہیں۔</value>
+  </data>
+  <data name="LanguageArabicFull" xml:space="preserve">
+    <value>عربی زبان</value>
+  </data>
+  <data name="HimoAccount" xml:space="preserve">
+    <value>Himo پر آپ کا اکاؤنٹ</value>
+  </data>
+  <data name="ProtectYourInfo" xml:space="preserve">
+    <value>اپنی معلومات محفوظ رکھیں</value>
+  </data>
+  <data name="PrivacySecurityDescription" xml:space="preserve">
+    <value>رازداری اور سیکیورٹی کی ترتیبات</value>
+  </data>
+  <data name="AccountFieldsDescription" xml:space="preserve">
+    <value>فون، نام، ای میل اور پاس ورڈ</value>
+  </data>
+  <data name="CustomizeNotifications" xml:space="preserve">
+    <value>ایپ اطلاعات حسب ضرورت بنائیں</value>
+  </data>
+  <data name="AppearanceExperience" xml:space="preserve">
+    <value>ظاہری شکل اور تجربہ</value>
+  </data>
+  <data name="SettingsTextSizeHint" xml:space="preserve">
+    <value>ترتیبات صفحے میں متن کا سائز مقرر کریں</value>
+  </data>
+  <data name="AppLockOff" xml:space="preserve">
+    <value>ایپ لاک بند ہے۔</value>
+  </data>
+  <data name="ContactsSavedOnPhone" xml:space="preserve">
+    <value>آپ کے فون میں محفوظ نام</value>
+  </data>
+  <data name="MatchingHimoAccounts" xml:space="preserve">
+    <value>Himo سے مماثل اکاؤنٹس</value>
+  </data>
+  <data name="NumbersNotShared" xml:space="preserve">
+    <value>آپ کی اجازت کے بغیر نمبر شیئر نہیں ہوں گے</value>
+  </data>
+  <data name="PrivacyCheckup" xml:space="preserve">
+    <value>رازداری کا جائزہ</value>
+  </data>
+  <data name="SavedOnThisDevice" xml:space="preserve">
+    <value>آپ کے انتخاب فی الحال اس ڈیوائس پر محفوظ ہیں۔ دوسرے صارفین پر مرئیت کے اصول لاگو کرنے کے لیے سرور کی معاونت درکار ہے۔</value>
+  </data>
+  <data name="AccountSharing" xml:space="preserve">
+    <value>اکاؤنٹ شیئرنگ</value>
+  </data>
+  <data name="BlockUnknownCallers" xml:space="preserve">
+    <value>نامعلوم کال کرنے والوں کو بلاک کریں</value>
+  </data>
+  <data name="BlockedAccounts" xml:space="preserve">
+    <value>بلاک شدہ اکاؤنٹس</value>
+  </data>
+  <data name="DefaultTone" xml:space="preserve">
+    <value>طے شدہ ٹون</value>
+  </data>
+  <data name="Vibration" xml:space="preserve">
+    <value>وائبریشن</value>
+  </data>
+  <data name="NotificationTone" xml:space="preserve">
+    <value>اطلاع کی آواز</value>
+  </data>
+  <data name="AppNotificationsEnabled" xml:space="preserve">
+    <value>ایپ کی اطلاعات فعال ہیں۔</value>
+  </data>
+  <data name="AppNotificationsStopped" xml:space="preserve">
+    <value>ایپ کی اطلاعات بند ہیں۔</value>
+  </data>
+  <data name="DisappearingMessages" xml:space="preserve">
+    <value>غائب ہونے والے پیغامات</value>
+  </data>
+  <data name="SearchInMessages" xml:space="preserve">
+    <value>پیغامات تلاش کریں...</value>
+  </data>
+  <data name="ChatWallpaper" xml:space="preserve">
+    <value>چیٹ وال پیپر</value>
+  </data>
+  <data name="ChatTheme" xml:space="preserve">
+    <value>چیٹ تھیم</value>
+  </data>
+  <data name="TextSizeInChat" xml:space="preserve">
+    <value>چیٹ میں متن کا سائز</value>
+  </data>
+  <data name="BackupNow" xml:space="preserve">
+    <value>ابھی بیک اپ لیں</value>
+  </data>
+  <data name="BackupAutomatic" xml:space="preserve">
+    <value>خودکار بیک اپ</value>
+  </data>
+  <data name="BackupNotAvailable" xml:space="preserve">
+    <value>بیک اپ فی الحال دستیاب نہیں</value>
+  </data>
+  <data name="StorageUnavailable" xml:space="preserve">
+    <value>اس سسٹم پر دستیاب نہیں</value>
+  </data>
+  <data name="DataReceived" xml:space="preserve">
+    <value>موصولہ ڈیٹا</value>
+  </data>
+  <data name="DataSent" xml:space="preserve">
+    <value>بھیجا گیا ڈیٹا</value>
+  </data>
+  <data name="StorageSpace" xml:space="preserve">
+    <value>اسٹوریج کی جگہ</value>
+  </data>
+  <data name="NetworkUsage" xml:space="preserve">
+    <value>نیٹ ورک کا استعمال</value>
+  </data>
+  <data name="ResetStatistics" xml:space="preserve">
+    <value>اعدادوشمار ری سیٹ کریں</value>
+  </data>
+  <data name="ResetComplete" xml:space="preserve">
+    <value>ری سیٹ مکمل ہو گیا</value>
+  </data>
+  <data name="SystemStyle" xml:space="preserve">
+    <value>انٹرفیس تھیمز</value>
+  </data>
+  <data name="Icons" xml:space="preserve">
+    <value>آئیکنز</value>
+  </data>
+  <data name="InterfaceStyle" xml:space="preserve">
+    <value>انٹرفیس کی ظاہری شکل</value>
+  </data>
+  <data name="Preview" xml:space="preserve">
+    <value>پیش نظارہ</value>
+  </data>
+  <data name="Selected" xml:space="preserve">
+    <value>منتخب ✓</value>
+  </data>
+  <data name="ChooseIcon" xml:space="preserve">
+    <value>آئیکن منتخب کریں</value>
+  </data>
+  <data name="ChooseAppearance" xml:space="preserve">
+    <value>ظاہری شکل منتخب کریں</value>
+  </data>
+  <data name="StartChatOrFindFriends" xml:space="preserve">
+    <value>نئی چیٹ شروع کریں یا اپنے دوست تلاش کریں</value>
+  </data>
+  <data name="ViewArchivedChats" xml:space="preserve">
+    <value>آرکائیو چیٹس دیکھیں</value>
+  </data>
+  <data name="ProfileManagePhoto" xml:space="preserve">
+    <value>اپنی تصویر اور معلومات کا انتظام کریں</value>
+  </data>
+  <data name="PersonalAccount" xml:space="preserve">
+    <value>آپ کا ذاتی اکاؤنٹ</value>
+  </data>
+  <data name="HimoUser" xml:space="preserve">
+    <value>Himo صارف</value>
+  </data>
+  <data name="ProfilePhotoAndInfo" xml:space="preserve">
+    <value>Himo پر آپ کی تصویر اور معلومات</value>
+  </data>
+  <data name="YourProfile" xml:space="preserve">
+    <value>آپ کی پروفائل</value>
+  </data>
+  <data name="ChangeProfilePhoto" xml:space="preserve">
+    <value>پروفائل تصویر تبدیل کریں</value>
+  </data>
+  <data name="AddPhoto" xml:space="preserve">
+    <value>تصویر شامل کریں</value>
+  </data>
+  <data name="AccountInformation" xml:space="preserve">
+    <value>اکاؤنٹ کی معلومات</value>
+  </data>
+  <data name="YourName" xml:space="preserve">
+    <value>آپ کا نام</value>
+  </data>
+  <data name="StatusExample" xml:space="preserve">
+    <value>مثال: ابھی دستیاب</value>
+  </data>
+  <data name="TapToView" xml:space="preserve">
+    <value>دیکھنے کے لیے ٹیپ کریں</value>
+  </data>
+  <data name="File" xml:space="preserve">
+    <value>فائل</value>
+  </data>
+  <data name="Contact" xml:space="preserve">
+    <value>رابطہ</value>
+  </data>
+  <data name="CallStatusTimer" xml:space="preserve">
+    <value>منسلک • 00:00</value>
+  </data>
+  <data name="PreparingConnection" xml:space="preserve">
+    <value>کنکشن تیار ہو رہا ہے...</value>
+  </data>
+  <data name="Reject" xml:space="preserve">
+    <value>مسترد کریں</value>
+  </data>
+  <data name="Answer" xml:space="preserve">
+    <value>جواب دیں</value>
+  </data>
+  <data name="ConnectingToOther" xml:space="preserve">
+    <value>دوسرے شخص سے رابطہ ہو رہا ہے</value>
+  </data>
+  <data name="WaitingForAnswer" xml:space="preserve">
+    <value>دوسرے شخص کے جواب کا انتظار ہے...</value>
+  </data>
+  <data name="SearchByNameOrDetails" xml:space="preserve">
+    <value>نام، نمبر یا ای میل سے تلاش کریں</value>
+  </data>
+  <data name="Or" xml:space="preserve">
+    <value>یا</value>
+  </data>
+  <data name="AccountAlreadyExists" xml:space="preserve">
+    <value>کیا آپ کا اکاؤنٹ پہلے سے ہے؟</value>
+  </data>
+  <data name="ThemeAndAppearance" xml:space="preserve">
+    <value>ظاہری شکل اور تجربہ</value>
+  </data>
+  <data name="LanguageArabicOption" xml:space="preserve">
+    <value>عربی</value>
+  </data>
+  <data name="Features" xml:space="preserve">
+    <value>خصوصیات</value>
+  </data>
+  <data name="AccountActionsDescription" xml:space="preserve">
+    <value>آلات سے لاگ آؤٹ، سائن آؤٹ یا اکاؤنٹ مستقل حذف کریں</value>
+  </data>
+  <data name="Resend" xml:space="preserve">
+    <value>دوبارہ بھیجیں</value>
+  </data>
+  <data name="Image" xml:space="preserve">
+    <value>تصویر</value>
+  </data>
+  <data name="Attachment" xml:space="preserve">
+    <value>منسلکہ</value>
+  </data>
+  <data name="Conversation" xml:space="preserve">
+    <value>چیٹ</value>
+  </data>
+  <data name="TheVideo" xml:space="preserve">
+    <value>ویڈیو</value>
+  </data>
+  <data name="EndAndReturn" xml:space="preserve">
+    <value>ختم کریں اور واپس جائیں</value>
+  </data>
+  <data name="MuteSound" xml:space="preserve">
+    <value>آواز خاموش کریں</value>
+  </data>
+  <data name="TurnCameraOff" xml:space="preserve">
+    <value>کیمرہ بند کریں</value>
+  </data>
+  <data name="Speaker" xml:space="preserve">
+    <value>اسپیکر</value>
+  </data>
+  <data name="OtherPartyAudio" xml:space="preserve">
+    <value>دوسرے شخص کی آواز</value>
+  </data>
+  <data name="MoreCallOptions" xml:space="preserve">
+    <value>کال کے مزید اختیارات</value>
+  </data>
+  <data name="More" xml:space="preserve">
+    <value>مزید</value>
+  </data>
+  <data name="Match" xml:space="preserve">
+    <value>میچ کریں</value>
+  </data>
+  <data name="HimoTagline" xml:space="preserve">
+    <value>Himo · بلا حدود رابطہ</value>
+  </data>
+  <data name="CreateAccountShort" xml:space="preserve">
+    <value>اکاؤنٹ بنائیں</value>
+  </data>
+  <data name="BackToLogin" xml:space="preserve">
+    <value>لاگ ان پر واپس جائیں</value>
+  </data>
+  <data name="JoinHimo" xml:space="preserve">
+    <value>Himo میں شامل ہوں اور آسانی سے رابطہ کریں</value>
+  </data>
+  <data name="RetypePassword" xml:space="preserve">
+    <value>پاس ورڈ دوبارہ درج کریں</value>
+  </data>
+  <data name="And" xml:space="preserve">
+    <value>اور</value>
+  </data>
+  <data name="BackToLoginShort" xml:space="preserve">
+    <value>لاگ ان پر واپس جائیں</value>
+  </data>
+  <data name="SendPasswordResetEmail" xml:space="preserve">
+    <value>اپنا ای میل درج کریں، ہم پاس ورڈ ری سیٹ کرنے کے لیے کوڈ بھیجیں گے۔</value>
+  </data>
+  <data name="VerificationCodeSix" xml:space="preserve">
+    <value>تصدیقی کوڈ (6 ہندسے)</value>
+  </data>
+  <data name="PasswordSecurityHint" xml:space="preserve">
+    <value>کم از کم 8 حروف کا نیا پاس ورڈ استعمال کریں۔ تصدیقی کوڈ کسی سے شیئر نہ کریں۔</value>
+  </data>
+  <data name="SaveNewPassword" xml:space="preserve">
+    <value>نیا پاس ورڈ محفوظ کریں</value>
+  </data>
+  <data name="EmailNotReceivedHint" xml:space="preserve">
+    <value>ای میل نہیں آئی؟ نیا کوڈ مانگنے سے پہلے اسپیم فولڈر دیکھیں۔</value>
+  </data>
+<data name="UIExtra001" xml:space="preserve"><value>اکاؤنٹ شامل کریں</value></data><data name="UIExtra002" xml:space="preserve"><value>تفصیلات سنبھالنے کے لیے کوئی حصہ منتخب کریں۔ تبدیلیاں صرف تصدیق کے بعد محفوظ ہوں گی۔</value></data><data name="UIExtra003" xml:space="preserve"><value>ای میل اور سائن اِن کی معلومات</value></data><data name="UIExtra004" xml:space="preserve"><value>سائن اِن اور سیکیورٹی</value></data><data name="UIExtra005" xml:space="preserve"><value>ذاتی معلومات</value></data><data name="UIExtra006" xml:space="preserve"><value>سائن اِن کی تفصیلات</value></data><data name="UIExtra007" xml:space="preserve"><value>آپ کے اکاؤنٹ کی معلومات محفوظ طریقے سے رکھی جاتی ہیں</value></data><data name="UIExtra008" xml:space="preserve"><value>آپ کی ذاتی معلومات اور اکاؤنٹ سیکیورٹی</value></data><data name="UIExtra009" xml:space="preserve"><value>Himo پر دکھایا جانے والا نام تبدیل کریں</value></data><data name="UIExtra010" xml:space="preserve"><value>محفوظ تصدیقی کوڈ کے ذریعے پاس ورڈ تبدیل کریں</value></data><data name="UIExtra011" xml:space="preserve"><value>ملک کا کوڈ اور نمبر کی رازداری</value></data><data name="UIExtra012" xml:space="preserve"><value>دوسرے اکاؤنٹ سے سائن اِن کھولیں</value></data><data name="UIExtra013" xml:space="preserve"><value>Himo • آپ کے اکاؤنٹ کا تحفظ یہاں سے شروع ہوتا ہے</value></data><data name="UIExtra014" xml:space="preserve"><value>لاک کوڈ درج کریں</value></data><data name="UIExtra015" xml:space="preserve"><value>اپنے اکاؤنٹ پر جانے کے لیے لاک کوڈ درج کریں</value></data><data name="UIExtra016" xml:space="preserve"><value>ایپ مقفل ہے</value></data><data name="UIExtra017" xml:space="preserve"><value>لاک کوڈ</value></data><data name="UIExtra018" xml:space="preserve"><value>آپ کا کوڈ چیٹس اور ڈیٹا کی رازداری کی حفاظت کرتا ہے</value></data><data name="UIExtra019" xml:space="preserve"><value>ان لاک کریں</value></data><data name="UIExtra020" xml:space="preserve"><value>Himo لاک</value></data><data name="UIExtra021" xml:space="preserve"><value>سیاہ و سفید</value></data><data name="UIExtra022" xml:space="preserve"><value>قدرتی چمک</value></data><data name="UIExtra023" xml:space="preserve"><value>ٹھنڈا</value></data><data name="UIExtra024" xml:space="preserve"><value>صاف جلد</value></data><data name="UIExtra025" xml:space="preserve"><value>مخملی جلد</value></data><data name="UIExtra026" xml:space="preserve"><value>فوکس</value></data><data name="UIExtra027" xml:space="preserve"><value>ریشمی چمک</value></data><data name="UIExtra028" xml:space="preserve"><value>شوخ</value></data><data name="UIExtra029" xml:space="preserve"><value>گرم</value></data><data name="UIExtra030" xml:space="preserve"><value>سیپیا</value></data><data name="UIExtra031" xml:space="preserve"><value>گرڈ</value></data><data name="UIExtra032" xml:space="preserve"><value>اعلیٰ معیار کی تصویر</value></data><data name="UIExtra033" xml:space="preserve"><value>قدرتی</value></data><data name="UIExtra034" xml:space="preserve"><value>فلٹرز</value></data><data name="UIExtra035" xml:space="preserve"><value>فلیش</value></data><data name="UIExtra036" xml:space="preserve"><value>Himo کیمرا</value></data><data name="UIExtra037" xml:space="preserve"><value>ٹائمر 0 سیکنڈ</value></data><data name="UIExtra038" xml:space="preserve"><value>مکمل میک اپ</value></data><data name="UIExtra039" xml:space="preserve"><value>ہلکا میک اپ</value></data><data name="UIExtra040" xml:space="preserve"><value>0 اراکین</value></data><data name="UIExtra041" xml:space="preserve"><value>اپنے گروپ میں اراکین شامل کریں</value></data><data name="UIExtra042" xml:space="preserve"><value>گروپ کے اراکین</value></data><data name="UIExtra043" xml:space="preserve"><value>گروپ بنائیں</value></data><data name="UIExtra044" xml:space="preserve"><value>اپنے دوستوں کے ساتھ گروپ چیٹ شروع کریں</value></data><data name="UIExtra045" xml:space="preserve"><value>Himo پر رجسٹرڈ نام، ای میل یا فون نمبر لکھیں، پھر شامل کریں دبائیں۔</value></data><data name="UIExtra046" xml:space="preserve"><value>نام، ای میل یا فون نمبر</value></data><data name="UIExtra047" xml:space="preserve"><value>میڈیا پیش منظر</value></data><data name="UIExtra048" xml:space="preserve"><value>کیپشن شامل کریں…</value></data><data name="UIExtra049" xml:space="preserve"><value>آغاز</value></data><data name="UIExtra050" xml:space="preserve"><value>اختتام</value></data><data name="UIExtra051" xml:space="preserve"><value>فائل تیار ہو رہی ہے…</value></data><data name="UIExtra052" xml:space="preserve"><value>محفوظ کریں اور بھیجیں</value></data><data name="UIExtra053" xml:space="preserve"><value>ویڈیو ترمیم کے لیے تیار ہے</value></data><data name="UIExtra054" xml:space="preserve"><value>ویڈیو تراشیں اور آواز بند کریں</value></data><data name="UIExtra055" xml:space="preserve"><value>ویڈیو کی آواز بند کریں</value></data><data name="UIExtra056" xml:space="preserve"><value>اپنے پروفائل اور Himo ترتیبات ایک جگہ سے سنبھالیں</value></data><data name="UIExtra057" xml:space="preserve"><value>آوازیں، انتباہات اور وائبریشن</value></data><data name="UIExtra058" xml:space="preserve"><value>نام، اسٹیٹس اور رابطے کی تفصیلات</value></data><data name="UIExtra059" xml:space="preserve"><value>ظاہری شکل اور انٹرفیس</value></data><data name="UIExtra060" xml:space="preserve"><value>رنگ اور آئیکنز حسبِ ضرورت بنائیں</value></data><data name="UIExtra061" xml:space="preserve"><value>آپ کا Himo اکاؤنٹ</value></data><data name="UIExtra062" xml:space="preserve"><value>اپنے اکاؤنٹ کی حفاظت اور معلومات کا انتظام کریں</value></data><data name="UIExtra063" xml:space="preserve"><value>ایپ کے مسائل حل کرنے کے فوری اقدامات</value></data><data name="UIExtra064" xml:space="preserve"><value>Himo اور موجودہ ورژن کے بارے میں</value></data><data name="UIExtra065" xml:space="preserve"><value>Himo پروفائل</value></data><data name="UIExtra066" xml:space="preserve"><value>ٹھیک ہے</value></data><data name="UIExtra067" xml:space="preserve"><value>درست ای میل ایڈریس درج کریں۔</value></data><data name="UIExtra068" xml:space="preserve"><value>پاس ورڈ ایک جیسے نہیں ہیں۔</value></data><data name="UIExtra069" xml:space="preserve"><value>6 ہندسوں کا تصدیقی کوڈ درج کریں۔</value></data><data name="UIExtra070" xml:space="preserve"><value>پاس ورڈ 8 سے 128 حروف کا ہونا چاہیے۔</value></data><data name="UIExtra071" xml:space="preserve"><value>1 سے 60 حروف کا نام درج کریں۔</value></data><data name="UIExtra072" xml:space="preserve"><value>تصویر اپ ڈیٹ ہو گئی</value></data><data name="UIExtra073" xml:space="preserve"><value>صفحہ نہیں کھل سکا:</value></data><data name="UIExtra074" xml:space="preserve"><value>پہلے سائن اِن کریں۔</value></data><data name="UIExtra075" xml:space="preserve"><value>کیمرا سے تصویر لیں</value></data><data name="UIExtra076" xml:space="preserve"><value>گیلری سے تصویر منتخب کریں</value></data><data name="UIExtra077" xml:space="preserve"><value>پروفائل تصویر منتخب کریں</value></data><data name="UIExtra078" xml:space="preserve"><value>پروفائل تصویر ہٹا دی گئی۔</value></data><data name="UIExtra079" xml:space="preserve"><value>کیا آپ پروفائل تصویر ہٹانا چاہتے ہیں؟</value></data><data name="UIExtra080" xml:space="preserve"><value>پروفائل تصویر کامیابی سے اپ ڈیٹ ہو گئی۔</value></data><data name="UIExtra081" xml:space="preserve"><value>Himo اکاؤنٹس تلاش کرنے کے لیے پہلے سائن اِن کریں۔</value></data><data name="UIExtra082" xml:space="preserve"><value>دکھائے گئے اعدادوشمار ری سیٹ ہو گئے ہیں۔ کوئی مواد حذف نہیں کیا گیا۔</value></data><data name="UIExtra083" xml:space="preserve"><value>نیٹ ورک، کال، پیغام اور میڈیا کے استعمال کی گنتی صفر سے شروع ہوگی۔ چیٹس یا فائلیں حذف نہیں ہوں گی۔</value></data><data name="UIExtra084" xml:space="preserve"><value>شامل کریں</value></data><data name="SubpageExtra001" xml:space="preserve"><value>رازداری کی ترتیبات پر واپس جائیں</value></data><data name="SubpageExtra002" xml:space="preserve"><value>متحرک پس منظر روکیں</value></data><data name="SubpageExtra003" xml:space="preserve"><value>اپنی چیٹس کے لیے رنگوں کا انداز منتخب کریں۔ رنگین تھیمز تصویری پس منظر سے الگ ہیں۔</value></data><data name="SubpageExtra004" xml:space="preserve"><value>پہلے سے موجود تصویر یا اپنے آلے سے تصویر منتخب کریں۔ تصویری پس منظر رنگین تھیمز سے الگ محفوظ ہوتے ہیں۔</value></data><data name="SubpageExtra005" xml:space="preserve"><value>چیٹ کے پس منظر کی تصویر منتخب کریں</value></data><data name="SubpageExtra006" xml:space="preserve"><value>چیٹ کے پس منظر کے لیے MP4 ویڈیو منتخب کریں</value></data><data name="SubpageExtra007" xml:space="preserve"><value>چیٹ کے خاموش پس منظر کے لیے ویڈیو منتخب کریں۔ بلٹ اِن کلپس کے لیے انٹرنیٹ درکار ہے اور چیٹ چھوڑنے پر بند ہو جاتے ہیں۔</value></data><data name="SubpageExtra008" xml:space="preserve"><value>آلے سے MP4 ویڈیو منتخب کریں</value></data><data name="SubpageExtra009" xml:space="preserve"><value>تصویر منتخب نہیں ہو سکی:</value></data><data name="SubpageExtra010" xml:space="preserve"><value>ویڈیو منتخب نہیں ہو سکی:</value></data><data name="SubpageExtra011" xml:space="preserve"><value>ویڈیو استعمال نہیں ہو سکی:</value></data><data name="SubpageExtra012" xml:space="preserve"><value>منتخب کردہ تصویر محفوظ ہو گئی اور چیٹ کے پس منظر کے طور پر استعمال ہوگی۔</value></data><data name="SubpageExtra013" xml:space="preserve"><value>منتخب ویڈیو محفوظ ہو گئی۔ یہ ان چیٹس کا خاموش پس منظر ہوگی جن کا اپنا پس منظر نہیں ہے۔</value></data><data name="SubpageExtra014" xml:space="preserve"><value>آپ کے انتخاب خود بخود محفوظ ہوتے ہیں اور چیٹ کھلنے پر لاگو ہوتے ہیں۔</value></data><data name="SubpageExtra015" xml:space="preserve"><value>بھیجے گئے اور موصولہ پیغامات کے رنگ الگ الگ منتخب کریں۔ ایپ دوبارہ کھولنے پر بھی انتخاب محفوظ رہیں گے۔</value></data><data name="SubpageExtra016" xml:space="preserve"><value>چیٹ ببل</value></data><data name="SubpageExtra017" xml:space="preserve"><value>ابھی تک کوئی متحرک پس منظر فعال نہیں کیا گیا۔</value></data><data name="SubpageExtra018" xml:space="preserve"><value>＋ گیلری سے تصویر منتخب کریں</value></data><data name="SubpageExtra019" xml:space="preserve"><value>دہرائی کا وقفہ منتخب کریں</value></data><data name="SubpageExtra020" xml:space="preserve"><value>چیٹس</value></data><data name="SubpageExtra021" xml:space="preserve"><value>بیک اپ نہیں بن سکا:</value></data><data name="SubpageExtra022" xml:space="preserve"><value>عمل مکمل نہیں ہو سکا:</value></data><data name="SubpageExtra023" xml:space="preserve"><value>بیک اپ فائل بن گئی ہے اور شیئر مینو کھل گیا ہے۔</value></data><data name="SubpageExtra024" xml:space="preserve"><value>آپ کی ترجیحات اس آلے پر خود بخود محفوظ ہوتی ہیں۔</value></data><data name="SubpageExtra025" xml:space="preserve"><value>چیٹ بیک اپ</value></data><data name="SubpageExtra026" xml:space="preserve"><value>دکھانے کے لیے کوئی مقامی فائل موجود نہیں۔</value></data><data name="SubpageExtra027" xml:space="preserve"><value>اسٹوریج اور نیٹ ورک کے استعمال کا خلاصہ</value></data><data name="SubpageExtra028" xml:space="preserve"><value>وائبریشن پیٹرن منتخب کریں، پھر محفوظ کرنے کے لیے ٹھیک ہے دبائیں۔</value></data><data name="SubpageExtra029" xml:space="preserve"><value>آوازیں، انتباہات اور وائبریشن حسبِ ضرورت بنائیں</value></data><data name="SubpageExtra030" xml:space="preserve"><value>اپنے سیشنز اور اکاؤنٹ کے اقدامات سنبھالیں</value></data><data name="SubpageExtra031" xml:space="preserve"><value>کوئی عمل منتخب کریں۔ اکاؤنٹ حذف کرنا مستقل ہے اور واپس نہیں ہو سکتا۔</value></data><data name="SubpageExtra032" xml:space="preserve"><value>ڈیٹا، کال اور میڈیا کے استعمال کی تفصیلات</value></data><data name="SubpageExtra033" xml:space="preserve"><value>الگ دستیاب نہیں؛ ایپ کی کل ٹریفک میں کالز شامل ہیں</value></data><data name="SubpageExtra034" xml:space="preserve"><value>اس ورژن میں الگ اسٹیٹس کے اعدادوشمار دستیاب نہیں</value></data><data name="SubpageExtra035" xml:space="preserve"><value>آپ کی روزانہ کی جگہ</value></data><data name="SubpageExtra036" xml:space="preserve"><value>متحرک پس منظر</value></data><data name="SubpageExtra037" xml:space="preserve"><value>کال</value></data><data name="SubpageExtra038" xml:space="preserve"><value>وائس پیغامات</value></data><data name="SubpageExtra039" xml:space="preserve"><value>گفتگو</value></data><data name="SubpageExtra040" xml:space="preserve"><value>گروپ</value></data><data name="SubpageExtra041" xml:space="preserve"><value>رکن شامل کریں</value></data><data name="SubpageExtra042" xml:space="preserve"><value>پیغامات حذف کریں</value></data><data name="SubpageExtra043" xml:space="preserve"><value>پیغام آگے بھیجیں</value></data><data name="SubpageExtra044" xml:space="preserve"><value>بھیجا جا رہا ہے</value></data><data name="SubpageExtra045" xml:space="preserve"><value>گفتگو نہیں کھل سکی</value></data><data name="SubpageExtra046" xml:space="preserve"><value>ہٹا دیا گیا</value></data><data name="SubpageExtra047" xml:space="preserve"><value>ری سیٹ کریں</value></data><data name="SubpageExtra048" xml:space="preserve"><value>تصویر نہیں ہٹائی جا سکی</value></data><data name="SubpageExtra049" xml:space="preserve"><value>تصویر اپ ڈیٹ نہیں ہو سکی</value></data><data name="SubpageExtra050" xml:space="preserve"><value>صارف نام اپ ڈیٹ ہو گیا۔</value></data><data name="SubpageExtra051" xml:space="preserve"><value>ای میل کی تصدیق</value></data><data name="SubpageExtra052" xml:space="preserve"><value>رازداری اور رابطے</value></data><data name="SubpageExtra053" xml:space="preserve"><value>Himo کے بارے میں</value></data><data name="SubpageExtra054" xml:space="preserve"><value>مستقل حذف کریں</value></data><data name="SubpageExtra055" xml:space="preserve"><value>فائل کھولیں</value></data><data name="SubpageExtra056" xml:space="preserve"><value>تبدیل ہو گیا</value></data><data name="SubpageExtra057" xml:space="preserve"><value>اکاؤنٹ حذف کریں</value></data><data name="SubpageExtra058" xml:space="preserve"><value>تصویر محفوظ کریں</value></data><data name="SubpageExtra059" xml:space="preserve"><value>اپ ڈیٹ ہو گیا</value></data><data name="SubpageExtra060" xml:space="preserve"><value>اکاؤنٹ بلاک کریں</value></data><data name="SubpageExtra061" xml:space="preserve"><value>حذف نہیں ہو سکا</value></data><data name="SubpageExtra062" xml:space="preserve"><value>میموری صاف کریں</value></data><data name="SubpageExtra063" xml:space="preserve"><value>اکاؤنٹ تبدیل کریں</value></data><data name="SubpageExtra064" xml:space="preserve"><value>گفتگوئیں حذف کریں</value></data><data name="SubpageExtra065" xml:space="preserve"><value>میڈیا میں ترمیم کریں</value></data><data name="SubpageExtra066" xml:space="preserve"><value>پروفائل تصویر</value></data><data name="SubpageExtra067" xml:space="preserve"><value>اتفاق کریں اور جاری رکھیں</value></data><data name="SubpageExtra068" xml:space="preserve"><value>پیغام شیئر کریں</value></data><data name="SubpageExtra069" xml:space="preserve"><value>نام اپ ڈیٹ ہو گیا۔</value></data><data name="SubpageExtra070" xml:space="preserve"><value>رضامندی درکار ہے</value></data><data name="SubpageExtra071" xml:space="preserve"><value>کیمرا کی اجازت</value></data><data name="SubpageExtra072" xml:space="preserve"><value>کال کی معلومات</value></data><data name="SubpageExtra073" xml:space="preserve"><value>کوڈ نہیں بھیجا جا سکا</value></data><data name="SubpageExtra074" xml:space="preserve"><value>آئیکنز اور ظاہری شکل</value></data><data name="SubpageExtra075" xml:space="preserve"><value>رپورٹ بھیج دی گئی۔</value></data><data name="SubpageExtra076" xml:space="preserve"><value>گفتگو بلاک ہو گئی۔</value></data><data name="SubpageExtra077" xml:space="preserve"><value>کوڈ دوبارہ بھیجیں</value></data><data name="SubpageExtra078" xml:space="preserve"><value>سائن اِن نہیں ہو سکا</value></data><data name="SubpageExtra079" xml:space="preserve"><value>فون نمبر سے تلاش کریں</value></data><data name="SubpageExtra080" xml:space="preserve"><value>پیغام آگے بھیج دیا گیا۔</value></data><data name="SubpageExtra081" xml:space="preserve"><value>عارضی کاپی حذف کریں</value></data><data name="SubpageExtra082" xml:space="preserve"><value>رابطوں کی مطابقت</value></data><data name="SubpageExtra083" xml:space="preserve"><value>اراکین شامل نہیں ہو سکے</value></data><data name="SubpageExtra084" xml:space="preserve"><value>گروپ نہیں بن سکا</value></data><data name="SubpageExtra085" xml:space="preserve"><value>گفتگو آرکائیو ہو گئی۔</value></data><data name="SubpageExtra086" xml:space="preserve"><value>گفتگو ان بلاک ہو گئی۔</value></data><data name="SubpageExtra087" xml:space="preserve"><value>آپ کا اسٹیٹس اپ ڈیٹ ہو گیا۔</value></data><data name="SubpageExtra088" xml:space="preserve"><value>نیا پس منظر محفوظ ہو گیا۔</value></data><data name="SubpageExtra089" xml:space="preserve"><value>ویڈیو کامیابی سے منتخب ہو گئی۔</value></data><data name="SubpageExtra090" xml:space="preserve"><value>کچھ اقدامات مکمل نہیں ہو سکے</value></data><data name="SubpageExtra091" xml:space="preserve"><value>تصویر فوٹو لائبریری میں محفوظ ہو گئی۔</value></data><data name="SubpageExtra092" xml:space="preserve"><value>تصویر کامیابی سے منتخب اور محفوظ ہو گئی۔</value></data><data name="SubpageExtra093" xml:space="preserve"><value>گفتگو کی اطلاعات دوبارہ آن ہو گئیں۔</value></data><data name="SubpageExtra094" xml:space="preserve"><value>گفتگو کی اطلاعات خاموش کر دی گئیں۔</value></data><data name="SubpageExtra095" xml:space="preserve"><value>مزید گفتگوئیں دستیاب نہیں۔</value></data><data name="SubpageExtra096" xml:space="preserve"><value>پہلے تصویر کے اندر درست حصہ منتخب کریں۔</value></data><data name="SubpageExtra097" xml:space="preserve"><value>آگے بڑھنے سے پہلے کم از کم ایک شخص شامل کریں۔</value></data><data name="SubpageExtra098" xml:space="preserve"><value>اس وقت انٹرنیٹ کنکشن نہیں ہے۔ نیٹ ورک سے جڑنے کے بعد دوبارہ کوشش کریں۔</value></data><data name="SubpageExtra099" xml:space="preserve"><value>مماثل اکاؤنٹ نہیں ملا۔ نمبر یا ای میل چیک کریں اور یقینی بنائیں کہ اکاؤنٹ Himo پر رجسٹرڈ ہے۔</value></data><data name="Accessibility001" xml:space="preserve"><value>کیمرا بند کریں</value></data><data name="Accessibility002" xml:space="preserve"><value>کیمرا تبدیل کریں</value></data><data name="Accessibility003" xml:space="preserve"><value>رکن ہٹائیں</value></data><data name="Accessibility004" xml:space="preserve"><value>میڈیا گفتگو میں بھیجیں</value></data><data name="Accessibility005" xml:space="preserve"><value>پیش منظر بند کریں</value></data><data name="Accessibility006" xml:space="preserve"><value>بھیجنے سے پہلے تصویر میں ترمیم کریں</value></data><data name="Accessibility007" xml:space="preserve"><value>میڈیا بھیجیں</value></data><data name="Accessibility008" xml:space="preserve"><value>عربی یا انگریزی متن شامل کریں</value></data><data name="Accessibility009" xml:space="preserve"><value>میڈیا ایڈیٹر بند کریں</value></data><data name="Accessibility010" xml:space="preserve"><value>آخری ڈرائنگ واپس لیں</value></data><data name="Accessibility011" xml:space="preserve"><value>تصویر کو 90 ڈگری گھمائیں</value></data><data name="Accessibility012" xml:space="preserve"><value>ویڈیو پیش منظر چلائیں</value></data><data name="Accessibility013" xml:space="preserve"><value>قلم کا سائز کم کریں</value></data><data name="Accessibility014" xml:space="preserve"><value>قلم کا سائز بڑھائیں</value></data><data name="Accessibility015" xml:space="preserve"><value>تصویر فوٹو لائبریری میں محفوظ کریں</value></data><data name="Accessibility016" xml:space="preserve"><value>تصویر تراشیں؛ کراپ لاگو کرنے کے لیے دوبارہ دبائیں</value></data><data name="Accessibility017" xml:space="preserve"><value>فری ہینڈ قلم</value></data><data name="Accessibility018" xml:space="preserve"><value>فری ہینڈ ڈرائنگ قلم</value></data><data name="AlertExtra001" xml:space="preserve"><value>جاری رکھیں</value></data><data name="AlertExtra002" xml:space="preserve"><value>سائن آؤٹ</value></data><data name="AlertExtra003" xml:space="preserve"><value>کراپ</value></data><data name="AlertExtra004" xml:space="preserve"><value>نیویگیشن</value></data><data name="AlertExtra005" xml:space="preserve"><value>ترمیم</value></data><data name="AlertExtra006" xml:space="preserve"><value>رپورٹ کریں</value></data><data name="AlertExtra007" xml:space="preserve"><value>اراکین شامل کریں</value></data><data name="AlertExtra008" xml:space="preserve"><value>وائس پیغام</value></data><data name="AlertExtra009" xml:space="preserve"><value>اکاؤنٹ صفحہ نہیں کھل سکا:</value></data><data name="AlertExtra010" xml:space="preserve"><value>اکاؤنٹ کی تفصیلات نہیں کھل سکیں۔</value></data><data name="AlertExtra011" xml:space="preserve"><value>گفتگو ابھی سرور سے منسلک نہیں۔</value></data><data name="AlertExtra012" xml:space="preserve"><value>بلاک کریں</value></data><data name="AlertExtra013" xml:space="preserve"><value>فعال کریں</value></data><data name="AlertExtra014" xml:space="preserve"><value>بلاک کرنا</value></data><data name="AlertExtra015" xml:space="preserve"><value>ایڈیٹر</value></data><data name="AlertExtra016" xml:space="preserve"><value>فلیش</value></data><data name="AlertExtra017" xml:space="preserve"><value>تصویر</value></data><data name="AlertExtra018" xml:space="preserve"><value>منسلکہ</value></data><data name="AlertExtra019" xml:space="preserve"><value>جواب دیں</value></data><data name="AlertExtra020" xml:space="preserve"><value>واپس نہیں جا سکے:</value></data><data name="AlertExtra021" xml:space="preserve"><value>عارضی میڈیا صاف کریں</value></data><data name="AlertExtra022" xml:space="preserve"><value>تصویر استعمال نہیں ہو سکی:</value></data><data name="AlertExtra023" xml:space="preserve"><value>فائل کا نام بہت طویل ہے۔</value></data><data name="AlertExtra024" xml:space="preserve"><value>کیا آپ پیغام حذف کرنا چاہتے ہیں؟</value></data><data name="AlertExtra025" xml:space="preserve"><value>پاس ورڈ تبدیل نہیں ہو سکا</value></data><data name="AlertExtra026" xml:space="preserve"><value>زبان کی ترتیبات نہیں کھل سکیں:</value></data><data name="AlertExtra027" xml:space="preserve"><value>گفتگو آرکائیو سے نکال دی گئی۔</value></data><data name="AlertExtra028" xml:space="preserve"><value>درخواست کردہ صفحہ نہیں کھل سکا۔</value></data><data name="AlertExtra029" xml:space="preserve"><value>درخواست کردہ صفحہ نہیں کھل سکا:</value></data><data name="AlertExtra030" xml:space="preserve"><value>فون نمبر کی ترتیب اپ ڈیٹ ہو گئی۔</value></data><data name="AlertExtra031" xml:space="preserve"><value>رازداری کی ترتیبات نہیں کھل سکیں:</value></data><data name="AlertExtra032" xml:space="preserve"><value>چیٹ کی ترتیبات نہیں کھل سکیں:</value></data><data name="AlertExtra033" xml:space="preserve"><value>پچھلے صفحے پر واپس نہیں جا سکے:</value></data><data name="AlertExtra034" xml:space="preserve"><value>پاس ورڈ کامیابی سے تبدیل ہو گیا۔</value></data><data name="AlertExtra035" xml:space="preserve"><value>اطلاع کی ترتیبات نہیں کھل سکیں:</value></data><data name="AlertExtra036" xml:space="preserve"><value>اطلاع کی ترتیب تبدیل نہیں ہو سکی:</value></data><data name="AlertExtra037" xml:space="preserve"><value>اس آلے پر فائل نہیں کھل سکی:</value></data><data name="AlertExtra038" xml:space="preserve"><value>اسٹوریج اور ڈیٹا کا صفحہ نہیں کھل سکا:</value></data><data name="AlertExtra039" xml:space="preserve"><value>6 ہندسوں کا تصدیقی کوڈ درج کریں۔</value></data><data name="AlertExtra040" xml:space="preserve"><value>2 سے 60 حروف کا نام درج کریں۔</value></data><data name="AlertExtra041" xml:space="preserve"><value>دوستوں کو تلاش کرنے کے لیے پہلے سائن اِن کریں۔</value></data><data name="AlertExtra042" xml:space="preserve"><value>کیا آپ اس آلے سے سائن آؤٹ کرنا چاہتے ہیں؟</value></data><data name="AlertExtra043" xml:space="preserve"><value>جواب دینے کے لیے صرف ایک پیغام منتخب کریں۔</value></data><data name="AlertExtra044" xml:space="preserve"><value>آڈیو ریکارڈنگ فی الحال صرف Android پر دستیاب ہے۔</value></data><data name="AlertExtra045" xml:space="preserve"><value>درست نام درج کریں جو 60 حروف سے زیادہ نہ ہو۔</value></data><data name="AlertExtra046" xml:space="preserve"><value>کم از کم 8 حروف کا درست پاس ورڈ درج کریں۔</value></data><data name="AlertExtra047" xml:space="preserve"><value>گروپ، گروپس اسکرین سے بنایا جائے گا۔</value></data><data name="AlertExtra048" xml:space="preserve"><value>اس آلے پر تصاویر کا انتخاب معاون نہیں۔</value></data><data name="AlertExtra049" xml:space="preserve"><value>کیا آپ صرف اس آلے سے سائن آؤٹ کرنا چاہتے ہیں؟</value></data><data name="AlertExtra050" xml:space="preserve"><value>بحالی کا صفحہ نہیں کھل سکا۔ دوبارہ کوشش کریں۔</value></data><data name="AlertExtra051" xml:space="preserve"><value>تمام مماثل اکاؤنٹس پہلے ہی شامل ہیں۔</value></data><data name="AlertExtra052" xml:space="preserve"><value>فائل اب مقامی اسٹوریج میں موجود نہیں۔</value></data><data name="AlertExtra053" xml:space="preserve"><value>اس آلے پر ویڈیو کا انتخاب معاون نہیں۔</value></data><data name="AlertExtra054" xml:space="preserve"><value>یہ فیچر موجودہ آلے پر معاون نہیں۔</value></data><data name="AlertExtra055" xml:space="preserve"><value>La contraseña debe tener al menos 8 caracteres.</value></data><data name="AlertExtra056" xml:space="preserve"><value>El mensaje es demasiado largo. El límite es de 4000 caracteres.</value></data><data name="AlertExtra057" xml:space="preserve"><value>Solo puedes bloquear una cuenta individual, no un grupo completo.</value></data><data name="AlertExtra058" xml:space="preserve"><value>Introduce un número antes de activar la búsqueda por teléfono.</value></data><data name="AlertExtra059" xml:space="preserve"><value>No se pudo enviar la grabación o supera los 25 MB.</value></data><data name="AlertExtra060" xml:space="preserve"><value>Se verificó tu nuevo correo y se actualizó la cuenta.</value></data><data name="AlertExtra061" xml:space="preserve"><value>Permite que Himo use la cámara y vuelve a intentarlo.</value></data><data name="AlertExtra062" xml:space="preserve"><value>Aún no has añadido una foto. Pulsa la cámara para elegir una.</value></data><data name="AlertExtra063" xml:space="preserve"><value>La navegación no está lista. Cierra y vuelve a abrir la página.</value></data><data name="AlertExtra064" xml:space="preserve"><value>Se necesita acceso al micrófono para grabar un mensaje de voz.</value></data><data name="AlertExtra065" xml:space="preserve"><value>La búsqueda de contactos solo está disponible actualmente en Android.</value></data><data name="AlertExtra066" xml:space="preserve"><value>Permite que Himo use el micrófono para grabar el audio del vídeo.</value></data><data name="AlertExtra067" xml:space="preserve"><value>Se necesita acceso a los medios. Permítelo e inténtalo de nuevo.</value></data><data name="AlertExtra068" xml:space="preserve"><value>El vídeo es demasiado grande. Elige uno de menos de 100 MB.</value></data><data name="AlertExtra069" xml:space="preserve"><value>Preferencia guardada. El tamaño se usará al abrir la próxima conversación.</value></data><data name="AlertExtra070" xml:space="preserve"><value>Elige un vídeo MP4 para garantizar la mejor compatibilidad con Android.</value></data><data name="AlertExtra071" xml:space="preserve"><value>Permite que Himo use la cámara y el micrófono y vuelve a intentarlo.</value></data><data name="AlertExtra072" xml:space="preserve"><value>No se pudo acceder a las fotos. Permite el acceso e inténtalo de nuevo.</value></data><data name="AlertExtra073" xml:space="preserve"><value>ID de conversación no válido. Actualiza la lista e inténtalo de nuevo.</value></data><data name="AlertExtra074" xml:space="preserve"><value>No se pudo acceder a los vídeos. Permite el acceso e inténtalo de nuevo.</value></data><data name="AlertExtra075" xml:space="preserve"><value>La sesión no está disponible. Inicia sesión de nuevo y vuelve a enviar.</value></data><data name="AlertExtra076" xml:space="preserve"><value>Este mensaje aún no tiene ID del servidor, por lo que no se puede eliminar.</value></data><data name="AlertExtra077" xml:space="preserve"><value>No se pudo conectar la conversación al servidor. Espera y vuelve a enviar el mensaje.</value></data><data name="AlertExtra078" xml:space="preserve"><value>Introduce un número válido de 7 a 15 dígitos o déjalo vacío porque es opcional.</value></data><data name="AlertExtra079" xml:space="preserve"><value>La conversación de esta llamada no está disponible. Ábrela primero desde la lista.</value></data><data name="AlertExtra080" xml:space="preserve"><value>No hay una copia local para volver a subir. Selecciona el archivo otra vez en los adjuntos.</value></data><data name="AlertExtra081" xml:space="preserve"><value>No hay números válidos para comparar. Los demás contactos seguirán visibles.</value></data><data name="AlertExtra082" xml:space="preserve"><value>Ocurrió un error al abrir la conversación. Inténtalo de nuevo; si persiste, revisa el registro.</value></data><data name="AlertExtra083" xml:space="preserve"><value>Se cerrarán todas las sesiones de Himo y se detendrán las notificaciones en los dispositivos registrados. ¿Continuar?</value></data><data name="AlertExtra084" xml:space="preserve"><value>Lee y acepta las condiciones de uso y la política de privacidad antes de crear la cuenta.</value></data><data name="AlertExtra085" xml:space="preserve"><value>Introduce al menos tres caracteres de un nombre, o un correo o teléfono válido.</value></data><data name="AlertExtra086" xml:space="preserve"><value>El vídeo se guardó. Necesita Internet y se repite en silencio.</value></data><data name="AlertExtra087" xml:space="preserve"><value>Quienes tengan tu número en sus contactos podrán encontrar tu cuenta, pero no verán tu teléfono.</value></data><data name="AlertExtra088" xml:space="preserve"><value>Enviamos un código de verificación de 6 dígitos a tu correo. Introdúcelo para terminar de crear la cuenta.</value></data><data name="AlertExtra089" xml:space="preserve"><value>Al iniciar sesión, la nueva cuenta quedará activa en este dispositivo. ¿Continuar?</value></data><data name="AlertExtra090" xml:space="preserve"><value>Tu cuenta, datos y chats se eliminarán permanentemente del servidor. No se puede deshacer.</value></data><data name="AlertExtra091" xml:space="preserve"><value>El grupo se creó, pero no se pudo abrir la conversación. Vuelve a la lista de chats y actualízala.</value></data><data name="AlertExtra092" xml:space="preserve"><value>Se cerró la sesión en este dispositivo, pero el servidor no terminó la operación. Puedes volver a entrar después.</value></data><data name="AlertExtra093" xml:space="preserve"><value>Se cerró la sesión de este dispositivo, pero el servidor no terminó la operación. Puedes volver a entrar después.</value></data><data name="AlertExtra094" xml:space="preserve"><value>Los mensajes seleccionados aún no tienen ID del servidor. Envíalos, espera a que terminen y vuelve a eliminar.</value></data><data name="AlertExtra095" xml:space="preserve"><value>El servidor actual no dispone de un proceso seguro para cambiar el correo tras verificarlo. No se cambió nada.</value></data><data name="AlertExtra096" xml:space="preserve"><value>Solo se eliminarán las copias en caché. Los chats y envíos pendientes seguirán intactos; los medios podrían descargarse de nuevo.</value></data><data name="AlertExtra097" xml:space="preserve"><value>Para comparar, Himo envía solo los teléfonos de tus contactos mediante una conexión segura. No envía nombres ni correos y el servidor no guarda la agenda. Solo aparecen cuentas que permiten ser encontradas.</value></data><data name="AlertExtra098" xml:space="preserve"><value>Himo آپ کے رابطوں کے فون نمبر پڑھتا ہے اور محفوظ کنکشن کے ذریعے صرف مطابقت کے لیے ضروری نمبر بھیجتا ہے۔ سرور ایڈریس بک محفوظ نہیں کرتا، صرف اجازت دینے والے مماثل Himo اکاؤنٹس واپس کرتا ہے۔</value></data><data name="AlertExtra099" xml:space="preserve"><value>Himo میں مسئلہ ہو تو پہلے انٹرنیٹ اور اطلاعات، کیمرا اور مائیکروفون کی اجازت چیک کریں۔ یہاں رازداری اور ظاہری شکل کے اختیارات دیکھیں، اور انٹرفیس اپ ڈیٹ نہ ہو تو ایپ دوبارہ کھولیں۔</value></data><data name="RuntimeUI001" xml:space="preserve"><value>پڑھا نہیں جا سکا</value></data><data name="RuntimeUI002" xml:space="preserve"><value>کھولیں</value></data><data name="RuntimeUI003" xml:space="preserve"><value>محفوظ</value></data><data name="RuntimeUI004" xml:space="preserve"><value>عارضی فائلیں صاف کریں</value></data><data name="RuntimeUI005" xml:space="preserve"><value>ڈیٹا تازہ نہیں ہو سکا؛ مقامی طور پر محفوظ معلومات دکھائی جا رہی ہیں۔</value></data><data name="RuntimeUI006" xml:space="preserve"><value>اکاؤنٹ کی معلومات اپ ڈیٹ ہو رہی ہیں…</value></data><data name="RuntimeUI007" xml:space="preserve"><value>اکاؤنٹ کی معلومات دیکھنے کے لیے سائن اِن کریں۔</value></data><data name="RuntimeUI008" xml:space="preserve"><value>اگر ای میل رجسٹرڈ ہے تو تصدیقی کوڈ ملے گا۔ اِن باکس اور اسپام دیکھیں۔</value></data><data name="RuntimeUI009" xml:space="preserve"><value>ای میل پر تصدیقی کوڈ بھیجیں</value></data><data name="RuntimeUI010" xml:space="preserve"><value>کوڈ نہیں بھیجا جا سکا۔</value></data><data name="RuntimeUI011" xml:space="preserve"><value>موجودہ ای میل ایڈریس معلوم نہیں ہو سکا۔</value></data><data name="RuntimeUI012" xml:space="preserve"><value>نام لوڈ نہیں ہو سکا:</value></data><data name="RuntimeUI013" xml:space="preserve"><value>نمبر لوڈ نہیں ہو سکا:</value></data><data name="RuntimeUI014" xml:space="preserve"><value>دوسرے اکاؤنٹ سے سائن اِن نہیں ہو سکا۔</value></data><data name="RuntimeUI015" xml:space="preserve"><value>سائن اِن ہو گیا لیکن ہوم اسکرین خود بخود نہیں کھل سکی۔</value></data><data name="RuntimeUI016" xml:space="preserve"><value>صارف نام کامیابی سے محفوظ ہو گیا۔</value></data><data name="RuntimeUI017" xml:space="preserve"><value>بھیجا جا رہا ہے…</value></data><data name="RuntimeUI018" xml:space="preserve"><value>اپ ڈیٹ ہو رہا ہے…</value></data><data name="RuntimeUI019" xml:space="preserve"><value>محفوظ ہو رہا ہے…</value></data><data name="RuntimeUI020" xml:space="preserve"><value>سائن اِن ہو رہا ہے…</value></data><data name="RuntimeUI021" xml:space="preserve"><value>صارف نام محفوظ کریں</value></data><data name="RuntimeUI022" xml:space="preserve"><value>فون نمبر محفوظ کریں</value></data><data name="RuntimeUI023" xml:space="preserve"><value>فون نمبر سنبھالنے کے لیے پہلے سائن اِن کریں۔</value></data><data name="RuntimeUI024" xml:space="preserve"><value>اپنی معلومات دیکھنے کے لیے پہلے سائن اِن کریں۔</value></data><data name="RuntimeUI025" xml:space="preserve"><value>آپ اپنا نام تبدیل کرکے محفوظ کر سکتے ہیں۔</value></data><data name="RuntimeUI026" xml:space="preserve"><value>لاک کوڈ غلط ہے۔</value></data><data name="RuntimeUI027" xml:space="preserve"><value>کال ختم ہو گئی</value></data><data name="RuntimeUI028" xml:space="preserve"><value>کیمرا آن کریں</value></data><data name="RuntimeUI029" xml:space="preserve"><value>کال موصول نہیں ہو سکی۔</value></data><data name="RuntimeUI030" xml:space="preserve"><value>کال تیار نہیں ہو سکی۔ کنکشن چیک کرکے دوبارہ کوشش کریں۔</value></data><data name="RuntimeUI031" xml:space="preserve"><value>کال کا جواب نہیں دیا جا سکا۔ دوبارہ کوشش کریں۔</value></data><data name="RuntimeUI032" xml:space="preserve"><value>جواب دے دیا، رابطہ ہو رہا ہے…</value></data><data name="RuntimeUI033" xml:space="preserve"><value>آڈیو تیار ہو رہی ہے</value></data><data name="RuntimeUI034" xml:space="preserve"><value>آڈیو اور ویڈیو تیار ہو رہی ہیں</value></data><data name="RuntimeUI035" xml:space="preserve"><value>آڈیو سیٹ ہو رہی ہے</value></data><data name="RuntimeUI036" xml:space="preserve"><value>کیمرا اور مائیکروفون کی اجازت ضروری ہے</value></data><data name="RuntimeUI037" xml:space="preserve"><value>کال کا جواب دینے کے لیے مائیکروفون کی اجازت ضروری ہے</value></data><data name="RuntimeUI038" xml:space="preserve"><value>مکمل</value></data><data name="RuntimeUI039" xml:space="preserve"><value>Ⅱ رکا ہوا</value></data><data name="RuntimeUI040" xml:space="preserve"><value>تصویر منتخب کریں</value></data><data name="RuntimeUI041" xml:space="preserve"><value>اس گفتگو کے پس منظر کے لیے تصویر منتخب کریں</value></data><data name="RuntimeUI042" xml:space="preserve"><value>ویڈیو منتخب کریں</value></data><data name="RuntimeUI043" xml:space="preserve"><value>فائل منتخب کریں</value></data><data name="RuntimeUI044" xml:space="preserve"><value>پیغامات شیئر کریں</value></data><data name="RuntimeUI045" xml:space="preserve"><value>منسلکہ شیئر کریں</value></data><data name="RuntimeUI046" xml:space="preserve"><value>ملک کے نام یا کالنگ کوڈ سے تلاش کریں</value></data><data name="RuntimeUI047" xml:space="preserve"><value>ملک منتخب کریں</value></data><data name="RuntimeUI048" xml:space="preserve"><value>کسی دوسرے ملک کا نام یا کالنگ کوڈ آزمائیں۔</value></data><data name="RuntimeUI049" xml:space="preserve"><value>ملک کا کوڈ</value></data><data name="RuntimeUI050" xml:space="preserve"><value>مثال: سعودی عرب یا +966</value></data><data name="RuntimeUI051" xml:space="preserve"><value>نمبر تلاش کریں</value></data><data name="RuntimeUI052" xml:space="preserve"><value>تلاش نہیں ہو سکی۔ سرور کنکشن چیک کرکے دوبارہ کوشش کریں۔</value></data><data name="RuntimeUI053" xml:space="preserve"><value>رابطے تلاش نہیں ہو سکے۔ سرور کنکشن چیک کرکے دوبارہ کوشش کریں۔</value></data><data name="RuntimeUI054" xml:space="preserve"><value>گفتگو شروع نہیں ہو سکی۔</value></data><data name="RuntimeUI055" xml:space="preserve"><value>فون سے رابطے نہیں پڑھے جا سکے۔</value></data><data name="RuntimeUI056" xml:space="preserve"><value>گفتگو تیار ہو رہی ہے…</value></data><data name="RuntimeUI057" xml:space="preserve"><value>اجازت مانگی جا رہی ہے اور رابطے پڑھے جا رہے ہیں…</value></data><data name="RuntimeUI058" xml:space="preserve"><value>نام پڑھے جا رہے ہیں…</value></data><data name="RuntimeUI059" xml:space="preserve"><value>آپ کے رابطوں میں درست فون نمبر نہیں ملے۔</value></data><data name="RuntimeUI060" xml:space="preserve"><value>اس نمبر سے مماثل اکاؤنٹ نہیں ملا۔ نمبر رجسٹرڈ یا قابلِ تلاش نہیں ہو سکتا۔</value></data><data name="RuntimeUI061" xml:space="preserve"><value>رابطوں کی اجازت نہیں ملی۔ Android ترتیبات میں فعال کرکے دوبارہ کوشش کریں۔</value></data><data name="RuntimeUI062" xml:space="preserve"><value>ایسے اکاؤنٹس تلاش ہو رہے ہیں جو تلاش کی اجازت دیتے ہیں…</value></data><data name="RuntimeUI063" xml:space="preserve"><value>زوم کے لیے دو انگلیاں استعمال کریں، پھر بڑی تصویر کو کھینچیں</value></data><data name="RuntimeUI064" xml:space="preserve"><value>جاری رکھنے سے پہلے تمام شرائط پڑھیں</value></data><data name="RuntimeUI065" xml:space="preserve"><value>اکاؤنٹ بنانے پر واپس جائیں</value></data><data name="RuntimeUI066" xml:space="preserve"><value>فریم یا اس کے کونوں کو کھینچیں، پھر کراپ لاگو کرنے کے لیے ✓ دبائیں۔</value></data><data name="RuntimeUI067" xml:space="preserve"><value>متن کو مطلوبہ جگہ پر کھینچیں</value></data><data name="RuntimeUI068" xml:space="preserve"><value>بھیجنے سے پہلے کراپ، گھمائیں، متن اور قلم</value></data><data name="RuntimeUI069" xml:space="preserve"><value>آخری ڈرائنگ واپس لے لی گئی</value></data><data name="RuntimeUI070" xml:space="preserve"><value>موجودہ ڈرائنگ واپس لے لی گئی</value></data><data name="RuntimeUI071" xml:space="preserve"><value>کراپ لاگو ہو گیا۔ اب ترمیم کرکے بھیج سکتے ہیں۔</value></data><data name="RuntimeUI072" xml:space="preserve"><value>کراپ لاگو ہو رہا ہے…</value></data><data name="RuntimeUI073" xml:space="preserve"><value>تصویر فوٹو لائبریری میں محفوظ ہو رہی ہے…</value></data><data name="RuntimeUI074" xml:space="preserve"><value>فری ہینڈ قلم — تصویر پر کہیں بھی انگلی سے ڈرائنگ کریں</value></data><data name="RuntimeUI075" xml:space="preserve"><value>موجودہ ای میل:</value></data><data name="RuntimeUI076" xml:space="preserve"><value>ای میل کی تصدیق اور تبدیلی</value></data><data name="RuntimeUI077" xml:space="preserve"><value>ای میل کی تصدیق نہیں ہو سکی:</value></data><data name="RuntimeUI078" xml:space="preserve"><value>اسٹیٹس محفوظ نہیں ہو سکا:</value></data><data name="RuntimeUI080" xml:space="preserve"><value>تصدیق ہو رہی ہے…</value></data><data name="RuntimeUI081" xml:space="preserve"><value>نام محفوظ کریں</value></data><data name="RuntimeUI082" xml:space="preserve"><value>اسٹیٹس محفوظ کریں</value></data><data name="RuntimeUI083" xml:space="preserve"><value>صارف نام تبدیل کرنے کے لیے سائن اِن کریں۔</value></data><data name="RuntimeUI084" xml:space="preserve"><value>رابطوں کی مطابقت کی جا رہی ہے…</value></data><data name="RuntimeUI085" xml:space="preserve"><value>لوڈ ہو رہا ہے…</value></data><data name="RuntimeUI086" xml:space="preserve"><value>سرور کو اکاؤنٹس ملے لیکن ابھی ناموں سے جوڑ نہیں سکتا۔ Himo.Api اپ ڈیٹ کریں اور دوبارہ مطابقت کریں۔</value></data><data name="RuntimeUI087" xml:space="preserve"><value>رابطوں کا ڈسپلے فی الحال صرف Android پر دستیاب ہے۔</value></data><data name="RuntimeUI088" xml:space="preserve"><value>رابطوں کی اجازت نہیں ملی۔ Android ترتیبات میں فعال کرکے یہ صفحہ دوبارہ کھولیں۔</value></data><data name="RuntimeUI089" xml:space="preserve"><value>نیا کوڈ درج کریں، پھر محفوظ کریں دبائیں۔</value></data><data name="RuntimeUI090" xml:space="preserve"><value>Android کے اس ورژن پر سسٹم اجازت درکار نہیں۔</value></data><data name="RuntimeUI091" xml:space="preserve"><value>Himo اطلاعات ایپ کے اندر بند ہیں۔</value></data><data name="RuntimeUI092" xml:space="preserve"><value>ایپ لاک فعال ہو گیا۔</value></data><data name="FinalUI001" xml:space="preserve"><value>رابطے لوڈ نہیں ہو سکے۔ Android اجازت چیک کرکے دوبارہ کوشش کریں۔</value></data><data name="FinalUI002" xml:space="preserve"><value>رابطوں کی مطابقت نہیں ہو سکی۔ سرور کنکشن چیک کرکے دوبارہ کوشش کریں۔</value></data><data name="FinalUI003" xml:space="preserve"><value>نام محفوظ نہیں ہو سکا۔</value></data><data name="FinalUI004" xml:space="preserve"><value>فون نمبر محفوظ نہیں ہو سکا۔</value></data><data name="FinalUI005" xml:space="preserve"><value>پاس ورڈ تبدیل نہیں ہو سکا۔</value></data><data name="FinalUI006" xml:space="preserve"><value>درست فون نمبر درج کریں جو 7 سے 15 ہندسوں کا ہو؛ ضرورت پر ملک کا کوڈ شامل کریں۔</value></data><data name="FinalUI007" xml:space="preserve"><value>نیا کوڈ دوبارہ بھیجیں</value></data><data name="FinalUI008" xml:space="preserve"><value>نام محفوظ نہیں ہو سکا:</value></data><data name="FinalUI009" xml:space="preserve"><value>محفوظ نہیں ہو سکا:</value></data><data name="FinalUI010" xml:space="preserve"><value>صارف نام محفوظ ہو گیا: @</value></data><data name="FinalUI011" xml:space="preserve"><value>ڈیولپمنٹ کوڈ:</value></data><data name="FinalUI012" xml:space="preserve"><value>کوڈ نہیں بھیجا جا سکا:</value></data><data name="CodeBuiltUI001" xml:space="preserve"><value>اس اکاؤنٹ کی معلومات درج کریں جس سے آپ سائن اِن کرنا چاہتے ہیں۔</value></data><data name="CodeBuiltUI002" xml:space="preserve"><value>اکاؤنٹ کی سیکیورٹی</value></data><data name="CodeBuiltUI003" xml:space="preserve"><value>پاس ورڈ کا انتظام</value></data><data name="CodeBuiltUI004" xml:space="preserve"><value>اگر کوڈ نہ ملے تو دوسرا کوڈ مانگنے سے پہلے اسپام فولڈر دیکھیں۔</value></data><data name="CodeBuiltUI005" xml:space="preserve"><value>ملک کو جھنڈے اور ڈائل کوڈ سے منتخب کریں، پھر ملک کے کوڈ کے بغیر مقامی نمبر درج کریں۔</value></data><data name="CodeBuiltUI006" xml:space="preserve"><value>1 سے 60 حروف پر مشتمل واضح نام استعمال کریں۔</value></data><data name="CodeBuiltUI007" xml:space="preserve"><value>صارف نام درج کریں</value></data><data name="CodeBuiltUI008" xml:space="preserve"><value>موجودہ ورژن صرف ایک فعال سیشن رکھتا ہے۔ دوسرے اکاؤنٹ میں کامیاب سائن اِن کے بعد نیا اکاؤنٹ موجودہ اکاؤنٹ کی جگہ فعال ہوگا۔ تبدیلی صرف آپ کی تصدیق کے بعد ہوگی۔</value></data><data name="CodeBuiltUI009" xml:space="preserve"><value>رجسٹرڈ ای میل</value></data><data name="CodeBuiltUI010" xml:space="preserve"><value>اکاؤنٹ سے منسلک ای میل</value></data><data name="CodeBuiltUI011" xml:space="preserve"><value>فون کے ذریعے میرے اکاؤنٹ کو تلاش کرنے کی اجازت دیں</value></data><data name="CodeBuiltUI012" xml:space="preserve"><value>نئے پاس ورڈ کی تصدیق کریں</value></data><data name="CodeBuiltUI013" xml:space="preserve"><value>دوسرے اکاؤنٹ سے سائن اِن کریں</value></data><data name="CodeBuiltUI014" xml:space="preserve"><value>موجودہ سرور پر ای میل تبدیل کرنے کی سہولت فعال نہیں؛ پہلے نئے پتے کی محفوظ تصدیق شامل کرنا ضروری ہے۔</value></data><data name="CodeBuiltUI015" xml:space="preserve"><value>ای میل ایڈریس کا تعین ہو رہا ہے…</value></data><data name="CodeBuiltUI016" xml:space="preserve"><value>ای میل لوڈ ہو رہی ہے…</value></data><data name="CodeBuiltUI017" xml:space="preserve"><value>اکاؤنٹ کی معلومات لوڈ ہو رہی ہیں…</value></data><data name="CodeBuiltUI018" xml:space="preserve"><value>فون نمبر لوڈ ہو رہا ہے…</value></data><data name="CodeBuiltUI019" xml:space="preserve"><value>مطابقت کرنے والوں کو آپ کا اکاؤنٹ نام نظر آئے گا، نمبر نہیں۔</value></data><data name="CodeBuiltUI020" xml:space="preserve"><value>محفوظ کرنے سے پہلے بین الاقوامی نمبر یہاں دکھائی دے گا۔</value></data><data name="CodeBuiltUI021" xml:space="preserve"><value>نیا پاس ورڈ (کم از کم 8 حروف)</value></data><data name="CodeBuiltUI022" xml:space="preserve"><value>نام صرف سرور پر کامیابی سے محفوظ ہونے کی تصدیق کے بعد لاگو ہوگا۔</value></data><data name="CodeBuiltUI023" xml:space="preserve"><value>اہم معلومات</value></data><data name="CodeBuiltUI024" xml:space="preserve"><value>نمبر بین الاقوامی فارمیٹ میں محفوظ ہوتا ہے، مثلاً ‎+9665xxxxxxxx۔</value></data><data name="CodeBuiltUI025" xml:space="preserve"><value>اپنی موجودہ سرگرمی کے مطابق اسٹیٹس منتخب کریں۔</value></data><data name="CodeBuiltUI026" xml:space="preserve"><value>تصویر کو پورے سائز میں دیکھنے کے لیے دبائیں، یا بدلنے کے لیے کیمرہ دبائیں</value></data><data name="CodeBuiltUI027" xml:space="preserve"><value>ظاہر ہونے والا نام درج کریں</value></data><data name="CodeBuiltUI028" xml:space="preserve"><value>نئی ای میل</value></data><data name="CodeBuiltUI029" xml:space="preserve"><value>موجودہ ای میل: لوڈ ہو رہی ہے…</value></data><data name="CodeBuiltUI030" xml:space="preserve"><value>سرور سے کامیاب رابطے کے بعد تبدیلیاں اکاؤنٹ میں محفوظ ہوتی ہیں۔</value></data><data name="CodeBuiltUI031" xml:space="preserve"><value>تبدیلی لاگو ہونے سے پہلے نئی ای میل پر تصدیقی کوڈ بھیجا جائے گا۔</value></data><data name="CodeBuiltUI032" xml:space="preserve"><value>شامل نہیں کیا گیا</value></data><data name="CodeBuiltUI033" xml:space="preserve"><value>رجسٹرڈ ای میل صرف نئے پتے پر بھیجے گئے درست کوڈ کے اندراج کے بعد تبدیل ہوگی۔</value></data><data name="CodeBuiltUI034" xml:space="preserve"><value>ابھی مقرر نہیں</value></data><data name="CodeBuiltUI035" xml:space="preserve"><value>آپ ابھی کیا کر رہے ہیں؟</value></data><data name="CodeBuiltUI036" xml:space="preserve"><value>مثال: ahmed_22</value></data><data name="CodeBuiltUI037" xml:space="preserve"><value>3 سے 24 انگریزی حروف، اعداد، انڈر اسکور (_) یا نقطے (.) استعمال کریں۔ صارف نام دستیاب ہونا چاہیے۔</value></data><data name="CodeBuiltUI038" xml:space="preserve"><value>آپ کا نام پروفائل اور چیٹس میں دکھائی دیتا ہے۔</value></data><data name="CodeBuiltUI039" xml:space="preserve"><value>ایپ کا کل ڈیٹا</value></data><data name="CodeBuiltUI040" xml:space="preserve"><value>کیش اور چیٹ منسلکات میں موجود فائلیں دیکھیں۔ مقامی نقل حذف کرنے سے سرور کے پیغامات حذف نہیں ہوتے۔</value></data><data name="CodeBuiltUI041" xml:space="preserve"><value>اسٹوریج کا استعمال</value></data><data name="CodeBuiltUI042" xml:space="preserve"><value>رومنگ</value></data><data name="CodeBuiltUI043" xml:space="preserve"><value>استعمال شدہ کیش</value></data><data name="CodeBuiltUI044" xml:space="preserve"><value>پیغامات</value></data><data name="CodeBuiltUI045" xml:space="preserve"><value>مقامی فائلیں</value></data><data name="CodeBuiltUI046" xml:space="preserve"><value>یہ صفحہ صرف استعمال کے مجموعی اعداد دکھاتا ہے؛ فائلوں کے نام یا مواد نہیں۔</value></data><data name="CodeBuiltUI047" xml:space="preserve"><value>یہ ہر چیٹ کے لیے ایپ میں مقامی طور پر محفوظ پیغامات اور منسلکات کی تعداد دکھاتا ہے۔</value></data><data name="CodeBuiltUI048" xml:space="preserve"><value>محفوظ میڈیا کا حجم</value></data><data name="CodeBuiltUI049" xml:space="preserve"><value>چیٹ کی فہرست</value></data><data name="CodeBuiltUI050" xml:space="preserve"><value>مقامی طور پر کوئی چیٹ محفوظ نہیں۔</value></data><data name="CodeBuiltUI051" xml:space="preserve"><value>جگہ خالی کرنے کے لیے کیش کی نقول صاف کی جا سکتی ہیں۔ چیٹس سرور سے حذف نہیں ہوں گی۔</value></data><data name="CodeBuiltUI052" xml:space="preserve"><value>نیٹ ورک کا کل استعمال</value></data><data name="CodeBuiltUI053" xml:space="preserve"><value>موصول اور بھیجا گیا ڈیٹا آخری ری سیٹ کے بعد Android کے ایپ کاؤنٹر سے لیا جاتا ہے۔ میڈیا اور اسٹوریج کے سائز مقامی فائلوں سے شمار ہوتے ہیں اور ہر زمرے کی نیٹ ورک ٹریفک کی درست پیمائش نہیں ہیں۔</value></data><data name="CodeBuiltUI054" xml:space="preserve"><value>مقامی میڈیا</value></data><data name="CodeBuiltUI055" xml:space="preserve"><value>استعمال کی تفصیلات</value></data><data name="CodeBuiltUI056" xml:space="preserve"><value>نیچے دی گئی فہرست میں سے ایک آپشن منتخب کریں۔</value></data><data name="CodeBuiltUI057" xml:space="preserve"><value>اس آلے پر منتخب کردہ رازداری کی ترجیحات کا جائزہ لیں۔</value></data><data name="CodeBuiltUI058" xml:space="preserve"><value>سرور انٹرفیس منسلک ہونے پر بلاک کیے گئے اکاؤنٹس کی فہرست یہاں دکھائی دے گی۔ فی الحال آپ چیٹ کے اختیارات سے اکاؤنٹ بلاک کر سکتے ہیں۔</value></data><data name="CodeBuiltUI059" xml:space="preserve"><value>موبائل نیٹ ورک کا استعمال</value></data><data name="CodeBuiltUI060" xml:space="preserve"><value>ویڈیو فائلیں شامل کریں</value></data><data name="CallThemeChat001" xml:space="preserve"><value>پڑھا جا رہا ہے…</value></data><data name="CallThemeChat002" xml:space="preserve"><value>خودکار</value></data><data name="CallThemeChat003" xml:space="preserve"><value>منتخب ✓</value></data><data name="CallThemeChat004" xml:space="preserve"><value>موجودہ پس منظر ✓</value></data><data name="CallThemeChat005" xml:space="preserve"><value>پس منظر استعمال کریں</value></data><data name="CallThemeChat006" xml:space="preserve"><value>دستاویز</value></data><data name="CallThemeChat007" xml:space="preserve"><value>کال قبول ہونے کا انتظار ہے…</value></data><data name="CallThemeChat008" xml:space="preserve"><value>الیکٹرک نیلا</value></data><data name="CallThemeChat009" xml:space="preserve"><value>فون</value></data><data name="CallThemeChat010" xml:space="preserve"><value>صرف بیک اپ دبانے پر</value></data><data name="CallThemeChat011" xml:space="preserve"><value>فائلیں</value></data><data name="CallThemeChat012" xml:space="preserve"><value>دیگر</value></data><data name="CallThemeChat013" xml:space="preserve"><value>چیٹ کی رپورٹ کریں</value></data><data name="CallThemeChat014" xml:space="preserve"><value>منسلک پیغام</value></data><data name="CallThemeChat015" xml:space="preserve"><value>آنے والی کال…</value></data><data name="CallThemeChat016" xml:space="preserve"><value>آواز بحال کریں</value></data><data name="CallThemeChat017" xml:space="preserve"><value>ویڈیو دستیاب نہیں</value></data><data name="CallThemeChat018" xml:space="preserve"><value>اسپیکر بند کریں</value></data><data name="CallThemeChat019" xml:space="preserve"><value>آنے والی آواز بند کریں</value></data><data name="CallThemeChat020" xml:space="preserve"><value>آنے والی آواز چلائیں</value></data><data name="CallThemeChat021" xml:space="preserve"><value>آپ کا اسٹیٹس اور موجودہ سرگرمی</value></data><data name="CallThemeChat022" xml:space="preserve"><value>غیر متعین</value></data><data name="CallThemeChat023" xml:space="preserve"><value>4 ایم بی سے بڑی نہ ہو ایسی تصویر منتخب کریں۔</value></data><data name="CallThemeChat024" xml:space="preserve"><value>شاہی سنہری</value></data><data name="CallThemeChat025" xml:space="preserve"><value>قطبی روشنی</value></data><data name="CallThemeChat026" xml:space="preserve"><value>موجودہ تھیم ✓</value></data><data name="CallThemeChat027" xml:space="preserve"><value>تصویر کا پیش منظر</value></data><data name="CallThemeChat028" xml:space="preserve"><value>رکا ہوا</value></data><data name="CallThemeChat029" xml:space="preserve"><value>آخری بار دیکھا گیا</value></data><data name="CallThemeChat030" xml:space="preserve"><value>پس منظر کی ویڈیو کا لنک درست نہیں۔</value></data><data name="CallThemeChat031" xml:space="preserve"><value>سائن اِن</value></data><data name="CallThemeChat032" xml:space="preserve"><value>صارف</value></data><data name="CallThemeChat033" xml:space="preserve"><value>نام</value></data><data name="CallThemeChat034" xml:space="preserve"><value>ای میل</value></data><data name="CallThemeChat035" xml:space="preserve"><value>الیکٹرانک</value></data><data name="CallThemeChat036" xml:space="preserve"><value>سیکیورٹی</value></data><data name="CallThemeChat037" xml:space="preserve"><value>تحفظ</value></data><data name="CallThemeChat038" xml:space="preserve"><value>اردو</value></data><data name="CallThemeChat039" xml:space="preserve"><value>روکیں</value></data><data name="CallThemeChat040" xml:space="preserve"><value>تصاویر</value></data><data name="CallThemeChat041" xml:space="preserve"><value>چیٹ میں تلاش کریں</value></data><data name="CallThemeChat042" xml:space="preserve"><value>چیٹ کو ان بلاک کریں</value></data><data name="CallThemeChat043" xml:space="preserve"><value>چیٹ بلاک کریں</value></data><data name="CallThemeChat044" xml:space="preserve"><value>چیٹ کو آرکائیو سے نکالیں</value></data><data name="CallThemeChat045" xml:space="preserve"><value>چیٹ آرکائیو کریں</value></data><data name="CallThemeChat046" xml:space="preserve"><value>🌸 جامنی پھول</value></data><data name="CallThemeChat047" xml:space="preserve"><value>🌄 پہاڑوں کا غروب</value></data><data name="CallThemeChat048" xml:space="preserve"><value>🌙 چاندنی جھیل</value></data><data name="CallThemeChat049" xml:space="preserve"><value>🌺 قریب سے پھول</value></data><data name="CallThemeChat050" xml:space="preserve"><value>🌊 پُرسکون جھیل</value></data><data name="CallThemeChat051" xml:space="preserve"><value>〰️ سمندری لہریں</value></data><data name="CallThemeChat052" xml:space="preserve"><value>🌲 زمردی جنگل</value></data><data name="CallThemeChat053" xml:space="preserve"><value>🌃 روشن شہر</value></data><data name="CallThemeChat054" xml:space="preserve"><value>🌸 ساکورا شہر</value></data><data name="CallThemeChat055" xml:space="preserve"><value>🏜️ سنہری غروب</value></data><data name="CallThemeChat056" xml:space="preserve"><value>🖼️ گیلری سے تصویر منتخب کریں</value></data><data name="CallThemeChat057" xml:space="preserve"><value>کال اسکرین نہیں کھل سکی:</value></data><data name="CallThemeChat058" xml:space="preserve"><value>تصویر درست طریقے سے ڈاؤن لوڈ نہیں ہوئی۔</value></data><data name="CallThemeChat059" xml:space="preserve"><value>منتخب کریں</value></data><data name="CallThemeChat060" xml:space="preserve"><value>آنے والی کال — شروع کرنے کے لیے جواب دبائیں</value></data><data name="CallThemeChat061" xml:space="preserve"><value>پہلے ہی ختم ہو چکی</value></data><data name="CallThemeChat062" xml:space="preserve"><value>ایک اور کال فعال یا جاری ہے</value></data><data name="CallThemeChat063" xml:space="preserve"><value>منسلک</value></data><data name="CallThemeChat065" xml:space="preserve"><value>کال کے اختیارات</value></data><data name="CallThemeChat066" xml:space="preserve"><value>آنے والی آواز فعال ہے</value></data><data name="CallThemeChat067" xml:space="preserve"><value>آنے والی آواز خاموش ہے</value></data><data name="CallThemeChat068" xml:space="preserve"><value>اسپیکر فعال ہے</value></data><data name="CallThemeChat069" xml:space="preserve"><value>اسپیکر بند ہے</value></data><data name="DynamicStatus002" xml:space="preserve"><value>اکاؤنٹ حذف نہیں ہو سکا:</value></data><data name="DynamicStatus003" xml:space="preserve"><value>آپ کا اکاؤنٹ، اس کا ڈیٹا اور چیٹس سرور سے مستقل طور پر حذف ہو جائیں گی۔ اس عمل کو واپس نہیں کیا جا سکتا۔</value></data><data name="DynamicStatus004" xml:space="preserve"><value>فون کے ذریعے آپ کا اکاؤنٹ تلاش کیا جا سکتا ہے۔</value></data><data name="DynamicStatus005" xml:space="preserve"><value>آپ اختیاری طور پر فون کے ذریعے تلاش کی سہولت فعال کر سکتے ہیں۔</value></data><data name="DynamicStatus006" xml:space="preserve"><value>فون نمبر اکاؤنٹ سے حذف کر دیا گیا۔</value></data><data name="DynamicStatus007" xml:space="preserve"><value>محفوظ ہو گیا؛ فون کے ذریعے تلاش فعال ہے۔</value></data><data name="DynamicStatus008" xml:space="preserve"><value>نمبر محفوظ ہو گیا؛ فون کے ذریعے تلاش بند ہے۔</value></data><data name="DynamicStatus009" xml:space="preserve"><value>کوئی اکاؤنٹ سائن اِن نہیں ہے۔</value></data><data name="DynamicStatus010" xml:space="preserve"><value>ای میل ایڈریس لوڈ نہیں ہو سکا۔</value></data><data name="DynamicStatus011" xml:space="preserve"><value>ای میل کا تعین نہیں ہو سکا؛ دوبارہ سائن اِن کریں۔</value></data><data name="DynamicStatus012" xml:space="preserve"><value>Himo کیمرہ شروع نہیں ہو سکا:</value></data><data name="DynamicStatus013" xml:space="preserve"><value>میڈیا کیپچر نہیں ہو سکا:</value></data><data name="DynamicStatus014" xml:space="preserve"><value>فلیش تبدیل نہیں ہو سکی:</value></data><data name="DynamicStatus015" xml:space="preserve"><value>کیمرہ تبدیل نہیں ہو سکا:</value></data><data name="DynamicStatus017" xml:space="preserve"><value>بیوٹی فلٹر لاگو ہو رہا ہے…</value></data><data name="DynamicStatus018" xml:space="preserve"><value>تصویر بہتر کی جا رہی ہے…</value></data><data name="DynamicStatus020" xml:space="preserve"><value>ویڈیو + آڈیو</value></data><data name="DynamicStatus021" xml:space="preserve"><value>ایپ لاک فعال ہے۔</value></data><data name="DynamicStatus022" xml:space="preserve"><value>ایپ لاک غیر فعال ہے۔</value></data><data name="DynamicStatus023" xml:space="preserve"><value>سسٹم اجازت کی حالت: اجازت ہے ✓</value></data><data name="DynamicStatus024" xml:space="preserve"><value>سسٹم اجازت کی حالت: اجازت نہیں — اگر اطلاعات نظر نہ آئیں تو Android سیٹنگز میں اجازت فعال کریں۔</value></data><data name="DynamicStatus025" xml:space="preserve"><value>رابطوں کی اجازت طلب کی جا رہی ہے…</value></data><data name="DynamicStatus026" xml:space="preserve"><value>فون سے ایک رابطہ لوڈ ہوا۔ فہرست مقامی ہے اور سرور پر اپ لوڈ نہیں ہوتی۔</value></data><data name="DynamicStatus027" xml:space="preserve"><value>فون نمبرز کو Himo اکاؤنٹس سے ملایا جا رہا ہے…</value></data><data name="DynamicStatus028" xml:space="preserve"><value>فعال کیا جا رہا ہے…</value></data></root>

@@ -6,7 +6,7 @@ using Microsoft.Maui.Storage;
 namespace Himo.Views;
 
 /// <summary>Contains account-wide session and deletion actions, separate from general settings.</summary>
-public sealed class AccountActionsPage : ContentPage
+public sealed class AccountActionsPage : Himo.Services.LocalizedContentPage
 {
     private const string PushTokenKey = "himo_registered_fcm_token";
     private readonly HimoApiClient _api;
@@ -157,9 +157,9 @@ public sealed class AccountActionsPage : ContentPage
         try
         {
             var confirm = await DisplayAlertAsync(
-                "الخروج من جميع الأجهزة",
-                "سيتم إنهاء جميع جلسات Himo وإيقاف إشعارات الأجهزة المسجلة. هل تريد المتابعة؟",
-                "متابعة", "إلغاء");
+                Himo.Services.AppLocalization.TranslateSourceText("الخروج من جميع الأجهزة"),
+                Himo.Services.AppLocalization.TranslateSourceText("سيتم إنهاء جميع جلسات Himo وإيقاف إشعارات الأجهزة المسجلة. هل تريد المتابعة؟"),
+                Himo.Services.AppLocalization.TranslateSourceText("متابعة"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
             if (!confirm) return;
 
             try
@@ -168,7 +168,7 @@ public sealed class AccountActionsPage : ContentPage
             }
             catch (Exception ex)
             {
-                await DisplayAlertAsync("تسجيل الخروج", $"تعذر تنفيذ العملية: {ex.Message}", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تسجيل الخروج"), $"تعذر تنفيذ العملية: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
 
@@ -185,7 +185,7 @@ public sealed class AccountActionsPage : ContentPage
         if (Interlocked.Exchange(ref _actionInProgress, 1) != 0) return;
         try
         {
-            var confirm = await DisplayAlertAsync("تسجيل الخروج", "هل تريد تسجيل الخروج من هذا الجهاز فقط؟", "خروج", "إلغاء");
+            var confirm = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تسجيل الخروج"), "هل تريد تسجيل الخروج من هذا الجهاز فقط؟", Himo.Services.AppLocalization.TranslateSourceText("خروج"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
             if (!confirm) return;
 
             string? logoutError = null;
@@ -204,7 +204,7 @@ public sealed class AccountActionsPage : ContentPage
 
             await CompleteLocalSignOutAsync();
             if (!string.IsNullOrWhiteSpace(logoutError))
-                await DisplayAlertAsync("تسجيل الخروج", "تم تسجيل الخروج من هذا الجهاز، لكن تعذر إكمال العملية على الخادم. يمكنك تسجيل الدخول لاحقًا.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تسجيل الخروج"), "تم تسجيل الخروج من هذا الجهاز، لكن تعذر إكمال العملية على الخادم. يمكنك تسجيل الدخول لاحقًا.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -218,9 +218,9 @@ public sealed class AccountActionsPage : ContentPage
         try
         {
             var confirm = await DisplayAlertAsync(
-                "حذف الحساب نهائيًا",
+                Himo.Services.AppLocalization.TranslateSourceText("حذف الحساب نهائيًا"),
                 "سيتم حذف حسابك وبياناته ومحادثاتك من الخادم نهائيًا. لا يمكن التراجع عن هذه العملية.",
-                "حذف نهائي", "إلغاء");
+                Himo.Services.AppLocalization.TranslateSourceText("حذف نهائي"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
             if (!confirm) return;
 
             try
@@ -229,7 +229,7 @@ public sealed class AccountActionsPage : ContentPage
             }
             catch (Exception ex)
             {
-                await DisplayAlertAsync("حذف الحساب", $"تعذر حذف الحساب: {ex.Message}", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الحساب"), $"تعذر حذف الحساب: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
 

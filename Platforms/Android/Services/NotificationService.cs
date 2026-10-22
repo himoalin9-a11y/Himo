@@ -6,9 +6,11 @@ public sealed class NotificationService : INotificationService
 {
     public const string MessageChannelId = "himo_messages_v5";
     // Versioned because Android does not allow changing sound/audio attributes on an existing channel.
-    public const string CallsChannelId = "himo_calls_v3";
+    public const string CallsChannelId = "himo_calls_v4";
     private const string ChannelName = "رسائل Himo";
     private const string ChannelDescription = "إشعارات الرسائل الجديدة في Himo";
+    private const string CallsChannelName = "المكالمات الواردة";
+    private const string CallsChannelDescription = "تنبيهات صوتية ومرئية للمكالمات الواردة";
     private const int NotificationIdBase = 12000;
     private const int CallNotificationIdBase = 240000;
     private const string EnabledPreferenceKey = "himo_notifications_enabled";
@@ -127,57 +129,81 @@ public sealed class NotificationService : INotificationService
         return Task.CompletedTask;
     }
 
-    // Incoming calls deliberately do not post a visible notification or launch an Activity.
-    // Save the invite for MainActivity to open CallPage when the user opens Himo, and play
-    // the normal ringtone while the app is backgrounded.
+    // Show a real Android call notification as well as ringing while the app is backgrounded.
     public Task ShowIncomingCallAsync(string callerName, string conversationId, string mode, string callId)
     {
-        if (string.IsNullOrWhiteSpace(conversationId))
-            return Task.CompletedTask;
+        if (string.IsNullOrWhiteSpace(conversationId)) return Task.CompletedTask;
 
         var normalizedMode = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio";
         var normalizedCallId = Guid.TryParse(callId, out var parsedCallId) && parsedCallId != Guid.Empty
-            ? parsedCallId.ToString("D")
-            : string.Empty;
-        if (IsCallRingingSuppressed(normalizedCallId))
-            return Task.CompletedTask;
-
-        var dedupeKey = string.IsNullOrWhiteSpace(normalizedCallId) ? conversationId : normalizedCallId;
-        lock (FinishedCallIdsGate)
-        {
-            if (IsCallRingingSuppressed(normalizedCallId))
-                return Task.CompletedTask;
-            if (!ActiveCallRingtoneIds.Add(dedupeKey))
-            {
-                lock (BackgroundCallRingtoneGate)
-                {
-                    if (string.Equals(_backgroundCallRingtoneKey, dedupeKey, StringComparison.OrdinalIgnoreCase) &&
-                        _backgroundCallRingtone is not null)
-                        return Task.CompletedTask;
-                }
-            }
-        }
+            ? parsedCallId.ToString("D") : string.Empty;
+        if (IsCallRingingSuppressed(normalizedCallId)) return Task.CompletedTask;
 
         var context = global::Android.App.Application.Context;
-        if (context is null)
-        {
-            lock (FinishedCallIdsGate) ActiveCallRingtoneIds.Remove(dedupeKey);
-            return Task.CompletedTask;
-        }
+        if (context is null) return Task.CompletedTask;
 
+        var dedupeKey = string.IsNullOrWhiteSpace(normalizedCallId) ? conversationId : normalizedCallId;
         try
         {
+            EnsureChannels();
             global::Himo.MainActivity.SetPendingCall(conversationId, normalizedMode, normalizedCallId);
+
+            var notificationManager = global::AndroidX.Core.App.NotificationManagerCompat.From(context);
+            if (notificationManager is null || !notificationManager.AreNotificationsEnabled())
+                System.Diagnostics.Debug.WriteLine("[Himo Call] Android notifications are disabled; ringtone fallback will still run.");
+            else if (!OperatingSystem.IsAndroidVersionAtLeast(33) ||
+                global::AndroidX.Core.Content.ContextCompat.CheckSelfPermission(context, global::Android.Manifest.Permission.PostNotifications) == global::Android.Content.PM.Permission.Granted)
+            {
+                var notificationId = GetCallNotificationId(normalizedCallId, conversationId);
+                var intent = new global::Android.Content.Intent(context, typeof(MainActivity));
+                intent.SetAction("com.companyname.himo.INCOMING_CALL");
+                intent.SetFlags(global::Android.Content.ActivityFlags.SingleTop | global::Android.Content.ActivityFlags.ClearTop | global::Android.Content.ActivityFlags.NewTask);
+                intent.PutExtra("call_type", "invite");
+                intent.PutExtra("conversation_id", conversationId);
+                intent.PutExtra("call_mode", normalizedMode);
+                intent.PutExtra("call_id", normalizedCallId);
+                var flags = global::Android.App.PendingIntentFlags.UpdateCurrent;
+                if (global::Android.OS.Build.VERSION.SdkInt >= global::Android.OS.BuildVersionCodes.M)
+                    flags |= global::Android.App.PendingIntentFlags.Immutable;
+                var pendingIntent = global::Android.App.PendingIntent.GetActivity(context, notificationId, intent, flags);
+
+                var title = string.IsNullOrWhiteSpace(callerName) ? "مكالمة واردة" : callerName.Trim();
+                var body = normalizedMode == "video" ? "مكالمة فيديو واردة — اضغط للرد" : "مكالمة صوتية واردة — اضغط للرد";
+                var builder = new global::AndroidX.Core.App.NotificationCompat.Builder(context, CallsChannelId);
+                builder.SetSmallIcon(Resource.Drawable.himo_notification);
+                builder.SetContentTitle(title);
+                builder.SetContentText(body);
+                builder.SetCategory(global::AndroidX.Core.App.NotificationCompat.CategoryCall);
+                builder.SetPriority(global::AndroidX.Core.App.NotificationCompat.PriorityMax);
+                builder.SetVisibility(global::AndroidX.Core.App.NotificationCompat.VisibilityPublic);
+                builder.SetOngoing(true);
+                builder.SetAutoCancel(false);
+                builder.SetOnlyAlertOnce(false);
+                builder.SetContentIntent(pendingIntent);
+                builder.SetFullScreenIntent(pendingIntent, true);
+                builder.SetVibrate(new long[] { 0, 500, 300, 500 });
+                notificationManager?.Notify(notificationId, builder.Build());
+                System.Diagnostics.Debug.WriteLine($"[Himo Call] Incoming-call notification posted; callId={normalizedCallId}; mode={normalizedMode}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[Himo Call] POST_NOTIFICATIONS permission missing; cannot post call notification.");
+            }
+
+            // Keep a looping ringtone as a fallback because notification sounds may be limited by device settings.
+            lock (FinishedCallIdsGate)
+            {
+                if (IsCallRingingSuppressed(normalizedCallId)) return Task.CompletedTask;
+                ActiveCallRingtoneIds.Add(dedupeKey);
+            }
             StartBackgroundIncomingCallRingtone(context, dedupeKey, conversationId, normalizedCallId);
-            System.Diagnostics.Debug.WriteLine($"[Himo Call] Ring-only invite stored; no call notification posted. callId={normalizedCallId}");
         }
         catch (Exception ex)
         {
             StopBackgroundIncomingCallRingtone(normalizedCallId, dedupeKey);
             lock (FinishedCallIdsGate) ActiveCallRingtoneIds.Remove(dedupeKey);
-            System.Diagnostics.Debug.WriteLine($"[Himo Call] Could not start background ringtone: {ex}");
+            System.Diagnostics.Debug.WriteLine($"[Himo Call] Could not post/ring incoming call: {ex}");
         }
-
         return Task.CompletedTask;
     }
 
@@ -343,7 +369,7 @@ public sealed class NotificationService : INotificationService
                                 ? notification?.GetType().GetProperty("ChannelId")?.GetValue(notification) as string
                                 : null;
                             var oldCallTag = (tag ?? string.Empty).StartsWith("himo-call-", StringComparison.OrdinalIgnoreCase);
-                            if (oldCallTag || string.Equals(channelId, CallsChannelId, StringComparison.OrdinalIgnoreCase) ||
+                            if (oldCallTag || string.Equals(channelId, "himo_calls_v3", StringComparison.OrdinalIgnoreCase) ||
                                 string.Equals(channelId, "himo_calls_v2", StringComparison.OrdinalIgnoreCase) ||
                                 string.Equals(channelId, "himo_calls_v1", StringComparison.OrdinalIgnoreCase))
                                 compat?.Cancel(tag, id);
@@ -358,7 +384,7 @@ public sealed class NotificationService : INotificationService
 
             if (OperatingSystem.IsAndroidVersionAtLeast(26) && platformManager is not null)
             {
-                try { platformManager.DeleteNotificationChannel(CallsChannelId); } catch { }
+                try { platformManager.DeleteNotificationChannel("himo_calls_v3"); } catch { }
                 try { platformManager.DeleteNotificationChannel("himo_calls_v2"); } catch { }
                 try { platformManager.DeleteNotificationChannel("himo_calls_v1"); } catch { }
             }
@@ -498,6 +524,21 @@ public sealed class NotificationService : INotificationService
                 global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Notification),
                 null);
             manager.CreateNotificationChannel(channel);
+
+            var callsChannel = new global::Android.App.NotificationChannel(
+                CallsChannelId,
+                CallsChannelName,
+                global::Android.App.NotificationImportance.Max)
+            {
+                Description = CallsChannelDescription,
+                LockscreenVisibility = global::Android.App.NotificationVisibility.Public
+            };
+            callsChannel.SetSound(
+                global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone),
+                null);
+            callsChannel.EnableVibration(true);
+            callsChannel.SetVibrationPattern(new long[] { 0, 500, 300, 500 });
+            manager.CreateNotificationChannel(callsChannel);
 
         }
         catch (Exception ex)

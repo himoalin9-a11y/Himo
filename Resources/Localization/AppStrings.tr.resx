@@ -1,0 +1,1017 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppName" xml:space="preserve">
+    <value>Himo</value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Yükleniyor...</value>
+  </data>
+  <data name="PreparingAccount" xml:space="preserve">
+    <value>Hesabınız hazırlanıyor...</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Ayarlar</value>
+  </data>
+  <data name="SettingsSubtitle" xml:space="preserve">
+    <value>Hesabınızı ve tercihlerinizi yönetin</value>
+  </data>
+  <data name="Account" xml:space="preserve">
+    <value>Hesap</value>
+  </data>
+  <data name="AccountManagement" xml:space="preserve">
+    <value>Hesap yönetimi</value>
+  </data>
+  <data name="Profile" xml:space="preserve">
+    <value>Profil</value>
+  </data>
+  <data name="ProfileTab" xml:space="preserve">
+    <value>Profil</value>
+  </data>
+  <data name="ProfileTitle" xml:space="preserve">
+    <value>Profilim</value>
+  </data>
+  <data name="ProfileSubtitle" xml:space="preserve">
+    <value>Himo üzerindeki kimliğiniz ve alanınız</value>
+  </data>
+  <data name="PublicName" xml:space="preserve">
+    <value>Görünen ad</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>Ad</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>Durum</value>
+  </data>
+  <data name="About" xml:space="preserve">
+    <value>Hakkında</value>
+  </data>
+  <data name="Username" xml:space="preserve">
+    <value>Kullanıcı adı</value>
+  </data>
+  <data name="PhoneNumber" xml:space="preserve">
+    <value>Telefon numarası</value>
+  </data>
+  <data name="Email" xml:space="preserve">
+    <value>E-posta adresi</value>
+  </data>
+  <data name="ChangePhoto" xml:space="preserve">
+    <value>Fotoğrafı değiştir</value>
+  </data>
+  <data name="RemovePhoto" xml:space="preserve">
+    <value>Fotoğrafı kaldır</value>
+  </data>
+  <data name="SaveChanges" xml:space="preserve">
+    <value>Değişiklikleri kaydet</value>
+  </data>
+  <data name="Messages" xml:space="preserve">
+    <value>Sohbetler</value>
+  </data>
+  <data name="Calls" xml:space="preserve">
+    <value>Aramalar</value>
+  </data>
+  <data name="PeopleSearch" xml:space="preserve">
+    <value>Kişi arama</value>
+  </data>
+  <data name="Back" xml:space="preserve">
+    <value>Geri</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Kapat</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>İptal</value>
+  </data>
+  <data name="OK" xml:space="preserve">
+    <value>Tamam</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Kaydet</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>Sil</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>Düzenle</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>Onayla</value>
+  </data>
+  <data name="Search" xml:space="preserve">
+    <value>Ara</value>
+  </data>
+  <data name="SearchConversations" xml:space="preserve">
+    <value>Sohbetlerinde ara</value>
+  </data>
+  <data name="NoConversations" xml:space="preserve">
+    <value>Henüz sohbet yok</value>
+  </data>
+  <data name="Notifications" xml:space="preserve">
+    <value>Bildirimler</value>
+  </data>
+  <data name="ChatSettings" xml:space="preserve">
+    <value>Sohbet ayarları</value>
+  </data>
+  <data name="AppearanceAndIcons" xml:space="preserve">
+    <value>Temalar ve simgeler</value>
+  </data>
+  <data name="TextSize" xml:space="preserve">
+    <value>Yazı boyutu</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Dil</value>
+  </data>
+  <data name="LanguageTitle" xml:space="preserve">
+    <value>Uygulama dili</value>
+  </data>
+  <data name="LanguageSubtitle" xml:space="preserve">
+    <value>Tercih ettiğiniz dili seçin</value>
+  </data>
+  <data name="AvailableLanguages" xml:space="preserve">
+    <value>Kullanılabilir diller</value>
+  </data>
+  <data name="SaveLanguage" xml:space="preserve">
+    <value>Dili kaydet</value>
+  </data>
+  <data name="LanguageSavedTitle" xml:space="preserve">
+    <value>Dil kaydedildi</value>
+  </data>
+  <data name="LanguageSavedMessage" xml:space="preserve">
+    <value>Seçilen dil desteklenen ekranlara uygulandı. Bazı özel ekranlar çevrilene kadar Arapça kalabilir.</value>
+  </data>
+  <data name="Theme" xml:space="preserve">
+    <value>Tema</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>Gizlilik</value>
+  </data>
+  <data name="SecurityPrivacy" xml:space="preserve">
+    <value>Güvenlik ve gizlilik</value>
+  </data>
+  <data name="StorageData" xml:space="preserve">
+    <value>Depolama ve veriler</value>
+  </data>
+  <data name="HelpSupport" xml:space="preserve">
+    <value>Yardım ve destek</value>
+  </data>
+  <data name="AboutApp" xml:space="preserve">
+    <value>Uygulama hakkında</value>
+  </data>
+  <data name="Logout" xml:space="preserve">
+    <value>Çıkış yap</value>
+  </data>
+  <data name="LogoutAllDevices" xml:space="preserve">
+    <value>Tüm cihazlardan çıkış yap</value>
+  </data>
+  <data name="DeleteAccount" xml:space="preserve">
+    <value>Hesabı kalıcı olarak sil</value>
+  </data>
+  <data name="FontSmall" xml:space="preserve">
+    <value>Küçük</value>
+  </data>
+  <data name="FontMedium" xml:space="preserve">
+    <value>Orta</value>
+  </data>
+  <data name="FontLarge" xml:space="preserve">
+    <value>Büyük</value>
+  </data>
+  <data name="OnlineNow" xml:space="preserve">
+    <value>Şu anda çevrimiçi</value>
+  </data>
+  <data name="Available" xml:space="preserve">
+    <value>Müsait</value>
+  </data>
+  <data name="NotAvailable" xml:space="preserve">
+    <value>Müsait değil</value>
+  </data>
+  <data name="LeaveMessage" xml:space="preserve">
+    <value>Mesaj bırak</value>
+  </data>
+  <data name="Sleeping" xml:space="preserve">
+    <value>Uyuyor</value>
+  </data>
+  <data name="AtWork" xml:space="preserve">
+    <value>İşte</value>
+  </data>
+  <data name="Traveling" xml:space="preserve">
+    <value>Seyahatte</value>
+  </data>
+  <data name="ChangePassword" xml:space="preserve">
+    <value>Şifreyi değiştir</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>Şifre</value>
+  </data>
+  <data name="ConfirmPassword" xml:space="preserve">
+    <value>Şifreyi onayla</value>
+  </data>
+  <data name="Login" xml:space="preserve">
+    <value>Giriş yap</value>
+  </data>
+  <data name="CreateAccount" xml:space="preserve">
+    <value>Hesap oluştur</value>
+  </data>
+  <data name="CreateNewAccount" xml:space="preserve">
+    <value>Yeni hesap oluştur</value>
+  </data>
+  <data name="ForgotPassword" xml:space="preserve">
+    <value>Şifrenizi mi unuttunuz?</value>
+  </data>
+  <data name="RecoverPassword" xml:space="preserve">
+    <value>Şifreyi kurtar</value>
+  </data>
+  <data name="EmailInvalid" xml:space="preserve">
+    <value>Geçersiz e-posta adresi.</value>
+  </data>
+  <data name="EnterEmail" xml:space="preserve">
+    <value>E-posta adresinizi girin</value>
+  </data>
+  <data name="EnterPassword" xml:space="preserve">
+    <value>Şifrenizi girin</value>
+  </data>
+  <data name="SearchPeople" xml:space="preserve">
+    <value>Kişileri bul</value>
+  </data>
+  <data name="SearchContacts" xml:space="preserve">
+    <value>Kişilerde ara</value>
+  </data>
+  <data name="NoResults" xml:space="preserve">
+    <value>Sonuç bulunamadı</value>
+  </data>
+  <data name="TryAgain" xml:space="preserve">
+    <value>Tekrar dene</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>Kaydedilemedi</value>
+  </data>
+  <data name="Saved" xml:space="preserve">
+    <value>Kaydedildi</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Hata</value>
+  </data>
+  <data name="Warning" xml:space="preserve">
+    <value>Uyarı</value>
+  </data>
+  <data name="All" xml:space="preserve">
+    <value>Tümü</value>
+  </data>
+  <data name="Everyone" xml:space="preserve">
+    <value>Herkes</value>
+  </data>
+  <data name="MyContacts" xml:space="preserve">
+    <value>Kişilerim</value>
+  </data>
+  <data name="Nobody" xml:space="preserve">
+    <value>Hiç kimse</value>
+  </data>
+  <data name="Groups" xml:space="preserve">
+    <value>Gruplar</value>
+  </data>
+  <data name="LastSeen" xml:space="preserve">
+    <value>Son görülme ve çevrimiçi</value>
+  </data>
+  <data name="ProfilePhoto" xml:space="preserve">
+    <value>Profil fotoğrafı</value>
+  </data>
+  <data name="Contacts" xml:space="preserve">
+    <value>Kişiler</value>
+  </data>
+  <data name="Cache" xml:space="preserve">
+    <value>Önbellek</value>
+  </data>
+  <data name="AppData" xml:space="preserve">
+    <value>Uygulama verileri</value>
+  </data>
+  <data name="Media" xml:space="preserve">
+    <value>Medya</value>
+  </data>
+  <data name="UsedStorage" xml:space="preserve">
+    <value>Kullanılan alan</value>
+  </data>
+  <data name="ClearCache" xml:space="preserve">
+    <value>Önbelleği temizle</value>
+  </data>
+  <data name="StorageSummary" xml:space="preserve">
+    <value>Depolama özeti</value>
+  </data>
+  <data name="SystemIcons" xml:space="preserve">
+    <value>Sistem simgeleri</value>
+  </data>
+  <data name="GlassIcons" xml:space="preserve">
+    <value>Cam simgeler</value>
+  </data>
+  <data name="ProfessionalIcons" xml:space="preserve">
+    <value>Profesyonel simgeler</value>
+  </data>
+  <data name="ChooseTheme" xml:space="preserve">
+    <value>Tema seç</value>
+  </data>
+  <data name="CurrentTheme" xml:space="preserve">
+    <value>Mevcut tema</value>
+  </data>
+  <data name="ApplyTheme" xml:space="preserve">
+    <value>Temayı uygula</value>
+  </data>
+  <data name="Send" xml:space="preserve">
+    <value>Gönder</value>
+  </data>
+  <data name="Message" xml:space="preserve">
+    <value>Mesaj</value>
+  </data>
+  <data name="TypeMessage" xml:space="preserve">
+    <value>Mesaj yazın...</value>
+  </data>
+  <data name="Online" xml:space="preserve">
+    <value>Şu anda çevrimiçi</value>
+  </data>
+  <data name="Offline" xml:space="preserve">
+    <value>Çevrimdışı</value>
+  </data>
+  <data name="Audio" xml:space="preserve">
+    <value>Ses</value>
+  </data>
+  <data name="Video" xml:space="preserve">
+    <value>Video</value>
+  </data>
+  <data name="Photos" xml:space="preserve">
+    <value>Fotoğraflar</value>
+  </data>
+  <data name="Camera" xml:space="preserve">
+    <value>Kamera</value>
+  </data>
+  <data name="Attachments" xml:space="preserve">
+    <value>Ekler</value>
+  </data>
+  <data name="Forward" xml:space="preserve">
+    <value>İlet</value>
+  </data>
+  <data name="DeleteMessage" xml:space="preserve">
+    <value>Mesajı sil</value>
+  </data>
+  <data name="EditMessage" xml:space="preserve">
+    <value>Mesajı düzenle</value>
+  </data>
+  <data name="MuteNotifications" xml:space="preserve">
+    <value>Bildirimleri sessize al</value>
+  </data>
+  <data name="UnmuteNotifications" xml:space="preserve">
+    <value>Bildirim sesini aç</value>
+  </data>
+  <data name="CreateGroup" xml:space="preserve">
+    <value>Grup oluştur</value>
+  </data>
+  <data name="GroupName" xml:space="preserve">
+    <value>Grup adı</value>
+  </data>
+  <data name="LeaveGroup" xml:space="preserve">
+    <value>Gruptan ayrıl</value>
+  </data>
+  <data name="Call" xml:space="preserve">
+    <value>Arama</value>
+  </data>
+  <data name="VoiceCall" xml:space="preserve">
+    <value>Sesli arama</value>
+  </data>
+  <data name="VideoCall" xml:space="preserve">
+    <value>Görüntülü arama</value>
+  </data>
+  <data name="EndCall" xml:space="preserve">
+    <value>Aramayı bitir</value>
+  </data>
+  <data name="Connecting" xml:space="preserve">
+    <value>Bağlanıyor...</value>
+  </data>
+  <data name="IncomingCall" xml:space="preserve">
+    <value>Gelen arama</value>
+  </data>
+  <data name="Choose" xml:space="preserve">
+    <value>Seç</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Kaldır</value>
+  </data>
+  <data name="AvailableOnHimo" xml:space="preserve">
+    <value>Himo’da kullanılabilir</value>
+  </data>
+  <data name="AccountInfo" xml:space="preserve">
+    <value>Hesap bilgileri</value>
+  </data>
+  <data name="ChangeUsername" xml:space="preserve">
+    <value>Kullanıcı adını değiştir</value>
+  </data>
+  <data name="ChangePhone" xml:space="preserve">
+    <value>Telefon numarasını değiştir</value>
+  </data>
+  <data name="ChangeEmail" xml:space="preserve">
+    <value>E-posta adresini değiştir</value>
+  </data>
+  <data name="PrivacySettings" xml:space="preserve">
+    <value>Gizlilik ayarları</value>
+  </data>
+  <data name="Backup" xml:space="preserve">
+    <value>Yedekleme</value>
+  </data>
+  <data name="Restore" xml:space="preserve">
+    <value>Geri yükle</value>
+  </data>
+  <data name="NotificationsEnabled" xml:space="preserve">
+    <value>Bildirimler etkin.</value>
+  </data>
+  <data name="NotificationsDisabled" xml:space="preserve">
+    <value>Bildirimler kapalı.</value>
+  </data>
+  <data name="PermissionDenied" xml:space="preserve">
+    <value>İzin verilmedi.</value>
+  </data>
+  <data name="Retry" xml:space="preserve">
+    <value>Yeniden dene</value>
+  </data>
+  <data name="AreYouSure" xml:space="preserve">
+    <value>Emin misiniz?</value>
+  </data>
+  <data name="NewGroup" xml:space="preserve">
+    <value>Yeni grup</value>
+  </data>
+  <data name="WelcomeBack" xml:space="preserve">
+    <value>Tekrar hoş geldiniz</value>
+  </data>
+  <data name="UnlimitedCommunication" xml:space="preserve">
+    <value>Sınırsız iletişim</value>
+  </data>
+  <data name="SelectedCount" xml:space="preserve">
+    <value>1 seçildi</value>
+  </data>
+  <data name="DeleteSelectedChats" xml:space="preserve">
+    <value>Seçili sohbetleri sil</value>
+  </data>
+  <data name="MuteSelectedChats" xml:space="preserve">
+    <value>Seçili sohbet bildirimlerini sessize al</value>
+  </data>
+  <data name="ArchiveSelectedChats" xml:space="preserve">
+    <value>Seçili sohbetleri arşivle</value>
+  </data>
+  <data name="BlockSelectedPerson" xml:space="preserve">
+    <value>Seçili kişiyi engelle</value>
+  </data>
+  <data name="ClearSelection" xml:space="preserve">
+    <value>Seçimi temizle</value>
+  </data>
+  <data name="ArchivedChats" xml:space="preserve">
+    <value>Arşivlenen sohbetleri görüntüle</value>
+  </data>
+  <data name="StartConversation" xml:space="preserve">
+    <value>Sohbet başlat</value>
+  </data>
+  <data name="StartNewConversation" xml:space="preserve">
+    <value>Yeni sohbet başlat</value>
+  </data>
+  <data name="CallHistory" xml:space="preserve">
+    <value>Arama geçmişi</value>
+  </data>
+  <data name="RecentCalls" xml:space="preserve">
+    <value>Son aramalar ve geri arama seçenekleri</value>
+  </data>
+  <data name="NoCallsYet" xml:space="preserve">
+    <value>Henüz arama yok</value>
+  </data>
+  <data name="CallFromChatHint" xml:space="preserve">
+    <value>Herhangi bir sohbetten sesli veya görüntülü arama başlatabilirsiniz.</value>
+  </data>
+  <data name="ReturnToChats" xml:space="preserve">
+    <value>Sohbetlere dön</value>
+  </data>
+  <data name="RedialAudio" xml:space="preserve">
+    <value>Sesli tekrar ara</value>
+  </data>
+  <data name="RedialVideo" xml:space="preserve">
+    <value>Görüntülü tekrar ara</value>
+  </data>
+  <data name="FindPeople" xml:space="preserve">
+    <value>Kişileri bul</value>
+  </data>
+  <data name="UsePhoneOrEmail" xml:space="preserve">
+    <value>Telefon numarası veya e-posta için tek arama alanını kullanın.</value>
+  </data>
+  <data name="PhoneOrEmail" xml:space="preserve">
+    <value>Telefon numarası veya e-posta</value>
+  </data>
+  <data name="SearchLoading" xml:space="preserve">
+    <value>Aranıyor...</value>
+  </data>
+  <data name="ContactsHint" xml:space="preserve">
+    <value>Tüm kişileri görmek için üstteki arama simgesine dokunun. Telefon numarasıyla bulunan hesaplar yalnızca sahibi keşfe izin verdiyse görünür.</value>
+  </data>
+  <data name="EnterPhoneEmail" xml:space="preserve">
+    <value>Başlamak için telefon numarası veya e-posta girin.</value>
+  </data>
+  <data name="SearchBeforeResults" xml:space="preserve">
+    <value>Arama yapmadan sonuçlar görünmez</value>
+  </data>
+  <data name="AccountActive" xml:space="preserve">
+    <value>Hesabınız şu anda etkin</value>
+  </data>
+  <data name="PhonePrivateHint" xml:space="preserve">
+    <value>Telefon numaranız diğer kullanıcılara gösterilmez. Hesap Yönetimi bölümünden numarayla bulunabilirliği yönetebilirsiniz.</value>
+  </data>
+  <data name="EnableHimoNotifications" xml:space="preserve">
+    <value>Himo bildirimlerini etkinleştir</value>
+  </data>
+  <data name="NotificationToggleHint" xml:space="preserve">
+    <value>Mesaj ve arama bildirimlerini açın veya kapatın</value>
+  </data>
+  <data name="OpenAndroidSettings" xml:space="preserve">
+    <value>Android ayarlarını aç</value>
+  </data>
+  <data name="ChatsAppearanceDescription" xml:space="preserve">
+    <value>Gönderim, medya, yazı boyutu, arşiv ve yedekleme</value>
+  </data>
+  <data name="ManageFilesAndNetwork" xml:space="preserve">
+    <value>Dosyaları ve fotoğrafları yönetin, ağ kullanımını inceleyin</value>
+  </data>
+  <data name="IconThemeDescription" xml:space="preserve">
+    <value>Tam bir tema seçerek arayüz renklerini ve simgeleri değiştirin</value>
+  </data>
+  <data name="AppLock" xml:space="preserve">
+    <value>Uygulama kilidi</value>
+  </data>
+  <data name="SetPasscode" xml:space="preserve">
+    <value>Uygulamayı korumak için parola belirleyin</value>
+  </data>
+  <data name="NewPasscode" xml:space="preserve">
+    <value>Yeni kod (4–6 rakam)</value>
+  </data>
+  <data name="SaveLockCode" xml:space="preserve">
+    <value>Kilit kodunu kaydet</value>
+  </data>
+  <data name="DisplayNameHint" xml:space="preserve">
+    <value>Arkadaşlarınızın sizi kolay bulması için anlaşılır bir ad kullanın.</value>
+  </data>
+  <data name="StatusHint" xml:space="preserve">
+    <value>Mevcut durumunuzu anlatan kısa bir cümle yazın.</value>
+  </data>
+  <data name="ProfileSavedHint" xml:space="preserve">
+    <value>Fotoğrafınız hesabınıza kaydedilir ve yeniden giriş yaptığınızda kullanılabilir.</value>
+  </data>
+  <data name="PhotoFormatLimit" xml:space="preserve">
+    <value>JPG, PNG, WebP veya HEIC · En fazla 4 MB</value>
+  </data>
+  <data name="FullName" xml:space="preserve">
+    <value>Tam ad</value>
+  </data>
+  <data name="EnterYourName" xml:space="preserve">
+    <value>Görünmesini istediğiniz adı yazın</value>
+  </data>
+  <data name="OptionalPhone" xml:space="preserve">
+    <value>Telefon numarası (isteğe bağlı)</value>
+  </data>
+  <data name="EightChars" xml:space="preserve">
+    <value>En az 8 karakter</value>
+  </data>
+  <data name="AgreeTo" xml:space="preserve">
+    <value>Kabul ediyorum: </value>
+  </data>
+  <data name="TermsOfUse" xml:space="preserve">
+    <value>Kullanım Koşulları</value>
+  </data>
+  <data name="PrivacyPolicy" xml:space="preserve">
+    <value>Gizlilik Politikası</value>
+  </data>
+  <data name="BeforeCreatingAccount" xml:space="preserve">
+    <value> hesap oluşturmadan önce.</value>
+  </data>
+  <data name="VerificationCode" xml:space="preserve">
+    <value>Doğrulama kodu</value>
+  </data>
+  <data name="SixDigitCode" xml:space="preserve">
+    <value>6 haneli doğrulama kodu</value>
+  </data>
+  <data name="VerificationEmailHint" xml:space="preserve">
+    <value>Hesap oluşturmayı tamamlamak için e-postanıza gönderdiğimiz kodu girin.</value>
+  </data>
+  <data name="ResendVerification" xml:space="preserve">
+    <value>Doğrulama kodunu yeniden gönder</value>
+  </data>
+  <data name="AlreadyHaveAccount" xml:space="preserve">
+    <value>Zaten hesabınız var mı?</value>
+  </data>
+  <data name="NoAccount" xml:space="preserve">
+    <value>Hesabınız yok mu?</value>
+  </data>
+  <data name="SignInToContinue" xml:space="preserve">
+    <value>Devam etmek için giriş yapın</value>
+  </data>
+  <data name="RecoverAccess" xml:space="preserve">
+    <value>Hesabınıza güvenli şekilde yeniden erişin</value>
+  </data>
+  <data name="LetsGetBack" xml:space="preserve">
+    <value>Hesabınıza yeniden dönelim</value>
+  </data>
+  <data name="SendVerificationCode" xml:space="preserve">
+    <value>Doğrulama kodu gönder</value>
+  </data>
+  <data name="CompleteRecovery" xml:space="preserve">
+    <value>Kurtarmayı tamamla</value>
+  </data>
+  <data name="NewPassword" xml:space="preserve">
+    <value>Yeni şifre</value>
+  </data>
+  <data name="EnterCodeSent" xml:space="preserve">
+    <value>E-postanıza gönderilen kodu girin</value>
+  </data>
+  <data name="LoadingContacts" xml:space="preserve">
+    <value>Kişiler yükleniyor...</value>
+  </data>
+  <data name="NoContacts" xml:space="preserve">
+    <value>Gösterilecek kişi yok</value>
+  </data>
+  <data name="ContactsPermissionHint" xml:space="preserve">
+    <value>Telefonunuzda kişiler olduğundan ve Himo’ya izin verdiğinizden emin olun.</value>
+  </data>
+  <data name="NoMessagesYet" xml:space="preserve">
+    <value>Henüz mesaj yok</value>
+  </data>
+  <data name="StartChatHint" xml:space="preserve">
+    <value>İlk mesajı göndererek sohbete başlayın</value>
+  </data>
+  <data name="NewMessages" xml:space="preserve">
+    <value>Yeni mesajlar</value>
+  </data>
+  <data name="ReplyToMessage" xml:space="preserve">
+    <value>Mesajı yanıtla</value>
+  </data>
+  <data name="RecordingVoiceMessage" xml:space="preserve">
+    <value>Sesli mesaj kaydediliyor...</value>
+  </data>
+  <data name="TapToStopRecording" xml:space="preserve">
+    <value>Kaydı durdurmak için dokunun</value>
+  </data>
+  <data name="SendMedia" xml:space="preserve">
+    <value>Medya gönder</value>
+  </data>
+  <data name="ChooseWhatToSend" xml:space="preserve">
+    <value>Göndermek istediğinizi seçin</value>
+  </data>
+  <data name="VideoPlayer" xml:space="preserve">
+    <value>Video oynatıcı</value>
+  </data>
+  <data name="SecureCall" xml:space="preserve">
+    <value>Himo üzerinden güvenli arama</value>
+  </data>
+  <data name="RejectCall" xml:space="preserve">
+    <value>Aramayı reddet</value>
+  </data>
+  <data name="AnswerCall" xml:space="preserve">
+    <value>Aramayı yanıtla</value>
+  </data>
+  <data name="CancelCall" xml:space="preserve">
+    <value>Aramayı iptal et</value>
+  </data>
+  <data name="MuteMicrophone" xml:space="preserve">
+    <value>Mikrofonu kapat</value>
+  </data>
+  <data name="ToggleCamera" xml:space="preserve">
+    <value>Kamerayı aç veya kapat</value>
+  </data>
+  <data name="IncomingAudio" xml:space="preserve">
+    <value>Gelen ses</value>
+  </data>
+  <data name="IncomingVideo" xml:space="preserve">
+    <value>Video bekleniyor</value>
+  </data>
+  <data name="ShowPassword" xml:space="preserve">
+    <value>Şifreyi göster veya gizle</value>
+  </data>
+  <data name="ShowConfirmPassword" xml:space="preserve">
+    <value>Şifre onayını göster veya gizle</value>
+  </data>
+  <data name="AccountPermissionHint" xml:space="preserve">
+    <value>Cihaz izinlerini istediğiniz zaman Ayarlar’dan yönetebilirsiniz.</value>
+  </data>
+  <data name="LanguageArabic" xml:space="preserve">
+    <value>Arapça</value>
+  </data>
+  <data name="LanguageEnglish" xml:space="preserve">
+    <value>İngilizce</value>
+  </data>
+  <data name="LanguageFrench" xml:space="preserve">
+    <value>Fransızca</value>
+  </data>
+  <data name="LanguageTurkish" xml:space="preserve">
+    <value>Türkçe</value>
+  </data>
+  <data name="LanguageUrdu" xml:space="preserve">
+    <value>Urdu</value>
+  </data>
+  <data name="LanguageSpanish" xml:space="preserve">
+    <value>İspanyolca</value>
+  </data>
+  <data name="LanguageIndonesian" xml:space="preserve">
+    <value>Endonezce</value>
+  </data>
+  <data name="LanguageChangeNote" xml:space="preserve">
+    <value>Dil, çeviri kaynakları bulunan ekranlara uygulanır.</value>
+  </data>
+  <data name="LanguageArabicFull" xml:space="preserve">
+    <value>Arapça dili</value>
+  </data>
+  <data name="HimoAccount" xml:space="preserve">
+    <value>Himo hesabınız</value>
+  </data>
+  <data name="ProtectYourInfo" xml:space="preserve">
+    <value>Bilgilerinizi koruyun</value>
+  </data>
+  <data name="PrivacySecurityDescription" xml:space="preserve">
+    <value>Gizlilik ve güvenlik ayarları</value>
+  </data>
+  <data name="AccountFieldsDescription" xml:space="preserve">
+    <value>Telefon, ad, e-posta ve şifre</value>
+  </data>
+  <data name="CustomizeNotifications" xml:space="preserve">
+    <value>Uygulama bildirimlerini özelleştir</value>
+  </data>
+  <data name="AppearanceExperience" xml:space="preserve">
+    <value>Görünüm ve deneyim</value>
+  </data>
+  <data name="SettingsTextSizeHint" xml:space="preserve">
+    <value>Ayarlar sayfasındaki metin boyutunu belirleyin</value>
+  </data>
+  <data name="AppLockOff" xml:space="preserve">
+    <value>Uygulama kilidi kapalı.</value>
+  </data>
+  <data name="ContactsSavedOnPhone" xml:space="preserve">
+    <value>Telefonunuza kayıtlı adlar</value>
+  </data>
+  <data name="MatchingHimoAccounts" xml:space="preserve">
+    <value>Eşleşen Himo hesapları</value>
+  </data>
+  <data name="NumbersNotShared" xml:space="preserve">
+    <value>Numaralarınız izniniz olmadan paylaşılmaz</value>
+  </data>
+  <data name="PrivacyCheckup" xml:space="preserve">
+    <value>Gizlilik kontrolü</value>
+  </data>
+  <data name="SavedOnThisDevice" xml:space="preserve">
+    <value>Seçimleriniz şu anda bu cihazda saklanıyor. Görünürlük kurallarının diğer kullanıcılara uygulanması sunucu desteği gerektirir.</value>
+  </data>
+  <data name="AccountSharing" xml:space="preserve">
+    <value>Hesap paylaşımı</value>
+  </data>
+  <data name="BlockUnknownCallers" xml:space="preserve">
+    <value>Bilinmeyen arayanları engelle</value>
+  </data>
+  <data name="BlockedAccounts" xml:space="preserve">
+    <value>Engellenen hesaplar</value>
+  </data>
+  <data name="DefaultTone" xml:space="preserve">
+    <value>Varsayılan zil sesi</value>
+  </data>
+  <data name="Vibration" xml:space="preserve">
+    <value>Titreşim</value>
+  </data>
+  <data name="NotificationTone" xml:space="preserve">
+    <value>Bildirim sesi</value>
+  </data>
+  <data name="AppNotificationsEnabled" xml:space="preserve">
+    <value>Uygulama bildirimleri etkin.</value>
+  </data>
+  <data name="AppNotificationsStopped" xml:space="preserve">
+    <value>Uygulama bildirimleri kapalı.</value>
+  </data>
+  <data name="DisappearingMessages" xml:space="preserve">
+    <value>Kaybolan mesajlar</value>
+  </data>
+  <data name="SearchInMessages" xml:space="preserve">
+    <value>Mesajlarda ara...</value>
+  </data>
+  <data name="ChatWallpaper" xml:space="preserve">
+    <value>Sohbet duvar kâğıdı</value>
+  </data>
+  <data name="ChatTheme" xml:space="preserve">
+    <value>Sohbet teması</value>
+  </data>
+  <data name="TextSizeInChat" xml:space="preserve">
+    <value>Sohbet yazı boyutu</value>
+  </data>
+  <data name="BackupNow" xml:space="preserve">
+    <value>Şimdi yedekle</value>
+  </data>
+  <data name="BackupAutomatic" xml:space="preserve">
+    <value>Otomatik yedekleme</value>
+  </data>
+  <data name="BackupNotAvailable" xml:space="preserve">
+    <value>Yedekleme şu anda kullanılamıyor</value>
+  </data>
+  <data name="StorageUnavailable" xml:space="preserve">
+    <value>Bu sistemde kullanılamıyor</value>
+  </data>
+  <data name="DataReceived" xml:space="preserve">
+    <value>Alınan veri</value>
+  </data>
+  <data name="DataSent" xml:space="preserve">
+    <value>Gönderilen veri</value>
+  </data>
+  <data name="StorageSpace" xml:space="preserve">
+    <value>Depolama alanı</value>
+  </data>
+  <data name="NetworkUsage" xml:space="preserve">
+    <value>Ağ kullanımı</value>
+  </data>
+  <data name="ResetStatistics" xml:space="preserve">
+    <value>İstatistikleri sıfırla</value>
+  </data>
+  <data name="ResetComplete" xml:space="preserve">
+    <value>Sıfırlama tamamlandı</value>
+  </data>
+  <data name="SystemStyle" xml:space="preserve">
+    <value>Arayüz temaları</value>
+  </data>
+  <data name="Icons" xml:space="preserve">
+    <value>Simgeler</value>
+  </data>
+  <data name="InterfaceStyle" xml:space="preserve">
+    <value>Arayüz görünümü</value>
+  </data>
+  <data name="Preview" xml:space="preserve">
+    <value>Önizleme</value>
+  </data>
+  <data name="Selected" xml:space="preserve">
+    <value>Seçildi ✓</value>
+  </data>
+  <data name="ChooseIcon" xml:space="preserve">
+    <value>Simge seç</value>
+  </data>
+  <data name="ChooseAppearance" xml:space="preserve">
+    <value>Görünüm seç</value>
+  </data>
+  <data name="StartChatOrFindFriends" xml:space="preserve">
+    <value>Yeni bir sohbet başlatın veya arkadaşlarınızı bulun</value>
+  </data>
+  <data name="ViewArchivedChats" xml:space="preserve">
+    <value>Arşivlenen sohbetleri görüntüle</value>
+  </data>
+  <data name="ProfileManagePhoto" xml:space="preserve">
+    <value>Fotoğrafınızı ve bilgilerinizi yönetin</value>
+  </data>
+  <data name="PersonalAccount" xml:space="preserve">
+    <value>Kişisel hesabınız</value>
+  </data>
+  <data name="HimoUser" xml:space="preserve">
+    <value>Himo kullanıcısı</value>
+  </data>
+  <data name="ProfilePhotoAndInfo" xml:space="preserve">
+    <value>Himo’daki fotoğrafınız ve bilgileriniz</value>
+  </data>
+  <data name="YourProfile" xml:space="preserve">
+    <value>Profiliniz</value>
+  </data>
+  <data name="ChangeProfilePhoto" xml:space="preserve">
+    <value>Profil fotoğrafını değiştir</value>
+  </data>
+  <data name="AddPhoto" xml:space="preserve">
+    <value>Fotoğraf ekle</value>
+  </data>
+  <data name="AccountInformation" xml:space="preserve">
+    <value>Hesap bilgileri</value>
+  </data>
+  <data name="YourName" xml:space="preserve">
+    <value>Adınız</value>
+  </data>
+  <data name="StatusExample" xml:space="preserve">
+    <value>Örnek: Şu anda müsait</value>
+  </data>
+  <data name="TapToView" xml:space="preserve">
+    <value>Görüntülemek için dokunun</value>
+  </data>
+  <data name="File" xml:space="preserve">
+    <value>Dosya</value>
+  </data>
+  <data name="Contact" xml:space="preserve">
+    <value>Kişi</value>
+  </data>
+  <data name="CallStatusTimer" xml:space="preserve">
+    <value>Bağlandı • 00:00</value>
+  </data>
+  <data name="PreparingConnection" xml:space="preserve">
+    <value>Bağlantı hazırlanıyor...</value>
+  </data>
+  <data name="Reject" xml:space="preserve">
+    <value>Reddet</value>
+  </data>
+  <data name="Answer" xml:space="preserve">
+    <value>Yanıtla</value>
+  </data>
+  <data name="ConnectingToOther" xml:space="preserve">
+    <value>Diğer kişi aranıyor</value>
+  </data>
+  <data name="WaitingForAnswer" xml:space="preserve">
+    <value>Diğer kişinin yanıtı bekleniyor...</value>
+  </data>
+  <data name="SearchByNameOrDetails" xml:space="preserve">
+    <value>Ad, numara veya e-postayla ara</value>
+  </data>
+  <data name="Or" xml:space="preserve">
+    <value>veya</value>
+  </data>
+  <data name="AccountAlreadyExists" xml:space="preserve">
+    <value>Zaten hesabınız var mı?</value>
+  </data>
+  <data name="ThemeAndAppearance" xml:space="preserve">
+    <value>Görünüm ve deneyim</value>
+  </data>
+  <data name="LanguageArabicOption" xml:space="preserve">
+    <value>Arapça</value>
+  </data>
+  <data name="Features" xml:space="preserve">
+    <value>Özellikler</value>
+  </data>
+  <data name="AccountActionsDescription" xml:space="preserve">
+    <value>Cihazlardan çıkış yapın, oturumu kapatın veya hesabınızı kalıcı olarak silin</value>
+  </data>
+  <data name="Resend" xml:space="preserve">
+    <value>Yeniden gönder</value>
+  </data>
+  <data name="Image" xml:space="preserve">
+    <value>Görsel</value>
+  </data>
+  <data name="Attachment" xml:space="preserve">
+    <value>Ek</value>
+  </data>
+  <data name="Conversation" xml:space="preserve">
+    <value>Sohbet</value>
+  </data>
+  <data name="TheVideo" xml:space="preserve">
+    <value>Video</value>
+  </data>
+  <data name="EndAndReturn" xml:space="preserve">
+    <value>Bitir ve geri dön</value>
+  </data>
+  <data name="MuteSound" xml:space="preserve">
+    <value>Sesi kapat</value>
+  </data>
+  <data name="TurnCameraOff" xml:space="preserve">
+    <value>Kamerayı kapat</value>
+  </data>
+  <data name="Speaker" xml:space="preserve">
+    <value>Hoparlör</value>
+  </data>
+  <data name="OtherPartyAudio" xml:space="preserve">
+    <value>Diğer kişinin sesi</value>
+  </data>
+  <data name="MoreCallOptions" xml:space="preserve">
+    <value>Daha fazla arama seçeneği</value>
+  </data>
+  <data name="More" xml:space="preserve">
+    <value>Daha fazla</value>
+  </data>
+  <data name="Match" xml:space="preserve">
+    <value>Eşleştir</value>
+  </data>
+  <data name="HimoTagline" xml:space="preserve">
+    <value>Himo · Sınırsız iletişim</value>
+  </data>
+  <data name="CreateAccountShort" xml:space="preserve">
+    <value>Hesap oluştur</value>
+  </data>
+  <data name="BackToLogin" xml:space="preserve">
+    <value>Girişe dön</value>
+  </data>
+  <data name="JoinHimo" xml:space="preserve">
+    <value>Himo’ya katılın ve kolayca iletişim kurun</value>
+  </data>
+  <data name="RetypePassword" xml:space="preserve">
+    <value>Şifreyi tekrar yazın</value>
+  </data>
+  <data name="And" xml:space="preserve">
+    <value>ve</value>
+  </data>
+  <data name="BackToLoginShort" xml:space="preserve">
+    <value>Girişe geri dön</value>
+  </data>
+  <data name="SendPasswordResetEmail" xml:space="preserve">
+    <value>E-postanızı girin; şifrenizi sıfırlamak için size kod göndereceğiz.</value>
+  </data>
+  <data name="VerificationCodeSix" xml:space="preserve">
+    <value>Doğrulama kodu (6 hane)</value>
+  </data>
+  <data name="PasswordSecurityHint" xml:space="preserve">
+    <value>En az 8 karakterli yeni bir şifre kullanın. Doğrulama kodunuzu kimseyle paylaşmayın.</value>
+  </data>
+  <data name="SaveNewPassword" xml:space="preserve">
+    <value>Yeni şifreyi kaydet</value>
+  </data>
+  <data name="EmailNotReceivedHint" xml:space="preserve">
+    <value>E-posta gelmedi mi? Yeni kod istemeden önce spam klasörünü kontrol edin.</value>
+  </data>
+<data name="UIExtra001" xml:space="preserve"><value>Hesap ekle</value></data><data name="UIExtra002" xml:space="preserve"><value>Bilgilerini yönetmek için bir bölüm seçin. Değişiklikler yalnızca onayınızdan sonra kaydedilir.</value></data><data name="UIExtra003" xml:space="preserve"><value>E-posta ve oturum açma bilgileri</value></data><data name="UIExtra004" xml:space="preserve"><value>Giriş ve güvenlik</value></data><data name="UIExtra005" xml:space="preserve"><value>Kişisel bilgiler</value></data><data name="UIExtra006" xml:space="preserve"><value>Oturum açma bilgileri</value></data><data name="UIExtra007" xml:space="preserve"><value>Hesap bilgileriniz güvenle saklanır</value></data><data name="UIExtra008" xml:space="preserve"><value>Kişisel bilgileriniz ve hesap güvenliğiniz</value></data><data name="UIExtra009" xml:space="preserve"><value>Himo’da görünen adı değiştir</value></data><data name="UIExtra010" xml:space="preserve"><value>Güvenli doğrulama koduyla parolanızı değiştirin</value></data><data name="UIExtra011" xml:space="preserve"><value>Ülke kodu ve numara gizliliği</value></data><data name="UIExtra012" xml:space="preserve"><value>Başka bir hesapla giriş sayfasını aç</value></data><data name="UIExtra013" xml:space="preserve"><value>Himo • Hesap korumanız burada başlar</value></data><data name="UIExtra014" xml:space="preserve"><value>Kilit kodunu girin</value></data><data name="UIExtra015" xml:space="preserve"><value>Hesabınıza devam etmek için kilit kodunu girin</value></data><data name="UIExtra016" xml:space="preserve"><value>Uygulama kilitli</value></data><data name="UIExtra017" xml:space="preserve"><value>Kilit kodu</value></data><data name="UIExtra018" xml:space="preserve"><value>Kodunuz sohbetlerinizin ve verilerinizin gizliliğini korur</value></data><data name="UIExtra019" xml:space="preserve"><value>Kilidi aç</value></data><data name="UIExtra020" xml:space="preserve"><value>Himo kilidi</value></data><data name="UIExtra021" xml:space="preserve"><value>Siyah beyaz</value></data><data name="UIExtra022" xml:space="preserve"><value>Doğal parlaklık</value></data><data name="UIExtra023" xml:space="preserve"><value>Soğuk</value></data><data name="UIExtra024" xml:space="preserve"><value>Pürüzsüz cilt</value></data><data name="UIExtra025" xml:space="preserve"><value>Kadifemsi cilt</value></data><data name="UIExtra026" xml:space="preserve"><value>Odak</value></data><data name="UIExtra027" xml:space="preserve"><value>İpeksi parlaklık</value></data><data name="UIExtra028" xml:space="preserve"><value>Canlı</value></data><data name="UIExtra029" xml:space="preserve"><value>Sıcak</value></data><data name="UIExtra030" xml:space="preserve"><value>Sepya</value></data><data name="UIExtra031" xml:space="preserve"><value>Izgara</value></data><data name="UIExtra032" xml:space="preserve"><value>Yüksek kaliteli fotoğraf</value></data><data name="UIExtra033" xml:space="preserve"><value>Doğal</value></data><data name="UIExtra034" xml:space="preserve"><value>Filtreler</value></data><data name="UIExtra035" xml:space="preserve"><value>Flaş</value></data><data name="UIExtra036" xml:space="preserve"><value>Himo kamerası</value></data><data name="UIExtra037" xml:space="preserve"><value>Zamanlayıcı 0 sn</value></data><data name="UIExtra038" xml:space="preserve"><value>Tam makyaj</value></data><data name="UIExtra039" xml:space="preserve"><value>Hafif makyaj</value></data><data name="UIExtra040" xml:space="preserve"><value>0 üye</value></data><data name="UIExtra041" xml:space="preserve"><value>Grubunuza üye ekleyin</value></data><data name="UIExtra042" xml:space="preserve"><value>Grup üyeleri</value></data><data name="UIExtra043" xml:space="preserve"><value>Grup oluştur</value></data><data name="UIExtra044" xml:space="preserve"><value>Arkadaşlarınızla grup sohbeti başlatın</value></data><data name="UIExtra045" xml:space="preserve"><value>Himo’ya kayıtlı adı, e-postayı veya telefon numarasını yazıp Ekle’ye dokunun.</value></data><data name="UIExtra046" xml:space="preserve"><value>Ad, e-posta veya telefon numarası</value></data><data name="UIExtra047" xml:space="preserve"><value>Medya önizlemesi</value></data><data name="UIExtra048" xml:space="preserve"><value>Açıklama ekle…</value></data><data name="UIExtra049" xml:space="preserve"><value>Başlangıç</value></data><data name="UIExtra050" xml:space="preserve"><value>Bitiş</value></data><data name="UIExtra051" xml:space="preserve"><value>Dosya hazırlanıyor…</value></data><data name="UIExtra052" xml:space="preserve"><value>Kaydet ve gönder</value></data><data name="UIExtra053" xml:space="preserve"><value>Video düzenlemeye hazır</value></data><data name="UIExtra054" xml:space="preserve"><value>Videoyu kırp ve sesi kapat</value></data><data name="UIExtra055" xml:space="preserve"><value>Video sesini kapat</value></data><data name="UIExtra056" xml:space="preserve"><value>Profilinizi ve Himo ayarlarınızı tek yerden yönetin</value></data><data name="UIExtra057" xml:space="preserve"><value>Sesler, uyarılar ve titreşim</value></data><data name="UIExtra058" xml:space="preserve"><value>Ad, durum ve iletişim bilgileri</value></data><data name="UIExtra059" xml:space="preserve"><value>Görünüm ve arayüz</value></data><data name="UIExtra060" xml:space="preserve"><value>Renkleri ve simgeleri özelleştir</value></data><data name="UIExtra061" xml:space="preserve"><value>Himo hesabınız</value></data><data name="UIExtra062" xml:space="preserve"><value>Hesabınızı koruyun ve bilgilerinizi yönetin</value></data><data name="UIExtra063" xml:space="preserve"><value>Uygulama sorunlarını çözmek için hızlı adımlar</value></data><data name="UIExtra064" xml:space="preserve"><value>Himo ve mevcut sürüm hakkında</value></data><data name="UIExtra065" xml:space="preserve"><value>Himo profili</value></data><data name="UIExtra066" xml:space="preserve"><value>Tamam</value></data><data name="UIExtra067" xml:space="preserve"><value>Geçerli bir e-posta adresi girin.</value></data><data name="UIExtra068" xml:space="preserve"><value>Parolalar eşleşmiyor.</value></data><data name="UIExtra069" xml:space="preserve"><value>6 haneli doğrulama kodunu girin.</value></data><data name="UIExtra070" xml:space="preserve"><value>Parola 8 ile 128 karakter arasında olmalıdır.</value></data><data name="UIExtra071" xml:space="preserve"><value>1 ile 60 karakter arasında bir ad girin.</value></data><data name="UIExtra072" xml:space="preserve"><value>Fotoğraf güncellendi</value></data><data name="UIExtra073" xml:space="preserve"><value>Sayfa açılamadı:</value></data><data name="UIExtra074" xml:space="preserve"><value>Önce giriş yapın.</value></data><data name="UIExtra075" xml:space="preserve"><value>Kamerayla fotoğraf çek</value></data><data name="UIExtra076" xml:space="preserve"><value>Galeriden fotoğraf seç</value></data><data name="UIExtra077" xml:space="preserve"><value>Profil fotoğrafı seç</value></data><data name="UIExtra078" xml:space="preserve"><value>Profil fotoğrafı kaldırıldı.</value></data><data name="UIExtra079" xml:space="preserve"><value>Profil fotoğrafınızı kaldırmak istiyor musunuz?</value></data><data name="UIExtra080" xml:space="preserve"><value>Profil fotoğrafı başarıyla güncellendi.</value></data><data name="UIExtra081" xml:space="preserve"><value>Himo hesaplarını aramak için önce giriş yapın.</value></data><data name="UIExtra082" xml:space="preserve"><value>Görüntülenen istatistikler sıfırlandı. Hiçbir içerik silinmedi.</value></data><data name="UIExtra083" xml:space="preserve"><value>Ağ, arama, mesaj ve medya kullanımı sıfırdan sayılacak. Sohbetler ve dosyalar silinmeyecek.</value></data><data name="UIExtra084" xml:space="preserve"><value>Ekle</value></data><data name="SubpageExtra001" xml:space="preserve"><value>Gizlilik ayarlarına dön</value></data><data name="SubpageExtra002" xml:space="preserve"><value>Hareketli arka planı durdur</value></data><data name="SubpageExtra003" xml:space="preserve"><value>Sohbetleriniz için renk stili seçin. Renk temaları fotoğraf arka planlarından ayrıdır; biri diğerini etkilemez.</value></data><data name="SubpageExtra004" xml:space="preserve"><value>Hazır bir resim veya cihazınızdan bir resim seçin. Fotoğraf arka planları renk temalarından ayrı kaydedilir.</value></data><data name="SubpageExtra005" xml:space="preserve"><value>Sohbet arka planı seçin</value></data><data name="SubpageExtra006" xml:space="preserve"><value>Sohbet arka planı için MP4 video seçin</value></data><data name="SubpageExtra007" xml:space="preserve"><value>Sessiz sohbet arka planı için gerçek bir video seçin. Yerleşik klipler internet gerektirir ve sohbetten çıkınca durur.</value></data><data name="SubpageExtra008" xml:space="preserve"><value>Cihazdan MP4 video seç</value></data><data name="SubpageExtra009" xml:space="preserve"><value>Görsel seçilemedi:</value></data><data name="SubpageExtra010" xml:space="preserve"><value>Video seçilemedi:</value></data><data name="SubpageExtra011" xml:space="preserve"><value>Video kullanılamadı:</value></data><data name="SubpageExtra012" xml:space="preserve"><value>Seçilen resim kaydedildi ve sohbet arka planı olarak kullanılacak.</value></data><data name="SubpageExtra013" xml:space="preserve"><value>Seçilen video kaydedildi. Kendi arka planı olmayan sohbetlerde sessiz arka plan olarak kullanılacak.</value></data><data name="SubpageExtra014" xml:space="preserve"><value>Seçimleriniz otomatik kaydedilir ve sohbet açıldığında uygulanır.</value></data><data name="SubpageExtra015" xml:space="preserve"><value>Gönderilen ve alınan mesajların renklerini ayrı ayrı özelleştirin. Seçimleriniz uygulamayı yeniden açınca da korunur.</value></data><data name="SubpageExtra016" xml:space="preserve"><value>Sohbet balonu</value></data><data name="SubpageExtra017" xml:space="preserve"><value>Henüz hareketli arka plan etkinleştirilmedi.</value></data><data name="SubpageExtra018" xml:space="preserve"><value>＋ Galeriden resim seç</value></data><data name="SubpageExtra019" xml:space="preserve"><value>Tekrar aralığını seçin</value></data><data name="SubpageExtra020" xml:space="preserve"><value>Sohbetler</value></data><data name="SubpageExtra021" xml:space="preserve"><value>Yedek oluşturulamadı:</value></data><data name="SubpageExtra022" xml:space="preserve"><value>İşlem tamamlanamadı:</value></data><data name="SubpageExtra023" xml:space="preserve"><value>Yedek dosyası oluşturuldu ve paylaşım menüsü açıldı.</value></data><data name="SubpageExtra024" xml:space="preserve"><value>Tercihleriniz bu cihaza otomatik kaydedilir.</value></data><data name="SubpageExtra025" xml:space="preserve"><value>Sohbet yedeği</value></data><data name="SubpageExtra026" xml:space="preserve"><value>Gösterilecek yerel dosya yok.</value></data><data name="SubpageExtra027" xml:space="preserve"><value>Depolama ve ağ kullanımı özeti</value></data><data name="SubpageExtra028" xml:space="preserve"><value>Titreşim desenini seçin ve kaydetmek için Tamam’a dokunun.</value></data><data name="SubpageExtra029" xml:space="preserve"><value>Sesleri, uyarıları ve titreşimi özelleştirin</value></data><data name="SubpageExtra030" xml:space="preserve"><value>Oturumlarınızı ve hesap işlemlerinizi yönetin</value></data><data name="SubpageExtra031" xml:space="preserve"><value>Bir işlem seçin. Hesap silme kalıcıdır ve geri alınamaz.</value></data><data name="SubpageExtra032" xml:space="preserve"><value>Veri, arama ve medya kullanımı ayrıntıları</value></data><data name="SubpageExtra033" xml:space="preserve"><value>Ayrı olarak kullanılamaz; toplam uygulama trafiğine aramalar dahildir</value></data><data name="SubpageExtra034" xml:space="preserve"><value>Bu sürümde ayrı durum istatistikleri bulunmuyor</value></data><data name="SubpageExtra035" xml:space="preserve"><value>Günlük alanınız</value></data><data name="SubpageExtra036" xml:space="preserve"><value>Hareketli arka planlar</value></data><data name="SubpageExtra037" xml:space="preserve"><value>Arama</value></data><data name="SubpageExtra038" xml:space="preserve"><value>Sesli mesajlar</value></data><data name="SubpageExtra039" xml:space="preserve"><value>Sohbet</value></data><data name="SubpageExtra040" xml:space="preserve"><value>Grup</value></data><data name="SubpageExtra041" xml:space="preserve"><value>Üye ekle</value></data><data name="SubpageExtra042" xml:space="preserve"><value>Mesajları sil</value></data><data name="SubpageExtra043" xml:space="preserve"><value>Mesajı ilet</value></data><data name="SubpageExtra044" xml:space="preserve"><value>Gönderiliyor</value></data><data name="SubpageExtra045" xml:space="preserve"><value>Sohbet açılamadı</value></data><data name="SubpageExtra046" xml:space="preserve"><value>Kaldırıldı</value></data><data name="SubpageExtra047" xml:space="preserve"><value>Sıfırla</value></data><data name="SubpageExtra048" xml:space="preserve"><value>Görsel kaldırılamadı</value></data><data name="SubpageExtra049" xml:space="preserve"><value>Görsel güncellenemedi</value></data><data name="SubpageExtra050" xml:space="preserve"><value>Kullanıcı adı güncellendi.</value></data><data name="SubpageExtra051" xml:space="preserve"><value>E-posta doğrulama</value></data><data name="SubpageExtra052" xml:space="preserve"><value>Gizlilik ve kişiler</value></data><data name="SubpageExtra053" xml:space="preserve"><value>Himo hakkında</value></data><data name="SubpageExtra054" xml:space="preserve"><value>Kalıcı olarak sil</value></data><data name="SubpageExtra055" xml:space="preserve"><value>Dosyayı aç</value></data><data name="SubpageExtra056" xml:space="preserve"><value>Değiştirildi</value></data><data name="SubpageExtra057" xml:space="preserve"><value>Hesabı sil</value></data><data name="SubpageExtra058" xml:space="preserve"><value>Resmi kaydet</value></data><data name="SubpageExtra059" xml:space="preserve"><value>Güncellendi</value></data><data name="SubpageExtra060" xml:space="preserve"><value>Hesabı engelle</value></data><data name="SubpageExtra061" xml:space="preserve"><value>Silinemedi</value></data><data name="SubpageExtra062" xml:space="preserve"><value>Belleği temizle</value></data><data name="SubpageExtra063" xml:space="preserve"><value>Hesap değiştir</value></data><data name="SubpageExtra064" xml:space="preserve"><value>Sohbetleri sil</value></data><data name="SubpageExtra065" xml:space="preserve"><value>Medyayı düzenle</value></data><data name="SubpageExtra066" xml:space="preserve"><value>Profil fotoğrafı</value></data><data name="SubpageExtra067" xml:space="preserve"><value>Kabul et ve devam et</value></data><data name="SubpageExtra068" xml:space="preserve"><value>Mesajı paylaş</value></data><data name="SubpageExtra069" xml:space="preserve"><value>Ad güncellendi.</value></data><data name="SubpageExtra070" xml:space="preserve"><value>Onay gerekli</value></data><data name="SubpageExtra071" xml:space="preserve"><value>Kamera izni</value></data><data name="SubpageExtra072" xml:space="preserve"><value>Arama bilgileri</value></data><data name="SubpageExtra073" xml:space="preserve"><value>Kod gönderilemedi</value></data><data name="SubpageExtra074" xml:space="preserve"><value>Simgeler ve görünüm</value></data><data name="SubpageExtra075" xml:space="preserve"><value>Bildirim gönderildi.</value></data><data name="SubpageExtra076" xml:space="preserve"><value>Sohbet engellendi.</value></data><data name="SubpageExtra077" xml:space="preserve"><value>Kodu yeniden gönder</value></data><data name="SubpageExtra078" xml:space="preserve"><value>Giriş yapılamadı</value></data><data name="SubpageExtra079" xml:space="preserve"><value>Telefon numarasına göre ara</value></data><data name="SubpageExtra080" xml:space="preserve"><value>Mesaj iletildi.</value></data><data name="SubpageExtra081" xml:space="preserve"><value>Geçici kopyayı sil</value></data><data name="SubpageExtra082" xml:space="preserve"><value>Kişi eşleştirme</value></data><data name="SubpageExtra083" xml:space="preserve"><value>Üyeler eklenemedi</value></data><data name="SubpageExtra084" xml:space="preserve"><value>Grup oluşturulamadı</value></data><data name="SubpageExtra085" xml:space="preserve"><value>Sohbet arşivlendi.</value></data><data name="SubpageExtra086" xml:space="preserve"><value>Sohbet engeli kaldırıldı.</value></data><data name="SubpageExtra087" xml:space="preserve"><value>Durumunuz güncellendi.</value></data><data name="SubpageExtra088" xml:space="preserve"><value>Yeni arka plan kaydedildi.</value></data><data name="SubpageExtra089" xml:space="preserve"><value>Video başarıyla seçildi.</value></data><data name="SubpageExtra090" xml:space="preserve"><value>Bazı işlemler tamamlanamadı</value></data><data name="SubpageExtra091" xml:space="preserve"><value>Resim fotoğraf kitaplığına kaydedildi.</value></data><data name="SubpageExtra092" xml:space="preserve"><value>Resim başarıyla seçildi ve kaydedildi.</value></data><data name="SubpageExtra093" xml:space="preserve"><value>Sohbet bildirimlerinin sesi açıldı.</value></data><data name="SubpageExtra094" xml:space="preserve"><value>Sohbet bildirimleri sessize alındı.</value></data><data name="SubpageExtra095" xml:space="preserve"><value>Başka sohbet yok.</value></data><data name="SubpageExtra096" xml:space="preserve"><value>Önce resmin içinde geçerli bir alan seçin.</value></data><data name="SubpageExtra097" xml:space="preserve"><value>Devam etmeden önce en az bir kişi ekleyin.</value></data><data name="SubpageExtra098" xml:space="preserve"><value>Şu anda internet bağlantısı yok. Bağlandıktan sonra tekrar deneyin.</value></data><data name="SubpageExtra099" xml:space="preserve"><value>Eşleşen hesap bulunamadı. Numara veya e-postayı kontrol edin ve hesabın Himo’ya kayıtlı olduğundan emin olun.</value></data><data name="Accessibility001" xml:space="preserve"><value>Kamerayı kapat</value></data><data name="Accessibility002" xml:space="preserve"><value>Kamerayı değiştir</value></data><data name="Accessibility003" xml:space="preserve"><value>Üyeyi kaldır</value></data><data name="Accessibility004" xml:space="preserve"><value>Medyayı sohbete gönder</value></data><data name="Accessibility005" xml:space="preserve"><value>Önizlemeyi kapat</value></data><data name="Accessibility006" xml:space="preserve"><value>Göndermeden önce resmi düzenle</value></data><data name="Accessibility007" xml:space="preserve"><value>Medyayı gönder</value></data><data name="Accessibility008" xml:space="preserve"><value>Arapça veya İngilizce metin ekle</value></data><data name="Accessibility009" xml:space="preserve"><value>Medya düzenleyiciyi kapat</value></data><data name="Accessibility010" xml:space="preserve"><value>Son çizimi geri al</value></data><data name="Accessibility011" xml:space="preserve"><value>Resmi 90 derece döndür</value></data><data name="Accessibility012" xml:space="preserve"><value>Video önizlemesini oynat</value></data><data name="Accessibility013" xml:space="preserve"><value>Kalem boyutunu küçült</value></data><data name="Accessibility014" xml:space="preserve"><value>Kalem boyutunu büyüt</value></data><data name="Accessibility015" xml:space="preserve"><value>Resmi fotoğraf kitaplığına kaydet</value></data><data name="Accessibility016" xml:space="preserve"><value>Resmi kırp; kırpmayı uygulamak için tekrar dokun</value></data><data name="Accessibility017" xml:space="preserve"><value>Serbest çizim kalemi</value></data><data name="Accessibility018" xml:space="preserve"><value>Serbest çizim kalemi</value></data><data name="AlertExtra001" xml:space="preserve"><value>Devam et</value></data><data name="AlertExtra002" xml:space="preserve"><value>Çıkış yap</value></data><data name="AlertExtra003" xml:space="preserve"><value>Kırp</value></data><data name="AlertExtra004" xml:space="preserve"><value>Gezinme</value></data><data name="AlertExtra005" xml:space="preserve"><value>Düzenleme</value></data><data name="AlertExtra006" xml:space="preserve"><value>Bildir</value></data><data name="AlertExtra007" xml:space="preserve"><value>Üyeleri ekle</value></data><data name="AlertExtra008" xml:space="preserve"><value>Sesli mesaj</value></data><data name="AlertExtra009" xml:space="preserve"><value>Hesap sayfası açılamadı:</value></data><data name="AlertExtra010" xml:space="preserve"><value>Hesap ayrıntıları açılamadı.</value></data><data name="AlertExtra011" xml:space="preserve"><value>Sohbet henüz sunucuya bağlı değil.</value></data><data name="AlertExtra012" xml:space="preserve"><value>Engelle</value></data><data name="AlertExtra013" xml:space="preserve"><value>Etkinleştir</value></data><data name="AlertExtra014" xml:space="preserve"><value>Engelleme</value></data><data name="AlertExtra015" xml:space="preserve"><value>Düzenleyici</value></data><data name="AlertExtra016" xml:space="preserve"><value>Flaş</value></data><data name="AlertExtra017" xml:space="preserve"><value>Resim</value></data><data name="AlertExtra018" xml:space="preserve"><value>Ek</value></data><data name="AlertExtra019" xml:space="preserve"><value>Yanıtla</value></data><data name="AlertExtra020" xml:space="preserve"><value>Geri dönülemedi:</value></data><data name="AlertExtra021" xml:space="preserve"><value>Geçici medyayı temizle</value></data><data name="AlertExtra022" xml:space="preserve"><value>Resim kullanılamadı:</value></data><data name="AlertExtra023" xml:space="preserve"><value>Dosya adı çok uzun.</value></data><data name="AlertExtra024" xml:space="preserve"><value>Mesajı silmek istiyor musunuz?</value></data><data name="AlertExtra025" xml:space="preserve"><value>Parola değiştirilemedi</value></data><data name="AlertExtra026" xml:space="preserve"><value>Dil ayarları açılamadı:</value></data><data name="AlertExtra027" xml:space="preserve"><value>Sohbet arşivden çıkarıldı.</value></data><data name="AlertExtra028" xml:space="preserve"><value>İstenen sayfa açılamadı.</value></data><data name="AlertExtra029" xml:space="preserve"><value>İstenen sayfa açılamadı:</value></data><data name="AlertExtra030" xml:space="preserve"><value>Telefon numarası ayarı güncellendi.</value></data><data name="AlertExtra031" xml:space="preserve"><value>Gizlilik ayarları açılamadı:</value></data><data name="AlertExtra032" xml:space="preserve"><value>Sohbet ayarları açılamadı:</value></data><data name="AlertExtra033" xml:space="preserve"><value>Önceki sayfaya dönülemedi:</value></data><data name="AlertExtra034" xml:space="preserve"><value>Parola başarıyla değiştirildi.</value></data><data name="AlertExtra035" xml:space="preserve"><value>Bildirim ayarları açılamadı:</value></data><data name="AlertExtra036" xml:space="preserve"><value>Bildirim ayarı değiştirilemedi:</value></data><data name="AlertExtra037" xml:space="preserve"><value>Dosya bu cihazda açılamadı:</value></data><data name="AlertExtra038" xml:space="preserve"><value>Depolama ve veri sayfası açılamadı:</value></data><data name="AlertExtra039" xml:space="preserve"><value>6 haneli doğrulama kodunu girin.</value></data><data name="AlertExtra040" xml:space="preserve"><value>2 ile 60 karakter arasında bir ad yazın.</value></data><data name="AlertExtra041" xml:space="preserve"><value>Arkadaşlarınızı aramak için önce giriş yapın.</value></data><data name="AlertExtra042" xml:space="preserve"><value>Bu cihazdan çıkış yapmak istiyor musunuz?</value></data><data name="AlertExtra043" xml:space="preserve"><value>Yanıtlamak için yalnızca bir mesaj seçin.</value></data><data name="AlertExtra044" xml:space="preserve"><value>Ses kaydı şu anda yalnızca Android’de kullanılabilir.</value></data><data name="AlertExtra045" xml:space="preserve"><value>60 karakteri aşmayan geçerli bir ad girin.</value></data><data name="AlertExtra046" xml:space="preserve"><value>En az 8 karakterli geçerli bir parola girin.</value></data><data name="AlertExtra047" xml:space="preserve"><value>Grup, Gruplar ekranından oluşturulacak.</value></data><data name="AlertExtra048" xml:space="preserve"><value>Bu cihazda resim seçimi desteklenmiyor.</value></data><data name="AlertExtra049" xml:space="preserve"><value>Yalnızca bu cihazdan çıkış yapmak istiyor musunuz?</value></data><data name="AlertExtra050" xml:space="preserve"><value>Kurtarma sayfası açılamadı. Tekrar deneyin.</value></data><data name="AlertExtra051" xml:space="preserve"><value>Eşleşen tüm hesaplar zaten eklendi.</value></data><data name="AlertExtra052" xml:space="preserve"><value>فائل اب مقامی اسٹوریج میں موجود نہیں ہے۔</value></data><data name="AlertExtra053" xml:space="preserve"><value>Bu cihazda video seçimi desteklenmiyor.</value></data><data name="AlertExtra054" xml:space="preserve"><value>Bu özellik mevcut cihazda desteklenmiyor.</value></data><data name="AlertExtra055" xml:space="preserve"><value>پاس ورڈ کم از کم 8 حروف کا ہونا چاہیے۔</value></data><data name="AlertExtra056" xml:space="preserve"><value>پیغام بہت طویل ہے۔ حد 4000 حروف ہے۔</value></data><data name="AlertExtra057" xml:space="preserve"><value>آپ کسی فرد کے اکاؤنٹ کو بلاک کر سکتے ہیں، پورے گروپ کو نہیں۔</value></data><data name="AlertExtra058" xml:space="preserve"><value>فون کے ذریعے تلاش فعال کرنے سے پہلے نمبر درج کریں۔</value></data><data name="AlertExtra059" xml:space="preserve"><value>ریکارڈنگ نہیں بھیجی جا سکی یا اس کا حجم 25 MB سے زیادہ ہے۔</value></data><data name="AlertExtra060" xml:space="preserve"><value>آپ کی نئی ای میل کی تصدیق ہو گئی اور اکاؤنٹ اپ ڈیٹ ہو گیا۔</value></data><data name="AlertExtra061" xml:space="preserve"><value>Himo کو کیمرا استعمال کرنے کی اجازت دیں، پھر دوبارہ کوشش کریں۔</value></data><data name="AlertExtra062" xml:space="preserve"><value>آپ نے ابھی تصویر شامل نہیں کی۔ تصویر منتخب کرنے کے لیے کیمرا بٹن دبائیں۔</value></data><data name="AlertExtra063" xml:space="preserve"><value>نیویگیشن تیار نہیں۔ صفحہ بند کرکے دوبارہ کھولیں۔</value></data><data name="AlertExtra064" xml:space="preserve"><value>وائس پیغام ریکارڈ کرنے کے لیے مائیکروفون کی اجازت ضروری ہے۔</value></data><data name="AlertExtra065" xml:space="preserve"><value>رابطوں کی تلاش فی الحال صرف Android پر دستیاب ہے۔</value></data><data name="AlertExtra066" xml:space="preserve"><value>ویڈیو کی آواز ریکارڈ کرنے کے لیے Himo کو مائیکروفون استعمال کرنے دیں۔</value></data><data name="AlertExtra067" xml:space="preserve"><value>میڈیا تک رسائی ضروری ہے۔ اجازت دے کر دوبارہ کوشش کریں۔</value></data><data name="AlertExtra068" xml:space="preserve"><value>ویڈیو بہت بڑی ہے۔ 100 MB سے چھوٹی ویڈیو منتخب کریں۔</value></data><data name="AlertExtra069" xml:space="preserve"><value>ترجیح محفوظ ہو گئی۔ اگلی گفتگو کھلنے پر یہی سائز استعمال ہوگا۔</value></data><data name="AlertExtra070" xml:space="preserve"><value>Android کے ساتھ بہتر مطابقت کے لیے MP4 ویڈیو منتخب کریں۔</value></data><data name="AlertExtra071" xml:space="preserve"><value>Himo کو کیمرا اور مائیکروفون استعمال کرنے دیں، پھر دوبارہ کوشش کریں۔</value></data><data name="AlertExtra072" xml:space="preserve"><value>تصاویر تک رسائی ممکن نہیں۔ ایپ کو اجازت دیں اور دوبارہ کوشش کریں۔</value></data><data name="AlertExtra073" xml:space="preserve"><value>گفتگو کی شناخت غلط ہے۔ چیٹ لسٹ تازہ کرکے دوبارہ کوشش کریں۔</value></data><data name="AlertExtra074" xml:space="preserve"><value>ویڈیوز تک رسائی ممکن نہیں۔ ایپ کو اجازت دیں اور دوبارہ کوشش کریں۔</value></data><data name="AlertExtra075" xml:space="preserve"><value>سائن اِن سیشن دستیاب نہیں۔ دوبارہ لاگ اِن کرکے بھیجیں۔</value></data><data name="AlertExtra076" xml:space="preserve"><value>اس پیغام کو ابھی سرور آئی ڈی نہیں ملی، اس لیے اسے حذف نہیں کیا جا سکتا۔</value></data><data name="AlertExtra077" xml:space="preserve"><value>گفتگو سرور سے منسلک نہیں ہو سکی۔ تھوڑی دیر بعد دوبارہ بھیجیں۔</value></data><data name="AlertExtra078" xml:space="preserve"><value>7 سے 15 ہندسوں کا درست نمبر درج کریں، یا اختیاری ہونے کے باعث خالی چھوڑ دیں۔</value></data><data name="AlertExtra079" xml:space="preserve"><value>اس کال کی گفتگو دستیاب نہیں۔ پہلے فہرست سے گفتگو کھولیں۔</value></data><data name="AlertExtra080" xml:space="preserve"><value>دوبارہ اپ لوڈ کرنے کے لیے فائل کی مقامی کاپی نہیں۔ اٹیچمنٹ سے دوبارہ منتخب کریں۔</value></data><data name="AlertExtra081" xml:space="preserve"><value>مطابقت کے لیے درست فون نمبر نہیں ملے۔ باقی رابطے فہرست میں رہیں گے۔</value></data><data name="AlertExtra082" xml:space="preserve"><value>گفتگو کھولتے وقت خرابی ہوئی۔ دوبارہ کوشش کریں؛ مسئلہ برقرار رہے تو ایپ لاگ دیکھیں۔</value></data><data name="AlertExtra083" xml:space="preserve"><value>تمام Himo سیشن ختم ہوں گے اور رجسٹرڈ آلات کی اطلاعات بند ہو جائیں گی۔ جاری رکھیں؟</value></data><data name="AlertExtra084" xml:space="preserve"><value>اکاؤنٹ بنانے سے پہلے شرائطِ استعمال اور رازداری کی پالیسی پڑھ کر قبول کریں۔</value></data><data name="AlertExtra085" xml:space="preserve"><value>نام کے کم از کم تین حروف، یا درست ای میل یا فون نمبر درج کریں۔</value></data><data name="AlertExtra086" xml:space="preserve"><value>ویڈیو محفوظ ہو گئی۔ چلانے کے لیے انٹرنیٹ چاہیے اور یہ خاموشی سے مسلسل دہرائی جاتی ہے۔</value></data><data name="AlertExtra087" xml:space="preserve"><value>جن لوگوں کے رابطوں میں آپ کا نمبر ہے وہ اکاؤنٹ تلاش کر سکیں گے، لیکن آپ کا نمبر نہیں دیکھیں گے۔</value></data><data name="AlertExtra088" xml:space="preserve"><value>آپ کی ای میل پر 6 ہندسوں کا تصدیقی کوڈ بھیجا گیا ہے۔ اکاؤنٹ بنانے کے لیے کوڈ درج کریں۔</value></data><data name="AlertExtra089" xml:space="preserve"><value>سائن اِن سے نیا اکاؤنٹ اس آلے پر فعال ہو جائے گا۔ جاری رکھیں؟</value></data><data name="AlertExtra090" xml:space="preserve"><value>آپ کا اکاؤنٹ، ڈیٹا اور چیٹس سرور سے مستقل حذف ہوں گے۔ یہ عمل واپس نہیں ہو سکتا۔</value></data><data name="AlertExtra091" xml:space="preserve"><value>گروپ بن گیا، لیکن گفتگو ابھی نہیں کھل سکی۔ چیٹس کی فہرست پر واپس جا کر تازہ کریں۔</value></data><data name="AlertExtra092" xml:space="preserve"><value>آپ اس آلے سے سائن آؤٹ ہو گئے، لیکن سرور کا عمل مکمل نہیں ہوا۔ بعد میں دوبارہ سائن اِن کریں۔</value></data><data name="AlertExtra093" xml:space="preserve"><value>آپ اس آلے سے سائن آؤٹ ہو گئے، لیکن سرور کا عمل مکمل نہیں ہوا۔ بعد میں دوبارہ سائن اِن کریں۔</value></data><data name="AlertExtra094" xml:space="preserve"><value>منتخب پیغامات کو ابھی سرور آئی ڈی نہیں ملی۔ انہیں بھیجیں، مکمل ہونے کا انتظار کریں، پھر حذف کریں۔</value></data><data name="AlertExtra095" xml:space="preserve"><value>موجودہ سرور نئے ای میل کی تصدیق کے بعد محفوظ تبدیلی کا طریقہ فراہم نہیں کرتا۔ کچھ تبدیل نہیں ہوا۔</value></data><data name="AlertExtra096" xml:space="preserve"><value>صرف کیش فائلیں حذف ہوں گی۔ چیٹس اور زیرِ انتظار اپ لوڈ محفوظ رہیں گے؛ میڈیا دوبارہ ڈاؤن لوڈ ہو سکتا ہے۔</value></data><data name="AlertExtra097" xml:space="preserve"><value>مطابقت کے لیے Himo محفوظ کنکشن کے ذریعے صرف رابطوں کے فون نمبر بھیجتا ہے۔ نام اور ای میل نہیں بھیجے جاتے اور سرور ایڈریس بک محفوظ نہیں کرتا۔ صرف اجازت دینے والے اکاؤنٹس دکھائی دیتے ہیں۔</value></data><data name="AlertExtra098" xml:space="preserve"><value>Himo, rehberinizdeki telefon numaralarını okur ve güvenli bağlantıyla yalnızca eşleştirme için gerekli numaraları gönderir. Sunucu adres defterinizi saklamaz; yalnızca bulunmaya izin veren eşleşen Himo hesaplarını döndürür.</value></data><data name="AlertExtra099" xml:space="preserve"><value>Himo’da sorun yaşarsanız önce internet bağlantısını ve bildirim, kamera, mikrofon izinlerini kontrol edin. Gizlilik ve görünüm seçeneklerini buradan inceleyin; arayüz güncellenmezse uygulamayı yeniden açın.</value></data><data name="RuntimeUI001" xml:space="preserve"><value>Okunamadı</value></data><data name="RuntimeUI002" xml:space="preserve"><value>Aç</value></data><data name="RuntimeUI003" xml:space="preserve"><value>Korumalı</value></data><data name="RuntimeUI004" xml:space="preserve"><value>Geçici dosyaları temizle</value></data><data name="RuntimeUI005" xml:space="preserve"><value>Veriler yenilenemedi; yerel olarak kaydedilen bilgiler gösteriliyor.</value></data><data name="RuntimeUI006" xml:space="preserve"><value>Hesap bilgileri güncelleniyor…</value></data><data name="RuntimeUI007" xml:space="preserve"><value>Hesap bilgilerini görmek için giriş yapın.</value></data><data name="RuntimeUI008" xml:space="preserve"><value>E-posta kayıtlıysa doğrulama kodu alırsınız. Gelen kutusunu ve spam klasörünü kontrol edin.</value></data><data name="RuntimeUI009" xml:space="preserve"><value>Doğrulama kodunu e-postaya gönder</value></data><data name="RuntimeUI010" xml:space="preserve"><value>Kod gönderilemedi.</value></data><data name="RuntimeUI011" xml:space="preserve"><value>Mevcut e-posta adresi belirlenemedi.</value></data><data name="RuntimeUI012" xml:space="preserve"><value>Ad yüklenemedi:</value></data><data name="RuntimeUI013" xml:space="preserve"><value>Numara yüklenemedi:</value></data><data name="RuntimeUI014" xml:space="preserve"><value>Diğer hesapla giriş yapılamadı.</value></data><data name="RuntimeUI015" xml:space="preserve"><value>Giriş yapıldı ancak ana ekran otomatik açılamadı.</value></data><data name="RuntimeUI016" xml:space="preserve"><value>Kullanıcı adı başarıyla kaydedildi.</value></data><data name="RuntimeUI017" xml:space="preserve"><value>Gönderiliyor…</value></data><data name="RuntimeUI018" xml:space="preserve"><value>Güncelleniyor…</value></data><data name="RuntimeUI019" xml:space="preserve"><value>Kaydediliyor…</value></data><data name="RuntimeUI020" xml:space="preserve"><value>Giriş yapılıyor…</value></data><data name="RuntimeUI021" xml:space="preserve"><value>Kullanıcı adını kaydet</value></data><data name="RuntimeUI022" xml:space="preserve"><value>Telefon numarasını kaydet</value></data><data name="RuntimeUI023" xml:space="preserve"><value>Telefon numaranızı yönetmek için önce giriş yapın.</value></data><data name="RuntimeUI024" xml:space="preserve"><value>Bilgilerinizi görmek için önce giriş yapın.</value></data><data name="RuntimeUI025" xml:space="preserve"><value>Adınızı düzenleyip kaydedebilirsiniz.</value></data><data name="RuntimeUI026" xml:space="preserve"><value>Kilit kodu yanlış.</value></data><data name="RuntimeUI027" xml:space="preserve"><value>Arama sona erdi</value></data><data name="RuntimeUI028" xml:space="preserve"><value>Kamerayı aç</value></data><data name="RuntimeUI029" xml:space="preserve"><value>Arama alınamadı.</value></data><data name="RuntimeUI030" xml:space="preserve"><value>Arama hazırlanamadı. Bağlantıyı kontrol edip tekrar deneyin.</value></data><data name="RuntimeUI031" xml:space="preserve"><value>Arama yanıtlanamadı. Tekrar deneyin.</value></data><data name="RuntimeUI032" xml:space="preserve"><value>Yanıtlandı, bağlanıyor…</value></data><data name="RuntimeUI033" xml:space="preserve"><value>Ses hazırlanıyor</value></data><data name="RuntimeUI034" xml:space="preserve"><value>Ses ve görüntü hazırlanıyor</value></data><data name="RuntimeUI035" xml:space="preserve"><value>Ses ayarlanıyor</value></data><data name="RuntimeUI036" xml:space="preserve"><value>Kamera ve mikrofon izni gerekiyor</value></data><data name="RuntimeUI037" xml:space="preserve"><value>Aramayı yanıtlamak için mikrofon izni gerekiyor</value></data><data name="RuntimeUI038" xml:space="preserve"><value>Tamamlandı</value></data><data name="RuntimeUI039" xml:space="preserve"><value>Ⅱ Duraklatıldı</value></data><data name="RuntimeUI040" xml:space="preserve"><value>Resim seç</value></data><data name="RuntimeUI041" xml:space="preserve"><value>Bu sohbetin arka planı için resim seç</value></data><data name="RuntimeUI042" xml:space="preserve"><value>Video seç</value></data><data name="RuntimeUI043" xml:space="preserve"><value>Dosya seç</value></data><data name="RuntimeUI044" xml:space="preserve"><value>Mesajları paylaş</value></data><data name="RuntimeUI045" xml:space="preserve"><value>Eki paylaş</value></data><data name="RuntimeUI046" xml:space="preserve"><value>Ülke adı veya arama koduyla ara</value></data><data name="RuntimeUI047" xml:space="preserve"><value>Ülke seç</value></data><data name="RuntimeUI048" xml:space="preserve"><value>Başka bir ülke adı veya arama kodu deneyin.</value></data><data name="RuntimeUI049" xml:space="preserve"><value>Ülke kodu</value></data><data name="RuntimeUI050" xml:space="preserve"><value>Örnek: Suudi Arabistan veya +966</value></data><data name="RuntimeUI051" xml:space="preserve"><value>Numarayı ara</value></data><data name="RuntimeUI052" xml:space="preserve"><value>Arama başarısız. Sunucu bağlantısını kontrol edip tekrar deneyin.</value></data><data name="RuntimeUI053" xml:space="preserve"><value>Kişiler aranamadı. Sunucu bağlantısını kontrol edip tekrar deneyin.</value></data><data name="RuntimeUI054" xml:space="preserve"><value>Sohbet başlatılamadı.</value></data><data name="RuntimeUI055" xml:space="preserve"><value>Telefondaki kişiler okunamadı.</value></data><data name="RuntimeUI056" xml:space="preserve"><value>Sohbet hazırlanıyor…</value></data><data name="RuntimeUI057" xml:space="preserve"><value>İzin isteniyor ve kişiler okunuyor…</value></data><data name="RuntimeUI058" xml:space="preserve"><value>Adlar okunuyor…</value></data><data name="RuntimeUI059" xml:space="preserve"><value>Kişilerinizde geçerli telefon numarası bulunamadı.</value></data><data name="RuntimeUI060" xml:space="preserve"><value>Bu numarayla eşleşen hesap bulunamadı. Numara kayıtlı olmayabilir veya arama kapalı olabilir.</value></data><data name="RuntimeUI061" xml:space="preserve"><value>Kişi izni verilmedi. Android ayarlarından etkinleştirip tekrar deneyin.</value></data><data name="RuntimeUI062" xml:space="preserve"><value>Bulunmaya izin veren hesaplar aranıyor…</value></data><data name="RuntimeUI063" xml:space="preserve"><value>Yakınlaştırmak için iki parmak kullanın, sonra resmi sürükleyin</value></data><data name="RuntimeUI064" xml:space="preserve"><value>Devam etmeden tüm koşulları okuyun</value></data><data name="RuntimeUI065" xml:space="preserve"><value>Hesap oluşturmaya dön</value></data><data name="RuntimeUI066" xml:space="preserve"><value>Çerçeveyi veya köşelerini sürükleyin, kırpmak için ✓ dokunun.</value></data><data name="RuntimeUI067" xml:space="preserve"><value>Metni istediğiniz yere sürükleyin</value></data><data name="RuntimeUI068" xml:space="preserve"><value>Göndermeden önce kırp, döndür, metin ve kalem</value></data><data name="RuntimeUI069" xml:space="preserve"><value>Son çizim geri alındı</value></data><data name="RuntimeUI070" xml:space="preserve"><value>Geçerli çizim geri alındı</value></data><data name="RuntimeUI071" xml:space="preserve"><value>Kırpma uygulandı. Şimdi düzenleyip gönderebilirsiniz.</value></data><data name="RuntimeUI072" xml:space="preserve"><value>Kırpma uygulanıyor…</value></data><data name="RuntimeUI073" xml:space="preserve"><value>Resim fotoğraf kitaplığına kaydediliyor…</value></data><data name="RuntimeUI074" xml:space="preserve"><value>Serbest kalem — parmağınızla resmin herhangi bir yerine çizin</value></data><data name="RuntimeUI075" xml:space="preserve"><value>Mevcut e-posta:</value></data><data name="RuntimeUI076" xml:space="preserve"><value>E-postayı doğrula ve değiştir</value></data><data name="RuntimeUI077" xml:space="preserve"><value>E-posta doğrulanamadı:</value></data><data name="RuntimeUI078" xml:space="preserve"><value>Durum kaydedilemedi:</value></data><data name="RuntimeUI080" xml:space="preserve"><value>Doğrulanıyor…</value></data><data name="RuntimeUI081" xml:space="preserve"><value>Adı kaydet</value></data><data name="RuntimeUI082" xml:space="preserve"><value>Durumu kaydet</value></data><data name="RuntimeUI083" xml:space="preserve"><value>Kullanıcı adınızı düzenlemek için giriş yapın.</value></data><data name="RuntimeUI084" xml:space="preserve"><value>Kişiler eşleştiriliyor…</value></data><data name="RuntimeUI085" xml:space="preserve"><value>Yükleniyor…</value></data><data name="RuntimeUI086" xml:space="preserve"><value>Sunucu hesapları buldu ancak adlarla eşleştiremiyor. Himo.Api güncellemesini yayımlayıp yeniden deneyin.</value></data><data name="RuntimeUI087" xml:space="preserve"><value>Kişi görüntüleme şu anda yalnızca Android’de kullanılabilir.</value></data><data name="RuntimeUI088" xml:space="preserve"><value>Kişi izni verilmedi. Android ayarlarında etkinleştirip bu sayfayı yeniden açın.</value></data><data name="RuntimeUI089" xml:space="preserve"><value>Yeni bir kod girin ve Kaydet’e dokunun.</value></data><data name="RuntimeUI090" xml:space="preserve"><value>Bu Android sürümünde sistem izni gerekmiyor.</value></data><data name="RuntimeUI091" xml:space="preserve"><value>Himo bildirimleri uygulama içinden kapatıldı.</value></data><data name="RuntimeUI092" xml:space="preserve"><value>Uygulama kilidi etkinleştirildi.</value></data><data name="FinalUI001" xml:space="preserve"><value>Kişiler yüklenemedi. Android iznini kontrol edip tekrar deneyin.</value></data><data name="FinalUI002" xml:space="preserve"><value>Kişiler eşleştirilemedi. Sunucu bağlantısını kontrol edip tekrar deneyin.</value></data><data name="FinalUI003" xml:space="preserve"><value>Ad kaydedilemedi.</value></data><data name="FinalUI004" xml:space="preserve"><value>Telefon numarası kaydedilemedi.</value></data><data name="FinalUI005" xml:space="preserve"><value>Şifre değiştirilemedi.</value></data><data name="FinalUI006" xml:space="preserve"><value>Gerekirse ülke koduyla birlikte 7–15 haneli geçerli bir telefon numarası girin.</value></data><data name="FinalUI007" xml:space="preserve"><value>Yeni kodu tekrar gönder</value></data><data name="FinalUI008" xml:space="preserve"><value>Ad kaydedilemedi:</value></data><data name="FinalUI009" xml:space="preserve"><value>Kaydedilemedi:</value></data><data name="FinalUI010" xml:space="preserve"><value>Kullanıcı adı kaydedildi: @</value></data><data name="FinalUI011" xml:space="preserve"><value>Geliştirme kodu:</value></data><data name="FinalUI012" xml:space="preserve"><value>Kod gönderilemedi:</value></data><data name="CodeBuiltUI001" xml:space="preserve"><value>Giriş yapmak istediğiniz hesabın bilgilerini girin.</value></data><data name="CodeBuiltUI002" xml:space="preserve"><value>Hesap güvenliği</value></data><data name="CodeBuiltUI003" xml:space="preserve"><value>Şifreyi yönet</value></data><data name="CodeBuiltUI004" xml:space="preserve"><value>Kod gelmezse başka bir kod istemeden önce spam klasörünü kontrol edin.</value></data><data name="CodeBuiltUI005" xml:space="preserve"><value>Ülkeyi bayrağı ve telefon koduyla seçin, ardından ülke kodu olmadan yerel numarayı girin.</value></data><data name="CodeBuiltUI006" xml:space="preserve"><value>1–60 karakter uzunluğunda anlaşılır bir ad kullanın.</value></data><data name="CodeBuiltUI007" xml:space="preserve"><value>Kullanıcı adını girin</value></data><data name="CodeBuiltUI008" xml:space="preserve"><value>Mevcut sürüm yalnızca bir etkin oturum tutar. Başka bir hesapla giriş başarılı olursa yeni hesap mevcut hesabın yerine etkin olur. Değişim yalnızca onayınızdan sonra yapılır.</value></data><data name="CodeBuiltUI009" xml:space="preserve"><value>Kayıtlı e-posta</value></data><data name="CodeBuiltUI010" xml:space="preserve"><value>Hesaba bağlı e-posta</value></data><data name="CodeBuiltUI011" xml:space="preserve"><value>Hesabımın telefonla bulunmasına izin ver</value></data><data name="CodeBuiltUI012" xml:space="preserve"><value>Yeni şifreyi onayla</value></data><data name="CodeBuiltUI013" xml:space="preserve"><value>Başka bir hesapla giriş yap</value></data><data name="CodeBuiltUI014" xml:space="preserve"><value>Mevcut sunucuda e-posta değiştirme etkin değil; önce yeni adres için güvenli doğrulama eklenmelidir.</value></data><data name="CodeBuiltUI015" xml:space="preserve"><value>E-posta adresi belirleniyor…</value></data><data name="CodeBuiltUI016" xml:space="preserve"><value>E-posta yükleniyor…</value></data><data name="CodeBuiltUI017" xml:space="preserve"><value>Hesap bilgileri yükleniyor…</value></data><data name="CodeBuiltUI018" xml:space="preserve"><value>Telefon numarası yükleniyor…</value></data><data name="CodeBuiltUI019" xml:space="preserve"><value>Eşleşme yapan kişiler numaranızı değil hesap adınızı görür.</value></data><data name="CodeBuiltUI020" xml:space="preserve"><value>Kaydetmeden önce uluslararası numara burada görünecek.</value></data><data name="CodeBuiltUI021" xml:space="preserve"><value>Yeni şifre (en az 8 karakter)</value></data><data name="CodeBuiltUI022" xml:space="preserve"><value>Ad, sunucu kaydın başarılı olduğunu doğruladıktan sonra uygulanır.</value></data><data name="CodeBuiltUI023" xml:space="preserve"><value>Önemli bilgi</value></data><data name="CodeBuiltUI024" xml:space="preserve"><value>Numara ‎+9665xxxxxxxx gibi uluslararası biçimde kaydedilir.</value></data><data name="CodeBuiltUI025" xml:space="preserve"><value>Şu anda ne yaptığınızı açıklayan durumu seçin.</value></data><data name="CodeBuiltUI026" xml:space="preserve"><value>Fotoğrafı tam boyutunda görmek için dokunun; değiştirmek için kamera simgesine dokunun</value></data><data name="CodeBuiltUI027" xml:space="preserve"><value>Görünen adı girin</value></data><data name="CodeBuiltUI028" xml:space="preserve"><value>Yeni e-posta</value></data><data name="CodeBuiltUI029" xml:space="preserve"><value>Mevcut e-posta: yükleniyor…</value></data><data name="CodeBuiltUI030" xml:space="preserve"><value>Değişiklikler sunucu bağlantısı başarılı olduğunda hesaba kaydedilir.</value></data><data name="CodeBuiltUI031" xml:space="preserve"><value>Değişiklik uygulanmadan önce yeni e-postaya doğrulama kodu gönderilir.</value></data><data name="CodeBuiltUI032" xml:space="preserve"><value>Eklenmedi</value></data><data name="CodeBuiltUI033" xml:space="preserve"><value>Kayıtlı e-posta, yeni adrese gönderilen geçerli kod girildikten sonra değişir.</value></data><data name="CodeBuiltUI034" xml:space="preserve"><value>Henüz ayarlanmadı</value></data><data name="CodeBuiltUI035" xml:space="preserve"><value>Şu anda ne yapıyorsunuz?</value></data><data name="CodeBuiltUI036" xml:space="preserve"><value>Örnek: ahmed_22</value></data><data name="CodeBuiltUI037" xml:space="preserve"><value>3–24 İngilizce harf, rakam, alt çizgi (_) veya nokta (.) kullanın. Kullanıcı adı boşta olmalıdır.</value></data><data name="CodeBuiltUI038" xml:space="preserve"><value>Adınız profilinizde ve sohbetlerde görünür.</value></data><data name="CodeBuiltUI039" xml:space="preserve"><value>Toplam uygulama verisi</value></data><data name="CodeBuiltUI040" xml:space="preserve"><value>Önbellekteki dosyalara ve sohbet eklerine göz atın. Yerel kopyayı silmek sunucudaki mesajları silmez.</value></data><data name="CodeBuiltUI041" xml:space="preserve"><value>Depolama kullanımı</value></data><data name="CodeBuiltUI042" xml:space="preserve"><value>Dolaşım</value></data><data name="CodeBuiltUI043" xml:space="preserve"><value>Kullanılan önbellek</value></data><data name="CodeBuiltUI044" xml:space="preserve"><value>Mesajlar</value></data><data name="CodeBuiltUI045" xml:space="preserve"><value>Yerel dosyalar</value></data><data name="CodeBuiltUI046" xml:space="preserve"><value>Bu sayfa yalnızca kullanım toplamlarını gösterir; dosya adlarını veya içeriklerini göstermez.</value></data><data name="CodeBuiltUI047" xml:space="preserve"><value>Her sohbet için uygulamanın yerel olarak tuttuğu mesaj ve ek sayısını gösterir.</value></data><data name="CodeBuiltUI048" xml:space="preserve"><value>Saklanan medya boyutu</value></data><data name="CodeBuiltUI049" xml:space="preserve"><value>Sohbet listesi</value></data><data name="CodeBuiltUI050" xml:space="preserve"><value>Yerel olarak kayıtlı sohbet yok.</value></data><data name="CodeBuiltUI051" xml:space="preserve"><value>Yer açmak için önbellek kopyalarını temizleyebilirsiniz. Sohbetler sunucudan silinmez.</value></data><data name="CodeBuiltUI052" xml:space="preserve"><value>Toplam ağ kullanımı</value></data><data name="CodeBuiltUI053" xml:space="preserve"><value>Alınan ve gönderilen veriler son sıfırlamadan beri Android’in uygulama sayacından alınır. Medya ve depolama boyutları yerel dosyalardan hesaplanır; kategori bazında kesin ağ trafiği ölçümü değildir.</value></data><data name="CodeBuiltUI054" xml:space="preserve"><value>Yerel medya</value></data><data name="CodeBuiltUI055" xml:space="preserve"><value>Kullanım ayrıntıları</value></data><data name="CodeBuiltUI056" xml:space="preserve"><value>Aşağıdaki listeden bir seçenek belirleyin.</value></data><data name="CodeBuiltUI057" xml:space="preserve"><value>Bu cihazda seçtiğiniz gizlilik tercihlerini gözden geçirin.</value></data><data name="CodeBuiltUI058" xml:space="preserve"><value>Engellenen hesaplar listesi sunucu API’sine bağlandığında burada görünür. Şimdilik bir hesabı sohbet seçeneklerinden engelleyebilirsiniz.</value></data><data name="CodeBuiltUI059" xml:space="preserve"><value>Mobil ağ kullanımı</value></data><data name="CodeBuiltUI060" xml:space="preserve"><value>Video dosyalarını dahil et</value></data><data name="CallThemeChat001" xml:space="preserve"><value>Okunuyor…</value></data><data name="CallThemeChat002" xml:space="preserve"><value>Otomatik</value></data><data name="CallThemeChat003" xml:space="preserve"><value>Seçildi ✓</value></data><data name="CallThemeChat004" xml:space="preserve"><value>Geçerli arka plan ✓</value></data><data name="CallThemeChat005" xml:space="preserve"><value>Arka planı kullan</value></data><data name="CallThemeChat006" xml:space="preserve"><value>Belge</value></data><data name="CallThemeChat007" xml:space="preserve"><value>Aramanın kabul edilmesi bekleniyor…</value></data><data name="CallThemeChat008" xml:space="preserve"><value>Elektrik mavisi</value></data><data name="CallThemeChat009" xml:space="preserve"><value>Telefon</value></data><data name="CallThemeChat010" xml:space="preserve"><value>Yalnızca Yedekle’ye dokunulduğunda</value></data><data name="CallThemeChat011" xml:space="preserve"><value>Dosyalar</value></data><data name="CallThemeChat012" xml:space="preserve"><value>Diğer</value></data><data name="CallThemeChat013" xml:space="preserve"><value>Sohbeti bildir</value></data><data name="CallThemeChat014" xml:space="preserve"><value>Ekli mesaj</value></data><data name="CallThemeChat015" xml:space="preserve"><value>Gelen arama…</value></data><data name="CallThemeChat016" xml:space="preserve"><value>Sesi aç</value></data><data name="CallThemeChat017" xml:space="preserve"><value>Video kullanılamıyor</value></data><data name="CallThemeChat018" xml:space="preserve"><value>Hoparlörü kapat</value></data><data name="CallThemeChat019" xml:space="preserve"><value>Gelen sesi kapat</value></data><data name="CallThemeChat020" xml:space="preserve"><value>Gelen sesi aç</value></data><data name="CallThemeChat021" xml:space="preserve"><value>Durumunuz ve şu anda yaptıklarınız</value></data><data name="CallThemeChat022" xml:space="preserve"><value>Belirtilmemiş</value></data><data name="CallThemeChat023" xml:space="preserve"><value>4 MB’tan büyük olmayan bir resim seçin.</value></data><data name="CallThemeChat024" xml:space="preserve"><value>Kraliyet altını</value></data><data name="CallThemeChat025" xml:space="preserve"><value>Kutup ışıkları</value></data><data name="CallThemeChat026" xml:space="preserve"><value>Geçerli tema ✓</value></data><data name="CallThemeChat027" xml:space="preserve"><value>Resim önizlemesi</value></data><data name="CallThemeChat028" xml:space="preserve"><value>Durduruldu</value></data><data name="CallThemeChat029" xml:space="preserve"><value>Son görülme</value></data><data name="CallThemeChat030" xml:space="preserve"><value>Arka plan video URL’si geçersiz.</value></data><data name="CallThemeChat031" xml:space="preserve"><value>Giriş yap</value></data><data name="CallThemeChat032" xml:space="preserve"><value>Kullanıcı</value></data><data name="CallThemeChat033" xml:space="preserve"><value>Ad</value></data><data name="CallThemeChat034" xml:space="preserve"><value>E-posta</value></data><data name="CallThemeChat035" xml:space="preserve"><value>Elektronik</value></data><data name="CallThemeChat036" xml:space="preserve"><value>Güvenlik</value></data><data name="CallThemeChat037" xml:space="preserve"><value>Koruma</value></data><data name="CallThemeChat038" xml:space="preserve"><value>Urdu</value></data><data name="CallThemeChat039" xml:space="preserve"><value>Durdur</value></data><data name="CallThemeChat040" xml:space="preserve"><value>Fotoğraflar</value></data><data name="CallThemeChat041" xml:space="preserve"><value>Sohbette ara</value></data><data name="CallThemeChat042" xml:space="preserve"><value>Sohbet engelini kaldır</value></data><data name="CallThemeChat043" xml:space="preserve"><value>Sohbeti engelle</value></data><data name="CallThemeChat044" xml:space="preserve"><value>Sohbeti arşivden çıkar</value></data><data name="CallThemeChat045" xml:space="preserve"><value>Sohbeti arşivle</value></data><data name="CallThemeChat046" xml:space="preserve"><value>🌸 Mor çiçekler</value></data><data name="CallThemeChat047" xml:space="preserve"><value>🌄 Dağ gün batımı</value></data><data name="CallThemeChat048" xml:space="preserve"><value>🌙 Ay gölü</value></data><data name="CallThemeChat049" xml:space="preserve"><value>🌺 Yakın plan çiçekler</value></data><data name="CallThemeChat050" xml:space="preserve"><value>🌊 Sakin göl</value></data><data name="CallThemeChat051" xml:space="preserve"><value>〰️ Deniz dalgacıkları</value></data><data name="CallThemeChat052" xml:space="preserve"><value>🌲 Zümrüt orman</value></data><data name="CallThemeChat053" xml:space="preserve"><value>🌃 Aydınlık şehir</value></data><data name="CallThemeChat054" xml:space="preserve"><value>🌸 Sakura şehri</value></data><data name="CallThemeChat055" xml:space="preserve"><value>🏜️ Altın gün batımı</value></data><data name="CallThemeChat056" xml:space="preserve"><value>🖼️ Galeriden resim seç</value></data><data name="CallThemeChat057" xml:space="preserve"><value>Arama ekranı açılamadı:</value></data><data name="CallThemeChat058" xml:space="preserve"><value>Resim düzgün indirilemedi.</value></data><data name="CallThemeChat059" xml:space="preserve"><value>Seç</value></data><data name="CallThemeChat060" xml:space="preserve"><value>Gelen arama — başlamak için Yanıtla’ya dokunun</value></data><data name="CallThemeChat061" xml:space="preserve"><value>Zaten sona erdi</value></data><data name="CallThemeChat062" xml:space="preserve"><value>Başka bir arama etkin veya devam ediyor</value></data><data name="CallThemeChat063" xml:space="preserve"><value>Bağlandı</value></data><data name="CallThemeChat065" xml:space="preserve"><value>Arama seçenekleri</value></data><data name="CallThemeChat066" xml:space="preserve"><value>Gelen ses etkin</value></data><data name="CallThemeChat067" xml:space="preserve"><value>Gelen ses kapalı</value></data><data name="CallThemeChat068" xml:space="preserve"><value>Hoparlör açık</value></data><data name="CallThemeChat069" xml:space="preserve"><value>Hoparlör kapalı</value></data><data name="DynamicStatus002" xml:space="preserve"><value>Hesap silinemedi:</value></data><data name="DynamicStatus003" xml:space="preserve"><value>Hesabınız, verileri ve sohbetleriniz sunucudan kalıcı olarak silinecek. Bu işlem geri alınamaz.</value></data><data name="DynamicStatus004" xml:space="preserve"><value>Hesabınız telefonla bulunabilir.</value></data><data name="DynamicStatus005" xml:space="preserve"><value>Telefonla bulunmayı isteğe bağlı olarak etkinleştirebilirsiniz.</value></data><data name="DynamicStatus006" xml:space="preserve"><value>Telefon numarası hesaptan kaldırıldı.</value></data><data name="DynamicStatus007" xml:space="preserve"><value>Kaydedildi; telefonla bulunma etkin.</value></data><data name="DynamicStatus008" xml:space="preserve"><value>Numara kaydedildi; telefonla bulunma kapalı.</value></data><data name="DynamicStatus009" xml:space="preserve"><value>Oturum açmış hesap yok.</value></data><data name="DynamicStatus010" xml:space="preserve"><value>E-posta adresi yüklenemedi.</value></data><data name="DynamicStatus011" xml:space="preserve"><value>E-posta belirlenemedi; yeniden giriş yapın.</value></data><data name="DynamicStatus012" xml:space="preserve"><value>Himo kamerası başlatılamadı:</value></data><data name="DynamicStatus013" xml:space="preserve"><value>Medya yakalanamadı:</value></data><data name="DynamicStatus014" xml:space="preserve"><value>Flaş değiştirilemedi:</value></data><data name="DynamicStatus015" xml:space="preserve"><value>Kamera değiştirilemedi:</value></data><data name="DynamicStatus017" xml:space="preserve"><value>Güzellik filtresi uygulanıyor…</value></data><data name="DynamicStatus018" xml:space="preserve"><value>Görüntü iyileştiriliyor…</value></data><data name="DynamicStatus020" xml:space="preserve"><value>Video + ses</value></data><data name="DynamicStatus021" xml:space="preserve"><value>Uygulama kilidi etkin.</value></data><data name="DynamicStatus022" xml:space="preserve"><value>Uygulama kilidi devre dışı.</value></data><data name="DynamicStatus023" xml:space="preserve"><value>Sistem izni durumu: izin verildi ✓</value></data><data name="DynamicStatus024" xml:space="preserve"><value>Sistem izni durumu: izin verilmedi — bildirimler görünmüyorsa Android ayarlarından etkinleştirin.</value></data><data name="DynamicStatus025" xml:space="preserve"><value>Kişi izni isteniyor…</value></data><data name="DynamicStatus026" xml:space="preserve"><value>Telefondan bir kişi yüklendi. Liste yereldir ve sunucuya yüklenmez.</value></data><data name="DynamicStatus027" xml:space="preserve"><value>Telefon numaraları Himo hesaplarıyla eşleştiriliyor…</value></data><data name="DynamicStatus028" xml:space="preserve"><value>Etkinleştiriliyor…</value></data></root>

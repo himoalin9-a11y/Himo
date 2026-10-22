@@ -93,7 +93,7 @@ public sealed class SystemIconsSettingsPage : SettingsHubPageBase
 
         AddIntroCard(
             "15 لونًا للشعار نفسه",
-            "اختر اللون الذي تفضله. ستُطبّق الأيقونة على مشغّل Android وتُنسّق ألوان واجهة Himo ورموزها مع اللون المختار.",
+            "اختر اللون الذي تفضله. الضغط على الأيقونة يطبقها على مشغّل Android ويحفظ اختيارك داخل التطبيق.",
             "himo_system_icon_original.png");
 
         var grid = new Grid
@@ -122,6 +122,7 @@ public sealed class SystemIconsSettingsPage : SettingsHubPageBase
             "تطبيق الأيقونة",
             "اضغط على أي أيقونة لتطبيقها كأيقونة Himo على الشاشة الرئيسية. قد يحتاج مشغّل الهاتف بضع ثوانٍ لتحديثها.",
             "himo_pro_ui_settings_icon_check.png");
+        _applyStatus.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
         Body.Children.Add(_applyStatus);
     }
 
@@ -173,7 +174,7 @@ public sealed class SystemIconsSettingsPage : SettingsHubPageBase
             Text = option.Title,
             FontSize = 11.5,
             LineBreakMode = LineBreakMode.WordWrap,
-            TextColor = Color.FromArgb("#291841"),
+            TextColor = Color.FromArgb("#F7E9FF"),
             HorizontalTextAlignment = TextAlignment.Center,
             VerticalTextAlignment = TextAlignment.Center,
             MinimumHeightRequest = 32
@@ -200,6 +201,9 @@ public sealed class SystemIconsSettingsPage : SettingsHubPageBase
             VerticalOptions = LayoutOptions.Fill
         };
 
+        card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
+        card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
+        name.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
         var tap = new TapGestureRecognizer();
         tap.Tapped += (_, _) => SelectOption(option);
         card.GestureRecognizers.Add(tap);
@@ -211,8 +215,7 @@ public sealed class SystemIconsSettingsPage : SettingsHubPageBase
         _selectedKey = option.FileName;
         Preferences.Set(PreferenceKey, _selectedKey);
         HimoLauncherIconService.TryApply(option.FileName, out var applyMessage);
-        HimoLauncherIconService.ApplyCompanionInterfaceStyle(option.FileName);
-        _applyStatus.Text = applyMessage + " تم تنسيق ألوان الواجهة ورموزها مع الاختيار.";
+        _applyStatus.Text = applyMessage;
 
         foreach (var candidate in Options)
         {
@@ -220,8 +223,8 @@ public sealed class SystemIconsSettingsPage : SettingsHubPageBase
                 continue;
 
             var selected = string.Equals(candidate.FileName, _selectedKey, StringComparison.Ordinal);
-            card.BackgroundColor = selected ? Color.FromArgb("#F0E6FF") : Colors.White;
-            card.Stroke = new SolidColorBrush(selected ? Color.FromArgb("#7028E8") : Color.FromArgb("#E3D9F2"));
+            card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
+            card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
             card.StrokeThickness = selected ? 2 : 1;
             if (card.Content is VerticalStackLayout layout && layout.Children.FirstOrDefault() is Grid preview)
             {
@@ -279,13 +282,14 @@ public sealed class GlassIconsSettingsPage : SettingsHubPageBase
     public GlassIconsSettingsPage()
         : base("أيقونات زجاجية", "اختر شعار Himo بلمسة زجاجية ولون لامع")
     {
+        _applyStatus.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
         _selectedKey = HimoLauncherIconService.GetSelectedVariant();
         if (!Options.Any(option => string.Equals(option.FileName, _selectedKey, StringComparison.Ordinal)))
             _selectedKey = string.Empty;
 
         AddIntroCard(
             "15 تصميمًا زجاجيًا",
-            "كل الخيارات تحافظ على شكل Himo. عند اختيار تصميم، تُحدّث أيقونة التطبيق وتتناغم معها ألوان الواجهة والرموز الداخلية.",
+            "كل الخيارات تحافظ على شكل حرف H وكلمة Himo. اضغط على التصميم لتطبيقه كأيقونة فعلية للتطبيق على الشاشة الرئيسية.",
             "himo_glass_icon_purple.png");
 
         var grid = new Grid
@@ -402,6 +406,11 @@ public sealed class GlassIconsSettingsPage : SettingsHubPageBase
             VerticalOptions = LayoutOptions.Fill
         };
 
+        card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
+        card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
+        name.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        action.SetDynamicResource(Label.TextColorProperty, selected ? "HimoAccent" : "HimoTextSecondary");
+
         var tap = new TapGestureRecognizer();
         tap.Tapped += (_, _) => SelectGlassOption(option);
         card.GestureRecognizers.Add(tap);
@@ -413,16 +422,15 @@ public sealed class GlassIconsSettingsPage : SettingsHubPageBase
         _selectedKey = option.FileName;
         Preferences.Set(PreferenceKey, _selectedKey);
         HimoLauncherIconService.TryApply(option.FileName, out var applyMessage);
-        HimoLauncherIconService.ApplyCompanionInterfaceStyle(option.FileName);
-        _applyStatus.Text = applyMessage + " تم تنسيق ألوان الواجهة ورموزها مع الاختيار.";
+        _applyStatus.Text = applyMessage;
 
         foreach (var candidate in Options)
         {
             var selected = string.Equals(candidate.FileName, _selectedKey, StringComparison.Ordinal);
             if (_optionCards.TryGetValue(candidate.FileName, out var card))
             {
-                card.BackgroundColor = selected ? SelectedBackground : CardBackground;
-                card.Stroke = new SolidColorBrush(selected ? SelectedStroke : UnselectedStroke);
+                card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
+                card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
                 card.StrokeThickness = selected ? 2.5 : 1;
 
                 if (card.Content is VerticalStackLayout layout && layout.Children.FirstOrDefault() is Grid preview)
@@ -436,7 +444,7 @@ public sealed class GlassIconsSettingsPage : SettingsHubPageBase
             if (_optionActions.TryGetValue(candidate.FileName, out var action))
             {
                 action.Text = selected ? "محددة ✓" : "اختيار";
-                action.TextColor = selected ? SelectedStroke : GlassAccent;
+                action.SetDynamicResource(Label.TextColorProperty, selected ? "HimoAccent" : "HimoTextSecondary");
             }
         }
     }
@@ -492,13 +500,14 @@ public sealed class ProfessionalIconsSettingsPage : SettingsHubPageBase
     public ProfessionalIconsSettingsPage()
         : base("أيقونات احترافية", "اختر أيقونتك اللامعة المفضلة")
     {
+        _applyStatus.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
         _selectedKey = HimoLauncherIconService.GetSelectedVariant();
         if (!Options.Any(option => string.Equals(option.FileName, _selectedKey, StringComparison.Ordinal)))
             _selectedKey = string.Empty;
 
         AddIntroCard(
             "25 تصميمًا لامعًا لهوية Himo",
-            "اختر من بين تصاميم ذهبية وفضية وكريستالية وألوان مضيئة. يطبّق الاختيار أيقونة Himo ويضبط ألوان الواجهة ورموزها لتناسبها.",
+            "اختر من بين تصاميم ذهبية وفضية وكريستالية وألوان مضيئة. الضغط على أيقونة يطبّقها كأيقونة Himo على الشاشة الرئيسية في Android.",
             "himo_professional_icon_01.png");
 
         var grid = new Grid
@@ -614,6 +623,11 @@ public sealed class ProfessionalIconsSettingsPage : SettingsHubPageBase
             VerticalOptions = LayoutOptions.Fill
         };
 
+        card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
+        card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
+        name.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        action.SetDynamicResource(Label.TextColorProperty, selected ? "HimoAccent" : "HimoTextSecondary");
+
         var tap = new TapGestureRecognizer();
         tap.Tapped += (_, _) => SelectProfessionalOption(option);
         card.GestureRecognizers.Add(tap);
@@ -625,16 +639,15 @@ public sealed class ProfessionalIconsSettingsPage : SettingsHubPageBase
         _selectedKey = option.FileName;
         Preferences.Set(PreferenceKey, _selectedKey);
         HimoLauncherIconService.TryApply(option.FileName, out var applyMessage);
-        HimoLauncherIconService.ApplyCompanionInterfaceStyle(option.FileName);
-        _applyStatus.Text = applyMessage + " تم تنسيق ألوان الواجهة ورموزها مع الاختيار.";
+        _applyStatus.Text = applyMessage;
 
         foreach (var candidate in Options)
         {
             var selected = string.Equals(candidate.FileName, _selectedKey, StringComparison.Ordinal);
             if (_optionCards.TryGetValue(candidate.FileName, out var card))
             {
-                card.BackgroundColor = selected ? ProfessionalSelected : ProfessionalCard;
-                card.Stroke = new SolidColorBrush(selected ? ProfessionalGold : ProfessionalStroke);
+                card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
+                card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
                 card.StrokeThickness = selected ? 2.5 : 1;
                 if (card.Content is VerticalStackLayout layout && layout.Children.FirstOrDefault() is Grid preview)
                 {
@@ -647,7 +660,7 @@ public sealed class ProfessionalIconsSettingsPage : SettingsHubPageBase
             if (_optionActions.TryGetValue(candidate.FileName, out var action))
             {
                 action.Text = selected ? "محددة ✓" : "اختيار";
-                action.TextColor = selected ? ProfessionalGold : Color.FromArgb("#C9BED8");
+                action.SetDynamicResource(Label.TextColorProperty, selected ? "HimoAccent" : "HimoTextSecondary");
             }
         }
     }
@@ -1009,11 +1022,10 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
         };
         var card = new Border
         {
-            // Keep candidate-specific preview colors intact when the selected app
-            // palette is broadcast through the visual tree.
+            // Keep candidate-specific colors inside the mini preview; the wrapper uses the active app palette.
             AutomationId = "HimoThemePreview",
-            BackgroundColor = selected ? Color.FromArgb("#F0E8FF") : Colors.White,
-            Stroke = new SolidColorBrush(selected ? accent : Color.FromArgb("#E3D9F2")),
+            BackgroundColor = selected ? Color.FromArgb("#39204F") : Color.FromArgb("#2D1942"),
+            Stroke = new SolidColorBrush(selected ? accent : Color.FromArgb("#594768")),
             StrokeThickness = selected ? 2 : 1,
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(22) },
             Padding = 0,
@@ -1021,8 +1033,9 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
             HorizontalOptions = LayoutOptions.Fill,
             VerticalOptions = LayoutOptions.Fill
         };
-        // Do not bind these preview colors to HimoAccent/HimoCard: each card is a
-        // live miniature of its own palette and must remain distinct after selection.
+        // The inner sample keeps the candidate palette; the surrounding selection tile follows Himo.
+        card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
+        card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
 
         // The whole card is tappable as well as the explicitly labelled button.
         var tap = new TapGestureRecognizer();
@@ -1119,8 +1132,8 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
             var accent = Color.FromArgb(candidate.Accent);
             if (_cards.TryGetValue(candidate.Key, out var card))
             {
-                card.BackgroundColor = selected ? Color.FromArgb("#F0E8FF") : Colors.White;
-                card.Stroke = new SolidColorBrush(selected ? accent : Color.FromArgb("#E3D9F2"));
+                card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
+                card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
                 card.StrokeThickness = selected ? 2 : 1;
             }
 
@@ -1149,14 +1162,14 @@ public sealed record InterfaceStyleOption(
     string Foreground);
 
 /// <summary>Shared presentation and navigation for this settings subsection.</summary>
-public abstract class SettingsHubPageBase : ContentPage
+public abstract class SettingsHubPageBase : Himo.Services.LocalizedContentPage
 {
-    private static readonly Color PageBackground = Color.FromArgb("#F7F4FF");
-    private static readonly Color PrimaryPurple = Color.FromArgb("#6C25D9");
-    private static readonly Color HeadingColor = Color.FromArgb("#291841");
-    private static readonly Color SecondaryText = Color.FromArgb("#817494");
-    private static readonly Color CardStroke = Color.FromArgb("#E3D9F2");
-    private static readonly Color IconBackground = Color.FromArgb("#F1E7FF");
+    private static readonly Color PageBackground = Color.FromArgb("#211333");
+    private static readonly Color PrimaryPurple = Color.FromArgb("#C76BFF");
+    private static readonly Color HeadingColor = Color.FromArgb("#F7E9FF");
+    private static readonly Color SecondaryText = Color.FromArgb("#C7B8D8");
+    private static readonly Color CardStroke = Color.FromArgb("#594768");
+    private static readonly Color IconBackground = Color.FromArgb("#39204F");
 
     protected readonly VerticalStackLayout Body;
     private int _navigationInProgress;
@@ -1169,7 +1182,8 @@ public abstract class SettingsHubPageBase : ContentPage
         SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         Shell.SetNavBarIsVisible(this, false);
 
-        var root = new Grid();
+        var root = new Grid { BackgroundColor = PageBackground };
+        root.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
 
@@ -1239,11 +1253,14 @@ public abstract class SettingsHubPageBase : ContentPage
             Spacing = 14,
             FlowDirection = FlowDirection.RightToLeft
         };
+        Body.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         var scroll = new ScrollView
         {
+            BackgroundColor = PageBackground,
             Content = Body,
             VerticalScrollBarVisibility = ScrollBarVisibility.Never
         };
+        scroll.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         root.Add(scroll, 0, 1);
         Content = root;
     }
@@ -1420,7 +1437,7 @@ public abstract class SettingsHubPageBase : ContentPage
             }
             catch (Exception ex)
             {
-                await DisplayAlertAsync(title, "تعذر فتح الصفحة: " + ex.Message, "حسنًا");
+                await DisplayAlertAsync(title, Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح الصفحة: ") + ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             }
             finally
             {
@@ -1461,7 +1478,7 @@ public abstract class SettingsHubPageBase : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("رجوع", "تعذر الرجوع للصفحة السابقة: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("رجوع"), "تعذر الرجوع للصفحة السابقة: " + ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {

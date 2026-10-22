@@ -163,13 +163,6 @@ public sealed class CallService : ICallService, IDisposable
         {
             try
             {
-                await _media.StartAsync(request.Mode, cancellationToken);
-                if (operationVersion != Volatile.Read(ref _operationVersion))
-                {
-                    await StopCallResourcesQuietlyAsync();
-                    return;
-                }
-
                 Volatile.Write(ref _ending, 0);
                 _lifecycle = CallLifecycleState.Calling;
                 _current = outgoingState = new CallState(
@@ -196,6 +189,15 @@ public sealed class CallService : ICallService, IDisposable
                     cancellationToken);
                 StartOutgoingTimeout(callId);
 
+                // Deliver the invite immediately; Android audio-route setup can take noticeable time
+                // on some devices and must not delay ringing on the recipient's phone.
+                await _media.StartAsync(request.Mode, cancellationToken);
+                if (operationVersion != Volatile.Read(ref _operationVersion))
+                {
+                    await StopCallResourcesQuietlyAsync();
+                    return;
+                }
+
                 await _webRtc.StartAsync(request.Mode, cancellationToken);
                 if (operationVersion != Volatile.Read(ref _operationVersion) || Volatile.Read(ref _ending) != 0)
                 {
@@ -218,8 +220,11 @@ public sealed class CallService : ICallService, IDisposable
                     await SendCallSignalBestEffortAsync(outgoingState, CallSignalType.End, CancellationToken.None);
 
                 await StopCallResourcesQuietlyAsync();
+                // Clear while the failed call is still current so CallEnded is raised.
+                // Previously _current was nulled first, suppressing the event and leaving
+                // CallPage stuck on screen after native WebRTC startup failed.
                 if (_current?.CallId == callId)
-                    _current = null;
+                    Clear();
                 _lifecycle = CallLifecycleState.Ended;
                 throw;
             }

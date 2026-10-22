@@ -1,0 +1,1017 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppName" xml:space="preserve">
+    <value>Himo</value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>جارٍ التحميل...</value>
+  </data>
+  <data name="PreparingAccount" xml:space="preserve">
+    <value>جارٍ تجهيز حسابك...</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>الإعدادات</value>
+  </data>
+  <data name="SettingsSubtitle" xml:space="preserve">
+    <value>إدارة حسابك وتفضيلاتك</value>
+  </data>
+  <data name="Account" xml:space="preserve">
+    <value>الحساب</value>
+  </data>
+  <data name="AccountManagement" xml:space="preserve">
+    <value>إدارة الحساب</value>
+  </data>
+  <data name="Profile" xml:space="preserve">
+    <value>الملف الشخصي</value>
+  </data>
+  <data name="ProfileTab" xml:space="preserve">
+    <value>الملف</value>
+  </data>
+  <data name="ProfileTitle" xml:space="preserve">
+    <value>ملفي الشخصي</value>
+  </data>
+  <data name="ProfileSubtitle" xml:space="preserve">
+    <value>هويتك ومساحتك على Himo</value>
+  </data>
+  <data name="PublicName" xml:space="preserve">
+    <value>الاسم الظاهر</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>الاسم</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>الحالة</value>
+  </data>
+  <data name="About" xml:space="preserve">
+    <value>حول</value>
+  </data>
+  <data name="Username" xml:space="preserve">
+    <value>اسم المستخدم</value>
+  </data>
+  <data name="PhoneNumber" xml:space="preserve">
+    <value>رقم الهاتف</value>
+  </data>
+  <data name="Email" xml:space="preserve">
+    <value>البريد الإلكتروني</value>
+  </data>
+  <data name="ChangePhoto" xml:space="preserve">
+    <value>تغيير الصورة</value>
+  </data>
+  <data name="RemovePhoto" xml:space="preserve">
+    <value>إزالة الصورة</value>
+  </data>
+  <data name="SaveChanges" xml:space="preserve">
+    <value>حفظ التغييرات</value>
+  </data>
+  <data name="Messages" xml:space="preserve">
+    <value>المحادثات</value>
+  </data>
+  <data name="Calls" xml:space="preserve">
+    <value>المكالمات</value>
+  </data>
+  <data name="PeopleSearch" xml:space="preserve">
+    <value>بحث الأشخاص</value>
+  </data>
+  <data name="Back" xml:space="preserve">
+    <value>رجوع</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>إغلاق</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>إلغاء</value>
+  </data>
+  <data name="OK" xml:space="preserve">
+    <value>حسنًا</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>حفظ</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>حذف</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>تعديل</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>تأكيد</value>
+  </data>
+  <data name="Search" xml:space="preserve">
+    <value>بحث</value>
+  </data>
+  <data name="SearchConversations" xml:space="preserve">
+    <value>البحث في محادثاتك</value>
+  </data>
+  <data name="NoConversations" xml:space="preserve">
+    <value>لا توجد محادثات بعد</value>
+  </data>
+  <data name="Notifications" xml:space="preserve">
+    <value>الإشعارات</value>
+  </data>
+  <data name="ChatSettings" xml:space="preserve">
+    <value>إعدادات الدردشات</value>
+  </data>
+  <data name="AppearanceAndIcons" xml:space="preserve">
+    <value>السمات والأيقونات</value>
+  </data>
+  <data name="TextSize" xml:space="preserve">
+    <value>حجم الخط</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>اللغة</value>
+  </data>
+  <data name="LanguageTitle" xml:space="preserve">
+    <value>لغة التطبيق</value>
+  </data>
+  <data name="LanguageSubtitle" xml:space="preserve">
+    <value>اختر اللغة التي تفضّل استخدامها</value>
+  </data>
+  <data name="AvailableLanguages" xml:space="preserve">
+    <value>اللغات المتاحة</value>
+  </data>
+  <data name="SaveLanguage" xml:space="preserve">
+    <value>حفظ اللغة</value>
+  </data>
+  <data name="LanguageSavedTitle" xml:space="preserve">
+    <value>تم حفظ اللغة</value>
+  </data>
+  <data name="LanguageSavedMessage" xml:space="preserve">
+    <value>تم تطبيق اللغة المختارة على الواجهات المدعومة. قد تبقى بعض الشاشات المتخصصة بالعربية إلى أن تكتمل ترجمتها.</value>
+  </data>
+  <data name="Theme" xml:space="preserve">
+    <value>السمة</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>الخصوصية</value>
+  </data>
+  <data name="SecurityPrivacy" xml:space="preserve">
+    <value>الأمان والخصوصية</value>
+  </data>
+  <data name="StorageData" xml:space="preserve">
+    <value>التخزين والبيانات</value>
+  </data>
+  <data name="HelpSupport" xml:space="preserve">
+    <value>مساعدة ودعم</value>
+  </data>
+  <data name="AboutApp" xml:space="preserve">
+    <value>حول التطبيق</value>
+  </data>
+  <data name="Logout" xml:space="preserve">
+    <value>تسجيل الخروج</value>
+  </data>
+  <data name="LogoutAllDevices" xml:space="preserve">
+    <value>الخروج من جميع الأجهزة</value>
+  </data>
+  <data name="DeleteAccount" xml:space="preserve">
+    <value>حذف الحساب نهائيًا</value>
+  </data>
+  <data name="FontSmall" xml:space="preserve">
+    <value>صغير</value>
+  </data>
+  <data name="FontMedium" xml:space="preserve">
+    <value>متوسط</value>
+  </data>
+  <data name="FontLarge" xml:space="preserve">
+    <value>كبير</value>
+  </data>
+  <data name="OnlineNow" xml:space="preserve">
+    <value>متصل الآن</value>
+  </data>
+  <data name="Available" xml:space="preserve">
+    <value>متاح</value>
+  </data>
+  <data name="NotAvailable" xml:space="preserve">
+    <value>غير متاح</value>
+  </data>
+  <data name="LeaveMessage" xml:space="preserve">
+    <value>اترك رسالة</value>
+  </data>
+  <data name="Sleeping" xml:space="preserve">
+    <value>نائم</value>
+  </data>
+  <data name="AtWork" xml:space="preserve">
+    <value>في العمل</value>
+  </data>
+  <data name="Traveling" xml:space="preserve">
+    <value>مسافر</value>
+  </data>
+  <data name="ChangePassword" xml:space="preserve">
+    <value>تغيير كلمة المرور</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>كلمة المرور</value>
+  </data>
+  <data name="ConfirmPassword" xml:space="preserve">
+    <value>تأكيد كلمة المرور</value>
+  </data>
+  <data name="Login" xml:space="preserve">
+    <value>تسجيل الدخول</value>
+  </data>
+  <data name="CreateAccount" xml:space="preserve">
+    <value>إنشاء الحساب</value>
+  </data>
+  <data name="CreateNewAccount" xml:space="preserve">
+    <value>إنشاء حساب جديد</value>
+  </data>
+  <data name="ForgotPassword" xml:space="preserve">
+    <value>نسيت كلمة المرور؟</value>
+  </data>
+  <data name="RecoverPassword" xml:space="preserve">
+    <value>استعادة كلمة المرور</value>
+  </data>
+  <data name="EmailInvalid" xml:space="preserve">
+    <value>البريد الإلكتروني غير صحيح.</value>
+  </data>
+  <data name="EnterEmail" xml:space="preserve">
+    <value>أدخل البريد الإلكتروني</value>
+  </data>
+  <data name="EnterPassword" xml:space="preserve">
+    <value>أدخل كلمة المرور</value>
+  </data>
+  <data name="SearchPeople" xml:space="preserve">
+    <value>البحث عن الأشخاص</value>
+  </data>
+  <data name="SearchContacts" xml:space="preserve">
+    <value>البحث في جهات الاتصال</value>
+  </data>
+  <data name="NoResults" xml:space="preserve">
+    <value>لا توجد نتائج</value>
+  </data>
+  <data name="TryAgain" xml:space="preserve">
+    <value>حاول مرة أخرى</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>تعذر الحفظ</value>
+  </data>
+  <data name="Saved" xml:space="preserve">
+    <value>تم الحفظ</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>خطأ</value>
+  </data>
+  <data name="Warning" xml:space="preserve">
+    <value>تنبيه</value>
+  </data>
+  <data name="All" xml:space="preserve">
+    <value>الكل</value>
+  </data>
+  <data name="Everyone" xml:space="preserve">
+    <value>الجميع</value>
+  </data>
+  <data name="MyContacts" xml:space="preserve">
+    <value>جهات اتصالي</value>
+  </data>
+  <data name="Nobody" xml:space="preserve">
+    <value>لا أحد</value>
+  </data>
+  <data name="Groups" xml:space="preserve">
+    <value>المجموعات</value>
+  </data>
+  <data name="LastSeen" xml:space="preserve">
+    <value>آخر ظهور ومتصل الآن</value>
+  </data>
+  <data name="ProfilePhoto" xml:space="preserve">
+    <value>صورة الملف الشخصي</value>
+  </data>
+  <data name="Contacts" xml:space="preserve">
+    <value>جهات الاتصال</value>
+  </data>
+  <data name="Cache" xml:space="preserve">
+    <value>الذاكرة المؤقتة</value>
+  </data>
+  <data name="AppData" xml:space="preserve">
+    <value>بيانات التطبيق</value>
+  </data>
+  <data name="Media" xml:space="preserve">
+    <value>الوسائط</value>
+  </data>
+  <data name="UsedStorage" xml:space="preserve">
+    <value>المساحة المستخدمة</value>
+  </data>
+  <data name="ClearCache" xml:space="preserve">
+    <value>مسح الذاكرة المؤقتة</value>
+  </data>
+  <data name="StorageSummary" xml:space="preserve">
+    <value>ملخص التخزين</value>
+  </data>
+  <data name="SystemIcons" xml:space="preserve">
+    <value>أيقونات النظام</value>
+  </data>
+  <data name="GlassIcons" xml:space="preserve">
+    <value>أيقونات زجاجية</value>
+  </data>
+  <data name="ProfessionalIcons" xml:space="preserve">
+    <value>أيقونات احترافية</value>
+  </data>
+  <data name="ChooseTheme" xml:space="preserve">
+    <value>اختر السمة</value>
+  </data>
+  <data name="CurrentTheme" xml:space="preserve">
+    <value>السمة الحالية</value>
+  </data>
+  <data name="ApplyTheme" xml:space="preserve">
+    <value>تطبيق السمة</value>
+  </data>
+  <data name="Send" xml:space="preserve">
+    <value>إرسال</value>
+  </data>
+  <data name="Message" xml:space="preserve">
+    <value>رسالة</value>
+  </data>
+  <data name="TypeMessage" xml:space="preserve">
+    <value>اكتب رسالة...</value>
+  </data>
+  <data name="Online" xml:space="preserve">
+    <value>متصل الآن</value>
+  </data>
+  <data name="Offline" xml:space="preserve">
+    <value>غير متصل</value>
+  </data>
+  <data name="Audio" xml:space="preserve">
+    <value>صوت</value>
+  </data>
+  <data name="Video" xml:space="preserve">
+    <value>فيديو</value>
+  </data>
+  <data name="Photos" xml:space="preserve">
+    <value>الصور</value>
+  </data>
+  <data name="Camera" xml:space="preserve">
+    <value>الكاميرا</value>
+  </data>
+  <data name="Attachments" xml:space="preserve">
+    <value>المرفقات</value>
+  </data>
+  <data name="Forward" xml:space="preserve">
+    <value>تحويل</value>
+  </data>
+  <data name="DeleteMessage" xml:space="preserve">
+    <value>حذف الرسالة</value>
+  </data>
+  <data name="EditMessage" xml:space="preserve">
+    <value>تعديل الرسالة</value>
+  </data>
+  <data name="MuteNotifications" xml:space="preserve">
+    <value>كتم الإشعارات</value>
+  </data>
+  <data name="UnmuteNotifications" xml:space="preserve">
+    <value>إلغاء كتم الإشعارات</value>
+  </data>
+  <data name="CreateGroup" xml:space="preserve">
+    <value>إنشاء مجموعة</value>
+  </data>
+  <data name="GroupName" xml:space="preserve">
+    <value>اسم المجموعة</value>
+  </data>
+  <data name="LeaveGroup" xml:space="preserve">
+    <value>مغادرة المجموعة</value>
+  </data>
+  <data name="Call" xml:space="preserve">
+    <value>مكالمة</value>
+  </data>
+  <data name="VoiceCall" xml:space="preserve">
+    <value>مكالمة صوتية</value>
+  </data>
+  <data name="VideoCall" xml:space="preserve">
+    <value>مكالمة فيديو</value>
+  </data>
+  <data name="EndCall" xml:space="preserve">
+    <value>إنهاء المكالمة</value>
+  </data>
+  <data name="Connecting" xml:space="preserve">
+    <value>جارٍ الاتصال...</value>
+  </data>
+  <data name="IncomingCall" xml:space="preserve">
+    <value>مكالمة واردة</value>
+  </data>
+  <data name="Choose" xml:space="preserve">
+    <value>اختيار</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>إزالة</value>
+  </data>
+  <data name="AvailableOnHimo" xml:space="preserve">
+    <value>متاح على Himo</value>
+  </data>
+  <data name="AccountInfo" xml:space="preserve">
+    <value>معلومات الحساب</value>
+  </data>
+  <data name="ChangeUsername" xml:space="preserve">
+    <value>تغيير اسم المستخدم</value>
+  </data>
+  <data name="ChangePhone" xml:space="preserve">
+    <value>تغيير رقم الهاتف</value>
+  </data>
+  <data name="ChangeEmail" xml:space="preserve">
+    <value>تغيير البريد الإلكتروني</value>
+  </data>
+  <data name="PrivacySettings" xml:space="preserve">
+    <value>إعدادات الخصوصية</value>
+  </data>
+  <data name="Backup" xml:space="preserve">
+    <value>النسخ الاحتياطي</value>
+  </data>
+  <data name="Restore" xml:space="preserve">
+    <value>استعادة</value>
+  </data>
+  <data name="NotificationsEnabled" xml:space="preserve">
+    <value>الإشعارات مفعّلة.</value>
+  </data>
+  <data name="NotificationsDisabled" xml:space="preserve">
+    <value>الإشعارات متوقفة.</value>
+  </data>
+  <data name="PermissionDenied" xml:space="preserve">
+    <value>لم يتم منح الإذن.</value>
+  </data>
+  <data name="Retry" xml:space="preserve">
+    <value>إعادة المحاولة</value>
+  </data>
+  <data name="AreYouSure" xml:space="preserve">
+    <value>هل أنت متأكد؟</value>
+  </data>
+  <data name="NewGroup" xml:space="preserve">
+    <value>مجموعة جديدة</value>
+  </data>
+  <data name="WelcomeBack" xml:space="preserve">
+    <value>مرحبًا بعودتك</value>
+  </data>
+  <data name="UnlimitedCommunication" xml:space="preserve">
+    <value>تواصل بلا حدود</value>
+  </data>
+  <data name="SelectedCount" xml:space="preserve">
+    <value>تم تحديد 1</value>
+  </data>
+  <data name="DeleteSelectedChats" xml:space="preserve">
+    <value>حذف المحادثات المحددة</value>
+  </data>
+  <data name="MuteSelectedChats" xml:space="preserve">
+    <value>كتم إشعارات المحادثات المحددة</value>
+  </data>
+  <data name="ArchiveSelectedChats" xml:space="preserve">
+    <value>أرشفة المحادثات المحددة</value>
+  </data>
+  <data name="BlockSelectedPerson" xml:space="preserve">
+    <value>حظر الشخص المحدد</value>
+  </data>
+  <data name="ClearSelection" xml:space="preserve">
+    <value>إلغاء التحديد</value>
+  </data>
+  <data name="ArchivedChats" xml:space="preserve">
+    <value>عرض المحادثات المؤرشفة</value>
+  </data>
+  <data name="StartConversation" xml:space="preserve">
+    <value>بدء محادثة</value>
+  </data>
+  <data name="StartNewConversation" xml:space="preserve">
+    <value>بدء محادثة جديدة</value>
+  </data>
+  <data name="CallHistory" xml:space="preserve">
+    <value>سجل المكالمات</value>
+  </data>
+  <data name="RecentCalls" xml:space="preserve">
+    <value>المكالمات الأخيرة وخيارات إعادة الاتصال</value>
+  </data>
+  <data name="NoCallsYet" xml:space="preserve">
+    <value>لا توجد مكالمات بعد</value>
+  </data>
+  <data name="CallFromChatHint" xml:space="preserve">
+    <value>يمكنك إجراء مكالمة صوتية أو مرئية من داخل أي محادثة.</value>
+  </data>
+  <data name="ReturnToChats" xml:space="preserve">
+    <value>العودة إلى المحادثات</value>
+  </data>
+  <data name="RedialAudio" xml:space="preserve">
+    <value>إعادة اتصال صوتي</value>
+  </data>
+  <data name="RedialVideo" xml:space="preserve">
+    <value>إعادة اتصال مرئي</value>
+  </data>
+  <data name="FindPeople" xml:space="preserve">
+    <value>ابحث عن الأشخاص</value>
+  </data>
+  <data name="UsePhoneOrEmail" xml:space="preserve">
+    <value>استخدم رقم الهاتف أو البريد الإلكتروني في حقل بحث واحد.</value>
+  </data>
+  <data name="PhoneOrEmail" xml:space="preserve">
+    <value>رقم الهاتف أو البريد الإلكتروني</value>
+  </data>
+  <data name="SearchLoading" xml:space="preserve">
+    <value>جارٍ البحث...</value>
+  </data>
+  <data name="ContactsHint" xml:space="preserve">
+    <value>لرؤية قائمة جهات الاتصال كاملة، اضغط أيقونة البحث أعلى الشاشة. الحسابات بالرقم تظهر فقط عند تفعيل صاحبها خيار العثور عليه.</value>
+  </data>
+  <data name="EnterPhoneEmail" xml:space="preserve">
+    <value>أدخل رقم الهاتف أو البريد الإلكتروني للبدء.</value>
+  </data>
+  <data name="SearchBeforeResults" xml:space="preserve">
+    <value>لن تظهر النتائج قبل إجراء البحث</value>
+  </data>
+  <data name="AccountActive" xml:space="preserve">
+    <value>حسابك نشط الآن</value>
+  </data>
+  <data name="PhonePrivateHint" xml:space="preserve">
+    <value>لا يظهر رقم هاتفك للمستخدمين الآخرين. يمكنك إدارة إمكانية العثور على حسابك عبر الهاتف من صفحة إدارة الحساب.</value>
+  </data>
+  <data name="EnableHimoNotifications" xml:space="preserve">
+    <value>تفعيل إشعارات Himo</value>
+  </data>
+  <data name="NotificationToggleHint" xml:space="preserve">
+    <value>تشغيل أو إيقاف إشعارات الرسائل والمكالمات</value>
+  </data>
+  <data name="OpenAndroidSettings" xml:space="preserve">
+    <value>فتح إعدادات Android</value>
+  </data>
+  <data name="ChatsAppearanceDescription" xml:space="preserve">
+    <value>الإرسال والوسائط وحجم الخط والأرشيف والنسخ الاحتياطي</value>
+  </data>
+  <data name="ManageFilesAndNetwork" xml:space="preserve">
+    <value>إدارة الملفات والصور ومراجعة استخدام الشبكة</value>
+  </data>
+  <data name="IconThemeDescription" xml:space="preserve">
+    <value>تغيير ألوان الواجهات والرموز باختيار سمة متكاملة</value>
+  </data>
+  <data name="AppLock" xml:space="preserve">
+    <value>قفل التطبيق</value>
+  </data>
+  <data name="SetPasscode" xml:space="preserve">
+    <value>تعيين رمز مرور لحماية التطبيق</value>
+  </data>
+  <data name="NewPasscode" xml:space="preserve">
+    <value>رمز جديد (4-6 أرقام)</value>
+  </data>
+  <data name="SaveLockCode" xml:space="preserve">
+    <value>حفظ رمز القفل</value>
+  </data>
+  <data name="DisplayNameHint" xml:space="preserve">
+    <value>استخدم اسمًا واضحًا ليسهل على أصدقائك العثور عليك.</value>
+  </data>
+  <data name="StatusHint" xml:space="preserve">
+    <value>اكتب جملة قصيرة تعبّر عن حالتك الآن.</value>
+  </data>
+  <data name="ProfileSavedHint" xml:space="preserve">
+    <value>تُحفظ صورتك على حسابك وتبقى متاحة عند تسجيل الدخول من جديد.</value>
+  </data>
+  <data name="PhotoFormatLimit" xml:space="preserve">
+    <value>JPG أو PNG أو WebP أو HEIC · بحد أقصى 4 ميغابايت</value>
+  </data>
+  <data name="FullName" xml:space="preserve">
+    <value>الاسم الكامل</value>
+  </data>
+  <data name="EnterYourName" xml:space="preserve">
+    <value>اكتب اسمك كما تريد ظهوره</value>
+  </data>
+  <data name="OptionalPhone" xml:space="preserve">
+    <value>رقم الهاتف (اختياري)</value>
+  </data>
+  <data name="EightChars" xml:space="preserve">
+    <value>8 أحرف على الأقل</value>
+  </data>
+  <data name="AgreeTo" xml:space="preserve">
+    <value>أوافق على </value>
+  </data>
+  <data name="TermsOfUse" xml:space="preserve">
+    <value>شروط الاستخدام</value>
+  </data>
+  <data name="PrivacyPolicy" xml:space="preserve">
+    <value>سياسة الخصوصية</value>
+  </data>
+  <data name="BeforeCreatingAccount" xml:space="preserve">
+    <value> قبل إنشاء الحساب.</value>
+  </data>
+  <data name="VerificationCode" xml:space="preserve">
+    <value>رمز التحقق</value>
+  </data>
+  <data name="SixDigitCode" xml:space="preserve">
+    <value>رمز التحقق المكوّن من 6 أرقام</value>
+  </data>
+  <data name="VerificationEmailHint" xml:space="preserve">
+    <value>أدخل الرمز الذي أرسلناه إلى بريدك الإلكتروني لإكمال إنشاء الحساب.</value>
+  </data>
+  <data name="ResendVerification" xml:space="preserve">
+    <value>إعادة إرسال رمز التحقق</value>
+  </data>
+  <data name="AlreadyHaveAccount" xml:space="preserve">
+    <value>لديك حساب بالفعل؟</value>
+  </data>
+  <data name="NoAccount" xml:space="preserve">
+    <value>ليس لديك حساب؟</value>
+  </data>
+  <data name="SignInToContinue" xml:space="preserve">
+    <value>سجّل الدخول إلى حسابك للمتابعة</value>
+  </data>
+  <data name="RecoverAccess" xml:space="preserve">
+    <value>استعد الوصول إلى حسابك بخطوات آمنة</value>
+  </data>
+  <data name="LetsGetBack" xml:space="preserve">
+    <value>لنعد إلى حسابك</value>
+  </data>
+  <data name="SendVerificationCode" xml:space="preserve">
+    <value>إرسال رمز التحقق</value>
+  </data>
+  <data name="CompleteRecovery" xml:space="preserve">
+    <value>إكمال الاستعادة</value>
+  </data>
+  <data name="NewPassword" xml:space="preserve">
+    <value>كلمة المرور الجديدة</value>
+  </data>
+  <data name="EnterCodeSent" xml:space="preserve">
+    <value>أدخل الرمز المرسل إلى بريدك</value>
+  </data>
+  <data name="LoadingContacts" xml:space="preserve">
+    <value>جارٍ تحميل جهات الاتصال...</value>
+  </data>
+  <data name="NoContacts" xml:space="preserve">
+    <value>لا توجد جهات اتصال للعرض</value>
+  </data>
+  <data name="ContactsPermissionHint" xml:space="preserve">
+    <value>تأكد من وجود جهات اتصال على هاتفك ومنح Himo الإذن اللازم.</value>
+  </data>
+  <data name="NoMessagesYet" xml:space="preserve">
+    <value>لا توجد رسائل بعد</value>
+  </data>
+  <data name="StartChatHint" xml:space="preserve">
+    <value>ابدأ المحادثة بإرسال أول رسالة</value>
+  </data>
+  <data name="NewMessages" xml:space="preserve">
+    <value>رسائل جديدة</value>
+  </data>
+  <data name="ReplyToMessage" xml:space="preserve">
+    <value>رد على رسالة</value>
+  </data>
+  <data name="RecordingVoiceMessage" xml:space="preserve">
+    <value>جارٍ تسجيل رسالة صوتية...</value>
+  </data>
+  <data name="TapToStopRecording" xml:space="preserve">
+    <value>اضغط لإيقاف التسجيل</value>
+  </data>
+  <data name="SendMedia" xml:space="preserve">
+    <value>إرسال وسائط</value>
+  </data>
+  <data name="ChooseWhatToSend" xml:space="preserve">
+    <value>اختر ما تريد إرساله</value>
+  </data>
+  <data name="VideoPlayer" xml:space="preserve">
+    <value>مشغل الفيديو</value>
+  </data>
+  <data name="SecureCall" xml:space="preserve">
+    <value>اتصال آمن عبر Himo</value>
+  </data>
+  <data name="RejectCall" xml:space="preserve">
+    <value>رفض المكالمة</value>
+  </data>
+  <data name="AnswerCall" xml:space="preserve">
+    <value>الرد على المكالمة</value>
+  </data>
+  <data name="CancelCall" xml:space="preserve">
+    <value>إلغاء الاتصال</value>
+  </data>
+  <data name="MuteMicrophone" xml:space="preserve">
+    <value>كتم الميكروفون</value>
+  </data>
+  <data name="ToggleCamera" xml:space="preserve">
+    <value>تشغيل أو إيقاف الكاميرا</value>
+  </data>
+  <data name="IncomingAudio" xml:space="preserve">
+    <value>الصوت الوارد</value>
+  </data>
+  <data name="IncomingVideo" xml:space="preserve">
+    <value>بانتظار ظهور الفيديو</value>
+  </data>
+  <data name="ShowPassword" xml:space="preserve">
+    <value>إظهار أو إخفاء كلمة المرور</value>
+  </data>
+  <data name="ShowConfirmPassword" xml:space="preserve">
+    <value>إظهار أو إخفاء تأكيد كلمة المرور</value>
+  </data>
+  <data name="AccountPermissionHint" xml:space="preserve">
+    <value>بحسابك، يمكنك التحكم في أذونات الجهاز من الإعدادات في أي وقت.</value>
+  </data>
+  <data name="LanguageArabic" xml:space="preserve">
+    <value>العربية</value>
+  </data>
+  <data name="LanguageEnglish" xml:space="preserve">
+    <value>الإنجليزية</value>
+  </data>
+  <data name="LanguageFrench" xml:space="preserve">
+    <value>الفرنسية</value>
+  </data>
+  <data name="LanguageTurkish" xml:space="preserve">
+    <value>التركية</value>
+  </data>
+  <data name="LanguageUrdu" xml:space="preserve">
+    <value>الأردية</value>
+  </data>
+  <data name="LanguageSpanish" xml:space="preserve">
+    <value>الإسبانية</value>
+  </data>
+  <data name="LanguageIndonesian" xml:space="preserve">
+    <value>الإندونيسية</value>
+  </data>
+  <data name="LanguageChangeNote" xml:space="preserve">
+    <value>سيتم تطبيق اللغة على الواجهات التي تتوفر لها موارد ترجمة.</value>
+  </data>
+  <data name="LanguageArabicFull" xml:space="preserve">
+    <value>اللغة العربية</value>
+  </data>
+  <data name="HimoAccount" xml:space="preserve">
+    <value>حسابك في Himo</value>
+  </data>
+  <data name="ProtectYourInfo" xml:space="preserve">
+    <value>حماية معلوماتك</value>
+  </data>
+  <data name="PrivacySecurityDescription" xml:space="preserve">
+    <value>إعدادات الخصوصية والأمان</value>
+  </data>
+  <data name="AccountFieldsDescription" xml:space="preserve">
+    <value>رقم الهاتف والاسم والبريد وكلمة المرور</value>
+  </data>
+  <data name="CustomizeNotifications" xml:space="preserve">
+    <value>تخصيص إشعارات التطبيق</value>
+  </data>
+  <data name="AppearanceExperience" xml:space="preserve">
+    <value>المظهر والتجربة</value>
+  </data>
+  <data name="SettingsTextSizeHint" xml:space="preserve">
+    <value>تحديد حجم النص في صفحة الإعدادات</value>
+  </data>
+  <data name="AppLockOff" xml:space="preserve">
+    <value>قفل التطبيق متوقف.</value>
+  </data>
+  <data name="ContactsSavedOnPhone" xml:space="preserve">
+    <value>الأسماء المحفوظة على هاتفك</value>
+  </data>
+  <data name="MatchingHimoAccounts" xml:space="preserve">
+    <value>مطابقة حسابات Himo</value>
+  </data>
+  <data name="NumbersNotShared" xml:space="preserve">
+    <value>لن تُرسل أرقامك إلا بعد موافقتك</value>
+  </data>
+  <data name="PrivacyCheckup" xml:space="preserve">
+    <value>التحقق من الخصوصية</value>
+  </data>
+  <data name="SavedOnThisDevice" xml:space="preserve">
+    <value>تُحفظ اختياراتك على هذا الجهاز حاليًا. تطبيق قواعد الظهور على بقية المستخدمين يحتاج إلى دعم الخادم.</value>
+  </data>
+  <data name="AccountSharing" xml:space="preserve">
+    <value>مشاركة الحساب</value>
+  </data>
+  <data name="BlockUnknownCallers" xml:space="preserve">
+    <value>حظر المتصلين المجهولين</value>
+  </data>
+  <data name="BlockedAccounts" xml:space="preserve">
+    <value>الحسابات المحظورة</value>
+  </data>
+  <data name="DefaultTone" xml:space="preserve">
+    <value>النغمة الافتراضية</value>
+  </data>
+  <data name="Vibration" xml:space="preserve">
+    <value>الاهتزاز</value>
+  </data>
+  <data name="NotificationTone" xml:space="preserve">
+    <value>نغمة الإشعارات</value>
+  </data>
+  <data name="AppNotificationsEnabled" xml:space="preserve">
+    <value>إشعارات التطبيق مفعّلة.</value>
+  </data>
+  <data name="AppNotificationsStopped" xml:space="preserve">
+    <value>إشعارات التطبيق متوقفة.</value>
+  </data>
+  <data name="DisappearingMessages" xml:space="preserve">
+    <value>الرسائل ذاتية الاختفاء</value>
+  </data>
+  <data name="SearchInMessages" xml:space="preserve">
+    <value>بحث في الرسائل...</value>
+  </data>
+  <data name="ChatWallpaper" xml:space="preserve">
+    <value>خلفية الدردشة</value>
+  </data>
+  <data name="ChatTheme" xml:space="preserve">
+    <value>سمة الدردشة</value>
+  </data>
+  <data name="TextSizeInChat" xml:space="preserve">
+    <value>حجم الخط في الدردشة</value>
+  </data>
+  <data name="BackupNow" xml:space="preserve">
+    <value>نسخ احتياطي الآن</value>
+  </data>
+  <data name="BackupAutomatic" xml:space="preserve">
+    <value>النسخ الاحتياطي التلقائي</value>
+  </data>
+  <data name="BackupNotAvailable" xml:space="preserve">
+    <value>النسخ الاحتياطي غير متاح حاليًا</value>
+  </data>
+  <data name="StorageUnavailable" xml:space="preserve">
+    <value>غير متاح على هذا النظام</value>
+  </data>
+  <data name="DataReceived" xml:space="preserve">
+    <value>البيانات المستلمة</value>
+  </data>
+  <data name="DataSent" xml:space="preserve">
+    <value>البيانات المرسلة</value>
+  </data>
+  <data name="StorageSpace" xml:space="preserve">
+    <value>مساحة التخزين</value>
+  </data>
+  <data name="NetworkUsage" xml:space="preserve">
+    <value>استخدام الشبكة</value>
+  </data>
+  <data name="ResetStatistics" xml:space="preserve">
+    <value>إعادة تعيين الإحصائيات</value>
+  </data>
+  <data name="ResetComplete" xml:space="preserve">
+    <value>تمت إعادة التعيين</value>
+  </data>
+  <data name="SystemStyle" xml:space="preserve">
+    <value>سمات الواجهة</value>
+  </data>
+  <data name="Icons" xml:space="preserve">
+    <value>الأيقونات</value>
+  </data>
+  <data name="InterfaceStyle" xml:space="preserve">
+    <value>مظهر الواجهة</value>
+  </data>
+  <data name="Preview" xml:space="preserve">
+    <value>معاينة</value>
+  </data>
+  <data name="Selected" xml:space="preserve">
+    <value>محدد ✓</value>
+  </data>
+  <data name="ChooseIcon" xml:space="preserve">
+    <value>اختيار الأيقونة</value>
+  </data>
+  <data name="ChooseAppearance" xml:space="preserve">
+    <value>اختيار المظهر</value>
+  </data>
+  <data name="StartChatOrFindFriends" xml:space="preserve">
+    <value>ابدأ محادثة جديدة أو ابحث عن أصدقائك</value>
+  </data>
+  <data name="ViewArchivedChats" xml:space="preserve">
+    <value>عرض المحادثات المؤرشفة</value>
+  </data>
+  <data name="ProfileManagePhoto" xml:space="preserve">
+    <value>إدارة صورتك ومعلوماتك</value>
+  </data>
+  <data name="PersonalAccount" xml:space="preserve">
+    <value>حسابك الشخصي</value>
+  </data>
+  <data name="HimoUser" xml:space="preserve">
+    <value>مستخدم Himo</value>
+  </data>
+  <data name="ProfilePhotoAndInfo" xml:space="preserve">
+    <value>صورتك ومعلوماتك على Himo</value>
+  </data>
+  <data name="YourProfile" xml:space="preserve">
+    <value>ملفك الشخصي</value>
+  </data>
+  <data name="ChangeProfilePhoto" xml:space="preserve">
+    <value>تغيير صورة الملف الشخصي</value>
+  </data>
+  <data name="AddPhoto" xml:space="preserve">
+    <value>إضافة صورة</value>
+  </data>
+  <data name="AccountInformation" xml:space="preserve">
+    <value>معلومات الحساب</value>
+  </data>
+  <data name="YourName" xml:space="preserve">
+    <value>اسمك</value>
+  </data>
+  <data name="StatusExample" xml:space="preserve">
+    <value>مثال: متاح الآن</value>
+  </data>
+  <data name="TapToView" xml:space="preserve">
+    <value>اضغط للعرض</value>
+  </data>
+  <data name="File" xml:space="preserve">
+    <value>ملف</value>
+  </data>
+  <data name="Contact" xml:space="preserve">
+    <value>جهة اتصال</value>
+  </data>
+  <data name="CallStatusTimer" xml:space="preserve">
+    <value>متصل • 00:00</value>
+  </data>
+  <data name="PreparingConnection" xml:space="preserve">
+    <value>جاري تجهيز الاتصال...</value>
+  </data>
+  <data name="Reject" xml:space="preserve">
+    <value>رفض</value>
+  </data>
+  <data name="Answer" xml:space="preserve">
+    <value>رد</value>
+  </data>
+  <data name="ConnectingToOther" xml:space="preserve">
+    <value>جاري الاتصال بالطرف الآخر</value>
+  </data>
+  <data name="WaitingForAnswer" xml:space="preserve">
+    <value>بانتظار رد الطرف الآخر...</value>
+  </data>
+  <data name="SearchByNameOrDetails" xml:space="preserve">
+    <value>البحث بالاسم أو الرقم أو البريد</value>
+  </data>
+  <data name="Or" xml:space="preserve">
+    <value>أو</value>
+  </data>
+  <data name="AccountAlreadyExists" xml:space="preserve">
+    <value>لديك حساب بالفعل؟</value>
+  </data>
+  <data name="ThemeAndAppearance" xml:space="preserve">
+    <value>المظهر والتجربة</value>
+  </data>
+  <data name="LanguageArabicOption" xml:space="preserve">
+    <value>العربية</value>
+  </data>
+  <data name="Features" xml:space="preserve">
+    <value>الميزات</value>
+  </data>
+  <data name="AccountActionsDescription" xml:space="preserve">
+    <value>الخروج من الأجهزة أو تسجيل الخروج أو حذف الحساب نهائيًا</value>
+  </data>
+  <data name="Resend" xml:space="preserve">
+    <value>إعادة الإرسال</value>
+  </data>
+  <data name="Image" xml:space="preserve">
+    <value>صورة</value>
+  </data>
+  <data name="Attachment" xml:space="preserve">
+    <value>مرفق</value>
+  </data>
+  <data name="Conversation" xml:space="preserve">
+    <value>محادثة</value>
+  </data>
+  <data name="TheVideo" xml:space="preserve">
+    <value>الفيديو</value>
+  </data>
+  <data name="EndAndReturn" xml:space="preserve">
+    <value>إنهاء والعودة</value>
+  </data>
+  <data name="MuteSound" xml:space="preserve">
+    <value>كتم الصوت</value>
+  </data>
+  <data name="TurnCameraOff" xml:space="preserve">
+    <value>إيقاف الكاميرا</value>
+  </data>
+  <data name="Speaker" xml:space="preserve">
+    <value>مكبر الصوت</value>
+  </data>
+  <data name="OtherPartyAudio" xml:space="preserve">
+    <value>صوت الطرف الآخر</value>
+  </data>
+  <data name="MoreCallOptions" xml:space="preserve">
+    <value>المزيد من خيارات المكالمة</value>
+  </data>
+  <data name="More" xml:space="preserve">
+    <value>المزيد</value>
+  </data>
+  <data name="Match" xml:space="preserve">
+    <value>مطابقة</value>
+  </data>
+  <data name="HimoTagline" xml:space="preserve">
+    <value>Himo  ·  تواصل بلا حدود</value>
+  </data>
+  <data name="CreateAccountShort" xml:space="preserve">
+    <value>إنشاء حساب</value>
+  </data>
+  <data name="BackToLogin" xml:space="preserve">
+    <value>العودة إلى تسجيل الدخول</value>
+  </data>
+  <data name="JoinHimo" xml:space="preserve">
+    <value>انضم إلى Himo وابدأ التواصل بسهولة</value>
+  </data>
+  <data name="RetypePassword" xml:space="preserve">
+    <value>أعد كتابة كلمة المرور</value>
+  </data>
+  <data name="And" xml:space="preserve">
+    <value>و</value>
+  </data>
+  <data name="BackToLoginShort" xml:space="preserve">
+    <value>رجوع إلى تسجيل الدخول</value>
+  </data>
+  <data name="SendPasswordResetEmail" xml:space="preserve">
+    <value>أدخل بريدك الإلكتروني، وسنرسل إليك رمزًا لإعادة تعيين كلمة المرور.</value>
+  </data>
+  <data name="VerificationCodeSix" xml:space="preserve">
+    <value>رمز التحقق (6 أرقام)</value>
+  </data>
+  <data name="PasswordSecurityHint" xml:space="preserve">
+    <value>استخدم كلمة مرور جديدة لا تقل عن 8 أحرف. لا تشارك رمز التحقق مع أي شخص.</value>
+  </data>
+  <data name="SaveNewPassword" xml:space="preserve">
+    <value>حفظ كلمة المرور الجديدة</value>
+  </data>
+  <data name="EmailNotReceivedHint" xml:space="preserve">
+    <value>لم يصلك البريد؟ تحقق من مجلد الرسائل غير المرغوب فيها قبل طلب رمز جديد.</value>
+  </data>
+<data name="UIExtra001" xml:space="preserve"><value>إضافة حساب</value></data><data name="UIExtra002" xml:space="preserve"><value>اختر أي قسم لإدارة بياناته. لن يتم حفظ التغييرات إلا بعد تأكيدك.</value></data><data name="UIExtra003" xml:space="preserve"><value>البريد الإلكتروني ومعلومات الدخول</value></data><data name="UIExtra004" xml:space="preserve"><value>الدخول والأمان</value></data><data name="UIExtra005" xml:space="preserve"><value>المعلومات الشخصية</value></data><data name="UIExtra006" xml:space="preserve"><value>بيانات تسجيل الدخول</value></data><data name="UIExtra007" xml:space="preserve"><value>بيانات حسابك محفوظة بأمان</value></data><data name="UIExtra008" xml:space="preserve"><value>بياناتك الشخصية وأمان حسابك</value></data><data name="UIExtra009" xml:space="preserve"><value>تغيير الاسم الظاهر في Himo</value></data><data name="UIExtra010" xml:space="preserve"><value>تغيير كلمة المرور برمز تحقق آمن</value></data><data name="UIExtra011" xml:space="preserve"><value>رمز الدولة والخصوصية المرتبطة بالرقم</value></data><data name="UIExtra012" xml:space="preserve"><value>فتح صفحة تسجيل الدخول بحساب آخر</value></data><data name="UIExtra013" xml:space="preserve"><value>Himo • حماية حسابك تبدأ من هنا</value></data><data name="UIExtra014" xml:space="preserve"><value>أدخل رمز القفل</value></data><data name="UIExtra015" xml:space="preserve"><value>أدخل رمز القفل للمتابعة إلى حسابك</value></data><data name="UIExtra016" xml:space="preserve"><value>التطبيق مقفل</value></data><data name="UIExtra017" xml:space="preserve"><value>رمز القفل</value></data><data name="UIExtra018" xml:space="preserve"><value>رمزك يحمي خصوصية محادثاتك وبياناتك</value></data><data name="UIExtra019" xml:space="preserve"><value>فتح القفل</value></data><data name="UIExtra020" xml:space="preserve"><value>قفل Himo</value></data><data name="UIExtra021" xml:space="preserve"><value>أبيض وأسود</value></data><data name="UIExtra022" xml:space="preserve"><value>إشراقة طبيعية</value></data><data name="UIExtra023" xml:space="preserve"><value>بارد</value></data><data name="UIExtra024" xml:space="preserve"><value>بشرة صافية</value></data><data name="UIExtra025" xml:space="preserve"><value>بشرة مخملية</value></data><data name="UIExtra026" xml:space="preserve"><value>تركيز</value></data><data name="UIExtra027" xml:space="preserve"><value>توهج حريري</value></data><data name="UIExtra028" xml:space="preserve"><value>حيوي</value></data><data name="UIExtra029" xml:space="preserve"><value>دافئ</value></data><data name="UIExtra030" xml:space="preserve"><value>سيبيا</value></data><data name="UIExtra031" xml:space="preserve"><value>شبكة</value></data><data name="UIExtra032" xml:space="preserve"><value>صورة عالية الجودة</value></data><data name="UIExtra033" xml:space="preserve"><value>طبيعي</value></data><data name="UIExtra034" xml:space="preserve"><value>فلاتر</value></data><data name="UIExtra035" xml:space="preserve"><value>فلاش</value></data><data name="UIExtra036" xml:space="preserve"><value>كاميرا Himo</value></data><data name="UIExtra037" xml:space="preserve"><value>مؤقت 0s</value></data><data name="UIExtra038" xml:space="preserve"><value>مكياج متكامل</value></data><data name="UIExtra039" xml:space="preserve"><value>مكياج ناعم</value></data><data name="UIExtra040" xml:space="preserve"><value>0 عضو</value></data><data name="UIExtra041" xml:space="preserve"><value>أضف أعضاء إلى مجموعتك</value></data><data name="UIExtra042" xml:space="preserve"><value>أعضاء المجموعة</value></data><data name="UIExtra043" xml:space="preserve"><value>إنشاء المجموعة</value></data><data name="UIExtra044" xml:space="preserve"><value>ابدأ محادثة جماعية مع أصدقائك</value></data><data name="UIExtra045" xml:space="preserve"><value>اكتب الاسم أو البريد الإلكتروني أو رقم الهاتف المسجل في Himo، ثم اضغط إضافة.</value></data><data name="UIExtra046" xml:space="preserve"><value>الاسم أو البريد الإلكتروني أو رقم الهاتف</value></data><data name="UIExtra047" xml:space="preserve"><value>معاينة الوسائط</value></data><data name="UIExtra048" xml:space="preserve"><value>أضف وصفًا للصورة…</value></data><data name="UIExtra049" xml:space="preserve"><value>البداية</value></data><data name="UIExtra050" xml:space="preserve"><value>النهاية</value></data><data name="UIExtra051" xml:space="preserve"><value>جارٍ تجهيز الملف…</value></data><data name="UIExtra052" xml:space="preserve"><value>حفظ وإرسال</value></data><data name="UIExtra053" xml:space="preserve"><value>فيديو جاهز للتحرير</value></data><data name="UIExtra054" xml:space="preserve"><value>قص الفيديو وكتم الصوت</value></data><data name="UIExtra055" xml:space="preserve"><value>كتم صوت الفيديو</value></data><data name="UIExtra056" xml:space="preserve"><value>إدارة ملفك الشخصي وإعدادات Himo من مكان واحد</value></data><data name="UIExtra057" xml:space="preserve"><value>الأصوات والتنبيهات والاهتزاز</value></data><data name="UIExtra058" xml:space="preserve"><value>الاسم والحالة وبيانات الاتصال</value></data><data name="UIExtra059" xml:space="preserve"><value>المظهر والواجهة</value></data><data name="UIExtra060" xml:space="preserve"><value>تخصيص الألوان والأيقونات</value></data><data name="UIExtra061" xml:space="preserve"><value>حسابك على Himo</value></data><data name="UIExtra062" xml:space="preserve"><value>حماية حسابك والتحكم في معلوماتك</value></data><data name="UIExtra063" xml:space="preserve"><value>خطوات سريعة لحل مشكلات التطبيق</value></data><data name="UIExtra064" xml:space="preserve"><value>معلومات عن Himo والإصدار الحالي</value></data><data name="UIExtra065" xml:space="preserve"><value>ملف Himo الشخصي</value></data><data name="UIExtra066" xml:space="preserve"><value>موافق</value></data><data name="UIExtra067" xml:space="preserve"><value>أدخل بريدًا إلكترونيًا صحيحًا.</value></data><data name="UIExtra068" xml:space="preserve"><value>كلمتا المرور غير متطابقتين.</value></data><data name="UIExtra069" xml:space="preserve"><value>أدخل رمز التحقق المكوّن من 6 أرقام.</value></data><data name="UIExtra070" xml:space="preserve"><value>يجب أن تتراوح كلمة المرور بين 8 و128 حرفًا.</value></data><data name="UIExtra071" xml:space="preserve"><value>أدخل اسمًا من حرف واحد إلى 60 حرفًا.</value></data><data name="UIExtra072" xml:space="preserve"><value>تم تحديث الصورة</value></data><data name="UIExtra073" xml:space="preserve"><value>تعذر فتح الصفحة:</value></data><data name="UIExtra074" xml:space="preserve"><value>سجّل الدخول أولًا.</value></data><data name="UIExtra075" xml:space="preserve"><value>التقاط صورة بالكاميرا</value></data><data name="UIExtra076" xml:space="preserve"><value>اختيار صورة من المعرض</value></data><data name="UIExtra077" xml:space="preserve"><value>اختر صورة الملف الشخصي</value></data><data name="UIExtra078" xml:space="preserve"><value>تمت إزالة صورة الملف الشخصي.</value></data><data name="UIExtra079" xml:space="preserve"><value>هل تريد إزالة صورة الملف الشخصي؟</value></data><data name="UIExtra080" xml:space="preserve"><value>تم تحديث صورة الملف الشخصي بنجاح.</value></data><data name="UIExtra081" xml:space="preserve"><value>سجّل الدخول أولًا للبحث عن حسابات Himo.</value></data><data name="UIExtra082" xml:space="preserve"><value>تم تصفير الإحصائيات المعروضة. لم يتم حذف أي محتوى.</value></data><data name="UIExtra083" xml:space="preserve"><value>سيبدأ حساب استخدام الشبكة والمكالمات والرسائل والوسائط من الصفر. لن تُحذف المحادثات أو الملفات.</value></data><data name="UIExtra084" xml:space="preserve"><value>إضافة</value></data><data name="SubpageExtra001" xml:space="preserve"><value>العودة إلى إعدادات الخصوصية</value></data><data name="SubpageExtra002" xml:space="preserve"><value>إيقاف الخلفية المتحركة</value></data><data name="SubpageExtra003" xml:space="preserve"><value>اختر تصميمًا لونيًا لمحادثاتك. السمات اللونية منفصلة عن الخلفيات الفوتوغرافية، لذلك يمكنك تغيير إحداها دون فقد اختيارك من الأخرى.</value></data><data name="SubpageExtra004" xml:space="preserve"><value>اختر صورة جاهزة أو صورة من جهازك. تُحفظ الخلفية الفوتوغرافية بصورة مستقلة عن السمات اللونية.</value></data><data name="SubpageExtra005" xml:space="preserve"><value>اختر صورة لخلفية الدردشة</value></data><data name="SubpageExtra006" xml:space="preserve"><value>اختر فيديو MP4 لخلفية الدردشة</value></data><data name="SubpageExtra007" xml:space="preserve"><value>اختر مقطع فيديو حقيقيًا كخلفية صامتة للمحادثات. تحتاج المقاطع المدمجة إلى الإنترنت، ويتوقف تشغيلها عند مغادرة المحادثة لتقليل استهلاك البطارية.</value></data><data name="SubpageExtra008" xml:space="preserve"><value>اختيار فيديو MP4 من الجهاز</value></data><data name="SubpageExtra009" xml:space="preserve"><value>تعذر اختيار الصورة:</value></data><data name="SubpageExtra010" xml:space="preserve"><value>تعذر اختيار الفيديو:</value></data><data name="SubpageExtra011" xml:space="preserve"><value>تعذر استخدام الفيديو:</value></data><data name="SubpageExtra012" xml:space="preserve"><value>تم حفظ الصورة المختارة وستُستخدم كخلفية للمحادثات.</value></data><data name="SubpageExtra013" xml:space="preserve"><value>تم حفظ الفيديو المختار. سيعمل كخلفية صامتة للمحادثات التي لا تملك خلفية خاصة بها.</value></data><data name="SubpageExtra014" xml:space="preserve"><value>تُحفظ اختياراتك تلقائيًا وتُطبق عند فتح المحادثة.</value></data><data name="SubpageExtra015" xml:space="preserve"><value>خصص لون الرسائل المرسلة والمستقبلة بشكل مستقل. ستظل اختياراتك محفوظة عند إعادة فتح التطبيق.</value></data><data name="SubpageExtra016" xml:space="preserve"><value>فقاعة الدردشة</value></data><data name="SubpageExtra017" xml:space="preserve"><value>لم يتم تفعيل خلفية متحركة بعد.</value></data><data name="SubpageExtra018" xml:space="preserve"><value>＋  اختيار صورة من المعرض</value></data><data name="SubpageExtra019" xml:space="preserve"><value>اختر التكرار</value></data><data name="SubpageExtra020" xml:space="preserve"><value>الدردشات</value></data><data name="SubpageExtra021" xml:space="preserve"><value>تعذر إنشاء النسخة الاحتياطية:</value></data><data name="SubpageExtra022" xml:space="preserve"><value>تعذر تنفيذ العملية:</value></data><data name="SubpageExtra023" xml:space="preserve"><value>تم إنشاء ملف النسخة الاحتياطية وفتح قائمة المشاركة.</value></data><data name="SubpageExtra024" xml:space="preserve"><value>تُحفظ تفضيلاتك تلقائيًا على هذا الجهاز.</value></data><data name="SubpageExtra025" xml:space="preserve"><value>نسخة احتياطية للدردشة</value></data><data name="SubpageExtra026" xml:space="preserve"><value>لا توجد ملفات محلية متاحة للعرض.</value></data><data name="SubpageExtra027" xml:space="preserve"><value>ملخص التخزين واستخدام الشبكة</value></data><data name="SubpageExtra028" xml:space="preserve"><value>اختر نمط الاهتزاز ثم اضغط موافق لحفظ الاختيار.</value></data><data name="SubpageExtra029" xml:space="preserve"><value>خصّص الأصوات والتنبيهات والاهتزاز</value></data><data name="SubpageExtra030" xml:space="preserve"><value>إدارة جلساتك وإجراءات حسابك</value></data><data name="SubpageExtra031" xml:space="preserve"><value>اختر الإجراء الذي تريد تنفيذه. حذف الحساب نهائي ولا يمكن التراجع عنه.</value></data><data name="SubpageExtra032" xml:space="preserve"><value>تفاصيل استهلاك البيانات والمكالمات والوسائط</value></data><data name="SubpageExtra033" xml:space="preserve"><value>غير متاح منفصلًا؛ إجمالي حركة التطبيق يشمل الاتصال</value></data><data name="SubpageExtra034" xml:space="preserve"><value>لا توجد إحصائية حالات منفصلة في الإصدار الحالي</value></data><data name="SubpageExtra035" xml:space="preserve"><value>مساحتك اليومية</value></data><data name="SubpageExtra036" xml:space="preserve"><value>خلفيات متحركة</value></data><data name="SubpageExtra037" xml:space="preserve"><value>المكالمة</value></data><data name="SubpageExtra038" xml:space="preserve"><value>الرسائل الصوتية</value></data><data name="SubpageExtra039" xml:space="preserve"><value>المحادثة</value></data><data name="SubpageExtra040" xml:space="preserve"><value>المجموعة</value></data><data name="SubpageExtra041" xml:space="preserve"><value>إضافة عضو</value></data><data name="SubpageExtra042" xml:space="preserve"><value>حذف الرسائل</value></data><data name="SubpageExtra043" xml:space="preserve"><value>تحويل الرسالة</value></data><data name="SubpageExtra044" xml:space="preserve"><value>الإرسال</value></data><data name="SubpageExtra045" xml:space="preserve"><value>تعذر فتح المحادثة</value></data><data name="SubpageExtra046" xml:space="preserve"><value>تمت الإزالة</value></data><data name="SubpageExtra047" xml:space="preserve"><value>إعادة تعيين</value></data><data name="SubpageExtra048" xml:space="preserve"><value>تعذر إزالة الصورة</value></data><data name="SubpageExtra049" xml:space="preserve"><value>تعذر تحديث الصورة</value></data><data name="SubpageExtra050" xml:space="preserve"><value>تم تحديث اسم المستخدم.</value></data><data name="SubpageExtra051" xml:space="preserve"><value>تحقق البريد الإلكتروني</value></data><data name="SubpageExtra052" xml:space="preserve"><value>الخصوصية وجهات الاتصال</value></data><data name="SubpageExtra053" xml:space="preserve"><value>حول Himo</value></data><data name="SubpageExtra054" xml:space="preserve"><value>حذف نهائي</value></data><data name="SubpageExtra055" xml:space="preserve"><value>فتح الملف</value></data><data name="SubpageExtra056" xml:space="preserve"><value>تم التغيير</value></data><data name="SubpageExtra057" xml:space="preserve"><value>حذف الحساب</value></data><data name="SubpageExtra058" xml:space="preserve"><value>حفظ الصورة</value></data><data name="SubpageExtra059" xml:space="preserve"><value>تم التحديث</value></data><data name="SubpageExtra060" xml:space="preserve"><value>حظر الحساب</value></data><data name="SubpageExtra061" xml:space="preserve"><value>تعذر الحذف</value></data><data name="SubpageExtra062" xml:space="preserve"><value>مسح الذاكرة</value></data><data name="SubpageExtra063" xml:space="preserve"><value>تبديل الحساب</value></data><data name="SubpageExtra064" xml:space="preserve"><value>حذف المحادثات</value></data><data name="SubpageExtra065" xml:space="preserve"><value>تحرير الوسائط</value></data><data name="SubpageExtra066" xml:space="preserve"><value>الصورة الشخصية</value></data><data name="SubpageExtra067" xml:space="preserve"><value>موافقة ومتابعة</value></data><data name="SubpageExtra068" xml:space="preserve"><value>مشاركة الرسالة</value></data><data name="SubpageExtra069" xml:space="preserve"><value>تم تحديث الاسم.</value></data><data name="SubpageExtra070" xml:space="preserve"><value>الموافقة مطلوبة</value></data><data name="SubpageExtra071" xml:space="preserve"><value>صلاحية الكاميرا</value></data><data name="SubpageExtra072" xml:space="preserve"><value>معلومات المكالمة</value></data><data name="SubpageExtra073" xml:space="preserve"><value>تعذر إرسال الرمز</value></data><data name="SubpageExtra074" xml:space="preserve"><value>الأيقونات والشكل</value></data><data name="SubpageExtra075" xml:space="preserve"><value>تم إرسال البلاغ.</value></data><data name="SubpageExtra076" xml:space="preserve"><value>تم حظر المحادثة.</value></data><data name="SubpageExtra077" xml:space="preserve"><value>إعادة إرسال الرمز</value></data><data name="SubpageExtra078" xml:space="preserve"><value>تعذر تسجيل الدخول</value></data><data name="SubpageExtra079" xml:space="preserve"><value>البحث برقم الهاتف</value></data><data name="SubpageExtra080" xml:space="preserve"><value>تم تحويل الرسالة.</value></data><data name="SubpageExtra081" xml:space="preserve"><value>حذف النسخة المؤقتة</value></data><data name="SubpageExtra082" xml:space="preserve"><value>مطابقة جهات الاتصال</value></data><data name="SubpageExtra083" xml:space="preserve"><value>تعذرت إضافة الأعضاء</value></data><data name="SubpageExtra084" xml:space="preserve"><value>تعذر إنشاء المجموعة</value></data><data name="SubpageExtra085" xml:space="preserve"><value>تمت أرشفة المحادثة.</value></data><data name="SubpageExtra086" xml:space="preserve"><value>تم إلغاء حظر المحادثة.</value></data><data name="SubpageExtra087" xml:space="preserve"><value>تم تحديث حالتك الشخصية.</value></data><data name="SubpageExtra088" xml:space="preserve"><value>تم حفظ الخلفية الجديدة.</value></data><data name="SubpageExtra089" xml:space="preserve"><value>تم اختيار الفيديو بنجاح.</value></data><data name="SubpageExtra090" xml:space="preserve"><value>تعذر إكمال بعض الإجراءات</value></data><data name="SubpageExtra091" xml:space="preserve"><value>تم حفظ الصورة في مكتبة الصور.</value></data><data name="SubpageExtra092" xml:space="preserve"><value>تم اختيار الصورة وحفظها بنجاح.</value></data><data name="SubpageExtra093" xml:space="preserve"><value>تم إلغاء كتم إشعارات المحادثة.</value></data><data name="SubpageExtra094" xml:space="preserve"><value>تم كتم إشعارات المحادثة.</value></data><data name="SubpageExtra095" xml:space="preserve"><value>لا توجد محادثات أخرى متاحة.</value></data><data name="SubpageExtra096" xml:space="preserve"><value>حدد منطقة صالحة داخل الصورة أولًا.</value></data><data name="SubpageExtra097" xml:space="preserve"><value>أضف شخصًا واحدًا على الأقل قبل المتابعة.</value></data><data name="SubpageExtra098" xml:space="preserve"><value>لا يوجد اتصال بالإنترنت حاليًا. أعد المحاولة بعد الاتصال بالشبكة.</value></data><data name="SubpageExtra099" xml:space="preserve"><value>لم نعثر على حساب مطابق. تأكد من الرقم أو البريد وأن الحساب مسجل في Himo.</value></data><data name="Accessibility001" xml:space="preserve"><value>إغلاق الكاميرا</value></data><data name="Accessibility002" xml:space="preserve"><value>تبديل الكاميرا</value></data><data name="Accessibility003" xml:space="preserve"><value>إزالة العضو</value></data><data name="Accessibility004" xml:space="preserve"><value>إرسال الوسائط إلى المحادثة</value></data><data name="Accessibility005" xml:space="preserve"><value>إغلاق المعاينة</value></data><data name="Accessibility006" xml:space="preserve"><value>تعديل الصورة قبل إرسالها</value></data><data name="Accessibility007" xml:space="preserve"><value>إرسال الوسائط</value></data><data name="Accessibility008" xml:space="preserve"><value>إضافة نص بالعربية أو الإنجليزية</value></data><data name="Accessibility009" xml:space="preserve"><value>إغلاق محرر الوسائط</value></data><data name="Accessibility010" xml:space="preserve"><value>التراجع عن آخر رسم</value></data><data name="Accessibility011" xml:space="preserve"><value>تدوير الصورة 90 درجة</value></data><data name="Accessibility012" xml:space="preserve"><value>تشغيل معاينة الفيديو</value></data><data name="Accessibility013" xml:space="preserve"><value>تصغير حجم القلم</value></data><data name="Accessibility014" xml:space="preserve"><value>تكبير حجم القلم</value></data><data name="Accessibility015" xml:space="preserve"><value>حفظ الصورة في مكتبة الصور</value></data><data name="Accessibility016" xml:space="preserve"><value>قص الصورة؛ اضغط مرة أخرى لتطبيق القص</value></data><data name="Accessibility017" xml:space="preserve"><value>قلم حر</value></data><data name="Accessibility018" xml:space="preserve"><value>قلم حر للرسم</value></data><data name="AlertExtra001" xml:space="preserve"><value>متابعة</value></data><data name="AlertExtra002" xml:space="preserve"><value>خروج</value></data><data name="AlertExtra003" xml:space="preserve"><value>القص</value></data><data name="AlertExtra004" xml:space="preserve"><value>التنقل</value></data><data name="AlertExtra005" xml:space="preserve"><value>التعديل</value></data><data name="AlertExtra006" xml:space="preserve"><value>الإبلاغ</value></data><data name="AlertExtra007" xml:space="preserve"><value>إضافة أعضاء</value></data><data name="AlertExtra008" xml:space="preserve"><value>الرسالة الصوتية</value></data><data name="AlertExtra009" xml:space="preserve"><value>تعذر فتح صفحة الحساب:</value></data><data name="AlertExtra010" xml:space="preserve"><value>تعذر فتح تفاصيل الحساب.</value></data><data name="AlertExtra011" xml:space="preserve"><value>المحادثة غير متصلة بالخادم بعد.</value></data><data name="AlertExtra012" xml:space="preserve"><value>حظر</value></data><data name="AlertExtra013" xml:space="preserve"><value>تفعيل</value></data><data name="AlertExtra014" xml:space="preserve"><value>الحظر</value></data><data name="AlertExtra015" xml:space="preserve"><value>المحرر</value></data><data name="AlertExtra016" xml:space="preserve"><value>الفلاش</value></data><data name="AlertExtra017" xml:space="preserve"><value>الصورة</value></data><data name="AlertExtra018" xml:space="preserve"><value>المرفق</value></data><data name="AlertExtra019" xml:space="preserve"><value>التعليق</value></data><data name="AlertExtra020" xml:space="preserve"><value>تعذر الرجوع:</value></data><data name="AlertExtra021" xml:space="preserve"><value>مسح الوسائط المؤقتة</value></data><data name="AlertExtra022" xml:space="preserve"><value>تعذر استخدام الصورة:</value></data><data name="AlertExtra023" xml:space="preserve"><value>اسم الملف طويل جدًا.</value></data><data name="AlertExtra024" xml:space="preserve"><value>هل تريد حذف الرسالة؟</value></data><data name="AlertExtra025" xml:space="preserve"><value>تعذر تغيير كلمة المرور</value></data><data name="AlertExtra026" xml:space="preserve"><value>تعذر فتح إعدادات اللغة:</value></data><data name="AlertExtra027" xml:space="preserve"><value>تم إلغاء أرشفة المحادثة.</value></data><data name="AlertExtra028" xml:space="preserve"><value>تعذر فتح الصفحة المطلوبة.</value></data><data name="AlertExtra029" xml:space="preserve"><value>تعذر فتح الصفحة المطلوبة:</value></data><data name="AlertExtra030" xml:space="preserve"><value>تم تحديث إعداد رقم الهاتف.</value></data><data name="AlertExtra031" xml:space="preserve"><value>تعذر فتح إعدادات الخصوصية:</value></data><data name="AlertExtra032" xml:space="preserve"><value>تعذر فتح إعدادات الدردشات:</value></data><data name="AlertExtra033" xml:space="preserve"><value>تعذر الرجوع للصفحة السابقة:</value></data><data name="AlertExtra034" xml:space="preserve"><value>تم تغيير كلمة المرور بنجاح.</value></data><data name="AlertExtra035" xml:space="preserve"><value>تعذر فتح إعدادات الإشعارات:</value></data><data name="AlertExtra036" xml:space="preserve"><value>تعذر تغيير إعداد الإشعارات:</value></data><data name="AlertExtra037" xml:space="preserve"><value>تعذر فتح الملف على هذا الجهاز:</value></data><data name="AlertExtra038" xml:space="preserve"><value>تعذر فتح صفحة التخزين والبيانات:</value></data><data name="AlertExtra039" xml:space="preserve"><value>أدخل رمز تحقق مكوّنًا من 6 أرقام.</value></data><data name="AlertExtra040" xml:space="preserve"><value>اكتب اسمًا من حرفين إلى 60 حرفًا.</value></data><data name="AlertExtra041" xml:space="preserve"><value>سجّل الدخول أولًا للبحث عن أصدقائك.</value></data><data name="AlertExtra042" xml:space="preserve"><value>هل تريد تسجيل الخروج من هذا الجهاز؟</value></data><data name="AlertExtra043" xml:space="preserve"><value>اختر رسالة واحدة فقط للتعليق عليها.</value></data><data name="AlertExtra044" xml:space="preserve"><value>تسجيل الصوت متاح حاليًا على Android.</value></data><data name="AlertExtra045" xml:space="preserve"><value>أدخل اسمًا صحيحًا لا يتجاوز 60 حرفًا.</value></data><data name="AlertExtra046" xml:space="preserve"><value>أدخل كلمة مرور صحيحة لا تقل عن 8 أحرف.</value></data><data name="AlertExtra047" xml:space="preserve"><value>سيتم إنشاء المجموعة من شاشة المجموعات.</value></data><data name="AlertExtra048" xml:space="preserve"><value>اختيار الصور غير مدعوم على هذا الجهاز.</value></data><data name="AlertExtra049" xml:space="preserve"><value>هل تريد تسجيل الخروج من هذا الجهاز فقط؟</value></data><data name="AlertExtra050" xml:space="preserve"><value>تعذر فتح صفحة الاستعادة. حاول مرة أخرى.</value></data><data name="AlertExtra051" xml:space="preserve"><value>تمت إضافة جميع الحسابات المطابقة بالفعل.</value></data><data name="AlertExtra052" xml:space="preserve"><value>لم يعد الملف موجودًا في الذاكرة المحلية.</value></data><data name="AlertExtra053" xml:space="preserve"><value>اختيار الفيديو غير مدعوم على هذا الجهاز.</value></data><data name="AlertExtra054" xml:space="preserve"><value>هذه الميزة غير مدعومة على الجهاز الحالي.</value></data><data name="AlertExtra055" xml:space="preserve"><value>كلمة المرور يجب أن تكون 8 أحرف على الأقل.</value></data><data name="AlertExtra056" xml:space="preserve"><value>الرسالة طويلة جدًا. الحد الأقصى 4000 حرف.</value></data><data name="AlertExtra057" xml:space="preserve"><value>يمكن حظر حساب فردي فقط، وليس مجموعة كاملة.</value></data><data name="AlertExtra058" xml:space="preserve"><value>أدخل رقم الهاتف قبل تفعيل العثور عبر الهاتف.</value></data><data name="AlertExtra059" xml:space="preserve"><value>تعذر إرسال التسجيل أو تجاوز حجمه 25 ميجابايت.</value></data><data name="AlertExtra060" xml:space="preserve"><value>تم تأكيد البريد الإلكتروني الجديد وتحديث حسابك.</value></data><data name="AlertExtra061" xml:space="preserve"><value>اسمح لـ Himo باستخدام الكاميرا ثم حاول مرة أخرى.</value></data><data name="AlertExtra062" xml:space="preserve"><value>لم تضف صورة بعد. اضغط على زر الكاميرا لاختيار صورة.</value></data><data name="AlertExtra063" xml:space="preserve"><value>واجهة التنقل غير جاهزة. أغلق الصفحة وافتحها مجددًا.</value></data><data name="AlertExtra064" xml:space="preserve"><value>يلزم السماح باستخدام الميكروفون لتسجيل رسالة صوتية.</value></data><data name="AlertExtra065" xml:space="preserve"><value>ميزة البحث في جهات الاتصال متاحة حاليًا على Android.</value></data><data name="AlertExtra066" xml:space="preserve"><value>اسمح لـ Himo باستخدام الميكروفون لتسجيل صوت الفيديو.</value></data><data name="AlertExtra067" xml:space="preserve"><value>يلزم السماح بالوصول إلى الوسائط ثم المحاولة مرة أخرى.</value></data><data name="AlertExtra068" xml:space="preserve"><value>حجم الفيديو غير مناسب. اختر فيديو أقل من 100 ميجابايت.</value></data><data name="AlertExtra069" xml:space="preserve"><value>تم حفظ التفضيل. سيُستخدم الحجم عند فتح المحادثة التالية.</value></data><data name="AlertExtra070" xml:space="preserve"><value>اختر ملف فيديو بصيغة MP4 لضمان أفضل توافق مع أجهزة أندرويد.</value></data><data name="AlertExtra071" xml:space="preserve"><value>اسمح لـ Himo باستخدام الكاميرا والميكروفون ثم حاول مرة أخرى.</value></data><data name="AlertExtra072" xml:space="preserve"><value>تعذر الوصول إلى الصور. اسمح للتطبيق بالوصول ثم حاول مرة أخرى.</value></data><data name="AlertExtra073" xml:space="preserve"><value>معرّف المحادثة غير صالح. حدّث قائمة المحادثات ثم أعد المحاولة.</value></data><data name="AlertExtra074" xml:space="preserve"><value>تعذر الوصول إلى الفيديوهات. اسمح للتطبيق بالوصول ثم حاول مرة أخرى.</value></data><data name="AlertExtra075" xml:space="preserve"><value>جلسة الدخول غير متاحة حاليًا. سجّل الدخول مرة أخرى ثم أعد الإرسال.</value></data><data name="AlertExtra076" xml:space="preserve"><value>هذه الرسالة لم تحصل بعد على رقم من الخادم، لذلك لا يمكن حذفها الآن.</value></data><data name="AlertExtra077" xml:space="preserve"><value>تعذر ربط المحادثة بالخادم حاليًا. انتظر لحظة ثم أرسل الرسالة مرة أخرى.</value></data><data name="AlertExtra078" xml:space="preserve"><value>أدخل رقم هاتف صحيحًا من 7 إلى 15 رقمًا، أو اترك الحقل فارغًا لأنه اختياري.</value></data><data name="AlertExtra079" xml:space="preserve"><value>المحادثة المرتبطة بهذه المكالمة غير متاحة. افتح المحادثة من القائمة أولًا.</value></data><data name="AlertExtra080" xml:space="preserve"><value>لا توجد نسخة محلية من هذا الملف لإعادة رفعه. أعد اختيار الملف من المرفقات.</value></data><data name="AlertExtra081" xml:space="preserve"><value>لا توجد أرقام هاتف صالحة للمطابقة. ستظل بقية جهات الاتصال ظاهرة في القائمة.</value></data><data name="AlertExtra082" xml:space="preserve"><value>حدث خطأ أثناء فتح المحادثة. أعد المحاولة؛ إذا تكرر الخطأ فراجع سجل التطبيق.</value></data><data name="AlertExtra083" xml:space="preserve"><value>سيتم إنهاء جميع جلسات Himo وإيقاف إشعارات الأجهزة المسجلة. هل تريد المتابعة؟</value></data><data name="AlertExtra084" xml:space="preserve"><value>يرجى قراءة شروط الاستخدام وسياسة الخصوصية والموافقة عليهما قبل إنشاء الحساب.</value></data><data name="AlertExtra085" xml:space="preserve"><value>أدخل ثلاثة أحرف على الأقل من الاسم، أو بريدًا إلكترونيًا أو رقم هاتف صحيحًا.</value></data><data name="AlertExtra086" xml:space="preserve"><value>تم حفظ الفيديو الحقيقي. يحتاج التشغيل إلى الإنترنت ويعمل بصمت في تكرار مستمر.</value></data><data name="AlertExtra087" xml:space="preserve"><value>سيتمكن من لديه رقمك في جهات الاتصال من العثور على حسابك، ولن يظهر له رقم هاتفك.</value></data><data name="AlertExtra088" xml:space="preserve"><value>أرسلنا رمز تحقق من 6 أرقام إلى بريدك الإلكتروني. أدخل الرمز لإكمال إنشاء الحساب.</value></data><data name="AlertExtra089" xml:space="preserve"><value>سيؤدي تسجيل الدخول إلى جعل الحساب الجديد هو النشط على هذا الجهاز. هل تريد المتابعة؟</value></data><data name="AlertExtra090" xml:space="preserve"><value>سيتم حذف حسابك وبياناته ومحادثاته من الخادم نهائيًا. لا يمكن التراجع عن هذه العملية.</value></data><data name="AlertExtra091" xml:space="preserve"><value>تم إنشاء المجموعة بنجاح، لكن تعذر فتح المحادثة الآن. ارجع إلى قائمة المحادثات وحدّثها.</value></data><data name="AlertExtra092" xml:space="preserve"><value>تم تسجيل الخروج من الجهاز، لكن تعذر إكمال العملية على الخادم. يمكنك تسجيل الدخول لاحقًا.</value></data><data name="AlertExtra093" xml:space="preserve"><value>تم تسجيل الخروج من هذا الجهاز، لكن تعذر إكمال العملية على الخادم. يمكنك تسجيل الدخول لاحقًا.</value></data><data name="AlertExtra094" xml:space="preserve"><value>الرسائل المحددة لم تحصل بعد على أرقام من الخادم، أرسلها وانتظر اكتمال الإرسال ثم حاول الحذف.</value></data><data name="AlertExtra095" xml:space="preserve"><value>الخادم الحالي لا يحتوي على إجراء يغيّر البريد بأمان بعد التحقق من العنوان الجديد. لم يتم تغيير أي شيء.</value></data><data name="AlertExtra096" xml:space="preserve"><value>سيتم حذف نسخ الملفات الموجودة في ذاكرة التخزين المؤقت فقط. لن تُحذف المحادثات أو ملفات الإرسال المعلّقة، وقد يعاد تنزيل الوسائط عند فتحها.</value></data><data name="AlertExtra097" xml:space="preserve"><value>للمطابقة، سيرسل Himo أرقام الهاتف فقط من جهات اتصالك عبر اتصال آمن. لن تُرسل الأسماء أو عناوين البريد، ولن يحفظ الخادم دفتر العناوين. ستظهر فقط الحسابات التي سمح أصحابها بالعثور عليهم.</value></data><data name="AlertExtra098" xml:space="preserve"><value>سيقرأ Himo أرقام الهاتف المحفوظة في جهات اتصالك ويرسل الأرقام اللازمة للمطابقة عبر اتصال آمن. لن يحفظ الخادم دفتر العناوين؛ سيعيد فقط حسابات Himo المطابقة التي سمح أصحابها بالعثور عليهم.</value></data><data name="AlertExtra099" xml:space="preserve"><value>إذا واجهت مشكلة في Himo، تحقق أولًا من اتصال الإنترنت وأذونات الإشعارات والكاميرا والميكروفون. يمكنك مراجعة خيارات الخصوصية والمظهر من هذه الصفحة، وإعادة فتح التطبيق إذا توقف تحديث الواجهة.</value></data><data name="RuntimeUI001" xml:space="preserve"><value>تعذر القراءة</value></data><data name="RuntimeUI002" xml:space="preserve"><value>فتح</value></data><data name="RuntimeUI003" xml:space="preserve"><value>محمي</value></data><data name="RuntimeUI004" xml:space="preserve"><value>مسح الملفات المؤقتة</value></data><data name="RuntimeUI005" xml:space="preserve"><value>تعذر تحديث البيانات؛ تظهر المعلومات المحفوظة محليًا.</value></data><data name="RuntimeUI006" xml:space="preserve"><value>جارٍ تحديث بيانات الحساب...</value></data><data name="RuntimeUI007" xml:space="preserve"><value>سجّل الدخول لعرض بيانات الحساب.</value></data><data name="RuntimeUI008" xml:space="preserve"><value>إذا كان البريد مسجلًا، فسيصلك رمز التحقق. تحقق من الوارد والرسائل غير المرغوب فيها.</value></data><data name="RuntimeUI009" xml:space="preserve"><value>إرسال رمز التحقق إلى البريد</value></data><data name="RuntimeUI010" xml:space="preserve"><value>تعذر إرسال الرمز.</value></data><data name="RuntimeUI011" xml:space="preserve"><value>تعذر تحديد البريد الإلكتروني الحالي.</value></data><data name="RuntimeUI012" xml:space="preserve"><value>تعذر تحميل الاسم:</value></data><data name="RuntimeUI013" xml:space="preserve"><value>تعذر تحميل الرقم:</value></data><data name="RuntimeUI014" xml:space="preserve"><value>تعذر تسجيل الدخول بالحساب الآخر.</value></data><data name="RuntimeUI015" xml:space="preserve"><value>تم تسجيل الدخول، لكن تعذر إعادة فتح الواجهة الرئيسية تلقائيًا.</value></data><data name="RuntimeUI016" xml:space="preserve"><value>تم حفظ اسم المستخدم بنجاح.</value></data><data name="RuntimeUI017" xml:space="preserve"><value>جارٍ الإرسال...</value></data><data name="RuntimeUI018" xml:space="preserve"><value>جارٍ التحديث...</value></data><data name="RuntimeUI019" xml:space="preserve"><value>جارٍ الحفظ...</value></data><data name="RuntimeUI020" xml:space="preserve"><value>جارٍ تسجيل الدخول...</value></data><data name="RuntimeUI021" xml:space="preserve"><value>حفظ اسم المستخدم</value></data><data name="RuntimeUI022" xml:space="preserve"><value>حفظ رقم الهاتف</value></data><data name="RuntimeUI023" xml:space="preserve"><value>سجّل الدخول أولًا لإدارة رقم الهاتف.</value></data><data name="RuntimeUI024" xml:space="preserve"><value>سجّل الدخول أولًا لعرض بياناتك.</value></data><data name="RuntimeUI025" xml:space="preserve"><value>يمكنك تعديل اسمك ثم حفظه.</value></data><data name="RuntimeUI026" xml:space="preserve"><value>رمز القفل غير صحيح.</value></data><data name="RuntimeUI027" xml:space="preserve"><value>انتهت المكالمة</value></data><data name="RuntimeUI028" xml:space="preserve"><value>تشغيل الكاميرا</value></data><data name="RuntimeUI029" xml:space="preserve"><value>تعذر استقبال المكالمة.</value></data><data name="RuntimeUI030" xml:space="preserve"><value>تعذر تجهيز المكالمة. تحقق من الاتصال ثم حاول مرة أخرى.</value></data><data name="RuntimeUI031" xml:space="preserve"><value>تعذر قبول المكالمة. حاول مرة أخرى.</value></data><data name="RuntimeUI032" xml:space="preserve"><value>تم الرد، جارٍ الاتصال...</value></data><data name="RuntimeUI033" xml:space="preserve"><value>يجري إعداد الصوت</value></data><data name="RuntimeUI034" xml:space="preserve"><value>يجري إعداد الصوت والصورة</value></data><data name="RuntimeUI035" xml:space="preserve"><value>يجري تجهيز الصوت</value></data><data name="RuntimeUI036" xml:space="preserve"><value>يلزم السماح بالكاميرا والميكروفون</value></data><data name="RuntimeUI037" xml:space="preserve"><value>يلزم السماح بالميكروفون لقبول المكالمة</value></data><data name="RuntimeUI038" xml:space="preserve"><value>تم</value></data><data name="RuntimeUI039" xml:space="preserve"><value>Ⅱ  متوقف مؤقتًا</value></data><data name="RuntimeUI040" xml:space="preserve"><value>اختر صورة</value></data><data name="RuntimeUI041" xml:space="preserve"><value>اختر صورة لخلفية هذه المحادثة</value></data><data name="RuntimeUI042" xml:space="preserve"><value>اختر فيديو</value></data><data name="RuntimeUI043" xml:space="preserve"><value>اختر ملفًا</value></data><data name="RuntimeUI044" xml:space="preserve"><value>مشاركة الرسائل</value></data><data name="RuntimeUI045" xml:space="preserve"><value>مشاركة المرفق</value></data><data name="RuntimeUI046" xml:space="preserve"><value>ابحث باسم الدولة أو رمز الاتصال الدولي</value></data><data name="RuntimeUI047" xml:space="preserve"><value>اختيار الدولة</value></data><data name="RuntimeUI048" xml:space="preserve"><value>جرّب اسم دولة آخر أو رمز الاتصال الدولي.</value></data><data name="RuntimeUI049" xml:space="preserve"><value>رمز الدولة</value></data><data name="RuntimeUI050" xml:space="preserve"><value>مثال: السعودية أو +966</value></data><data name="RuntimeUI051" xml:space="preserve"><value>بحث عن الرقم</value></data><data name="RuntimeUI052" xml:space="preserve"><value>تعذر البحث الآن. تحقق من الاتصال بالخادم ثم حاول مجددًا.</value></data><data name="RuntimeUI053" xml:space="preserve"><value>تعذر البحث في جهات الاتصال. تحقق من الاتصال بالخادم ثم حاول مجددًا.</value></data><data name="RuntimeUI054" xml:space="preserve"><value>تعذر بدء المحادثة.</value></data><data name="RuntimeUI055" xml:space="preserve"><value>تعذر قراءة جهات الاتصال من الهاتف.</value></data><data name="RuntimeUI056" xml:space="preserve"><value>جارٍ تجهيز المحادثة...</value></data><data name="RuntimeUI057" xml:space="preserve"><value>جارٍ طلب الإذن وقراءة جهات الاتصال...</value></data><data name="RuntimeUI058" xml:space="preserve"><value>جارٍ قراءة الأسماء...</value></data><data name="RuntimeUI059" xml:space="preserve"><value>لم نعثر على أرقام هاتف صالحة في جهات اتصالك.</value></data><data name="RuntimeUI060" xml:space="preserve"><value>لم نعثر على حساب يطابق هذا الرقم. قد لا يكون الرقم مضافًا أو البحث عنه غير مفعّل.</value></data><data name="RuntimeUI061" xml:space="preserve"><value>لم يتم منح إذن جهات الاتصال. يمكنك تفعيله من إعدادات Android ثم المحاولة مجددًا.</value></data><data name="RuntimeUI062" xml:space="preserve"><value>يتم البحث عن الحسابات التي تسمح بالعثور عليها...</value></data><data name="RuntimeUI063" xml:space="preserve"><value>استخدم إصبعين للتقريب، واسحب الصورة بعد تكبيرها</value></data><data name="RuntimeUI064" xml:space="preserve"><value>اقرأ البنود كاملة قبل المتابعة</value></data><data name="RuntimeUI065" xml:space="preserve"><value>العودة إلى إنشاء الحساب</value></data><data name="RuntimeUI066" xml:space="preserve"><value>اسحب الإطار أو زواياه ثم اضغط ✓ لتطبيق القص.</value></data><data name="RuntimeUI067" xml:space="preserve"><value>اسحب النص وضعه في المكان الذي تريده</value></data><data name="RuntimeUI068" xml:space="preserve"><value>القص والتدوير والنص والقلم قبل الإرسال</value></data><data name="RuntimeUI069" xml:space="preserve"><value>تم التراجع عن آخر رسم</value></data><data name="RuntimeUI070" xml:space="preserve"><value>تم التراجع عن الرسم الحالي</value></data><data name="RuntimeUI071" xml:space="preserve"><value>تم تطبيق القص. يمكنك الآن التعديل ثم الإرسال.</value></data><data name="RuntimeUI072" xml:space="preserve"><value>جارٍ تطبيق القص…</value></data><data name="RuntimeUI073" xml:space="preserve"><value>جارٍ حفظ الصورة في مكتبة الصور…</value></data><data name="RuntimeUI074" xml:space="preserve"><value>قلم حر — ارسم بإصبعك في أي مكان على الصورة</value></data><data name="RuntimeUI075" xml:space="preserve"><value>البريد الحالي:</value></data><data name="RuntimeUI076" xml:space="preserve"><value>تأكيد وتغيير البريد</value></data><data name="RuntimeUI077" xml:space="preserve"><value>تعذر تأكيد البريد:</value></data><data name="RuntimeUI078" xml:space="preserve"><value>تعذر حفظ الحالة:</value></data><data name="RuntimeUI080" xml:space="preserve"><value>جارٍ التحقق...</value></data><data name="RuntimeUI081" xml:space="preserve"><value>حفظ الاسم</value></data><data name="RuntimeUI082" xml:space="preserve"><value>حفظ الحالة</value></data><data name="RuntimeUI083" xml:space="preserve"><value>سجّل الدخول لتعديل اسم المستخدم.</value></data><data name="RuntimeUI084" xml:space="preserve"><value>جارٍ المطابقة...</value></data><data name="RuntimeUI085" xml:space="preserve"><value>جارٍ...</value></data><data name="RuntimeUI086" xml:space="preserve"><value>عثر الخادم على حسابات، لكن لا يمكن ربطها بالأسماء بعد. انشر تحديث Himo.Api ثم أعد المطابقة.</value></data><data name="RuntimeUI087" xml:space="preserve"><value>عرض جهات الاتصال متاح حاليًا على Android فقط.</value></data><data name="RuntimeUI088" xml:space="preserve"><value>لم يتم منح إذن جهات الاتصال. يمكنك تفعيله من إعدادات Android ثم فتح هذه الصفحة مجددًا.</value></data><data name="RuntimeUI089" xml:space="preserve"><value>أدخل رمزًا جديدًا ثم اضغط حفظ.</value></data><data name="RuntimeUI090" xml:space="preserve"><value>إذن النظام غير مطلوب على هذا الإصدار من Android.</value></data><data name="RuntimeUI091" xml:space="preserve"><value>إشعارات Himo متوقفة من داخل التطبيق.</value></data><data name="RuntimeUI092" xml:space="preserve"><value>تم تفعيل قفل التطبيق.</value></data><data name="FinalUI001" xml:space="preserve"><value>تعذر تحميل جهات الاتصال. تحقق من إذن Android ثم حاول مجددًا.</value></data><data name="FinalUI002" xml:space="preserve"><value>تعذرت مطابقة جهات الاتصال. تحقق من اتصال الخادم ثم حاول مجددًا.</value></data><data name="FinalUI003" xml:space="preserve"><value>تعذر حفظ الاسم.</value></data><data name="FinalUI004" xml:space="preserve"><value>تعذر حفظ رقم الهاتف.</value></data><data name="FinalUI005" xml:space="preserve"><value>تعذر تغيير كلمة المرور.</value></data><data name="FinalUI006" xml:space="preserve"><value>أدخل رقم هاتف صحيحًا من 7 إلى 15 رقمًا مع مفتاح الدولة عند الحاجة.</value></data><data name="FinalUI007" xml:space="preserve"><value>إعادة إرسال رمز جديد</value></data><data name="FinalUI008" xml:space="preserve"><value>تعذر حفظ الاسم:</value></data><data name="FinalUI009" xml:space="preserve"><value>تعذر الحفظ:</value></data><data name="FinalUI010" xml:space="preserve"><value>تم حفظ اسم المستخدم @</value></data><data name="FinalUI011" xml:space="preserve"><value>رمز التطوير:</value></data><data name="FinalUI012" xml:space="preserve"><value>تعذر إرسال الرمز:</value></data><data name="CodeBuiltUI001" xml:space="preserve"><value>أدخل بيانات الحساب الذي تريد تسجيل الدخول به.</value></data><data name="CodeBuiltUI002" xml:space="preserve"><value>أمان الحساب</value></data><data name="CodeBuiltUI003" xml:space="preserve"><value>إدارة كلمة المرور</value></data><data name="CodeBuiltUI004" xml:space="preserve"><value>إذا لم يصل الرمز، تحقق من البريد غير المرغوب فيه قبل طلب رمز آخر.</value></data><data name="CodeBuiltUI005" xml:space="preserve"><value>اختر الدولة من العلم والرمز، ثم اكتب الرقم المحلي دون رمز الدولة.</value></data><data name="CodeBuiltUI006" xml:space="preserve"><value>استخدم اسمًا واضحًا من حرف إلى 60 حرفًا.</value></data><data name="CodeBuiltUI007" xml:space="preserve"><value>اكتب اسم المستخدم</value></data><data name="CodeBuiltUI008" xml:space="preserve"><value>الإصدار الحالي يحتفظ بجلسة نشطة واحدة فقط. عند نجاح تسجيل الدخول بحساب آخر، سيصبح الحساب الجديد هو النشط بدل الحساب الحالي. لن يتم تنفيذ التبديل إلا بعد تأكيدك.</value></data><data name="CodeBuiltUI009" xml:space="preserve"><value>البريد الإلكتروني المسجّل</value></data><data name="CodeBuiltUI010" xml:space="preserve"><value>البريد المرتبط بالحساب</value></data><data name="CodeBuiltUI011" xml:space="preserve"><value>السماح بالعثور على حسابي عبر الهاتف</value></data><data name="CodeBuiltUI012" xml:space="preserve"><value>تأكيد كلمة المرور الجديدة</value></data><data name="CodeBuiltUI013" xml:space="preserve"><value>تسجيل الدخول بحساب آخر</value></data><data name="CodeBuiltUI014" xml:space="preserve"><value>تغيير البريد الإلكتروني غير مفعّل في الخادم الحالي؛ يتطلب إضافة تحقق آمن من العنوان الجديد.</value></data><data name="CodeBuiltUI015" xml:space="preserve"><value>جارٍ تحديد البريد الإلكتروني...</value></data><data name="CodeBuiltUI016" xml:space="preserve"><value>جارٍ تحميل البريد الإلكتروني...</value></data><data name="CodeBuiltUI017" xml:space="preserve"><value>جارٍ تحميل بيانات الحساب...</value></data><data name="CodeBuiltUI018" xml:space="preserve"><value>جارٍ تحميل رقم الهاتف...</value></data><data name="CodeBuiltUI019" xml:space="preserve"><value>سيظهر اسم حسابك للمطابقين، وليس رقمك.</value></data><data name="CodeBuiltUI020" xml:space="preserve"><value>سيظهر الرقم الدولي هنا قبل الحفظ.</value></data><data name="CodeBuiltUI021" xml:space="preserve"><value>كلمة المرور الجديدة (8 أحرف على الأقل)</value></data><data name="CodeBuiltUI022" xml:space="preserve"><value>لن يتم اعتماد الاسم إلا بعد نجاح الحفظ من الخادم.</value></data><data name="CodeBuiltUI023" xml:space="preserve"><value>معلومة مهمة</value></data><data name="CodeBuiltUI024" xml:space="preserve"><value>يُحفظ الرقم بصيغة دولية مثل ‎+9665xxxxxxxx.</value></data><data name="CodeBuiltUI025" xml:space="preserve"><value>اختر الحالة التي تصف ما تفعله الآن.</value></data><data name="CodeBuiltUI026" xml:space="preserve"><value>اضغط على الصورة لتكبيرها، أو على الكاميرا لتغييرها</value></data><data name="CodeBuiltUI027" xml:space="preserve"><value>اكتب الاسم الظاهر</value></data><data name="CodeBuiltUI028" xml:space="preserve"><value>البريد الجديد</value></data><data name="CodeBuiltUI029" xml:space="preserve"><value>البريد الحالي: جارٍ التحميل...</value></data><data name="CodeBuiltUI030" xml:space="preserve"><value>تُحفظ التغييرات على الحساب عند نجاح الاتصال بالخادم.</value></data><data name="CodeBuiltUI031" xml:space="preserve"><value>سيُرسل رمز تحقق إلى البريد الجديد قبل اعتماد التغيير.</value></data><data name="CodeBuiltUI032" xml:space="preserve"><value>غير مضاف</value></data><data name="CodeBuiltUI033" xml:space="preserve"><value>لا يتغير البريد المسجّل إلا بعد إدخال رمز صحيح يصل إلى البريد الجديد.</value></data><data name="CodeBuiltUI034" xml:space="preserve"><value>لم تحدد بعد</value></data><data name="CodeBuiltUI035" xml:space="preserve"><value>ماذا تفعل الآن؟</value></data><data name="CodeBuiltUI036" xml:space="preserve"><value>مثال: ahmed_22</value></data><data name="CodeBuiltUI037" xml:space="preserve"><value>من 3 إلى 24 حرفًا إنجليزيًا أو رقمًا أو (_) أو (.)، ويجب أن يكون غير مستخدم.</value></data><data name="CodeBuiltUI038" xml:space="preserve"><value>يظهر الاسم في ملفك الشخصي والمحادثات.</value></data><data name="CodeBuiltUI039" xml:space="preserve"><value>إجمالي بيانات التطبيق</value></data><data name="CodeBuiltUI040" xml:space="preserve"><value>استعراض الملفات الموجودة في الذاكرة المؤقتة ومرفقات المحادثات. لا تُحذف الرسائل من الخادم عند إزالة نسخة محلية.</value></data><data name="CodeBuiltUI041" xml:space="preserve"><value>استهلاك التخزين</value></data><data name="CodeBuiltUI042" xml:space="preserve"><value>التجوال</value></data><data name="CodeBuiltUI043" xml:space="preserve"><value>الذاكرة المؤقتة المستخدمة</value></data><data name="CodeBuiltUI044" xml:space="preserve"><value>الرسائل</value></data><data name="CodeBuiltUI045" xml:space="preserve"><value>الملفات المحلية</value></data><data name="CodeBuiltUI046" xml:space="preserve"><value>تعرض هذه الصفحة إجماليات الاستهلاك فقط، ولا تعرض أسماء الملفات أو محتوياتها.</value></data><data name="CodeBuiltUI047" xml:space="preserve"><value>تُعرض أعداد الرسائل والمرفقات التي يحتفظ بها التطبيق محليًا لكل محادثة.</value></data><data name="CodeBuiltUI048" xml:space="preserve"><value>حجم الوسائط المخزنة</value></data><data name="CodeBuiltUI049" xml:space="preserve"><value>قائمة المحادثات</value></data><data name="CodeBuiltUI050" xml:space="preserve"><value>لا توجد محادثات محفوظة محليًا.</value></data><data name="CodeBuiltUI051" xml:space="preserve"><value>يمكنك مسح النسخ المؤقتة لتوفير مساحة. لن يتم حذف المحادثات من الخادم.</value></data><data name="CodeBuiltUI052" xml:space="preserve"><value>إجمالي استخدام الشبكة</value></data><data name="CodeBuiltUI053" xml:space="preserve"><value>البيانات المستلمة والمرسلة مأخوذة من عدّاد Android الخاص بالتطبيق منذ آخر إعادة تعيين. أحجام الوسائط والتخزين محسوبة من الملفات المحلية، وليست قياسًا دقيقًا لحركة الشبكة لكل فئة.</value></data><data name="CodeBuiltUI054" xml:space="preserve"><value>الوسائط المحلية</value></data><data name="CodeBuiltUI055" xml:space="preserve"><value>تفاصيل الاستخدام</value></data><data name="CodeBuiltUI056" xml:space="preserve"><value>اختر خيارًا واحدًا من القائمة التالية.</value></data><data name="CodeBuiltUI057" xml:space="preserve"><value>راجع تفضيلات الخصوصية التي اخترتها على هذا الجهاز.</value></data><data name="CodeBuiltUI058" xml:space="preserve"><value>ستظهر قائمة الحسابات المحظورة هنا عند ربطها بواجهة الخادم. حاليًا، يمكنك حظر حساب من خيارات المحادثة.</value></data><data name="CodeBuiltUI059" xml:space="preserve"><value>استخدام الشبكة الخلوية</value></data><data name="CodeBuiltUI060" xml:space="preserve"><value>تضمين ملفات الفيديو</value></data><data name="CallThemeChat001" xml:space="preserve"><value>جارٍ القراءة</value></data><data name="CallThemeChat002" xml:space="preserve"><value>تلقائي</value></data><data name="CallThemeChat003" xml:space="preserve"><value>محددة ✓</value></data><data name="CallThemeChat004" xml:space="preserve"><value>الخلفية الحالية ✓</value></data><data name="CallThemeChat005" xml:space="preserve"><value>استخدام الخلفية</value></data><data name="CallThemeChat006" xml:space="preserve"><value>مستند</value></data><data name="CallThemeChat007" xml:space="preserve"><value>بانتظار قبول المكالمة...</value></data><data name="CallThemeChat008" xml:space="preserve"><value>أزرق كهربائي</value></data><data name="CallThemeChat009" xml:space="preserve"><value>هاتف</value></data><data name="CallThemeChat010" xml:space="preserve"><value>فقط عند الضغط على نسخ احتياطي</value></data><data name="CallThemeChat011" xml:space="preserve"><value>ملفات</value></data><data name="CallThemeChat012" xml:space="preserve"><value>أخرى</value></data><data name="CallThemeChat013" xml:space="preserve"><value>الإبلاغ عن المحادثة</value></data><data name="CallThemeChat014" xml:space="preserve"><value>رسالة مرفقة</value></data><data name="CallThemeChat015" xml:space="preserve"><value>مكالمة واردة...</value></data><data name="CallThemeChat016" xml:space="preserve"><value>إلغاء الكتم</value></data><data name="CallThemeChat017" xml:space="preserve"><value>فيديو غير متاح</value></data><data name="CallThemeChat018" xml:space="preserve"><value>إيقاف المكبر</value></data><data name="CallThemeChat019" xml:space="preserve"><value>كتم الوارد</value></data><data name="CallThemeChat020" xml:space="preserve"><value>تشغيل الوارد</value></data><data name="CallThemeChat021" xml:space="preserve"><value>حالتك وماذا تفعل الآن</value></data><data name="CallThemeChat022" xml:space="preserve"><value>غير محدد</value></data><data name="CallThemeChat023" xml:space="preserve"><value>اختر صورة لا يتجاوز حجمها 4 ميغابايت.</value></data><data name="CallThemeChat024" xml:space="preserve"><value>ذهبي ملكي</value></data><data name="CallThemeChat025" xml:space="preserve"><value>الشفق القطبي</value></data><data name="CallThemeChat026" xml:space="preserve"><value>السمة الحالية ✓</value></data><data name="CallThemeChat027" xml:space="preserve"><value>معاينة الصورة</value></data><data name="CallThemeChat028" xml:space="preserve"><value>متوقف</value></data><data name="CallThemeChat029" xml:space="preserve"><value>آخر ظهور</value></data><data name="CallThemeChat030" xml:space="preserve"><value>رابط فيديو الخلفية غير صالح.</value></data><data name="CallThemeChat031" xml:space="preserve"><value>دخول</value></data><data name="CallThemeChat032" xml:space="preserve"><value>مستخدم</value></data><data name="CallThemeChat033" xml:space="preserve"><value>اسم</value></data><data name="CallThemeChat034" xml:space="preserve"><value>بريد</value></data><data name="CallThemeChat035" xml:space="preserve"><value>إلكتروني</value></data><data name="CallThemeChat036" xml:space="preserve"><value>أمان</value></data><data name="CallThemeChat037" xml:space="preserve"><value>حماية</value></data><data name="CallThemeChat038" xml:space="preserve"><value>اردو</value></data><data name="CallThemeChat039" xml:space="preserve"><value>إيقاف</value></data><data name="CallThemeChat040" xml:space="preserve"><value>صور</value></data><data name="CallThemeChat041" xml:space="preserve"><value>البحث في المحادثة</value></data><data name="CallThemeChat042" xml:space="preserve"><value>إلغاء حظر المحادثة</value></data><data name="CallThemeChat043" xml:space="preserve"><value>حظر المحادثة</value></data><data name="CallThemeChat044" xml:space="preserve"><value>إلغاء أرشفة المحادثة</value></data><data name="CallThemeChat045" xml:space="preserve"><value>أرشفة المحادثة</value></data><data name="CallThemeChat046" xml:space="preserve"><value>🌸 الأزهار البنفسجية</value></data><data name="CallThemeChat047" xml:space="preserve"><value>🌄 غروب الجبال</value></data><data name="CallThemeChat048" xml:space="preserve"><value>🌙 بحيرة القمر</value></data><data name="CallThemeChat049" xml:space="preserve"><value>🌺 أزهار قريبة</value></data><data name="CallThemeChat050" xml:space="preserve"><value>🌊 بحيرة هادئة</value></data><data name="CallThemeChat051" xml:space="preserve"><value>〰️ تموجات بحرية</value></data><data name="CallThemeChat052" xml:space="preserve"><value>🌲 غابة زمردية</value></data><data name="CallThemeChat053" xml:space="preserve"><value>🌃 مدينة مضيئة</value></data><data name="CallThemeChat054" xml:space="preserve"><value>🌸 مدينة ساكورا</value></data><data name="CallThemeChat055" xml:space="preserve"><value>🏜️ غروب ذهبي</value></data><data name="CallThemeChat056" xml:space="preserve"><value>🖼️ اختيار صورة من المعرض</value></data><data name="CallThemeChat057" xml:space="preserve"><value>تعذر فتح شاشة المكالمة:</value></data><data name="CallThemeChat058" xml:space="preserve"><value>لم يتم تنزيل الصورة بشكل صحيح.</value></data><data name="CallThemeChat059" xml:space="preserve"><value>تحديد</value></data><data name="CallThemeChat060" xml:space="preserve"><value>مكالمة واردة — اضغط رد للبدء</value></data><data name="CallThemeChat061" xml:space="preserve"><value>انتهت بالفعل</value></data><data name="CallThemeChat062" xml:space="preserve"><value>يوجد اتصال نشط أو جارٍ لمكالمة أخرى</value></data><data name="CallThemeChat063" xml:space="preserve"><value>متصل</value></data><data name="CallThemeChat065" xml:space="preserve"><value>خيارات المكالمة</value></data><data name="CallThemeChat066" xml:space="preserve"><value>الصوت الوارد مفعّل</value></data><data name="CallThemeChat067" xml:space="preserve"><value>الصوت الوارد مكتوم</value></data><data name="CallThemeChat068" xml:space="preserve"><value>مكبر الصوت مفعّل</value></data><data name="CallThemeChat069" xml:space="preserve"><value>مكبر الصوت متوقف</value></data><data name="DynamicStatus002" xml:space="preserve"><value>تعذر حذف الحساب:</value></data><data name="DynamicStatus003" xml:space="preserve"><value>سيتم حذف حسابك وبياناته ومحادثاتك من الخادم نهائيًا. لا يمكن التراجع عن هذه العملية.</value></data><data name="DynamicStatus004" xml:space="preserve"><value>العثور على حسابك عبر الهاتف مفعّل.</value></data><data name="DynamicStatus005" xml:space="preserve"><value>يمكنك تفعيل العثور عبر الهاتف اختياريًا.</value></data><data name="DynamicStatus006" xml:space="preserve"><value>تم حذف رقم الهاتف من الحساب.</value></data><data name="DynamicStatus007" xml:space="preserve"><value>تم الحفظ والعثور عبر الهاتف مفعّل.</value></data><data name="DynamicStatus008" xml:space="preserve"><value>تم حفظ الرقم؛ العثور عبر الهاتف متوقف.</value></data><data name="DynamicStatus009" xml:space="preserve"><value>لا يوجد حساب مسجّل الدخول.</value></data><data name="DynamicStatus010" xml:space="preserve"><value>تعذر تحميل البريد الإلكتروني.</value></data><data name="DynamicStatus011" xml:space="preserve"><value>تعذر تحديد البريد؛ سجّل الدخول مجددًا.</value></data><data name="DynamicStatus012" xml:space="preserve"><value>تعذر تشغيل كاميرا Himo:</value></data><data name="DynamicStatus013" xml:space="preserve"><value>تعذر التقاط الوسائط:</value></data><data name="DynamicStatus014" xml:space="preserve"><value>تعذر تغيير الفلاش:</value></data><data name="DynamicStatus015" xml:space="preserve"><value>تعذر تبديل الكاميرا:</value></data><data name="DynamicStatus017" xml:space="preserve"><value>جارٍ تطبيق التجميل…</value></data><data name="DynamicStatus018" xml:space="preserve"><value>جارٍ تحسين الصورة…</value></data><data name="DynamicStatus020" xml:space="preserve"><value>فيديو + صوت</value></data><data name="DynamicStatus021" xml:space="preserve"><value>قفل التطبيق مفعل.</value></data><data name="DynamicStatus022" xml:space="preserve"><value>قفل التطبيق غير مفعل.</value></data><data name="DynamicStatus023" xml:space="preserve"><value>حالة إذن النظام: مسموح ✓</value></data><data name="DynamicStatus024" xml:space="preserve"><value>حالة إذن النظام: غير مسموح — فعّل الإذن من إعدادات Android إذا لم تظهر الإشعارات.</value></data><data name="DynamicStatus025" xml:space="preserve"><value>جارٍ طلب إذن جهات الاتصال...</value></data><data name="DynamicStatus026" xml:space="preserve"><value>تم تحميل جهة اتصال واحدة من الهاتف. القائمة محلية ولا تُرفع للخادم.</value></data><data name="DynamicStatus027" xml:space="preserve"><value>جارٍ مطابقة أرقام الهاتف مع حسابات Himo...</value></data><data name="DynamicStatus028" xml:space="preserve"><value>قيد التفعيل...</value></data></root>

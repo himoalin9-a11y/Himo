@@ -6,7 +6,7 @@ namespace Himo.Views;
 /// Reusable, scrollable legal-document layout used by registration.
 /// The content must be reviewed against the production service and applicable law before release.
 /// </summary>
-internal abstract class LegalDocumentPageBase : ContentPage
+internal abstract class LegalDocumentPageBase : Himo.Services.LocalizedContentPage
 {
     protected LegalDocumentPageBase(
         string title,
