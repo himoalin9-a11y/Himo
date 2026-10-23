@@ -1,0 +1,620 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <uses-permission android:name="android.permission.READ_CONTACTS" />
+  <uses-permission android:name="android.permission.CAMERA" />
+  <uses-permission android:name="android.permission.RECORD_AUDIO" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+  <uses-permission android:name="android.permission.VIBRATE" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+  <application
+    android:icon="@drawable/himo_launcher"
+    android:roundIcon="@drawable/himo_launcher"
+    android:label="Himo">
+
+    <meta-data
+      android:name="com.google.firebase.messaging.default_notification_channel_id"
+      android:value="himo_messages_v5" />
+    <meta-data
+      android:name="com.google.firebase.messaging.default_notification_icon"
+      android:resource="@drawable/himo_notification" />
+
+    <receiver
+      android:name="com.google.firebase.iid.FirebaseInstanceIdInternalReceiver"
+      android:exported="false" />
+    <receiver
+      android:name="com.google.firebase.iid.FirebaseInstanceIdReceiver"
+      android:exported="true"
+      android:permission="com.google.android.c2dm.permission.SEND">
+      <intent-filter>
+        <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+        <action android:name="com.google.android.c2dm.intent.REGISTRATION" />
+        <category android:name="${applicationId}" />
+      </intent-filter>
+    </receiver>
+
+    <provider
+      android:name="androidx.core.content.FileProvider"
+      android:authorities="${applicationId}.fileprovider"
+      android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/himo_file_paths" />
+    </provider>
+
+    <!-- Stable native activity name used by Visual Studio/debugging; launcher icons are handled by aliases below. -->
+    <activity android:name="com.companyname.himo.LauncherIconDefault" android:theme="@style/Maui.SplashTheme" android:enabled="true" android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="himo" android:host="user" />
+      </intent-filter>
+    </activity>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconHomeDefault"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="true"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemOriginal"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_original"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemSapphire"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_sapphire"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemAzure"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_azure"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemCyan"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_cyan"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemTurquoise"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_turquoise"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemEmerald"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_emerald"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemGreen"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_green"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemLime"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_lime"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemGold"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_gold"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemAmber"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_amber"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemOrange"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_orange"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemRuby"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_ruby"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemRose"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_rose"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemMagenta"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_magenta"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconSystemIndigo"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_system_indigo"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassPurple"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_purple"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassSapphire"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_sapphire"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassRose"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_rose"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassGold"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_gold"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassTurquoise"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_turquoise"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassRuby"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_ruby"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassSilver"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_silver"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassNight"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_night"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassHolographic"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_holographic"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassEmerald"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_emerald"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassIcecyan"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_icecyan"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassAmber"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_amber"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassIndigo"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_indigo"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassLime"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_lime"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconGlassMagenta"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_glass_magenta"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional01"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_01"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional02"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_02"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional03"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_03"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional04"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_04"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional05"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_05"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional06"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_06"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional07"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_07"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional08"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_08"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional09"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_09"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional10"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_10"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional11"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_11"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional12"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_12"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional13"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_13"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional14"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_14"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional15"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_15"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional16"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_16"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional17"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_17"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional18"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_18"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional19"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_19"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional20"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_20"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional21"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_21"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional22"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_22"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional23"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_23"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional24"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_24"
+      android:label="Himo">
+    </activity-alias>
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconProfessional25"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="false"
+      android:exported="true"
+      android:icon="@drawable/himo_launcher_professional_25"
+      android:label="Himo">
+    </activity-alias>
+  </application>
+</manifest>

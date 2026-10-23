@@ -1,4 +1,4 @@
-﻿using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Dispatching;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Networking;
@@ -22,7 +22,7 @@ namespace Himo.Views;
 public partial class ChatPage : ContentPage
 {
     private const int MessagePageSize = 30;
-    private const int InitialVisibleMessageCount = MessagePageSize;
+    private const int InitialVisibleMessageCount = 4;
     private const int MessageSyncPageSize = 100;
     private readonly ChatService _chat;
     private readonly HimoApiClient _api;
@@ -142,8 +142,10 @@ public partial class ChatPage : ContentPage
     public ChatPage(ChatService chat, HimoApiClient api, AccountService account, INotificationService notifications, HimoRealtimeService realtime)
     {
         System.Diagnostics.Debug.WriteLine("[Himo ChatPage] Constructor started.");
+        var constructorTrace = Stopwatch.StartNew();
         InitializeComponent();
-        Himo.Services.AppLocalization.AttachToPage(this);
+        System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] InitializeComponent completed elapsed={constructorTrace.ElapsedMilliseconds}ms");
+        // Localization traverses the full visual tree; defer it until after the first frame.
         System.Diagnostics.Debug.WriteLine("[Himo ChatPage] XAML initialized successfully.");
         Messages.ItemsSource = _visibleMessages;
         _chat = chat; _api = api; _account = account; _notifications = notifications; _realtime = realtime;
@@ -176,13 +178,20 @@ public partial class ChatPage : ContentPage
     protected override void OnAppearing()
     {
         System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] OnAppearing id={_conversationId} remote={_remoteConversationId ?? "(null)"}.");
+        var appearTrace = Stopwatch.StartNew();
+        System.Diagnostics.Debug.WriteLine("[HimoOpenTrace] OnAppearing START");
         base.OnAppearing();
+        System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] after base.OnAppearing elapsed={appearTrace.ElapsedMilliseconds}ms");
         // Defer the expensive legacy icon/palette traversal until after the chat
         // first frame. A synchronous tree walk here was responsible for 80-145
         // dropped frames when opening a conversation.
-        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this);
+        System.Diagnostics.Debug.WriteLine("[HimoOpenTrace] legacy appearance traversal skipped for ChatPage");
+        System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] appearance styling scheduled elapsed={appearTrace.ElapsedMilliseconds}ms");
+        _ = ApplyChatLocalizationAfterFirstFrameAsync();
+        System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] localization scheduled elapsed={appearTrace.ElapsedMilliseconds}ms");
         _isAppInBackground = false;
         AttachWallpaperLifecycleHandlers();
+        System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] wallpaper handlers attached elapsed={appearTrace.ElapsedMilliseconds}ms");
         Connectivity.Current.ConnectivityChanged -= OnConnectivityChanged;
         Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
         Volatile.Write(ref _conversationVisible, 1);
@@ -195,7 +204,9 @@ public partial class ChatPage : ContentPage
 
         _ = ApplySavedChatWallpaperAsync();
         ApplySavedChatBubbleColors();
+        System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] ApplySavedChatBubbleColors completed elapsed={appearTrace.ElapsedMilliseconds}ms");
         StartPollingFallback();
+        System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] StartPollingFallback completed elapsed={appearTrace.ElapsedMilliseconds}ms");
 
         // Do not execute the first message bind while Shell is still performing
         // the navigation transition. Let Android draw the ChatPage first, then
@@ -207,10 +218,49 @@ public partial class ChatPage : ContentPage
 
         Dispatcher.Dispatch(() =>
         {
+            System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] InitializeChatAsync dispatched at elapsed={appearTrace.ElapsedMilliseconds}ms");
             _ = InitializeChatAsync(openToken);
         });
     }
 
+
+    private async Task TraceChatAppearanceAsync()
+    {
+        var trace = Stopwatch.StartNew();
+        try
+        {
+            await HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this, skipCollectionViewContents: true, batchSize: 128);
+            System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] appearance traversal completed elapsed={trace.ElapsedMilliseconds}ms");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] appearance traversal failed elapsed={trace.ElapsedMilliseconds}ms error={ex.Message}");
+        }
+    }
+    private async Task ApplyChatLocalizationAfterFirstFrameAsync()
+    {
+        var localizationTrace = Stopwatch.StartNew();
+        try
+        {
+            // Allow Shell/Android to present the chat page before walking all descendants.
+            await Task.Yield();
+            if (Himo.Services.AppLocalization.CurrentLanguageCode == "ar")
+            {
+                await Microsoft.Maui.ApplicationModel.MainThread.InvokeOnMainThreadAsync(
+                    () => Himo.Services.AppLocalization.ApplyPageRootOnly(this)).ConfigureAwait(false);
+            }
+            else
+            {
+                await Himo.Services.AppLocalization.ApplyToPageInBatchesAsync(
+                    this, batchSize: 128, skipCollectionViewContents: false).ConfigureAwait(false);
+            }
+            System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] localization completed elapsed={localizationTrace.ElapsedMilliseconds}ms");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Deferred localization failed: {ex.Message}");
+        }
+    }
     private int _initializationVersion;
     private int _initializationRunning;
     private CancellationTokenSource? _openCts;
@@ -225,6 +275,8 @@ public partial class ChatPage : ContentPage
 
     private async Task InitializeChatAsync(CancellationToken cancellationToken)
     {
+        var initTrace = Stopwatch.StartNew();
+        System.Diagnostics.Debug.WriteLine("[HimoOpenTrace] InitializeChatAsync START");
         if (Interlocked.Exchange(ref _initializationRunning, 1) != 0)
             return;
 
@@ -248,12 +300,14 @@ public partial class ChatPage : ContentPage
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            _ = _notifications.InitializeAsync();
+            System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] InitializeChatAsync local initialization finished elapsed={initTrace.ElapsedMilliseconds}ms localFirstRender={_localFirstRenderCompleted} visibleCount={_visibleMessages.Count}");
+        _ = _notifications.InitializeAsync();
 
             // Start remote work immediately after the first cached paint. The previous
             // 350ms defer only delayed the first remote history request without fixing
             // the actual contention point.
             _ = StartDeferredBackgroundWorkAsync(version, cancellationToken);
+            System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] background work scheduled elapsed={initTrace.ElapsedMilliseconds}ms");
         }
         catch (OperationCanceledException)
         {
@@ -284,14 +338,18 @@ public partial class ChatPage : ContentPage
 
     private async Task InitializeRemoteSyncAsync(int version, CancellationToken cancellationToken)
     {
+        var remoteInitTrace = Stopwatch.StartNew();
+        System.Diagnostics.Debug.WriteLine("[HimoOpenTrace] InitializeRemoteSync START");
         try
         {
             await _api.TokenInitialization.WaitAsync(cancellationToken).ConfigureAwait(false);
+            System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] TokenInitialization completed elapsed={remoteInitTrace.ElapsedMilliseconds}ms");
             if (!_api.HasToken || version != Volatile.Read(ref _initializationVersion))
                 return;
 
             cancellationToken.ThrowIfCancellationRequested();
             await ResolveRemoteConversationAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+            System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] ResolveRemoteConversation completed elapsed={remoteInitTrace.ElapsedMilliseconds}ms localId={_conversationId} remote={_remoteConversationId}");
 
             var avatarConversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
             if (avatarConversation is not null)
@@ -312,6 +370,7 @@ public partial class ChatPage : ContentPage
             // Message history has priority during first open. Start SignalR only
             // after the initial page has been loaded so a slow hub negotiation
             // cannot compete with the history request.
+            System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] calling LoadRemote elapsed={remoteInitTrace.ElapsedMilliseconds}ms localFirstRender={_localFirstRenderCompleted} visibleCount={_visibleMessages.Count}");
             await LoadRemoteSafelyAsync(version, cancellationToken);
 
             if (version != Volatile.Read(ref _initializationVersion))
@@ -486,6 +545,8 @@ public partial class ChatPage : ContentPage
 
     private void Load()
     {
+        var localLoadTrace = Stopwatch.StartNew();
+        System.Diagnostics.Debug.WriteLine("[HimoOpenTrace] Load LOCAL START");
         if (_conversationId == 0)
             return;
 
@@ -498,7 +559,9 @@ public partial class ChatPage : ContentPage
         InitialLabel?.SetValue(Label.TextProperty, string.IsNullOrWhiteSpace(conversation.Initial) ? displayName[..1] : conversation.Initial);
         BindConversationAvatar(conversation);
 
+        var recentTrace = Stopwatch.StartNew();
         var recent = _chat.GetRecentMessages(_conversationId, InitialVisibleMessageCount);
+        System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] GetRecentMessages count={recent.Count} elapsed={recentTrace.ElapsedMilliseconds}ms");
 
         // First paint must contain only cached message metadata. Starting image/video
         // downloads here causes network completion and attachment property changes
@@ -509,7 +572,9 @@ public partial class ChatPage : ContentPage
 
         // A local cache may contain more history than the first page.
         // We do not sort/copy the whole history just to determine this.
+        var fullCacheTrace = Stopwatch.StartNew();
         var localCount = _chat.GetMessages(_conversationId).Count;
+        System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] GetMessages.Count localCount={localCount} elapsed={fullCacheTrace.ElapsedMilliseconds}ms");
         _hasMoreOlderMessages = localCount > recent.Count || _hasMoreOlderMessages;
         UpdateVisiblePagingCursor();
         EmptyState?.SetValue(IsVisibleProperty, recent.Count == 0);
@@ -524,6 +589,7 @@ public partial class ChatPage : ContentPage
 
         if (recent.Count > 0)
             ConfigureInitialChatPosition();
+        System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] Load LOCAL END total={localLoadTrace.ElapsedMilliseconds}ms recent={recent.Count}");
     }
 
     private void BindConversationAvatar(Conversation conversation)
@@ -1718,6 +1784,7 @@ public partial class ChatPage : ContentPage
                     UpdateVisiblePagingCursor();
                     EmptyState?.SetValue(IsVisibleProperty, recent.Count == 0);
                     if (recent.Count > 0) ConfigureInitialChatPosition();
+
                 }
                 else if (receivedNewMessages)
                 {
@@ -3792,6 +3859,8 @@ public partial class ChatPage : ContentPage
 
     private void SetMessagesItemsSource(IReadOnlyList<ChatMessage> messages)
     {
+        var bindTrace = Stopwatch.StartNew();
+        System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] SetMessagesItemsSource START count={messages.Count} mainThread={MainThread.IsMainThread}");
         if (!MainThread.IsMainThread)
         {
             var snapshot = messages.ToList();
@@ -3808,18 +3877,24 @@ public partial class ChatPage : ContentPage
             .ThenBy(x => x.Id)
             .ToList();
         foreach (var item in orderedMessages) item.MessageFontSize = fontSize;
+        System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] message normalization count={orderedMessages.Count} elapsed={bindTrace.ElapsedMilliseconds}ms");
 
         UpdateMessageDateSeparators(orderedMessages);
+        System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] date separators updated elapsed={bindTrace.ElapsedMilliseconds}ms");
 
         var currentKeys = _visibleMessages.Select(GetMessageUiKey).ToList();
         var desiredKeys = orderedMessages.Select(GetMessageUiKey).ToList();
 
         if (currentKeys.SequenceEqual(desiredKeys, StringComparer.Ordinal))
+        {
+            System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] SetMessagesItemsSource unchanged total={bindTrace.ElapsedMilliseconds}ms");
             return;
+        }
 
         // One Reset for the whole batch instead of one CollectionChanged event
         // per message. This avoids long UI stalls when a chat contains history.
         _visibleMessages.ReplaceRange(orderedMessages);
+        System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] ReplaceRange completed count={orderedMessages.Count} elapsed={bindTrace.ElapsedMilliseconds}ms");
         UpdateVisiblePagingCursor();
     }
 

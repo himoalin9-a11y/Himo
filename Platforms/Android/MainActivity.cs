@@ -9,9 +9,14 @@ namespace Himo;
     Theme = "@style/Maui.SplashTheme",
     // This stable native component is never toggled; icon aliases target it, and Visual Studio can always launch it.
     // Keep MainActivity non-launchable directly; visible launcher icons remain activity-alias entries.
+#if DEBUG
+    MainLauncher = true,
+#else
     MainLauncher = false,
+#endif
     Exported = true,
     ResizeableActivity = true,
+    SupportsPictureInPicture = true,
     LaunchMode = global::Android.Content.PM.LaunchMode.SingleTask,
     ConfigurationChanges = global::Android.Content.PM.ConfigChanges.ScreenSize
         | global::Android.Content.PM.ConfigChanges.Orientation
@@ -121,6 +126,50 @@ public class MainActivity : MauiAppCompatActivity
         }
     }
 
+    public static bool TryEnterCallPictureInPicture()
+    {
+        if (global::Android.OS.Build.VERSION.SdkInt < global::Android.OS.BuildVersionCodes.O)
+            return false;
+
+        var activity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity as MainActivity;
+        if (activity is null || activity.IsFinishing || activity.IsDestroyed)
+            return false;
+
+        try
+        {
+            var parameters = new global::Android.App.PictureInPictureParams.Builder();
+            parameters.SetAspectRatio(new global::Android.Util.Rational(9, 16));
+            var pipParams = parameters.Build();
+            if (pipParams is null)
+                return false;
+
+            activity.EnterPictureInPictureMode(pipParams);
+            return activity.IsInPictureInPictureMode;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo Call] Could not enter PiP: {ex.Message}");
+            return false;
+        }
+    }
+
+    public override void OnPictureInPictureModeChanged(
+        bool isInPictureInPictureMode,
+        global::Android.Content.Res.Configuration? newConfig)
+    {
+        base.OnPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
+        try
+        {
+            var activeCallPage = Shell.Current?.Navigation.NavigationStack
+                .OfType<Himo.Views.CallPage>().LastOrDefault();
+            activeCallPage?.SetPictureInPictureMode(isInPictureInPictureMode);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo Call] PiP UI refresh skipped: {ex.Message}");
+        }
+    }
+
     protected override void OnPause()
     {
         Volatile.Write(ref _isAppForeground, 0);
@@ -136,7 +185,9 @@ public class MainActivity : MauiAppCompatActivity
             if (callPage is not null)
             {
                 callPage.EnsureBackgroundRingtoneIfIncoming();
-                _ = callPage.PauseVideoForBackgroundAsync();
+                // PiP is still a visible call surface: keep the local camera active while minimized.
+                if (!IsInPictureInPictureMode)
+                    _ = callPage.PauseVideoForBackgroundAsync();
             }
         }
         catch (Exception ex)

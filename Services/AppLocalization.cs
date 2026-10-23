@@ -1,8 +1,10 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Resources;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
@@ -140,6 +142,99 @@ public static class AppLocalization
         }
     }
 
+    /// <summary>
+    /// Applies page localization in small UI-thread batches so large pages such as
+    /// ChatPage do not block Android rendering while walking their full visual tree.
+    /// </summary>
+    public static async Task ApplyToPageInBatchesAsync(Page page, int batchSize = 24, bool skipCollectionViewContents = false)
+    {
+        if (page is null) return;
+        if (batchSize < 1) batchSize = 24;
+
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            page.FlowDirection = PreferredFlowDirection;
+            TranslateProperty(page, nameof(Page.Title), page.Title, value => page.Title = value);
+            if (page is Shell shell)
+                ApplyToShellTitlesOnly(shell);
+            foreach (var toolbarItem in page.ToolbarItems)
+                TranslateProperty(toolbarItem, nameof(ToolbarItem.Text), toolbarItem.Text, value => toolbarItem.Text = value);
+        }).ConfigureAwait(false);
+
+        if (page is not IVisualTreeElement visualRoot) return;
+
+        IEnumerator<IVisualTreeElement>? iterator = null;
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            iterator = (skipCollectionViewContents
+                ? GetVisualTreeDescendantsSkippingCollectionViews(visualRoot)
+                : visualRoot.GetVisualTreeDescendants()).GetEnumerator();
+        }).ConfigureAwait(false);
+        if (iterator is null) return;
+        var treeIterator = iterator;
+
+        try
+        {
+            var finished = false;
+            while (!finished)
+            {
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    var batch = new List<IVisualTreeElement>(batchSize);
+                    while (batch.Count < batchSize && treeIterator.MoveNext())
+                        batch.Add(treeIterator.Current);
+
+                    foreach (var visualNode in batch)
+                    {
+                        if (visualNode is VisualElement visualElement)
+                            visualElement.FlowDirection = PreferredFlowDirection;
+
+                        if (visualNode is BindableObject bindable)
+                        {
+                            var allowLabelText = !IsInsideItemsControl(visualNode);
+                            ObserveTextChanges(bindable, allowLabelText);
+                            TranslateControl(bindable, allowLabelText);
+                        }
+                    }
+                    finished = batch.Count == 0;
+                }).ConfigureAwait(false);
+
+                if (!finished)
+                    await Task.Delay(16).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            treeIterator.Dispose();
+        }
+    }
+    private static IEnumerable<IVisualTreeElement> GetVisualTreeDescendantsSkippingCollectionViews(IVisualTreeElement root)
+    {
+        foreach (var child in root.GetVisualChildren())
+        {
+            yield return child;
+            // The CollectionView owns virtualized chat-message templates. Their bound
+            // message text should not be translated; FlowDirection is inherited from
+            // the CollectionView itself, so walking every realized cell is unnecessary.
+            if (child is CollectionView)
+                continue;
+
+            foreach (var descendant in GetVisualTreeDescendantsSkippingCollectionViews(child))
+                yield return descendant;
+        }
+    }
+    /// <summary>
+    /// Fast path for Arabic source-language pages: update page-level direction/title
+    /// without walking thousands of descendants in a large chat visual tree.
+    /// </summary>
+    public static void ApplyPageRootOnly(Page page)
+    {
+        if (page is null) return;
+        page.FlowDirection = PreferredFlowDirection;
+        TranslateProperty(page, nameof(Page.Title), page.Title, value => page.Title = value);
+        foreach (var toolbarItem in page.ToolbarItems)
+            TranslateProperty(toolbarItem, nameof(ToolbarItem.Text), toolbarItem.Text, value => toolbarItem.Text = value);
+    }
     private static void ApplyToShellTitlesOnly(Shell shell)
     {
         TranslateProperty(shell, nameof(Shell.Title), shell.Title, value => shell.Title = value);

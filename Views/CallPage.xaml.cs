@@ -1,5 +1,6 @@
 using Himo.Services;
 using Himo.Models;
+using Microsoft.Maui.Controls.Shapes;
 #if ANDROID
 using Himo.Platforms.Android.Services;
 #endif
@@ -43,13 +44,9 @@ public partial class CallPage : ContentPage
     private bool? _previousSpeakerphoneOn;
 #endif
     private bool _remoteAccepted;
+    private bool _callChromeVisible = true;
+    private bool _isPictureInPicture;
     private string _peerName = "جهة اتصال";
-    private double _localPreviewPanX;
-    private double _localPreviewPanY;
-    private double _localPreviewPanStartX;
-    private double _localPreviewPanStartY;
-    private double _localPreviewScale = 1.0;
-    private double _localPreviewPinchStartScale = 1.0;
 
     public string ConversationId
     {
@@ -64,45 +61,6 @@ public partial class CallPage : ContentPage
         {
             _mode = string.Equals(value, "video", StringComparison.OrdinalIgnoreCase) ? CallMode.Video : CallMode.Audio;
             UpdateCallModeIcon();
-        }
-    }
-
-    private void LocalPreviewPanUpdated(object? sender, PanUpdatedEventArgs e)
-    {
-        if (LocalPreviewFrame is null) return;
-
-        switch (e.StatusType)
-        {
-            case GestureStatus.Started:
-                _localPreviewPanStartX = _localPreviewPanX;
-                _localPreviewPanStartY = _localPreviewPanY;
-                break;
-            case GestureStatus.Running:
-                // Keep the floating self-view movable while limiting extreme drags.
-                var maxX = Math.Max(0, (Width - LocalPreviewFrame.Width) / 2 - 8);
-                var maxY = Math.Max(0, (Height - LocalPreviewFrame.Height) / 2 - 24);
-                _localPreviewPanX = Math.Clamp(_localPreviewPanStartX + e.TotalX, -maxX, maxX);
-                _localPreviewPanY = Math.Clamp(_localPreviewPanStartY + e.TotalY, -maxY, maxY);
-                LocalPreviewFrame.TranslationX = _localPreviewPanX;
-                LocalPreviewFrame.TranslationY = _localPreviewPanY;
-                break;
-        }
-    }
-
-    private void LocalPreviewPinchUpdated(object? sender, PinchGestureUpdatedEventArgs e)
-    {
-        if (LocalPreviewFrame is null) return;
-
-        switch (e.Status)
-        {
-            case GestureStatus.Started:
-                _localPreviewPinchStartScale = _localPreviewScale;
-                break;
-            case GestureStatus.Running:
-                // Scale the draggable preview between compact and enlarged sizes.
-                _localPreviewScale = Math.Clamp(_localPreviewPinchStartScale * e.Scale, 0.75, 1.8);
-                LocalPreviewFrame.Scale = _localPreviewScale;
-                break;
         }
     }
 
@@ -339,6 +297,170 @@ public partial class CallPage : ContentPage
         VideoPeerPhotoImage.Source = source;
         VideoPeerPhotoImage.IsVisible = hasPhoto;
         VideoPeerInitialLabel.IsVisible = !hasPhoto;
+
+        IncomingPeerPhotoImage.Source = source;
+        IncomingPeerPhotoImage.IsVisible = hasPhoto;
+        IncomingPeerInitialLabel.Text = FirstTextElement(_peerName);
+        IncomingPeerInitialLabel.IsVisible = !hasPhoto;
+    }
+
+    private async Task LoadOwnProfileAvatarAsync()
+    {
+        var profileService = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services
+            .GetService<ProfileService>();
+        if (profileService is null) return;
+
+        var profile = profileService.Profile;
+        ApplyOwnProfileAvatar(profile.PhotoPath, profile.Name);
+        if (!string.IsNullOrWhiteSpace(profile.PhotoPath) && File.Exists(profile.PhotoPath))
+            return;
+
+        try
+        {
+            await _api.TokenInitialization;
+            if (!_api.HasToken) return;
+            var photo = await _api.GetMyProfilePhotoAsync();
+            if (photo is null) return;
+            var path = profileService.SavePhoto(photo.Bytes, photo.ContentType);
+            await MainThread.InvokeOnMainThreadAsync(() => ApplyOwnProfileAvatar(path, profileService.Profile.Name));
+        }
+        catch (Exception ex)
+        {
+            // The local profile initials remain visible if the photo cannot be loaded.
+            System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Local profile photo skipped: {ex.Message}");
+        }
+    }
+
+    private void ApplyOwnProfileAvatar(string? path, string? name)
+    {
+        var hasPhoto = !string.IsNullOrWhiteSpace(path) && File.Exists(path);
+        LocalProfilePhotoImage.Source = hasPhoto ? ImageSource.FromFile(path!) : null;
+        LocalProfilePhotoImage.IsVisible = hasPhoto;
+        LocalProfileInitialLabel.Text = FirstTextElement(string.IsNullOrWhiteSpace(name) ? "Himo" : name);
+        LocalProfileInitialLabel.IsVisible = !hasPhoto;
+    }
+
+    private void SetLocalVideoContainerPlacement(bool connected)
+    {
+        if (_mode != CallMode.Video) return;
+
+        if (connected)
+        {
+            LocalVideoContainer.WidthRequest = 104;
+            LocalVideoContainer.HeightRequest = 150;
+            LocalVideoContainer.HorizontalOptions = LayoutOptions.Start;
+            LocalVideoContainer.VerticalOptions = LayoutOptions.Start;
+            LocalVideoContainer.Margin = new Thickness(14, 82, 0, 0);
+            LocalVideoContainer.StrokeThickness = 1;
+            LocalVideoContainer.Stroke = new SolidColorBrush(Color.FromArgb("#80FFFFFF"));
+            LocalVideoContainer.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(17) };
+        }
+        else
+        {
+            LocalVideoContainer.WidthRequest = -1;
+            LocalVideoContainer.HeightRequest = -1;
+            LocalVideoContainer.HorizontalOptions = LayoutOptions.Fill;
+            LocalVideoContainer.VerticalOptions = LayoutOptions.Fill;
+            LocalVideoContainer.Margin = new Thickness(0);
+            LocalVideoContainer.StrokeThickness = 0;
+            LocalVideoContainer.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(0) };
+        }
+    }
+
+    private void UpdateCallControlLayout()
+    {
+        var isVideo = _mode == CallMode.Video;
+        ControlButtonGrid.ColumnDefinitions.Clear();
+        var columnCount = isVideo ? 4 : 3;
+        for (var i = 0; i < columnCount; i++)
+            ControlButtonGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+
+        Grid.SetColumn(EndControl, 0);
+        Grid.SetColumn(CameraControl, 1);
+        Grid.SetColumn(SwitchCameraControl, 2);
+        Grid.SetColumn(SpeakerControl, 1);
+        Grid.SetColumn(MuteControl, isVideo ? 3 : 2);
+
+        CameraControl.IsVisible = isVideo;
+        SwitchCameraControl.IsVisible = isVideo;
+        SpeakerControl.IsVisible = !isVideo;
+        CameraButton.IsEnabled = isVideo && _calls.Current is not null;
+        SwitchCameraButton.IsEnabled = isVideo && _calls.Current is not null && _cameraEnabled;
+    }
+
+    private void UpdateCallPresentation(bool connected)
+    {
+        var isVideo = _mode == CallMode.Video;
+        var incomingRinging = _incoming && !_incomingAnswered && !connected;
+        var showVideoScene = isVideo && (!_incoming || _incomingAnswered || connected);
+
+        VideoSurface.IsVisible = showVideoScene;
+        IncomingVideoPanel.IsVisible = isVideo && incomingRinging;
+        ProfilePanel.IsVisible = !isVideo;
+        VideoWaitingOverlay.IsVisible = false;
+        RemoteVideoHost.IsVisible = isVideo && connected;
+        IncomingActions.IsVisible = incomingRinging;
+        OutgoingActions.IsVisible = !isVideo && !connected && !incomingRinging;
+
+        if (isVideo)
+        {
+            SetLocalVideoContainerPlacement(connected);
+            LocalCameraOffOverlay.IsVisible = !_cameraEnabled && showVideoScene;
+            CameraActionLabel.Text = _cameraEnabled ? "إغلاق الكاميرا" : "تشغيل الكاميرا";
+            SwitchCameraButton.IsEnabled = _calls.Current is not null && _cameraEnabled;
+        }
+
+        NameLabel.IsVisible = !isVideo;
+        StatusLabel.IsVisible = !isVideo;
+        VideoCallNameLabel.IsVisible = isVideo;
+        VideoStatusLabel.IsVisible = isVideo;
+        ModeLabel.Text = isVideo ? "مكالمة فيديو" : "مكالمة صوتية";
+
+        UpdateCallControlLayout();
+        var hasCall = _calls.Current is not null;
+        var canShowActiveControls = isVideo
+            ? hasCall && !incomingRinging
+            : connected;
+        CallControls.IsVisible = canShowActiveControls && _callChromeVisible && !_isPictureInPicture;
+        CallHeader.IsVisible = _callChromeVisible && !_isPictureInPicture;
+        MinimizeCallButton.IsVisible = hasCall && !incomingRinging && _callChromeVisible && !_isPictureInPicture;
+    }
+
+    private void CallSurfaceTapped(object? sender, TappedEventArgs e)
+    {
+        if (_isPictureInPicture || (_incoming && !_incomingAnswered)) return;
+        // Audio controls should not disappear while the recipient is still waiting for an answer.
+        if (_mode == CallMode.Audio && _calls.Current?.IsConnected != true) return;
+        _callChromeVisible = !_callChromeVisible;
+        UpdateCallPresentation(_calls.Current?.IsConnected == true);
+    }
+
+    private async void MinimizeCallClicked(object? sender, EventArgs e)
+    {
+        if (_calls.Current is null) return;
+#if ANDROID
+        if (MainActivity.TryEnterCallPictureInPicture())
+        {
+            SetPictureInPictureMode(true);
+            return;
+        }
+#endif
+        await DisplayAlertAsync(
+            "تصغير المكالمة",
+            "تعذر فتح النافذة العائمة على هذا الجهاز. ستبقى المكالمة مستمرة في هذه الشاشة.",
+            "حسنًا");
+    }
+
+    public void SetPictureInPictureMode(bool isInPictureInPicture)
+    {
+        _isPictureInPicture = isInPictureInPicture;
+        _callChromeVisible = !isInPictureInPicture;
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            UpdateCallPresentation(_calls.Current?.IsConnected == true);
+            if (!isInPictureInPicture && _mode == CallMode.Video)
+                _ = ResumeVideoRenderingForForegroundAsync();
+        });
     }
 
     private void CallsStateChanged(object? sender, CallState state)
@@ -379,11 +501,7 @@ public partial class CallPage : ContentPage
             CallControls.IsVisible = state.IsConnected;
             VideoSurface.IsVisible = _mode == CallMode.Video && state.IsConnected;
             ProfilePanel.IsVisible = !VideoSurface.IsVisible;
-            CameraControl.IsVisible = _mode == CallMode.Video && state.IsConnected;
-            CameraButton.IsVisible = _mode == CallMode.Video && state.IsConnected;
             CameraButton.IsEnabled = _mode == CallMode.Video && state.IsConnected;
-            SwitchCameraButton.IsVisible = _mode == CallMode.Video && state.IsConnected;
-            SwitchCameraButton.IsEnabled = _mode == CallMode.Video && state.IsConnected;
             CameraButton.Opacity = _mode == CallMode.Video ? 1.0 : 0.4;
             MuteActionLabel.Text = state.IsMuted ? "إلغاء الكتم" : "كتم الصوت";
             MuteButton.BackgroundColor = state.IsMuted ? ThemeColor("HimoDangerSoft", "#41162F") : ThemeColor("HimoSurface", "#160A27");
@@ -410,7 +528,9 @@ public partial class CallPage : ContentPage
             RemoteAudioButton.Source = state.IsRemoteAudioEnabled ? ThemedCallIcon("himo_call_speaker.png") : ThemedCallIcon("himo_call_speaker_off.png");
             RemoteAudioButton.IsEnabled = state.IsConnected && !_remoteAudioToggleInProgress;
             MuteButton.Source = state.IsMuted ? ThemedCallIcon("himo_call_mic_off.png") : ThemedCallIcon("himo_call_mic.png");
+            MuteActionLabel.Text = state.IsMuted ? "المايك مغلق" : "المايك مفتوح";
             SpeakerButton.Source = state.IsSpeakerOn ? ThemedCallIcon("himo_call_speaker.png") : ThemedCallIcon("himo_call_speaker_off.png");
+            UpdateCallPresentation(state.IsConnected);
         });
     }
 
@@ -569,6 +689,9 @@ public partial class CallPage : ContentPage
             ? ThemeColor("HimoSurface", "#160A27")
             : ThemeColor("HimoCard", "#170B28");
         MuteButton.Source = ThemedCallIcon("himo_call_mic.png");
+        MuteActionLabel.Text = "المايك مفتوح";
+        SwitchCameraButton.Source = ThemedCallIcon("himo_cam_switch.png");
+        SwitchCameraActionLabel.Text = "تبديل الكاميرا";
         SpeakerButton.Source = ThemedCallIcon("himo_call_speaker_off.png");
         RemoteAudioButton.Source = ThemedCallIcon("himo_call_speaker_off.png");
         CameraActionLabel.Text = _mode == CallMode.Video
@@ -589,6 +712,10 @@ public partial class CallPage : ContentPage
         IncomingActions.IsVisible = _incoming && !_incomingAnswered;
         OutgoingActions.IsVisible = !_incoming || _incomingAnswered;
         CallControls.IsVisible = activeSameCall && activeState!.IsConnected;
+        _callChromeVisible = true;
+        UpdateCallControlLayout();
+        UpdateCallPresentation(activeSameCall && activeState!.IsConnected);
+        _ = LoadOwnProfileAvatarAsync();
 
         // Incoming calls must ring immediately even when the app was opened from a
         // cold-start FCM notification and SignalR has not connected yet. Do not
@@ -651,6 +778,7 @@ public partial class CallPage : ContentPage
                 VideoStatusLabel.Text = StatusLabel.Text;
                 IncomingActions.IsVisible = !_incomingAnswered;
                 OutgoingActions.IsVisible = _incomingAnswered;
+                UpdateCallPresentation(preparedState.IsConnected);
             }
             catch (Exception ex)
             {
@@ -800,6 +928,7 @@ public partial class CallPage : ContentPage
         OutgoingActions.IsVisible = true;
         StatusLabel.Text = "جارٍ الاتصال...";
         VideoStatusLabel.Text = StatusLabel.Text;
+        UpdateCallPresentation(_calls.Current?.IsConnected == true);
         WaitingCallTitle.Text = "جارٍ الاتصال...";
         WaitingCallSubtitle.Text = "يجري تجهيز الصوت";
         try
@@ -1047,7 +1176,7 @@ public partial class CallPage : ContentPage
     {
         if (_connectedAt is null) return "متصل";
         var elapsed = DateTimeOffset.UtcNow - _connectedAt.Value;
-        return $"متصل • {elapsed.Minutes:00}:{elapsed.Seconds:00}";
+        return $"{(int)elapsed.TotalMinutes:00}:{elapsed.Seconds:00}";
     }
 
 #if ANDROID
@@ -1136,35 +1265,21 @@ public partial class CallPage : ContentPage
         {
             try
             {
-                var localAttached = false;
-                var remoteAttached = false;
+                var attached = false;
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
                     var engine = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services.GetService<IWebRtcMediaEngine>() as AndroidWebRtcMediaEngine;
                     if (engine is null || !engine.IsStarted) return;
-
-                    // Attach the self-view first so a remote renderer issue cannot prevent
-                    // the local/front-camera preview from appearing.
+                    await engine.AttachRemoteVideoAsync(RemoteVideoHost);
                     await engine.AttachLocalVideoAsync(LocalVideoHost);
-                    localAttached = true;
-                    try
-                    {
-                        await engine.AttachRemoteVideoAsync(RemoteVideoHost);
-                        remoteAttached = true;
-                    }
-                    catch (Exception remoteEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Remote renderer attach failed: {remoteEx.Message}");
-                    }
+                    attached = true;
                 });
 
-                if (localAttached)
+                if (attached)
                 {
-                    // Keep the waiting overlay until remote video is attached, but do not
-                    // let it block the floating local preview.
-                    if (remoteAttached)
-                        VideoWaitingOverlay.IsVisible = false;
-                    if (remoteAttached) return;
+                    VideoWaitingOverlay.IsVisible = false;
+                    UpdateCallPresentation(_calls.Current?.IsConnected == true);
+                    return;
                 }
             }
             catch (Exception ex)
@@ -1340,10 +1455,11 @@ public partial class CallPage : ContentPage
         _cameraEnabled = !_cameraEnabled;
         await engine.SetCameraEnabledAsync(_cameraEnabled);
         CameraButton.Source = _cameraEnabled ? ThemedCallIcon("himo_call_camera.png") : ThemedCallIcon("himo_call_camera_off.png");
-        CameraActionLabel.Text = _cameraEnabled ? "إيقاف الكاميرا" : "تشغيل الكاميرا";
-        CameraButton.BackgroundColor = _cameraEnabled ? Color.FromArgb("#26364A") : Color.FromArgb("#7F2634");
-        CameraButton.BorderColor = _cameraEnabled ? Color.FromArgb("#6B829D") : Color.FromArgb("#FF8795");
+        CameraActionLabel.Text = _cameraEnabled ? "إغلاق الكاميرا" : "تشغيل الكاميرا";
+        CameraButton.BackgroundColor = _cameraEnabled ? ThemeColor("HimoSurface", "#160A27") : ThemeColor("HimoDangerSoft", "#41162F");
         CameraActionLabel.TextColor = _cameraEnabled ? ThemeColor("HimoTextSecondary", "#B7A2D2") : ThemeColor("HimoDanger", "#D9485F");
+        LocalCameraOffOverlay.IsVisible = !_cameraEnabled;
+        SwitchCameraButton.IsEnabled = _cameraEnabled;
 #else
         await Task.CompletedTask;
 #endif
@@ -1351,8 +1467,17 @@ public partial class CallPage : ContentPage
 
     private async void SwitchCameraClicked(object? sender, EventArgs e)
     {
-        var engine = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services.GetService<IWebRtcMediaEngine>();
-        if (engine is not null) await engine.SwitchCameraAsync();
+        if (_mode != CallMode.Video || !_cameraEnabled) return;
+        try
+        {
+            var engine = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services.GetService<IWebRtcMediaEngine>();
+            if (engine is not null) await engine.SwitchCameraAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Camera switch failed: {ex.Message}");
+            await DisplayAlertAsync("الكاميرا", "تعذر تبديل الكاميرا. حاول مرة أخرى.", "حسنًا");
+        }
     }
 
     private async void EndClicked(object? sender, EventArgs e)
@@ -1432,7 +1557,7 @@ public partial class CallPage : ContentPage
     {
         var muted = !(_calls.Current?.IsMuted ?? false);
         await _calls.SetMutedAsync(muted);
-        MuteActionLabel.Text = muted ? "إلغاء الكتم" : "كتم الصوت";
+        MuteActionLabel.Text = muted ? "المايك مغلق" : "المايك مفتوح";
         MuteButton.BackgroundColor = muted ? ThemeColor("HimoDangerSoft", "#41162F") : ThemeColor("HimoSurface", "#160A27");
         MuteButton.Source = muted ? ThemedCallIcon("himo_call_mic_off.png") : ThemedCallIcon("himo_call_mic.png");
         MuteActionLabel.TextColor = muted ? ThemeColor("HimoDanger", "#D9485F") : ThemeColor("HimoTextSecondary", "#B7A2D2");

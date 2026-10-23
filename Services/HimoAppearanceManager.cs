@@ -146,8 +146,9 @@ public static class HimoAppearanceManager
     /// This keeps a large settings/home XAML tree from blocking the first visible frame.
     /// Repeated OnAppearing calls supersede older scheduled passes for the same page.
     /// </summary>
-    public static Task ApplyToTreeAfterFirstFrameAsync(VisualElement root)
+    public static Task ApplyToTreeAfterFirstFrameAsync(VisualElement root, bool skipCollectionViewContents = false, int batchSize = 24)
     {
+        if (batchSize < 1) batchSize = 24;
         var styleId = ActiveStyleId;
         var rootState = RootAppearanceStates.GetValue(root, _ => new RootAppearanceState());
         lock (rootState.Sync)
@@ -160,13 +161,15 @@ public static class HimoAppearanceManager
 
         var scheduled = ScheduledApplies.GetValue(root, _ => new ScheduledAppearanceApply());
         var generation = Interlocked.Increment(ref scheduled.Generation);
-        return ApplyToTreeAfterFirstFrameCoreAsync(root, scheduled, generation);
+        return ApplyToTreeAfterFirstFrameCoreAsync(root, scheduled, generation, skipCollectionViewContents, batchSize);
     }
 
     private static async Task ApplyToTreeAfterFirstFrameCoreAsync(
         VisualElement root,
         ScheduledAppearanceApply scheduled,
-        int generation)
+        int generation,
+        bool skipCollectionViewContents,
+        int batchSize)
     {
         try
         {
@@ -192,11 +195,11 @@ public static class HimoAppearanceManager
             // Apply in small batches. Each batch runs on the UI thread because MAUI
             // visual elements must not be read or mutated from a worker thread; the
             // short yield between batches gives Android time to render frames.
-            using var iterator = EnumerateVisualTree(root).GetEnumerator();
+            using var iterator = EnumerateVisualTree(root, skipCollectionViewContents).GetEnumerator();
             var finished = false;
             while (!finished)
             {
-                var batch = new List<VisualElement>(24);
+                var batch = new List<VisualElement>(batchSize);
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
                     if (Volatile.Read(ref scheduled.Generation) != generation)
@@ -205,7 +208,7 @@ public static class HimoAppearanceManager
                         return;
                     }
 
-                    while (batch.Count < 24 && iterator.MoveNext())
+                    while (batch.Count < batchSize && iterator.MoveNext())
                         batch.Add(iterator.Current);
 
                     var styleId = ActiveStyleId;
@@ -303,7 +306,7 @@ public static class HimoAppearanceManager
         public string? ImageSourceKey { get; set; }
     }
 
-    private static IEnumerable<VisualElement> EnumerateVisualTree(VisualElement root)
+    private static IEnumerable<VisualElement> EnumerateVisualTree(VisualElement root, bool skipCollectionViewContents = false)
     {
         // Theme preview cards deliberately contain a separate, candidate-specific palette.
         // Skip the entire subtree so applying a theme does not walk dozens of preview controls.
@@ -311,6 +314,10 @@ public static class HimoAppearanceManager
             yield break;
 
         yield return root;
+        // Keep the CollectionView itself in the pass, but skip the many generated
+        // message-cell descendants when requested by ChatPage.
+        if (skipCollectionViewContents && root is CollectionView)
+            yield break;
         if (root is not IVisualTreeElement visualTree)
             yield break;
 
@@ -318,7 +325,7 @@ public static class HimoAppearanceManager
         {
             if (child is VisualElement visual)
             {
-                foreach (var descendant in EnumerateVisualTree(visual))
+                foreach (var descendant in EnumerateVisualTree(visual, skipCollectionViewContents))
                     yield return descendant;
             }
         }

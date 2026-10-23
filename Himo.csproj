@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net10.0-android36.0</TargetFrameworks>
@@ -49,6 +49,8 @@
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <AndroidLaunchActivity>com.companyname.himo.LauncherIconDefault</AndroidLaunchActivity>
+    <AfterGenerateAndroidManifest>$(AfterGenerateAndroidManifest);HimoStripDebugLauncherAliases</AfterGenerateAndroidManifest>
   </PropertyGroup>
 
   <!-- Explicit Release configuration: also keep symbols so launching/debugging Release does not fail. -->
@@ -134,5 +136,10 @@
     Ignore adb failures here so this helper never blocks normal builds on machines without a connected device.
   -->
   
+
+  <!-- Debug-only fix: normalize activity-alias launcher filters after MAUI manifest merging. -->
+  <Target Name="HimoStripDebugLauncherAliases" Condition=" '$(Configuration)' == 'Debug' and '$(TargetFramework)' == 'net10.0-android36.0' and '$(DesignTimeBuild)' != 'true' ">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\Tools\Himo-StripDebugLauncherAliases.ps1&quot; -ManifestPath &quot;$(MSBuildProjectDirectory)\$(IntermediateOutputPath)android\AndroidManifest.xml&quot;" />
+  </Target>
 
 </Project>

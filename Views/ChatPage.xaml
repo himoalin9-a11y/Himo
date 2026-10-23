@@ -349,8 +349,8 @@
                     <ImageButton Source="himo_icon_chat_voice_call.png" Style="{StaticResource ChatHeaderButton}" Clicked="AudioCallClicked" />
                 </HorizontalStackLayout>
 
-                <Grid Grid.Column="2" ColumnDefinitions="58,*" ColumnSpacing="9" VerticalOptions="Center" HorizontalOptions="End">
-                    <Grid Grid.Column="0" WidthRequest="50" HeightRequest="50">
+                <Grid Grid.Column="2" ColumnDefinitions="*,58" ColumnSpacing="9" VerticalOptions="Center" HorizontalOptions="End" FlowDirection="LeftToRight">
+                    <Grid Grid.Column="1" WidthRequest="50" HeightRequest="50">
                         <Border WidthRequest="46" HeightRequest="46" BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoAccent}" StrokeThickness="1">
                             <Border.StrokeShape><shapes:RoundRectangle CornerRadius="25" /></Border.StrokeShape>
                             <Grid>
@@ -368,7 +368,7 @@
                                  HorizontalOptions="End" VerticalOptions="End" Margin="0,0,0,2"
                                  Fill="#28C76F" Stroke="{DynamicResource HimoBorder}" StrokeThickness="2" />
                     </Grid>
-                    <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center" MaximumWidthRequest="190" FlowDirection="RightToLeft">
+                    <VerticalStackLayout Grid.Column="0" Spacing="1" VerticalOptions="Center" MaximumWidthRequest="190" FlowDirection="RightToLeft">
                         <Label x:Name="NameLabel" Text="محادثة" FontSize="16.5" FontAttributes="Bold"
                                TextColor="{DynamicResource HimoPrimary}" MaxLines="1" LineBreakMode="TailTruncation" />
                         <Label x:Name="StatusLabel" Text="غير متصل" FontSize="11" TextColor="{DynamicResource HimoTextSecondary}" />

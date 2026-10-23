@@ -5,37 +5,35 @@
              x:Class="Himo.Views.CallPage"
              FlowDirection="RightToLeft"
              Shell.NavBarIsVisible="False"
-             BackgroundColor="{DynamicResource HimoBackground}">
+             Padding="0"
+             BackgroundColor="#070A12">
 
     <ContentPage.Resources>
-        <Style x:Key="TopCallButton" TargetType="ImageButton">
-            <Setter Property="WidthRequest" Value="44" />
-            <Setter Property="HeightRequest" Value="44" />
-            <Setter Property="MinimumWidthRequest" Value="44" />
-            <Setter Property="MinimumHeightRequest" Value="44" />
-            <Setter Property="Padding" Value="12" />
-            <Setter Property="BackgroundColor" Value="#1C2433" />
-            <Setter Property="BorderColor" Value="#334155" />
-            <Setter Property="BorderWidth" Value="1" />
-            <Setter Property="CornerRadius" Value="22" />
+        <Style x:Key="IncomingActionButton" TargetType="ImageButton">
+            <Setter Property="WidthRequest" Value="70" />
+            <Setter Property="HeightRequest" Value="70" />
+            <Setter Property="MinimumWidthRequest" Value="70" />
+            <Setter Property="MinimumHeightRequest" Value="70" />
+            <Setter Property="CornerRadius" Value="35" />
+            <Setter Property="Padding" Value="21" />
+            <Setter Property="BorderWidth" Value="0" />
             <Setter Property="Aspect" Value="AspectFit" />
         </Style>
-        <Style x:Key="ControlButton" TargetType="ImageButton">
-            <Setter Property="WidthRequest" Value="64" />
-            <Setter Property="HeightRequest" Value="64" />
-            <Setter Property="MinimumWidthRequest" Value="64" />
-            <Setter Property="MinimumHeightRequest" Value="64" />
-            <Setter Property="Padding" Value="15" />
-            <Setter Property="BackgroundColor" Value="#202938" />
-            <Setter Property="BorderColor" Value="#364256" />
+        <Style x:Key="CallControlButton" TargetType="ImageButton">
+            <Setter Property="WidthRequest" Value="58" />
+            <Setter Property="HeightRequest" Value="58" />
+            <Setter Property="MinimumWidthRequest" Value="58" />
+            <Setter Property="MinimumHeightRequest" Value="58" />
+            <Setter Property="CornerRadius" Value="29" />
+            <Setter Property="Padding" Value="16" />
+            <Setter Property="BackgroundColor" Value="#3BFFFFFF" />
+            <Setter Property="BorderColor" Value="#4DFFFFFF" />
             <Setter Property="BorderWidth" Value="1" />
-            <Setter Property="CornerRadius" Value="32" />
             <Setter Property="Aspect" Value="AspectFit" />
         </Style>
-        <Style x:Key="ControlLabel" TargetType="Label">
+        <Style x:Key="CallControlLabel" TargetType="Label">
             <Setter Property="FontSize" Value="11" />
-            <Setter Property="FontAttributes" Value="None" />
-            <Setter Property="TextColor" Value="{DynamicResource HimoTextSecondary}" />
+            <Setter Property="TextColor" Value="#FFFFFF" />
             <Setter Property="HorizontalTextAlignment" Value="Center" />
             <Setter Property="VerticalTextAlignment" Value="Center" />
             <Setter Property="LineBreakMode" Value="TailTruncation" />
@@ -43,224 +41,269 @@
         </Style>
     </ContentPage.Resources>
 
-    <Grid x:Name="RootLayout" RowDefinitions="*,Auto" Padding="0" RowSpacing="0">
-        <!-- Compact, palette-aware header -->
-        <Grid x:Name="CallHeader" Grid.Row="0" ColumnDefinitions="44,*,44" HeightRequest="58" Margin="14,10,14,0" VerticalOptions="Center" FlowDirection="LeftToRight" ZIndex="20">
-            <ImageButton Grid.Column="0" Source="himo_call_back.png"
-                         Style="{StaticResource TopCallButton}" Clicked="BackClicked"
-                         SemanticProperties.Description="إنهاء والعودة" />
-
-            <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" VerticalOptions="Center" Spacing="3">
-                <Label Text="Himo" FontSize="20" FontAttributes="Bold"
-                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
-                <Label x:Name="ModeLabel" Text="مكالمة صوتية" FontSize="12"
-                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
-            </VerticalStackLayout>
-
-            <BoxView Grid.Column="2" WidthRequest="44" Opacity="0" />
+    <Grid x:Name="CallRoot" BackgroundColor="#070A12">
+        <!-- Audio calls use a clean dark gradient while video fills the complete screen. -->
+        <Grid x:Name="AudioBackground">
+            <Grid.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0.9,1">
+                    <GradientStop Color="#07111F" Offset="0.0" />
+                    <GradientStop Color="#17243A" Offset="0.58" />
+                    <GradientStop Color="#271A31" Offset="1.0" />
+                </LinearGradientBrush>
+            </Grid.Background>
+            <Ellipse WidthRequest="310" HeightRequest="310" Fill="#0CFFFFFF"
+                     HorizontalOptions="Center" VerticalOptions="Center" />
         </Grid>
 
-        <!-- Peer / video area -->
-        <Grid Grid.Row="0" Grid.RowSpan="2" Padding="0" MinimumHeightRequest="260">
-            <Border x:Name="VideoSurface" IsVisible="False"
-                    BackgroundColor="#050912" StrokeThickness="0" Padding="0">
-                <Border.StrokeShape><RoundRectangle CornerRadius="0" /></Border.StrokeShape>
-                <Grid>
-                    <local:WebRtcRendererView x:Name="RemoteVideoHost" BackgroundColor="{DynamicResource HimoBackground}" />
+        <!-- Video scene: the local front-camera preview fills the screen while dialing.
+             Once connected, the remote video fills the screen and the local preview floats in a corner. -->
+        <Grid x:Name="VideoSurface" IsVisible="False" BackgroundColor="#05070B">
+            <local:WebRtcRendererView x:Name="RemoteVideoHost" IsVisible="False" BackgroundColor="#05070B" />
 
-                    <Border HorizontalOptions="Start" VerticalOptions="Start" Margin="14"
-                            BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}"
-                            StrokeThickness="1" Padding="12,8">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
-                        <VerticalStackLayout Spacing="3">
-                            <Label x:Name="VideoCallNameLabel" Text="جهة اتصال" FontSize="16" FontAttributes="Bold"
-                                   TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
-                            <Label x:Name="VideoStatusLabel" Text="متصل • 00:00" FontSize="12"
-                                   TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
+            <Border x:Name="LocalVideoContainer" FlowDirection="LeftToRight"
+                    HorizontalOptions="Fill" VerticalOptions="Fill" Margin="0"
+                    BackgroundColor="#080C14" StrokeThickness="0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="0" />
+                </Border.StrokeShape>
+                <Grid BackgroundColor="#080C14">
+                    <local:WebRtcRendererView x:Name="LocalVideoHost" BackgroundColor="#080C14" />
+
+                    <!-- A camera-off state uses the signed-in user's own profile image, not the peer's avatar. -->
+                    <Grid x:Name="LocalCameraOffOverlay" IsVisible="False" BackgroundColor="#101827">
+                        <Grid.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#121D2D" Offset="0" />
+                                <GradientStop Color="#080B14" Offset="1" />
+                            </LinearGradientBrush>
+                        </Grid.Background>
+                        <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="14">
+                            <Border WidthRequest="136" HeightRequest="136" Padding="0"
+                                    BackgroundColor="#202B3D" Stroke="#7DFFFFFF" StrokeThickness="1">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="68" /></Border.StrokeShape>
+                                <Grid>
+                                    <Image x:Name="LocalProfilePhotoImage" Aspect="AspectFill" IsVisible="False" />
+                                    <Label x:Name="LocalProfileInitialLabel" Text="H" FontSize="48"
+                                           FontAttributes="Bold" TextColor="#FFFFFF"
+                                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                </Grid>
+                            </Border>
+                            <Label Text="الكاميرا متوقفة" FontSize="14" TextColor="#E5EAF2"
+                                   HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
-                    </Border>
-
-                    <VerticalStackLayout x:Name="VideoWaitingOverlay" HorizontalOptions="Center"
-                                         VerticalOptions="Center" Spacing="10" IsVisible="True" InputTransparent="True">
-                        <Border WidthRequest="100" HeightRequest="100" Padding="0"
-                                BackgroundColor="{DynamicResource HimoSurface}"
-                                Stroke="{DynamicResource HimoBorder}" StrokeThickness="2">
-                            <Border.StrokeShape><RoundRectangle CornerRadius="50" /></Border.StrokeShape>
-                            <Grid>
-                                <Image x:Name="VideoPeerPhotoImage" Aspect="AspectFill" IsVisible="False" />
-                                <Label x:Name="VideoPeerInitialLabel" Text="H" FontSize="32" FontAttributes="Bold"
-                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center"
-                                       VerticalTextAlignment="Center" />
-                            </Grid>
-                        </Border>
-                        <Label Text="بانتظار ظهور الفيديو" FontSize="13" TextColor="{DynamicResource HimoTextSecondary}"
-                               HorizontalTextAlignment="Center" />
-                    </VerticalStackLayout>
-
-                    <Border x:Name="LocalPreviewFrame" WidthRequest="132" HeightRequest="186"
-                            IsVisible="True" HorizontalOptions="End" VerticalOptions="Start"
-                            Margin="14,76,14,14" BackgroundColor="#16000000"
-                            Stroke="#80FFFFFF" StrokeThickness="1.2" ZIndex="5">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
-                        <local:WebRtcRendererView x:Name="LocalVideoHost" BackgroundColor="#00000000" InputTransparent="True" />
-                        <Border.GestureRecognizers>
-                            <PanGestureRecognizer PanUpdated="LocalPreviewPanUpdated" />
-                            <PinchGestureRecognizer PinchUpdated="LocalPreviewPinchUpdated" />
-                        </Border.GestureRecognizers>
-                    </Border>
+                    </Grid>
                 </Grid>
             </Border>
 
-            <VerticalStackLayout x:Name="ProfilePanel" HorizontalOptions="Center" VerticalOptions="Center"
-                                 Spacing="16" Padding="0,12">
-                <Border BackgroundColor="{DynamicResource HimoSoft}" Stroke="{DynamicResource HimoBorder}"
-                        StrokeThickness="1" Padding="13,7" HorizontalOptions="Center">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
-                    <Label x:Name="StatusLabel" Text="جاري تجهيز الاتصال..." FontSize="13" FontAttributes="Bold"
-                           TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
+            <!-- Kept for a no-video/slow-render fallback. The code-behind hides it after attaching the renderers. -->
+            <VerticalStackLayout x:Name="VideoWaitingOverlay" IsVisible="False"
+                                 HorizontalOptions="Center" VerticalOptions="Center"
+                                 Spacing="12" InputTransparent="True">
+                <Border WidthRequest="108" HeightRequest="108" Padding="0"
+                        BackgroundColor="#263248" Stroke="#8FFFFFFF" StrokeThickness="1">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="54" /></Border.StrokeShape>
+                    <Grid>
+                        <Image x:Name="VideoPeerPhotoImage" Aspect="AspectFill" IsVisible="False" />
+                        <Label x:Name="VideoPeerInitialLabel" Text="H" FontSize="36" FontAttributes="Bold"
+                               TextColor="#FFFFFF" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                    </Grid>
                 </Border>
-
-                <Grid WidthRequest="176" HeightRequest="176">
-                    <Ellipse WidthRequest="176" HeightRequest="176" HorizontalOptions="Center" VerticalOptions="Center"
-                             Fill="{DynamicResource HimoSoft}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" />
-                    <Border WidthRequest="148" HeightRequest="148" HorizontalOptions="Center" VerticalOptions="Center"
-                            BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoAccent}" StrokeThickness="2"
-                            Padding="0">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="74" /></Border.StrokeShape>
-                        <Grid>
-                            <Image x:Name="ProfilePhotoImage" Aspect="AspectFill" IsVisible="False" />
-                            <Label x:Name="InitialLabel" Text="H" FontSize="50" FontAttributes="Bold"
-                                   TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center"
-                                   VerticalTextAlignment="Center" />
-                        </Grid>
-                    </Border>
-                    <Border WidthRequest="42" HeightRequest="42" HorizontalOptions="End" VerticalOptions="End"
-                            Margin="4,4,7,7" BackgroundColor="{DynamicResource HimoCard}"
-                            Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="10">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
-                        <Image x:Name="CallModeIcon" Source="himo_icon_chat_voice_call.png" Aspect="AspectFit" />
-                    </Border>
-                </Grid>
-
-                <VerticalStackLayout Spacing="5" HorizontalOptions="Center">
-                    <Label x:Name="NameLabel" Text="جهة اتصال" FontSize="25" FontAttributes="Bold"
-                           TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
-                    <Label Text="اتصال آمن عبر Himo" FontSize="12"
-                           TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
-                </VerticalStackLayout>
+                <Label Text="جارٍ توصيل الفيديو..." FontSize="13" TextColor="#FFFFFF" />
             </VerticalStackLayout>
         </Grid>
 
-        <!-- Incoming-call actions -->
-        <Border x:Name="IncomingActions" Grid.Row="1" IsVisible="False" Padding="18,15"
-                Margin="12,0,12,18" BackgroundColor="#00000000"
-                Stroke="#00000000" StrokeThickness="0"
-                HorizontalOptions="Fill" VerticalOptions="End">
-            <Border.StrokeShape><RoundRectangle CornerRadius="26" /></Border.StrokeShape>
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="42" HorizontalOptions="Center" FlowDirection="LeftToRight">
-            <VerticalStackLayout Grid.Column="0" Spacing="8" HorizontalOptions="Center">
-                <ImageButton x:Name="RejectIncomingButton" Source="call_end_white.png"
-                             WidthRequest="74" HeightRequest="74" Padding="22"
-                             BackgroundColor="{DynamicResource HimoDanger}" BorderWidth="0"
-                             CornerRadius="37" Aspect="AspectFit" Clicked="RejectIncomingClicked"
-                             SemanticProperties.Description="رفض المكالمة" />
-                <Label Text="رفض" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}"
+        <!-- Incoming video calls show identity/actions before answer. Camera capture is not started before consent. -->
+        <Grid x:Name="IncomingVideoPanel" IsVisible="False" BackgroundColor="#0A1020">
+            <Grid.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0.9,1">
+                    <GradientStop Color="#101E34" Offset="0" />
+                    <GradientStop Color="#101322" Offset="0.55" />
+                    <GradientStop Color="#25182A" Offset="1" />
+                </LinearGradientBrush>
+            </Grid.Background>
+            <Ellipse WidthRequest="360" HeightRequest="360" Fill="#10FFFFFF"
+                     HorizontalOptions="Center" VerticalOptions="Center" />
+            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="14">
+                <Border WidthRequest="152" HeightRequest="152" Padding="0"
+                        BackgroundColor="#1A2940" Stroke="#70FFFFFF" StrokeThickness="1">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="76" /></Border.StrokeShape>
+                    <Grid>
+                        <Image x:Name="IncomingPeerPhotoImage" Aspect="AspectFill" IsVisible="False" />
+                        <Label x:Name="IncomingPeerInitialLabel" Text="H" FontSize="52"
+                               FontAttributes="Bold" TextColor="#FFFFFF"
+                               HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                    </Grid>
+                </Border>
+                <Label Text="مكالمة فيديو واردة" FontSize="15" TextColor="#D9E2EF"
                        HorizontalTextAlignment="Center" />
             </VerticalStackLayout>
-            <VerticalStackLayout Grid.Column="1" Spacing="8" HorizontalOptions="Center">
-                <ImageButton x:Name="AnswerIncomingButton" Source="call_phone_white.png"
-                             WidthRequest="74" HeightRequest="74" Padding="22"
-                             BackgroundColor="{DynamicResource HimoSuccess}" BorderWidth="0"
-                             CornerRadius="37" Aspect="AspectFit" Clicked="AcceptIncomingClicked"
-                             SemanticProperties.Description="الرد على المكالمة" />
-                <Label Text="رد" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}"
-                       HorizontalTextAlignment="Center" />
-            </VerticalStackLayout>
+        </Grid>
+
+        <!-- Audio call avatar is centered; the caller name and elapsed time stay at the top. -->
+        <VerticalStackLayout x:Name="ProfilePanel" IsVisible="True"
+                             HorizontalOptions="Center" VerticalOptions="Center"
+                             Spacing="12" Padding="24,0">
+            <Grid WidthRequest="184" HeightRequest="184">
+                <Ellipse WidthRequest="184" HeightRequest="184" Fill="#13FFFFFF"
+                         Stroke="#3FFFFFFF" StrokeThickness="1" />
+                <Border WidthRequest="148" HeightRequest="148" Padding="0"
+                        BackgroundColor="#233047" Stroke="#65FFFFFF" StrokeThickness="1"
+                        HorizontalOptions="Center" VerticalOptions="Center">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="74" /></Border.StrokeShape>
+                    <Grid>
+                        <Image x:Name="ProfilePhotoImage" Aspect="AspectFill" IsVisible="False" />
+                        <Label x:Name="InitialLabel" Text="H" FontSize="48" FontAttributes="Bold"
+                               TextColor="#FFFFFF" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                    </Grid>
+                </Border>
+                <Border WidthRequest="40" HeightRequest="40" HorizontalOptions="End" VerticalOptions="End"
+                        BackgroundColor="#24354E" Stroke="#60FFFFFF" StrokeThickness="1" Padding="10">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                    <Image x:Name="CallModeIcon" Source="himo_icon_chat_voice_call.png" Aspect="AspectFit" />
+                </Border>
             </Grid>
+        </VerticalStackLayout>
+
+        <!-- Any tap on the call canvas toggles the chrome. Buttons are layered above this catcher. -->
+        <Grid x:Name="CallTapCatcher" BackgroundColor="Transparent">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Tapped="CallSurfaceTapped" />
+            </Grid.GestureRecognizers>
+        </Grid>
+
+        <!-- Centered identity/timer. The small arrow button enters Android Picture-in-Picture without ending the call. -->
+        <Grid x:Name="CallHeader" ColumnDefinitions="48,*,48" HeightRequest="66"
+              HorizontalOptions="Fill" VerticalOptions="Start" Margin="12,12,12,0"
+              FlowDirection="LeftToRight">
+            <BoxView Grid.Column="0" WidthRequest="48" Opacity="0" />
+            <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" VerticalOptions="Center"
+                                 Spacing="3" InputTransparent="True">
+                <Label x:Name="NameLabel" Text="جهة اتصال" FontSize="20" FontAttributes="Bold"
+                       TextColor="#FFFFFF" HorizontalTextAlignment="Center" />
+                <Label x:Name="StatusLabel" Text="جاري تجهيز الاتصال..." FontSize="12"
+                       TextColor="#E2E8F0" HorizontalTextAlignment="Center" />
+                <Label x:Name="VideoCallNameLabel" Text="جهة اتصال" FontSize="19"
+                       FontAttributes="Bold" TextColor="#FFFFFF" IsVisible="False"
+                       HorizontalTextAlignment="Center" />
+                <Label x:Name="VideoStatusLabel" Text="جاري الاتصال..." FontSize="12"
+                       TextColor="#E2E8F0" IsVisible="False" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+            <Button x:Name="MinimizeCallButton" Grid.Column="2" Text="↙↗"
+                    WidthRequest="44" HeightRequest="44" Padding="0"
+                    BackgroundColor="#66101828" TextColor="#FFFFFF" FontSize="18"
+                    BorderWidth="1" BorderColor="#55FFFFFF" CornerRadius="22"
+                    Clicked="MinimizeCallClicked" IsVisible="False"
+                    SemanticProperties.Description="تصغير المكالمة مع استمرار الاتصال" />
+        </Grid>
+
+        <!-- Incoming screen: accept and reject are deliberately always visible while ringing. -->
+        <Border x:Name="IncomingActions" IsVisible="False"
+                HorizontalOptions="Fill" VerticalOptions="End" Margin="18,0,18,30"
+                Padding="0" BackgroundColor="Transparent"
+                StrokeThickness="0">
+            <Border.StrokeShape><RoundRectangle CornerRadius="30" /></Border.StrokeShape>
+            <VerticalStackLayout Spacing="10">
+                <Grid x:Name="IncomingButtonGrid" ColumnDefinitions="*,*" ColumnSpacing="42"
+                      HorizontalOptions="Center" FlowDirection="LeftToRight">
+                    <VerticalStackLayout Grid.Column="0" Spacing="8" HorizontalOptions="Center">
+                        <ImageButton x:Name="AnswerIncomingButton" Source="call_phone_white.png"
+                                     Style="{StaticResource IncomingActionButton}"
+                                     BackgroundColor="#18BF68" Clicked="AcceptIncomingClicked"
+                                     SemanticProperties.Description="قبول المكالمة" />
+                        <Label Text="قبول" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF"
+                               HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="1" Spacing="8" HorizontalOptions="Center">
+                        <ImageButton x:Name="RejectIncomingButton" Source="call_end_white.png"
+                                     Style="{StaticResource IncomingActionButton}"
+                                     BackgroundColor="#E94F63" Clicked="RejectIncomingClicked"
+                                     SemanticProperties.Description="رفض المكالمة" />
+                        <Label Text="رفض" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF"
+                               HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Grid>
+            </VerticalStackLayout>
         </Border>
 
-        <!-- Outgoing call action: status card with clear progress and a distinct end-call action. -->
-        <Border x:Name="OutgoingActions" Grid.Row="1" IsVisible="False"
-                HorizontalOptions="Fill" VerticalOptions="End" Margin="12,0,12,18"
-                Padding="17,14" BackgroundColor="#00000000"
-                Stroke="#00000000" StrokeThickness="0">
-            <Border.StrokeShape><RoundRectangle CornerRadius="26" /></Border.StrokeShape>
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16" FlowDirection="LeftToRight">
+        <!-- Audio-only ringing panel. Video callers see their live camera preview behind the same hang-up control. -->
+        <Border x:Name="OutgoingActions" IsVisible="False"
+                HorizontalOptions="Fill" VerticalOptions="End" Margin="18,0,18,28"
+                Padding="18,15" BackgroundColor="#B30A101B"
+                Stroke="#35FFFFFF" StrokeThickness="1">
+            <Border.StrokeShape><RoundRectangle CornerRadius="28" /></Border.StrokeShape>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18" FlowDirection="LeftToRight">
                 <VerticalStackLayout Grid.Column="0" Spacing="7" VerticalOptions="Center" FlowDirection="RightToLeft">
                     <HorizontalStackLayout Spacing="8" VerticalOptions="Center" FlowDirection="RightToLeft">
-                        <ActivityIndicator IsRunning="True" Color="{DynamicResource HimoAccent}"
-                                           WidthRequest="20" HeightRequest="20" VerticalOptions="Center" />
-                        <Label x:Name="WaitingCallTitle" Text="جاري الاتصال بالطرف الآخر" FontSize="14"
-                               FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}"
-                               HorizontalTextAlignment="Start" VerticalTextAlignment="Center" />
+                        <ActivityIndicator IsRunning="True" Color="#5FE1C5" WidthRequest="18" HeightRequest="18" />
+                        <Label x:Name="WaitingCallTitle" Text="جاري الاتصال بالطرف الآخر"
+                               FontSize="14" FontAttributes="Bold" TextColor="#FFFFFF" />
                     </HorizontalStackLayout>
-                    <Label x:Name="WaitingCallSubtitle" Text="بانتظار رد الطرف الآخر..." FontSize="12"
-                           TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
+                    <Label x:Name="WaitingCallSubtitle" Text="بانتظار رد الطرف الآخر..."
+                           FontSize="12" TextColor="#D0D8E6" />
                 </VerticalStackLayout>
-                <ImageButton Grid.Column="1" Source="call_end_white.png" WidthRequest="82" HeightRequest="58"
-                             MinimumWidthRequest="82" MinimumHeightRequest="58" Padding="22,14"
-                             BackgroundColor="#E53950" BorderColor="#FF8795" BorderWidth="1"
-                             CornerRadius="19" Aspect="AspectFit" Clicked="EndClicked"
+                <ImageButton Grid.Column="1" Source="call_end_white.png" WidthRequest="62" HeightRequest="62"
+                             MinimumWidthRequest="62" MinimumHeightRequest="62" Padding="18"
+                             BackgroundColor="#E94F63" BorderWidth="0" CornerRadius="31"
+                             Aspect="AspectFit" Clicked="EndClicked"
                              SemanticProperties.Description="إلغاء الاتصال" VerticalOptions="Center" />
             </Grid>
         </Border>
 
-        <!-- Controls deck: consistent line icons, compact labels, no heavy glow -->
-        <Border x:Name="CallControls" Grid.Row="1" IsVisible="False" Margin="12,0,12,18"
-                BackgroundColor="Transparent" Stroke="Transparent"
-                StrokeThickness="0" Padding="10,12,10,12" ZIndex="10">
-            <Border.StrokeShape><RoundRectangle CornerRadius="24" /></Border.StrokeShape>
-            <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="5" RowSpacing="10"
+        <!-- A minimal toolbar. Video: hang up / camera on-off / switch camera / mic. Audio: hang up / speaker / mic. -->
+        <Border x:Name="CallControls" IsVisible="False"
+                HorizontalOptions="Fill" VerticalOptions="End" Margin="6,0,6,24"
+                Padding="0" BackgroundColor="Transparent"
+                StrokeThickness="0">
+            <Border.StrokeShape><RoundRectangle CornerRadius="28" /></Border.StrokeShape>
+            <Grid x:Name="ControlButtonGrid" ColumnDefinitions="*,*,*,*" ColumnSpacing="4"
                   FlowDirection="LeftToRight">
-                <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="6" HorizontalOptions="Center">
-                    <ImageButton x:Name="MuteButton" Source="himo_call_mic.png" Style="{StaticResource ControlButton}"
-                                 Clicked="ToggleMuteClicked" SemanticProperties.Description="كتم الميكروفون" />
-                    <Label x:Name="MuteActionLabel" Text="كتم الصوت" Style="{StaticResource ControlLabel}" />
-                </VerticalStackLayout>
-
-                <VerticalStackLayout x:Name="CameraControl" Grid.Row="0" Grid.Column="1" Spacing="6" HorizontalOptions="Center">
-                    <ImageButton x:Name="CameraButton" Source="himo_call_camera.png" Style="{StaticResource ControlButton}"
-                                 BackgroundColor="#26364A" BorderColor="#6B829D" BorderWidth="1.5"
-                                 Clicked="ToggleCameraClicked" SemanticProperties.Description="تشغيل أو إيقاف الكاميرا" />
-                    <Label x:Name="CameraActionLabel" Text="إيقاف الكاميرا" Style="{StaticResource ControlLabel}" />
-                </VerticalStackLayout>
-
-                <VerticalStackLayout Grid.Row="0" Grid.Column="2" Spacing="6" HorizontalOptions="Center">
-                    <ImageButton x:Name="SpeakerButton" Source="himo_call_speaker.png" Style="{StaticResource ControlButton}"
-                                 Clicked="ToggleSpeakerClicked" SemanticProperties.Description="مكبر الصوت" />
-                    <Label x:Name="SpeakerActionLabel" Text="مكبر الصوت" Style="{StaticResource ControlLabel}" />
-                </VerticalStackLayout>
-
-                <VerticalStackLayout Grid.Row="1" Grid.Column="3" Spacing="6" HorizontalOptions="Center">
-                    <ImageButton x:Name="RemoteAudioButton" Source="himo_call_speaker_off.png" Style="{StaticResource ControlButton}"
-                                 Clicked="ToggleRemoteAudioClicked" IsEnabled="False"
-                                 SemanticProperties.Description="صوت الطرف الآخر" />
-                    <Label x:Name="RemoteAudioActionLabel" Text="الصوت الوارد" Style="{StaticResource ControlLabel}" />
-                </VerticalStackLayout>
-
-                <VerticalStackLayout Grid.Row="1" Grid.Column="0" Spacing="6" HorizontalOptions="Center">
-                    <ImageButton x:Name="SwitchCameraButton" Source="himo_cam_switch.png" Style="{StaticResource ControlButton}"
-                                 BackgroundColor="#26364A" BorderColor="#6B829D" BorderWidth="1.5"
-                                 Clicked="SwitchCameraClicked" SemanticProperties.Description="تبديل الكاميرا الأمامية والخلفية" />
-                    <Label Text="تبديل الكاميرا" Style="{StaticResource ControlLabel}" />
-                </VerticalStackLayout>
-
-                <VerticalStackLayout Grid.Row="1" Grid.Column="1" Spacing="6" HorizontalOptions="Center">
-                    <ImageButton x:Name="ActiveEndButton" Source="call_end_white.png" WidthRequest="92" HeightRequest="60"
-                                 MinimumWidthRequest="92" MinimumHeightRequest="60" Padding="20,15"
-                                 BackgroundColor="#E53950" BorderColor="#FF8795" BorderWidth="1"
-                                 CornerRadius="20" Aspect="AspectFit" Clicked="EndClicked"
+                <VerticalStackLayout x:Name="EndControl" Grid.Column="0" Spacing="7" HorizontalOptions="Center">
+                    <ImageButton x:Name="ActiveEndButton" Source="call_end_white.png"
+                                 WidthRequest="62" HeightRequest="62" MinimumWidthRequest="62"
+                                 MinimumHeightRequest="62" Padding="18" BackgroundColor="#E94F63"
+                                 BorderWidth="0" CornerRadius="31" Aspect="AspectFit" Clicked="EndClicked"
                                  SemanticProperties.Description="إنهاء المكالمة" />
-                    <Label Text="إنهاء المكالمة" FontSize="11" FontAttributes="Bold"
-                           TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
+                    <Label Text="إنهاء الاتصال" Style="{StaticResource CallControlLabel}" FontAttributes="Bold" />
                 </VerticalStackLayout>
 
-                <VerticalStackLayout Grid.Row="1" Grid.Column="2" Spacing="6" HorizontalOptions="Center">
-                    <ImageButton x:Name="MoreButton" Source="himo_call_more.png" Style="{StaticResource ControlButton}"
-                                 Clicked="MoreClicked" SemanticProperties.Description="المزيد من خيارات المكالمة" />
-                    <Label x:Name="MoreActionLabel" Text="المزيد" Style="{StaticResource ControlLabel}" />
+                <VerticalStackLayout x:Name="CameraControl" Grid.Column="1" Spacing="7" HorizontalOptions="Center">
+                    <ImageButton x:Name="CameraButton" Source="himo_call_camera.png"
+                                 Style="{StaticResource CallControlButton}" Clicked="ToggleCameraClicked"
+                                 SemanticProperties.Description="تشغيل أو إيقاف الكاميرا" />
+                    <Label x:Name="CameraActionLabel" Text="إغلاق الكاميرا" Style="{StaticResource CallControlLabel}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout x:Name="SwitchCameraControl" Grid.Column="2" Spacing="7" HorizontalOptions="Center">
+                    <ImageButton x:Name="SwitchCameraButton" Source="himo_cam_switch.png"
+                                 Style="{StaticResource CallControlButton}" Clicked="SwitchCameraClicked"
+                                 SemanticProperties.Description="تبديل الكاميرا الأمامية والخلفية" />
+                    <Label x:Name="SwitchCameraActionLabel" Text="تبديل الكاميرا" Style="{StaticResource CallControlLabel}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout x:Name="SpeakerControl" Grid.Column="1" Spacing="7" HorizontalOptions="Center">
+                    <ImageButton x:Name="SpeakerButton" Source="himo_call_speaker_off.png"
+                                 Style="{StaticResource CallControlButton}" Clicked="ToggleSpeakerClicked"
+                                 SemanticProperties.Description="تشغيل أو إيقاف مكبر الصوت" />
+                    <Label x:Name="SpeakerActionLabel" Text="سماعة الأذن" Style="{StaticResource CallControlLabel}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout x:Name="MuteControl" Grid.Column="3" Spacing="7" HorizontalOptions="Center">
+                    <ImageButton x:Name="MuteButton" Source="himo_call_mic.png"
+                                 Style="{StaticResource CallControlButton}" Clicked="ToggleMuteClicked"
+                                 SemanticProperties.Description="فتح أو كتم الميكروفون" />
+                    <Label x:Name="MuteActionLabel" Text="المايك مفتوح" Style="{StaticResource CallControlLabel}" />
                 </VerticalStackLayout>
             </Grid>
         </Border>
+
+        <!-- Retain legacy controls in the visual tree because existing call-state code still updates their state.
+             They are never displayed; the visible bar above is the simplified production toolbar. -->
+        <Grid IsVisible="False" WidthRequest="0" HeightRequest="0" Opacity="0">
+            <Label x:Name="ModeLabel" Text="مكالمة فيديو" />
+            <ImageButton x:Name="RemoteAudioButton" Source="himo_call_speaker_off.png" />
+            <Label x:Name="RemoteAudioActionLabel" Text="الصوت الوارد" />
+            <ImageButton x:Name="MoreButton" Source="himo_call_more.png" />
+            <Label x:Name="MoreActionLabel" Text="المزيد" />
+        </Grid>
     </Grid>
 </ContentPage>
