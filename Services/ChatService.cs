@@ -16,6 +16,35 @@ public sealed class ChatService
 
     public ObservableCollection<Conversation> Conversations { get; } = new();
 
+    // Raised when realtime/push sync changes the local conversation preview or ordering.
+    public event EventHandler? ConversationsChanged;
+    // Raised when an incoming/outgoing message is added to the local cache.
+    public event Action<int>? MessagesChanged;
+
+    private void NotifyConversationsChanged()
+    {
+        void Notify()
+        {
+            try { ConversationsChanged?.Invoke(this, EventArgs.Empty); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo ChatStore] Conversation change subscriber failed: {ex.Message}"); }
+        }
+
+        if (MainThread.IsMainThread) Notify();
+        else MainThread.BeginInvokeOnMainThread(Notify);
+    }
+
+    private void NotifyMessagesChanged(int conversationId)
+    {
+        void Notify()
+        {
+            try { MessagesChanged?.Invoke(conversationId); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo ChatStore] Message change subscriber failed: {ex.Message}"); }
+        }
+
+        if (MainThread.IsMainThread) Notify();
+        else MainThread.BeginInvokeOnMainThread(Notify);
+    }
+
     public ChatService()
     {
         _storePath = Path.Combine(FileSystem.Current.AppDataDirectory, StoreFileName);
@@ -121,6 +150,103 @@ public sealed class ChatService
         }
     }
 
+    /// <summary>
+    /// Guarantees that an incoming message always has a local conversation row,
+    /// even when the app was opened directly from a push notification or the local
+    /// cache has not been hydrated yet.
+    /// Call on the UI thread because Conversations is observable.
+    /// </summary>
+    public Conversation EnsureRemoteConversation(Guid remoteId, string? fallbackName = null)
+    {
+        if (remoteId == Guid.Empty)
+            throw new ArgumentException("معرّف المحادثة غير صالح.", nameof(remoteId));
+
+        EnsureLoaded();
+        Conversation result;
+        var changed = false;
+        lock (_sync)
+        {
+            var normalizedRemoteId = remoteId.ToString("D");
+            var existing = Conversations.FirstOrDefault(x =>
+                string.Equals(x.RemoteId, normalizedRemoteId, StringComparison.OrdinalIgnoreCase));
+            var cleanFallback = fallbackName?.Trim() ?? string.Empty;
+
+            if (existing is not null)
+            {
+                result = existing;
+                if ((string.IsNullOrWhiteSpace(existing.Name) || string.Equals(existing.Name, "محادثة", StringComparison.Ordinal)) &&
+                    !string.IsNullOrWhiteSpace(cleanFallback))
+                {
+                    existing.Name = cleanFallback;
+                    existing.Initial = cleanFallback[..1];
+                    Save();
+                    changed = true;
+                }
+                if (!_messages.ContainsKey(existing.Id))
+                    _messages[existing.Id] = new ObservableCollection<ChatMessage>();
+            }
+            else
+            {
+                var id = Conversations.Count == 0 ? 1 : Conversations.Max(x => x.Id) + 1;
+                var name = string.IsNullOrWhiteSpace(cleanFallback) ? "محادثة" : cleanFallback;
+                var now = DateTime.Now;
+                result = new Conversation
+                {
+                    Id = id,
+                    RemoteId = normalizedRemoteId,
+                    Name = name,
+                    Initial = name[..1],
+                    LastMessage = "محادثة جديدة",
+                    Time = now.ToString("HH:mm"),
+                    UpdatedAt = now
+                };
+                Conversations.Insert(0, result);
+                _messages[id] = new ObservableCollection<ChatMessage>();
+                Save();
+                changed = true;
+            }
+        }
+
+        if (changed) NotifyConversationsChanged();
+        return result;
+    }
+
+    /// <summary>Creates or refreshes a local conversation using the API's authoritative metadata.</summary>
+    public Conversation UpsertRemoteConversation(HimoApiClient.ConversationDto remote, string? fallbackName = null)
+    {
+        if (remote is null || remote.Id == Guid.Empty)
+            throw new ArgumentException("بيانات المحادثة غير صالحة.", nameof(remote));
+
+        var fallback = !string.IsNullOrWhiteSpace(remote.Name) ? remote.Name : fallbackName;
+        var conversation = EnsureRemoteConversation(remote.Id, fallback);
+        lock (_sync)
+        {
+            conversation.RemoteId = remote.Id.ToString("D");
+            if (!string.IsNullOrWhiteSpace(remote.Name))
+            {
+                conversation.Name = remote.Name;
+                conversation.Initial = remote.Name.Trim()[..1];
+            }
+            if (!string.IsNullOrWhiteSpace(remote.LastMessage))
+                conversation.LastMessage = remote.LastMessage;
+            conversation.Time = remote.UpdatedAt.LocalDateTime.ToString("HH:mm");
+            conversation.UpdatedAt = remote.UpdatedAt.LocalDateTime;
+            conversation.UnreadCount = remote.UnreadCount;
+            conversation.OtherParticipantUserId = remote.OtherParticipantUserId;
+            conversation.HasRemoteProfilePhoto = remote.HasProfilePhoto;
+            conversation.ProfilePhotoVersion = remote.ProfilePhotoVersion;
+            conversation.IsArchived = remote.IsArchived;
+            conversation.IsMuted = remote.IsMuted;
+            conversation.IsBlocked = remote.IsBlocked;
+            conversation.IsGroup = remote.IsGroup;
+            _messages.TryAdd(conversation.Id, new ObservableCollection<ChatMessage>());
+            Save();
+        }
+
+        NotifyConversationsChanged();
+        return conversation;
+    }
+
     public void ClearAll()
     {
         EnsureLoaded();
@@ -142,6 +268,7 @@ public sealed class ChatService
             conversation.UnreadCount = 0;
             Save();
         }
+        NotifyConversationsChanged();
     }
 
     public Conversation AddConversation(string name)
@@ -506,6 +633,8 @@ public sealed class ChatService
                             // AttachmentSize is init-only, so no assignment is required here.
                         }
                         Save();
+                        NotifyMessagesChanged(conversationId);
+                        NotifyConversationsChanged();
                         return false;
                     }
                 }
@@ -518,7 +647,10 @@ public sealed class ChatService
                 {
                     // The message content is a duplicate, but its receipt may have advanced.
                     if (existingRemote.IsMine && isMine && SetDeliveryStatusIfNewer(existingRemote, deliveryStatus))
+                    {
                         Save();
+                        NotifyMessagesChanged(conversationId);
+                    }
                     return false;
                 }
             }
@@ -541,6 +673,8 @@ public sealed class ChatService
                 if (!isMine) c.UnreadCount++;
             }
             Save();
+            NotifyMessagesChanged(conversationId);
+            NotifyConversationsChanged();
             return true;
         }
     }

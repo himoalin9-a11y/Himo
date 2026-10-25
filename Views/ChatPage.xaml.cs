@@ -24,6 +24,7 @@ public partial class ChatPage : ContentPage
     private const int MessagePageSize = 30;
     private const int InitialVisibleMessageCount = 20;
     private const int MessageSyncPageSize = 100;
+    private const string ActiveConversationPreferenceKey = "himo_active_conversation_id";
     private readonly ChatService _chat;
     private readonly HimoApiClient _api;
     private readonly AccountService _account;
@@ -188,6 +189,7 @@ public partial class ChatPage : ContentPage
         Messages.ItemsSource = _visibleMessages;
         _chat = chat; _api = api; _account = account; _notifications = notifications; _realtime = realtime;
         _realtime.MessageReceived += OnRealtimeMessageReceived;
+        _chat.MessagesChanged += OnChatMessagesChanged;
         _realtime.UserPresenceChanged += OnUserPresenceChanged;
         _realtime.UserTypingChanged += OnUserTypingChanged;
         _realtime.MessageDeliveryChanged += OnMessageDeliveryChanged;
@@ -576,6 +578,7 @@ public partial class ChatPage : ContentPage
         Connectivity.Current.ConnectivityChanged -= OnConnectivityChanged;
         Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
         Volatile.Write(ref _conversationVisible, 1);
+        UpdateActiveConversationPreference();
         if (_conversationId > 0)
         {
             var currentConversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
@@ -1902,6 +1905,7 @@ public partial class ChatPage : ContentPage
 
     protected override void OnDisappearing()
     {
+        ClearActiveConversationPreference();
         Volatile.Write(ref _conversationVisible, 0);
         DetachWallpaperLifecycleHandlers();
         StopChatAnimatedWallpaper();
@@ -2256,49 +2260,133 @@ public partial class ChatPage : ContentPage
         }
     }
 
+    private void OnChatMessagesChanged(int localConversationId)
+    {
+        if (!IsConversationVisible)
+            return;
+
+        var conversation = _chat.Conversations.FirstOrDefault(x => x.Id == localConversationId);
+        var matchesCurrent = localConversationId == _conversationId ||
+            (conversation is not null && !string.IsNullOrWhiteSpace(_remoteConversationId) &&
+             string.Equals(conversation.RemoteId, _remoteConversationId, StringComparison.OrdinalIgnoreCase));
+        if (!matchesCurrent)
+            return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (!IsConversationVisible) return;
+            if (_conversationId <= 0) _conversationId = localConversationId;
+            RefreshMessagesView(scrollToEnd: true);
+            EmptyState?.SetValue(IsVisibleProperty, _visibleMessages.Count == 0);
+        });
+    }
+
+    private void UpdateActiveConversationPreference()
+    {
+        if (!IsConversationVisible) return;
+        var remoteId = _remoteConversationId;
+        if (string.IsNullOrWhiteSpace(remoteId) && _conversationId > 0)
+            remoteId = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId)?.RemoteId;
+        if (!string.IsNullOrWhiteSpace(remoteId) && Guid.TryParse(remoteId, out _))
+            Preferences.Default.Set(ActiveConversationPreferenceKey, remoteId);
+    }
+
+    private void ClearActiveConversationPreference()
+    {
+        var activeId = Preferences.Default.Get(ActiveConversationPreferenceKey, string.Empty);
+        var currentId = _remoteConversationId;
+        if (string.IsNullOrWhiteSpace(currentId) && _conversationId > 0)
+            currentId = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId)?.RemoteId;
+        if (!string.IsNullOrWhiteSpace(currentId) &&
+            string.Equals(activeId, currentId, StringComparison.OrdinalIgnoreCase))
+            Preferences.Default.Remove(ActiveConversationPreferenceKey);
+    }
+
     private void OnRealtimeMessageReceived(object? sender, MessageDto message)
     {
-        // Delivery is acknowledged globally by HimoRealtimeService. ChatPage only
-        // handles the visible conversation/read state here.
+        // Persist even if this ChatPage did not find a local row yet. Messages can
+        // arrive before HomeViewModel finishes its first server refresh, particularly
+        // when the app was opened from a notification.
+        _ = HandleRealtimeMessageAsync(message);
+    }
 
-        var conversation = _chat.Conversations.FirstOrDefault(x =>
-            string.Equals(x.RemoteId, message.ConversationId.ToString("D"), StringComparison.OrdinalIgnoreCase));
-        if (conversation is null) return;
-
-        if (!Preferences.Default.Get(ChatSettingsPage.KeepArchivedKey, true))
+    private async Task HandleRealtimeMessageAsync(MessageDto message)
+    {
+        try
         {
-            var archived = Preferences.Default.Get("himo_archived_conversations", string.Empty)
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Where(x => !string.Equals(x, conversation.RemoteId, StringComparison.OrdinalIgnoreCase))
-                .ToArray();
-            Preferences.Default.Set("himo_archived_conversations", string.Join(',', archived));
-        }
+            if (!_account.IsSignedIn || message.ConversationId == Guid.Empty)
+                return;
 
-        var myUserId = _account.CurrentAccount?.UserId ?? Guid.Empty;
-        var isMine = myUserId != Guid.Empty && message.SenderUserId == myUserId;
-        var added = _chat.AddRemoteMessage(conversation.Id, message.Text, message.SentAt.LocalDateTime, isMine, message.Id.ToString(), message.AttachmentFileName, message.AttachmentContentType, message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"), message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted);
-        if (!added) return;
+            var remoteConversationId = message.ConversationId.ToString("D");
+            var isCurrentRemoteConversation = !string.IsNullOrWhiteSpace(_remoteConversationId) &&
+                string.Equals(_remoteConversationId, remoteConversationId, StringComparison.OrdinalIgnoreCase);
 
-        if (conversation.Id == _conversationId)
-        {
-            var isVisible = IsConversationVisible;
+            var conversation = _chat.Conversations.FirstOrDefault(x =>
+                string.Equals(x.RemoteId, remoteConversationId, StringComparison.OrdinalIgnoreCase));
 
-            // Keep the cached message list current even when the Shell keeps this
-            // page instance alive off-screen, but never emit a READ receipt unless
-            // the user is actually looking at this conversation.
-            if (isVisible)
+            // Do not drop the incoming message just because a local conversation row
+            // has not been hydrated yet. Create a stable remote-keyed local row first.
+            if (conversation is null && isCurrentRemoteConversation)
             {
-                _chat.MarkAsRead(conversation.Id);
+                conversation = await MainThread.InvokeOnMainThreadAsync(() =>
+                    _chat.EnsureRemoteConversation(message.ConversationId, message.SenderPhoneNumber));
             }
 
-            _ = MainThread.InvokeOnMainThreadAsync(() =>
+            // The global push manager persists messages for other conversations.
+            if (conversation is null)
+                return;
+
+            if (!Preferences.Default.Get(ChatSettingsPage.KeepArchivedKey, true))
             {
-                var wasNearBottom = _lastVisibleItemIndex < 0 ||
-                                     _lastVisibleItemIndex >= Math.Max(0, _visibleMessages.Count - 3);
-                AppendNewMessagesToVisible();
-                if (isVisible && _visibleMessages.Count > 0 && wasNearBottom)
-                    ScrollToLatestMessage(animate: false);
-                return Task.CompletedTask;
+                var archived = Preferences.Default.Get("himo_archived_conversations", string.Empty)
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Where(x => !string.Equals(x, conversation.RemoteId, StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+                Preferences.Default.Set("himo_archived_conversations", string.Join(',', archived));
+            }
+
+            var myUserId = _account.CurrentAccount?.UserId ?? Guid.Empty;
+            var isMine = myUserId != Guid.Empty && message.SenderUserId == myUserId;
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                if (isCurrentRemoteConversation && _conversationId <= 0)
+                    _conversationId = conversation!.Id;
+
+                _chat.AddRemoteMessage(conversation!.Id, message.Text, message.SentAt.LocalDateTime, isMine,
+                    message.Id.ToString(), message.AttachmentFileName, message.AttachmentContentType,
+                    message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"),
+                    message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted);
+            });
+
+            var isCurrentConversation = isCurrentRemoteConversation || conversation.Id == _conversationId;
+            if (!isCurrentConversation)
+                return;
+
+            var isVisible = IsConversationVisible;
+            if (isVisible)
+            {
+                UpdateActiveConversationPreference();
+                await MainThread.InvokeOnMainThreadAsync(() => _chat.MarkAsRead(conversation.Id));
+            }
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                if (_visibleMessages.Count == 0)
+                {
+                    var recent = _chat.GetRecentMessages(conversation.Id, InitialVisibleMessageCount);
+                    SetMessagesItemsSource(recent);
+                    UpdateVisiblePagingCursor();
+                    EmptyState?.SetValue(IsVisibleProperty, recent.Count == 0);
+                }
+                else
+                {
+                    var wasNearBottom = _lastVisibleItemIndex < 0 ||
+                                         _lastVisibleItemIndex >= Math.Max(0, _visibleMessages.Count - 3);
+                    AppendNewMessagesToVisible();
+                    EmptyState?.SetValue(IsVisibleProperty, _visibleMessages.Count == 0);
+                    if (isVisible && wasNearBottom && _visibleMessages.Count > 0)
+                        ScrollToLatestMessage(animate: false);
+                }
             });
 
             if (isVisible)
@@ -2306,6 +2394,10 @@ public partial class ChatPage : ContentPage
                 _ = ClearConversationNotificationAsync();
                 _ = MarkRemoteConversationReadAsync(message.ConversationId);
             }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Incoming realtime message handling failed: {ex}");
         }
     }
 

@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Windows.Input;
 using Himo.Models;
 using Himo.Services;
@@ -33,6 +35,8 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private Conversation? _suppressTapConversation;
     private DateTime _suppressTapUntilUtc = DateTime.MinValue;
     private readonly HashSet<Conversation> _selectedConversations = new();
+    private readonly HashSet<Conversation> _observedConversations = new();
+    private int _conversationRefilterQueued;
 
     public ICommand ConversationTapCommand { get; }
     public ICommand ConversationLongPressCommand { get; }
@@ -58,6 +62,10 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         BindingContext = vm;
         ConversationsCollection.ItemsSource = _visibleConversations;
         _vm.FilteredConversations.CollectionChanged += FilteredConversationsCollectionChanged;
+        // Local push/SignalR sync can insert or update conversations before the next
+        // HTTP refresh. Keep the filtered/visible list in sync with the cache itself.
+        _vm.Conversations.CollectionChanged += HomeConversationsCollectionChanged;
+        SyncHomeConversationObservers();
         CallsCollection.ItemsSource = _callHistory.Entries;
         PhoneSearchResults.ItemsSource = _phoneMatches;
         DisplayOwnProfilePhoto(_profile.Profile.PhotoPath);
@@ -88,6 +96,51 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         {
             _conversationListRefreshQueued = false;
             RefreshDisplayedConversations();
+        });
+    }
+
+    private void HomeConversationsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        SyncHomeConversationObservers();
+    }
+
+    private void SyncHomeConversationObservers()
+    {
+        var current = _vm.Conversations.ToHashSet();
+        foreach (var stale in _observedConversations.Where(x => !current.Contains(x)).ToList())
+        {
+            stale.PropertyChanged -= HomeConversationPropertyChanged;
+            _observedConversations.Remove(stale);
+        }
+
+        foreach (var item in current)
+        {
+            if (_observedConversations.Add(item))
+                item.PropertyChanged += HomeConversationPropertyChanged;
+        }
+
+        QueueConversationRefilter();
+    }
+
+    private void HomeConversationPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(Conversation.Name) or nameof(Conversation.LastMessage) or
+            nameof(Conversation.Time) or nameof(Conversation.UpdatedAt) or nameof(Conversation.UnreadCount) or
+            nameof(Conversation.IsArchived) or nameof(Conversation.IsGroup))
+            QueueConversationRefilter();
+    }
+
+    private void QueueConversationRefilter()
+    {
+        if (Interlocked.Exchange(ref _conversationRefilterQueued, 1) != 0)
+            return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            Interlocked.Exchange(ref _conversationRefilterQueued, 0);
+            _vm.Filter();
+            RefreshDisplayedConversations();
+            UpdateEmptyState();
         });
     }
 
@@ -441,9 +494,13 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
 
     private async Task RefreshHomeAfterRealtimeMessageAsync()
     {
-        if (!_homePageVisible || !await _refreshGate.WaitAsync(0)) return;
+        if (!_homePageVisible) return;
+        // Never drop a message-triggered refresh just because a manual refresh is
+        // running. The old WaitAsync(0) silently discarded precisely these updates.
+        await _refreshGate.WaitAsync();
         try
         {
+            if (!_homePageVisible) return;
             await _vm.RefreshFromServerAsync();
             if (!_homePageVisible) return;
             await MainThread.InvokeOnMainThreadAsync(() =>

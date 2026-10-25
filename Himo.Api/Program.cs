@@ -3171,15 +3171,19 @@ ON CONFLICT(ConversationId,ReporterUserId) DO UPDATE SET Reason=excluded.Reason,
                 update.Parameters.AddWithValue("@conversation", conversationId.ToString());
                 update.ExecuteNonQuery();
             }
+            var readAt = DateTimeOffset.UtcNow;
             using (var conversationUpdate = connection.CreateCommand())
             {
                 conversationUpdate.Transaction = transaction;
                 conversationUpdate.CommandText = "UPDATE ConversationParticipants SET LastReadAt=@read WHERE ConversationId=@conversation AND UserId=@user;";
-                conversationUpdate.Parameters.AddWithValue("@read", DateTimeOffset.UtcNow.ToString("O"));
+                conversationUpdate.Parameters.AddWithValue("@read", readAt.ToString("O"));
                 conversationUpdate.Parameters.AddWithValue("@conversation", conversationId.ToString());
                 conversationUpdate.Parameters.AddWithValue("@user", userId.ToString());
                 conversationUpdate.ExecuteNonQuery();
             }
+            // Opening a chat from its push notification is an explicit action to
+            // restore it in the list if it had previously been deleted for this user.
+            RestoreConversationVisibilityForUser(connection, transaction, conversationId, userId, readAt);
             transaction.Commit();
             return result;
         }
@@ -3303,6 +3307,46 @@ WHERE cp1.UserId=@user AND cp2.UserId<>@user;";
         }
     }
 
+    private static void RestoreConversationVisibilityForAllParticipants(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        Guid conversationId,
+        DateTimeOffset updatedAt)
+    {
+        using var restore = connection.CreateCommand();
+        restore.Transaction = transaction;
+        restore.CommandText = @"
+INSERT INTO ConversationUserStates(ConversationId,UserId,IsArchived,IsMuted,IsDeleted,UpdatedAt)
+SELECT @conversation,cp.UserId,FALSE,FALSE,FALSE,@updated
+FROM ConversationParticipants cp
+WHERE cp.ConversationId=@conversation
+ON CONFLICT (ConversationId,UserId)
+DO UPDATE SET IsDeleted=FALSE,UpdatedAt=EXCLUDED.UpdatedAt;";
+        restore.Parameters.AddWithValue("@conversation", conversationId.ToString("D"));
+        restore.Parameters.AddWithValue("@updated", updatedAt.ToString("O"));
+        restore.ExecuteNonQuery();
+    }
+
+    private static void RestoreConversationVisibilityForUser(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        Guid conversationId,
+        Guid userId,
+        DateTimeOffset updatedAt)
+    {
+        using var restore = connection.CreateCommand();
+        restore.Transaction = transaction;
+        restore.CommandText = @"
+INSERT INTO ConversationUserStates(ConversationId,UserId,IsArchived,IsMuted,IsDeleted,UpdatedAt)
+VALUES(@conversation,@user,FALSE,FALSE,FALSE,@updated)
+ON CONFLICT (ConversationId,UserId)
+DO UPDATE SET IsDeleted=FALSE,UpdatedAt=EXCLUDED.UpdatedAt;";
+        restore.Parameters.AddWithValue("@conversation", conversationId.ToString("D"));
+        restore.Parameters.AddWithValue("@user", userId.ToString("D"));
+        restore.Parameters.AddWithValue("@updated", updatedAt.ToString("O"));
+        restore.ExecuteNonQuery();
+    }
+
     public MessageDto AddMessage(Guid conversationId, Guid userId, string senderPhone, string text, string? clientMessageId, Guid? replyToMessageId = null)
     {
         lock (_sync)
@@ -3386,6 +3430,9 @@ WHERE cp1.UserId=@user AND cp2.UserId<>@user;";
             update.Parameters.AddWithValue("@updated", message.SentAt.ToString("O"));
             update.Parameters.AddWithValue("@id", conversationId.ToString());
             update.ExecuteNonQuery();
+            // A new message revives a conversation that the recipient previously hid.
+            // Preserve archive/mute preferences; only clear the per-user deleted flag.
+            RestoreConversationVisibilityForAllParticipants(connection, transaction, conversationId, message.SentAt);
             transaction.Commit();
             return message;
         }
@@ -3515,6 +3562,9 @@ WHERE cp1.UserId=@user AND cp2.UserId<>@user;";
             update.Parameters.AddWithValue("@updated", message.SentAt.ToString("O"));
             update.Parameters.AddWithValue("@id", conversationId.ToString());
             update.ExecuteNonQuery();
+            // A new message revives a conversation that the recipient previously hid.
+            // Preserve archive/mute preferences; only clear the per-user deleted flag.
+            RestoreConversationVisibilityForAllParticipants(connection, transaction, conversationId, message.SentAt);
             transaction.Commit();
             return message;
         }
