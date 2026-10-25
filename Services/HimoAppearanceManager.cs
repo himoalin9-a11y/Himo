@@ -32,6 +32,7 @@ public static class HimoAppearanceManager
         ["d_light"] = new("#FFFFFF", "#6B47B5", "#282238", false),
         ["d_graphite"] = new("#ECEEF3", "#525D71", "#222936", false),
         ["d_mint"] = new("#ECFAF5", "#1A927A", "#17483F", false),
+        ["d_login"] = new("#050A24", "#A56BFF", "#F8FAFF", true),
         ["d_rose"] = new("#FFF1F6", "#D75E93", "#57283D", false),
         ["p_royal_gold"] = new("#17151B", "#F4C66B", "#FFF5DC", true),
         ["p_electric_blue"] = new("#101D34", "#59C8FF", "#EAF7FF", true),
@@ -278,8 +279,13 @@ public static class HimoAppearanceManager
 
         if (styleChanged)
         {
-            var original = Snapshot(view);
-            ApplyColorSnapshot(view, original, palette);
+            // Appearance/icon settings use explicit high-contrast colors, independent of the
+            // selected app palette. Still update themed image assets inside those pages.
+            if (!IsInStableContrastSettings(view))
+            {
+                var original = Snapshot(view);
+                ApplyColorSnapshot(view, original, palette);
+            }
             ApplyIconSource(view, styleId);
             applied.StyleId = styleId;
             applied.ImageSourceKey = GetImageSourceKey(view);
@@ -455,6 +461,18 @@ public static class HimoAppearanceManager
         foreach (var prefix in UiIconPrefixes)
             if (file.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                 return true;
+        return false;
+    }
+
+    private static bool IsInStableContrastSettings(VisualElement view)
+    {
+        Element? current = view;
+        while (current is not null)
+        {
+            if (string.Equals(current.AutomationId, "HimoSettingsContrastStable", StringComparison.Ordinal))
+                return true;
+            current = current.Parent;
+        }
         return false;
     }
 

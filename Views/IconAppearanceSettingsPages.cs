@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 
@@ -23,6 +23,14 @@ public sealed class IconsAppearanceSettingsPage : SettingsHubPageBase
                 if (Shell.Current is not null) await HimoShellNavigator.NavigateAsync("appearance-settings", true);
                 else await Navigation.PushAsync(new AppearanceSettingsPage(), true);
             });
+
+        AddNavigationCard("واجهة افتراضية", "توحيد ألوان واجهات Himo مع طابع شاشة تسجيل الدخول الداكن والبنفسجي", "himo_pro_ui_settings_icon_palette.png",
+            async () =>
+            {
+                if (Shell.Current is not null) await HimoShellNavigator.NavigateAsync("default-interface-settings", true);
+                else await Navigation.PushAsync(new DefaultInterfacesSettingsPage(), true);
+            });
+
     }
 }
 
@@ -60,7 +68,7 @@ public sealed class SystemIconsSettingsPage : SettingsHubPageBase
     private readonly Dictionary<string, Border> _optionCards = new(StringComparer.Ordinal);
     private readonly Label _applyStatus = new()
     {
-        FontSize = 12, TextColor = Color.FromArgb("#5B2D91"),
+        FontSize = 13, TextColor = Color.FromArgb("#D9CBEF"),
         HorizontalTextAlignment = TextAlignment.Center, Margin = new Thickness(0, 10, 0, 8)
     };
     private string _selectedKey = "himo_system_icon_original.png";
@@ -122,7 +130,6 @@ public sealed class SystemIconsSettingsPage : SettingsHubPageBase
             "تطبيق الأيقونة",
             "اضغط على أي أيقونة لتطبيقها كأيقونة Himo على الشاشة الرئيسية. قد يحتاج مشغّل الهاتف بضع ثوانٍ لتحديثها.",
             "himo_pro_ui_settings_icon_check.png");
-        _applyStatus.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
         Body.Children.Add(_applyStatus);
     }
 
@@ -172,9 +179,10 @@ public sealed class SystemIconsSettingsPage : SettingsHubPageBase
         var name = new Label
         {
             Text = option.Title,
-            FontSize = 11.5,
+            FontSize = 15.5,
+            FontAttributes = FontAttributes.Bold,
             LineBreakMode = LineBreakMode.WordWrap,
-            TextColor = Color.FromArgb("#F7E9FF"),
+            TextColor = HeadingColor,
             HorizontalTextAlignment = TextAlignment.Center,
             VerticalTextAlignment = TextAlignment.Center,
             MinimumHeightRequest = 32
@@ -191,8 +199,8 @@ public sealed class SystemIconsSettingsPage : SettingsHubPageBase
 
         var card = new Border
         {
-            BackgroundColor = selected ? Color.FromArgb("#F0E6FF") : Colors.White,
-            Stroke = new SolidColorBrush(selected ? Color.FromArgb("#7028E8") : Color.FromArgb("#E3D9F2")),
+            BackgroundColor = selected ? SettingsTileSelectedBackground : SettingsTileBackground,
+            Stroke = new SolidColorBrush(selected ? SettingsTileAccent : SettingsTileStroke),
             StrokeThickness = selected ? 2 : 1,
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(18) },
             Padding = 0,
@@ -201,9 +209,6 @@ public sealed class SystemIconsSettingsPage : SettingsHubPageBase
             VerticalOptions = LayoutOptions.Fill
         };
 
-        card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
-        card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
-        name.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
         var tap = new TapGestureRecognizer();
         tap.Tapped += (_, _) => SelectOption(option);
         card.GestureRecognizers.Add(tap);
@@ -223,8 +228,8 @@ public sealed class SystemIconsSettingsPage : SettingsHubPageBase
                 continue;
 
             var selected = string.Equals(candidate.FileName, _selectedKey, StringComparison.Ordinal);
-            card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
-            card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
+            card.BackgroundColor = selected ? SettingsTileSelectedBackground : SettingsTileBackground;
+            card.Stroke = new SolidColorBrush(selected ? SettingsTileAccent : SettingsTileStroke);
             card.StrokeThickness = selected ? 2 : 1;
             if (card.Content is VerticalStackLayout layout && layout.Children.FirstOrDefault() is Grid preview)
             {
@@ -277,12 +282,11 @@ public sealed class GlassIconsSettingsPage : SettingsHubPageBase
     private static readonly Color UnselectedStroke = Color.FromArgb("#594768");
     private static readonly Color SelectedStroke = Color.FromArgb("#D66AFF");
     private static readonly Color GlassText = Color.FromArgb("#FCF7FF");
-    private static readonly Color GlassAccent = Color.FromArgb("#D6B4FF");
+    private static readonly Color GlassAccent = Color.FromArgb("#D9BFFF");
 
     public GlassIconsSettingsPage()
         : base("أيقونات زجاجية", "اختر شعار Himo بلمسة زجاجية ولون لامع")
     {
-        _applyStatus.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
         _selectedKey = HimoLauncherIconService.GetSelectedVariant();
         if (!Options.Any(option => string.Equals(option.FileName, _selectedKey, StringComparison.Ordinal)))
             _selectedKey = string.Empty;
@@ -363,7 +367,7 @@ public sealed class GlassIconsSettingsPage : SettingsHubPageBase
         var name = new Label
         {
             Text = option.Title,
-            FontSize = 11.5,
+            FontSize = 14.5,
             FontAttributes = FontAttributes.Bold,
             LineBreakMode = LineBreakMode.WordWrap,
             TextColor = GlassText,
@@ -375,7 +379,7 @@ public sealed class GlassIconsSettingsPage : SettingsHubPageBase
         var action = new Label
         {
             Text = selected ? "محددة ✓" : "اختيار",
-            FontSize = 11.5,
+            FontSize = 13.5,
             FontAttributes = FontAttributes.Bold,
             TextColor = selected ? SelectedStroke : GlassAccent,
             HorizontalTextAlignment = TextAlignment.Center,
@@ -406,10 +410,6 @@ public sealed class GlassIconsSettingsPage : SettingsHubPageBase
             VerticalOptions = LayoutOptions.Fill
         };
 
-        card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
-        card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
-        name.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
-        action.SetDynamicResource(Label.TextColorProperty, selected ? "HimoAccent" : "HimoTextSecondary");
 
         var tap = new TapGestureRecognizer();
         tap.Tapped += (_, _) => SelectGlassOption(option);
@@ -429,8 +429,8 @@ public sealed class GlassIconsSettingsPage : SettingsHubPageBase
             var selected = string.Equals(candidate.FileName, _selectedKey, StringComparison.Ordinal);
             if (_optionCards.TryGetValue(candidate.FileName, out var card))
             {
-                card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
-                card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
+                card.BackgroundColor = selected ? SelectedBackground : CardBackground;
+                card.Stroke = new SolidColorBrush(selected ? SelectedStroke : UnselectedStroke);
                 card.StrokeThickness = selected ? 2.5 : 1;
 
                 if (card.Content is VerticalStackLayout layout && layout.Children.FirstOrDefault() is Grid preview)
@@ -444,7 +444,7 @@ public sealed class GlassIconsSettingsPage : SettingsHubPageBase
             if (_optionActions.TryGetValue(candidate.FileName, out var action))
             {
                 action.Text = selected ? "محددة ✓" : "اختيار";
-                action.SetDynamicResource(Label.TextColorProperty, selected ? "HimoAccent" : "HimoTextSecondary");
+                action.TextColor = selected ? SelectedStroke : GlassAccent;
             }
         }
     }
@@ -500,7 +500,6 @@ public sealed class ProfessionalIconsSettingsPage : SettingsHubPageBase
     public ProfessionalIconsSettingsPage()
         : base("أيقونات احترافية", "اختر أيقونتك اللامعة المفضلة")
     {
-        _applyStatus.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
         _selectedKey = HimoLauncherIconService.GetSelectedVariant();
         if (!Options.Any(option => string.Equals(option.FileName, _selectedKey, StringComparison.Ordinal)))
             _selectedKey = string.Empty;
@@ -580,7 +579,7 @@ public sealed class ProfessionalIconsSettingsPage : SettingsHubPageBase
         var name = new Label
         {
             Text = option.Title,
-            FontSize = 11.5,
+            FontSize = 14.5,
             FontAttributes = FontAttributes.Bold,
             TextColor = ProfessionalText,
             HorizontalTextAlignment = TextAlignment.Center,
@@ -592,7 +591,7 @@ public sealed class ProfessionalIconsSettingsPage : SettingsHubPageBase
         var action = new Label
         {
             Text = selected ? "محددة ✓" : "اختيار",
-            FontSize = 11,
+            FontSize = 13.5,
             FontAttributes = FontAttributes.Bold,
             TextColor = selected ? ProfessionalGold : Color.FromArgb("#C9BED8"),
             HorizontalTextAlignment = TextAlignment.Center,
@@ -623,10 +622,6 @@ public sealed class ProfessionalIconsSettingsPage : SettingsHubPageBase
             VerticalOptions = LayoutOptions.Fill
         };
 
-        card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
-        card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
-        name.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
-        action.SetDynamicResource(Label.TextColorProperty, selected ? "HimoAccent" : "HimoTextSecondary");
 
         var tap = new TapGestureRecognizer();
         tap.Tapped += (_, _) => SelectProfessionalOption(option);
@@ -646,8 +641,8 @@ public sealed class ProfessionalIconsSettingsPage : SettingsHubPageBase
             var selected = string.Equals(candidate.FileName, _selectedKey, StringComparison.Ordinal);
             if (_optionCards.TryGetValue(candidate.FileName, out var card))
             {
-                card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
-                card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
+                card.BackgroundColor = selected ? ProfessionalSelected : ProfessionalCard;
+                card.Stroke = new SolidColorBrush(selected ? ProfessionalGold : ProfessionalStroke);
                 card.StrokeThickness = selected ? 2.5 : 1;
                 if (card.Content is VerticalStackLayout layout && layout.Children.FirstOrDefault() is Grid preview)
                 {
@@ -660,7 +655,7 @@ public sealed class ProfessionalIconsSettingsPage : SettingsHubPageBase
             if (_optionActions.TryGetValue(candidate.FileName, out var action))
             {
                 action.Text = selected ? "محددة ✓" : "اختيار";
-                action.SetDynamicResource(Label.TextColorProperty, selected ? "HimoAccent" : "HimoTextSecondary");
+                action.TextColor = selected ? ProfessionalGold : Color.FromArgb("#D9CFE8");
             }
         }
     }
@@ -698,12 +693,13 @@ public sealed class DefaultInterfacesSettingsPage : InterfaceStyleGalleryPage
 {
     public DefaultInterfacesSettingsPage()
         : base(
-            "واجهات افتراضية",
+            "واجهة افتراضية",
             "اختر نمطًا بسيطًا وواضحًا من المجموعة الافتراضية.",
             "Himo.DefaultInterfaceStyle",
             "himo_system_icon_original.png",
             new[]
             {
+                new InterfaceStyleOption("login", "مطابقة تسجيل الدخول", "نفس الخلفية الليلية واللمسات البنفسجية لشاشة الدخول على جميع واجهات Himo", "#050A24", "#A56BFF", "#F8FAFF"),
                 new InterfaceStyleOption("classic", "الكلاسيكية", "بنفسجي Himo الهادئ", "#F7F4FF", "#6C25D9", "#291841"),
                 new InterfaceStyleOption("sky", "الأزرق الهادئ", "ألوان باردة ومريحة", "#EEF7FF", "#287AC4", "#163754"),
                 new InterfaceStyleOption("light", "فاتحة ونظيفة", "مساحات فاتحة وتباين واضح", "#FFFFFF", "#6B47B5", "#282238"),
@@ -767,15 +763,20 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
         _options = options;
         if (string.Equals(_preferenceKey, "Himo.ActiveInterfaceStyle", StringComparison.Ordinal))
         {
-            // Use the applied palette as the selection source of truth. Migrate a
-            // previous style that is not in the six-theme gallery to the first theme.
+            // Only mark a style selected when this gallery contains it; another global gallery may own the active palette.
             var activeStyle = HimoAppearanceManager.ActiveStyleId;
             _selectedKey = _options.Any(option => string.Equals(option.Key, activeStyle, StringComparison.Ordinal))
                 ? activeStyle
-                : _options[0].Key;
-            Preferences.Default.Set(_preferenceKey, _selectedKey);
-            if (!string.Equals(activeStyle, _selectedKey, StringComparison.Ordinal))
-                HimoAppearanceManager.SetActiveStyle(_selectedKey);
+                : string.Empty;
+            if (!string.IsNullOrEmpty(_selectedKey))
+                Preferences.Default.Set(_preferenceKey, _selectedKey);
+        }
+        else if (string.Equals(_preferenceKey, "Himo.DefaultInterfaceStyle", StringComparison.Ordinal))
+        {
+            var activeStyle = HimoAppearanceManager.ActiveStyleId;
+            _selectedKey = activeStyle.StartsWith("d_", StringComparison.Ordinal) ? activeStyle.Substring(2) : string.Empty;
+            if (!_options.Any(option => string.Equals(option.Key, _selectedKey, StringComparison.Ordinal)))
+                _selectedKey = string.Empty;
         }
         else
         {
@@ -784,9 +785,11 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
                 _selectedKey = _options[0].Key;
         }
 
-        var introDescription = string.Equals(_preferenceKey, "Himo.ActiveInterfaceStyle", StringComparison.Ordinal)
-            ? "اختر سمة لتغيير ألوان الواجهة والبطاقات والرموز الداخلية فورًا. سيظل اختيارك محفوظًا بعد إغلاق التطبيق."
+        var introDescription = (string.Equals(_preferenceKey, "Himo.ActiveInterfaceStyle", StringComparison.Ordinal)
+            || string.Equals(_preferenceKey, "Himo.DefaultInterfaceStyle", StringComparison.Ordinal))
+            ? "اختر نمطًا لتطبيق لوحة ألوان متناسقة على واجهات Himo والبطاقات والرموز. سيُحفظ اختيارك بعد إغلاق التطبيق."
             : "اضغط على أحد النماذج لتحديده. يبقى اختيارك محفوظًا على هذا الجهاز.";
+
         AddIntroCard(title, introDescription, iconFile);
 
         var grid = new Grid
@@ -835,15 +838,15 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
         statusRow.Add(new Label
         {
             Text = "9:41",
-            FontSize = 7.5,
-            TextColor = foreground.WithAlpha(0.72f),
+            FontSize = 9,
+            TextColor = accent.WithAlpha(0.92f),
             VerticalTextAlignment = TextAlignment.Center,
             HorizontalTextAlignment = TextAlignment.Start
         }, 0, 0);
         statusRow.Add(new Label
         {
             Text = "●  ▰  ▰",
-            FontSize = 6.5,
+            FontSize = 8,
             TextColor = accent,
             VerticalTextAlignment = TextAlignment.Center,
             HorizontalTextAlignment = TextAlignment.End
@@ -859,16 +862,16 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
                 new Label
                 {
                     Text = "Himo",
-                    FontSize = 12.5,
+                    FontSize = 14,
                     FontAttributes = FontAttributes.Bold,
-                    TextColor = foreground,
+                    TextColor = accent,
                     HorizontalTextAlignment = TextAlignment.Start
                 },
                 new Label
                 {
                     Text = "مساحتك اليومية",
-                    FontSize = 7.5,
-                    TextColor = foreground.WithAlpha(0.68f),
+                    FontSize = 9,
+                    TextColor = accent.WithAlpha(0.88f),
                     HorizontalTextAlignment = TextAlignment.Start
                 }
             }
@@ -959,27 +962,27 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
             }
         };
 
+        var readableAccent = AccentReadableOnDark(accent);
         var name = new Label
         {
             Text = option.Title,
-            FontSize = 14,
+            FontSize = 17,
             FontAttributes = FontAttributes.Bold,
-            TextColor = foreground,
+            TextColor = HeadingColor,
             HorizontalTextAlignment = TextAlignment.Center,
             VerticalTextAlignment = TextAlignment.Center,
-            LineBreakMode = LineBreakMode.TailTruncation
+            LineBreakMode = LineBreakMode.WordWrap
         };
-        // Theme preview text uses the candidate palette, not the currently active palette.
 
         var description = new Label
         {
             Text = option.Description,
-            FontSize = 11,
-            TextColor = foreground.WithAlpha(0.72f),
+            FontSize = 13.5,
+            TextColor = SecondaryText,
             HorizontalTextAlignment = TextAlignment.Center,
             VerticalTextAlignment = TextAlignment.Center,
             LineBreakMode = LineBreakMode.WordWrap,
-            MinimumHeightRequest = 31,
+            MinimumHeightRequest = 36,
             MaxLines = 2
         };
 
@@ -993,9 +996,9 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
             MinimumHeightRequest = 44,
             Padding = new Thickness(10, 0),
             CornerRadius = 14,
-            BackgroundColor = selected ? accent : accent.WithAlpha(0.12f),
-            TextColor = selected ? ContrastingText(accent) : accent,
-            BorderColor = selected ? accent : accent.WithAlpha(0.55f),
+            BackgroundColor = selected ? accent : SettingsTileSelectedBackground,
+            TextColor = selected ? ContrastingText(accent) : readableAccent,
+            BorderColor = selected ? accent : readableAccent,
             BorderWidth = selected ? 0 : 1,
             HorizontalOptions = LayoutOptions.Fill,
             VerticalOptions = LayoutOptions.Center,
@@ -1024,8 +1027,8 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
         {
             // Keep candidate-specific colors inside the mini preview; the wrapper uses the active app palette.
             AutomationId = "HimoThemePreview",
-            BackgroundColor = selected ? Color.FromArgb("#39204F") : Color.FromArgb("#2D1942"),
-            Stroke = new SolidColorBrush(selected ? accent : Color.FromArgb("#594768")),
+            BackgroundColor = selected ? SettingsTileSelectedBackground : SettingsTileBackground,
+            Stroke = new SolidColorBrush(selected ? SettingsTileAccent : SettingsTileStroke),
             StrokeThickness = selected ? 2 : 1,
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(22) },
             Padding = 0,
@@ -1033,9 +1036,7 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
             HorizontalOptions = LayoutOptions.Fill,
             VerticalOptions = LayoutOptions.Fill
         };
-        // The inner sample keeps the candidate palette; the surrounding selection tile follows Himo.
-        card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
-        card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
+        // Only the inner sample follows the candidate theme; the outer tile remains high-contrast.
 
         // The whole card is tappable as well as the explicitly labelled button.
         var tap = new TapGestureRecognizer();
@@ -1079,7 +1080,7 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
             Content = new Label
             {
                 Text = text,
-                FontSize = 7.5,
+                FontSize = 9,
                 TextColor = foreground,
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center,
@@ -1103,13 +1104,37 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
 
     private static Color ContrastingText(Color background)
     {
-        var luminance = 0.2126 * background.Red + 0.7152 * background.Green + 0.0722 * background.Blue;
-        return luminance > 0.52 ? Color.FromArgb("#21172B") : Colors.White;
+        var light = Colors.White;
+        var dark = Color.FromArgb("#21172B");
+        return ContrastRatio(background, dark) >= ContrastRatio(background, light) ? dark : light;
     }
+
+    private static Color AccentReadableOnDark(Color accent)
+    {
+        var panel = SettingsTileBackground;
+        var candidate = accent;
+        for (var i = 0; i < 12 && ContrastRatio(candidate, panel) < 4.5; i++)
+            candidate = Blend(candidate, Colors.White, 0.12f);
+        return candidate;
+    }
+
+    private static double ContrastRatio(Color first, Color second)
+    {
+        static double Linear(float component) => component <= 0.04045 ? component / 12.92 : Math.Pow((component + 0.055) / 1.055, 2.4);
+        static double Luminance(Color color) => 0.2126 * Linear(color.Red) + 0.7152 * Linear(color.Green) + 0.0722 * Linear(color.Blue);
+        var l1 = Luminance(first);
+        var l2 = Luminance(second);
+        return (Math.Max(l1, l2) + 0.05) / (Math.Min(l1, l2) + 0.05);
+    }
+
+    private static Color Blend(Color first, Color second, float amount) => new(
+        first.Red + ((second.Red - first.Red) * amount),
+        first.Green + ((second.Green - first.Green) * amount),
+        first.Blue + ((second.Blue - first.Blue) * amount),
+        first.Alpha + ((second.Alpha - first.Alpha) * amount));
 
     private void SelectStyle(InterfaceStyleOption option)
     {
-        var changed = !string.Equals(option.Key, _selectedKey, StringComparison.Ordinal);
         _selectedKey = option.Key;
         Preferences.Default.Set(_preferenceKey, _selectedKey);
 
@@ -1119,30 +1144,28 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
             ? option.Key
             : (string.Equals(_preferenceKey, "Himo.DefaultInterfaceStyle", StringComparison.Ordinal) ? "d_" : "p_") + option.Key;
 
-        if (changed)
-        {
-            HimoAppearanceManager.SetActiveStyle(styleId);
-            // Refresh only this gallery now. Pages underneath refresh on appearing.
-            HimoAppearanceManager.ApplyToTree(this);
-        }
+        // Apply even when this option was previously selected; another gallery may have changed the global palette.
+        HimoAppearanceManager.SetActiveStyle(styleId);
+        HimoAppearanceManager.ApplyToTree(this);
 
         foreach (var candidate in _options)
         {
             var selected = string.Equals(candidate.Key, _selectedKey, StringComparison.Ordinal);
             var accent = Color.FromArgb(candidate.Accent);
+            var readableAccent = AccentReadableOnDark(accent);
             if (_cards.TryGetValue(candidate.Key, out var card))
             {
-                card.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "HimoSoft" : "HimoCard");
-                card.SetDynamicResource(Border.StrokeProperty, selected ? "HimoAccent" : "HimoBorder");
+                card.BackgroundColor = selected ? SettingsTileSelectedBackground : SettingsTileBackground;
+                card.Stroke = new SolidColorBrush(selected ? SettingsTileAccent : SettingsTileStroke);
                 card.StrokeThickness = selected ? 2 : 1;
             }
 
             if (_actionButtons.TryGetValue(candidate.Key, out var action))
             {
                 action.Text = selected ? "السمة الحالية  ✓" : "تطبيق السمة";
-                action.BackgroundColor = selected ? accent : accent.WithAlpha(0.12f);
-                action.TextColor = selected ? ContrastingText(accent) : accent;
-                action.BorderColor = selected ? accent : accent.WithAlpha(0.55f);
+                action.BackgroundColor = selected ? accent : SettingsTileSelectedBackground;
+                action.TextColor = selected ? ContrastingText(accent) : readableAccent;
+                action.BorderColor = selected ? accent : readableAccent;
                 action.BorderWidth = selected ? 0 : 1;
                 action.Shadow = selected
                     ? new Shadow { Brush = new SolidColorBrush(accent), Offset = new Point(0, 2), Radius = 8, Opacity = 0.20f }
@@ -1164,26 +1187,30 @@ public sealed record InterfaceStyleOption(
 /// <summary>Shared presentation and navigation for this settings subsection.</summary>
 public abstract class SettingsHubPageBase : Himo.Services.LocalizedContentPage
 {
-    private static readonly Color PageBackground = Color.FromArgb("#211333");
-    private static readonly Color PrimaryPurple = Color.FromArgb("#C76BFF");
-    private static readonly Color HeadingColor = Color.FromArgb("#F7E9FF");
-    private static readonly Color SecondaryText = Color.FromArgb("#C7B8D8");
-    private static readonly Color CardStroke = Color.FromArgb("#594768");
-    private static readonly Color IconBackground = Color.FromArgb("#39204F");
+    private static readonly Color PageBackground = Color.FromArgb("#090D24");
+    protected static readonly Color HeadingColor = Color.FromArgb("#FBF8FF");
+    protected static readonly Color SecondaryText = Color.FromArgb("#D5CBE8");
+    protected static readonly Color CardStroke = Color.FromArgb("#51456D");
+    protected static readonly Color IconBackground = Color.FromArgb("#1B203B");
+    protected static readonly Color SettingsTileBackground = Color.FromArgb("#171B32");
+    protected static readonly Color SettingsTileSelectedBackground = Color.FromArgb("#292044");
+    protected static readonly Color SettingsTileStroke = Color.FromArgb("#433A61");
+    protected static readonly Color SettingsTileAccent = Color.FromArgb("#C7A0FF");
+    private static readonly Color IntroTitleColor = Color.FromArgb("#2A1D3B");
+    private static readonly Color IntroDescriptionColor = Color.FromArgb("#554568");
 
     protected readonly VerticalStackLayout Body;
     private int _navigationInProgress;
 
     protected SettingsHubPageBase(string title, string subtitle)
     {
+        AutomationId = "HimoSettingsContrastStable";
         Title = title;
         FlowDirection = FlowDirection.RightToLeft;
         BackgroundColor = PageBackground;
-        SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         Shell.SetNavBarIsVisible(this, false);
 
         var root = new Grid { BackgroundColor = PageBackground };
-        root.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
 
@@ -1211,8 +1238,8 @@ public abstract class SettingsHubPageBase : Himo.Services.LocalizedContentPage
             HorizontalOptions = LayoutOptions.Start,
             VerticalOptions = LayoutOptions.Center
         };
-        backButton.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoSoft");
-        backButton.SetDynamicResource(ImageButton.BorderColorProperty, "HimoBorder");
+        backButton.BackgroundColor = IconBackground;
+        backButton.BorderColor = CardStroke;
         backButton.Clicked += BackButtonClicked;
         header.Add(backButton, 0, 0);
 
@@ -1226,22 +1253,22 @@ public abstract class SettingsHubPageBase : Himo.Services.LocalizedContentPage
         var headingTitle = new Label
         {
             Text = title,
-            FontSize = 23,
+            FontSize = 27,
             FontAttributes = FontAttributes.Bold,
             TextColor = HeadingColor,
             HorizontalTextAlignment = TextAlignment.Start
         };
-        headingTitle.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        
         heading.Children.Add(headingTitle);
         var headingSubtitle = new Label
         {
             Text = subtitle,
-            FontSize = 12.5,
+            FontSize = 14,
             TextColor = SecondaryText,
             HorizontalTextAlignment = TextAlignment.Start,
             LineBreakMode = LineBreakMode.WordWrap
         };
-        headingSubtitle.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        
         heading.Children.Add(headingSubtitle);
         header.Add(heading, 1, 0);
         header.Add(new BoxView { Opacity = 0, WidthRequest = 44, HeightRequest = 44 }, 2, 0);
@@ -1253,14 +1280,12 @@ public abstract class SettingsHubPageBase : Himo.Services.LocalizedContentPage
             Spacing = 14,
             FlowDirection = FlowDirection.RightToLeft
         };
-        Body.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         var scroll = new ScrollView
         {
             BackgroundColor = PageBackground,
             Content = Body,
             VerticalScrollBarVisibility = ScrollBarVisibility.Never
         };
-        scroll.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         root.Add(scroll, 0, 1);
         Content = root;
     }
@@ -1298,27 +1323,23 @@ public abstract class SettingsHubPageBase : Himo.Services.LocalizedContentPage
                 VerticalOptions = LayoutOptions.Center
             }
         };
-        iconTile.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoSoft");
-        iconTile.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
         content.Children.Add(iconTile);
         var introTitle = new Label
         {
             Text = title,
-            FontSize = 16.5,
+            FontSize = 20,
             FontAttributes = FontAttributes.Bold,
-            TextColor = HeadingColor,
+            TextColor = IntroTitleColor,
             HorizontalTextAlignment = TextAlignment.Center
         };
-        introTitle.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
         var introDescription = new Label
         {
             Text = description,
-            FontSize = 12.5,
-            TextColor = SecondaryText,
+            FontSize = 14.5,
+            TextColor = IntroDescriptionColor,
             HorizontalTextAlignment = TextAlignment.Center,
             LineBreakMode = LineBreakMode.WordWrap
         };
-        introDescription.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
         content.Children.Add(introTitle);
         content.Children.Add(introDescription);
         var introBorder = new Border
@@ -1329,8 +1350,6 @@ public abstract class SettingsHubPageBase : Himo.Services.LocalizedContentPage
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(20) },
             Content = content
         };
-        introBorder.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoCard");
-        introBorder.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
         Body.Children.Add(introBorder);
     }
 
@@ -1341,7 +1360,7 @@ public abstract class SettingsHubPageBase : Himo.Services.LocalizedContentPage
             Padding = new Thickness(12, 13),
             ColumnSpacing = 8,
             FlowDirection = FlowDirection.LeftToRight,
-            MinimumHeightRequest = 82
+            MinimumHeightRequest = 94
         };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
@@ -1369,23 +1388,21 @@ public abstract class SettingsHubPageBase : Himo.Services.LocalizedContentPage
         var titleLabel = new Label
         {
             Text = title,
-            FontSize = 16,
+            FontSize = 20,
             FontAttributes = FontAttributes.Bold,
-            TextColor = HeadingColor,
+            TextColor = IntroTitleColor,
             HorizontalTextAlignment = TextAlignment.Start,
             LineBreakMode = LineBreakMode.TailTruncation
         };
-        titleLabel.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
         var descriptionLabel = new Label
         {
             Text = description,
-            FontSize = 12,
-            TextColor = SecondaryText,
+            FontSize = 14.5,
+            TextColor = IntroDescriptionColor,
             HorizontalTextAlignment = TextAlignment.Start,
             LineBreakMode = LineBreakMode.WordWrap,
             MaxLines = 2
         };
-        descriptionLabel.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
         labels.Children.Add(titleLabel);
         labels.Children.Add(descriptionLabel);
         row.Add(labels, 1, 0);
@@ -1411,8 +1428,6 @@ public abstract class SettingsHubPageBase : Himo.Services.LocalizedContentPage
             VerticalOptions = LayoutOptions.Center,
             Content = iconImage
         };
-        icon.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoSoft");
-        icon.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
         row.Add(icon, 2, 0);
 
         var card = new Border
@@ -1424,8 +1439,6 @@ public abstract class SettingsHubPageBase : Himo.Services.LocalizedContentPage
             Padding = 0,
             Content = row
         };
-        card.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoCard");
-        card.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
         var tap = new TapGestureRecognizer();
         tap.Tapped += async (_, _) =>
         {

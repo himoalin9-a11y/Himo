@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:models="clr-namespace:Himo.Models"
@@ -120,7 +120,7 @@
             </Style>
 
             <DataTemplate x:Key="ChatTextTemplate" x:DataType="models:ChatMessage">
-                <VerticalStackLayout Spacing="3" Padding="0,2" HorizontalOptions="Fill">
+                <VerticalStackLayout Loaded="ChatTextTemplateLoaded" Spacing="3" Padding="0,2" HorizontalOptions="Fill">
                     <Grid IsVisible="{Binding HasDateSeparator}" ColumnDefinitions="*,Auto,*" Margin="8,8">
                         <BoxView Grid.Column="0" HeightRequest="1" Color="{DynamicResource HimoAccent}" VerticalOptions="Center" />
                         <Border Grid.Column="1" Padding="12,5" BackgroundColor="{DynamicResource HimoBackground}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1"><Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape><Label Text="{Binding DateSeparatorText}" FontSize="10.5" FontAttributes="Bold" TextColor="{DynamicResource HimoTextSecondary}" /></Border>
@@ -136,25 +136,34 @@
                                 <Label Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" />
                                 <Label Text="{Binding DeliveryStatusText}" FontSize="10.5" FontAttributes="Bold" IsVisible="{Binding IsMine}">
                                     <Label.Triggers>
-                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger>
-                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="#9CA3AF" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="#168BFF" /></DataTrigger>
                                         <DataTrigger TargetType="Label" Binding="{Binding IsPending}" Value="True"><Setter Property="Text" Value="◷" /><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger>
                                         <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="Text" Value="!" /><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger>
                                     </Label.Triggers>
                                 </Label>
                             </HorizontalStackLayout>
-                            <Button Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" BackgroundColor="{DynamicResource HimoAccent}" BorderColor="{DynamicResource HimoBorder}" BorderWidth="1" CornerRadius="10" Padding="12,4" HorizontalOptions="End" IsVisible="False" Clicked="ResendFailedMessageClicked">
-                                <Button.Triggers>
-                                    <DataTrigger TargetType="Button" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="IsVisible" Value="True" /></DataTrigger>
-                                </Button.Triggers>
-                            </Button>
+                            <Border IsVisible="False" Padding="12,4" HorizontalOptions="End"
+        BackgroundColor="{DynamicResource HimoAccent}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
+    <Border.StrokeShape><shapes:RoundRectangle CornerRadius="10" /></Border.StrokeShape>
+    <Border.GestureRecognizers>
+        <TapGestureRecognizer Tapped="ResendFailedMessageTapped" />
+    </Border.GestureRecognizers>
+    <Border.Triggers>
+        <DataTrigger TargetType="Border" Binding="{Binding DeliveryStatus}" Value="failed">
+            <Setter Property="IsVisible" Value="True" />
+        </DataTrigger>
+    </Border.Triggers>
+    <Label Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold"
+           TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+</Border>
                         </VerticalStackLayout>
                     </Border>
                 </VerticalStackLayout>
             </DataTemplate>
 
             <DataTemplate x:Key="ChatImageTemplate" x:DataType="models:ChatMessage">
-                <VerticalStackLayout Spacing="2" Padding="0,1" HorizontalOptions="Fill">
+                <VerticalStackLayout Loaded="ChatImageTemplateLoaded" Spacing="2" Padding="0,1" HorizontalOptions="Fill">
                     <Grid IsVisible="{Binding HasDateSeparator}" ColumnDefinitions="*,Auto,*" Margin="8,8">
                         <BoxView Grid.Column="0" HeightRequest="1" Color="{DynamicResource HimoBorder}" VerticalOptions="Center" />
                         <Border Grid.Column="1" Padding="12,5" BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
@@ -189,22 +198,33 @@
                                 <Label Grid.Column="0" Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" HorizontalOptions="End" />
                                 <Label Grid.Column="1" Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="{DynamicResource HimoOnAccent}">
                                     <Label.Triggers>
-                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger>
-                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="#9CA3AF" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="#168BFF" /></DataTrigger>
                                         <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="Text" Value="!" /><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger>
                                     </Label.Triggers>
                                 </Label>
                             </Grid>
-                            <Button Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" BackgroundColor="{DynamicResource HimoAccent}" BorderColor="{DynamicResource HimoBorder}" BorderWidth="1" CornerRadius="11" Padding="14,5" HorizontalOptions="End" IsVisible="False" Clicked="ResendFailedMessageClicked">
-                                <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="IsVisible" Value="True" /></DataTrigger></Button.Triggers>
-                            </Button>
+                            <Border IsVisible="False" Padding="14,5" HorizontalOptions="End"
+        BackgroundColor="{DynamicResource HimoAccent}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
+    <Border.StrokeShape><shapes:RoundRectangle CornerRadius="11" /></Border.StrokeShape>
+    <Border.GestureRecognizers>
+        <TapGestureRecognizer Tapped="ResendFailedMessageTapped" />
+    </Border.GestureRecognizers>
+    <Border.Triggers>
+        <DataTrigger TargetType="Border" Binding="{Binding DeliveryStatus}" Value="failed">
+            <Setter Property="IsVisible" Value="True" />
+        </DataTrigger>
+    </Border.Triggers>
+    <Label Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold"
+           TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+</Border>
                         </VerticalStackLayout>
                     </Border>
                 </VerticalStackLayout>
             </DataTemplate>
 
             <DataTemplate x:Key="ChatVideoTemplate" x:DataType="models:ChatMessage">
-                <VerticalStackLayout Spacing="2" Padding="0,1" HorizontalOptions="Fill">
+                <VerticalStackLayout Loaded="ChatVideoTemplateLoaded" Spacing="2" Padding="0,1" HorizontalOptions="Fill">
                     <Grid IsVisible="{Binding HasDateSeparator}" ColumnDefinitions="*,Auto,*" Margin="8,8">
                         <BoxView Grid.Column="0" HeightRequest="1" Color="{DynamicResource HimoBorder}" VerticalOptions="Center" />
                         <Border Grid.Column="1" Padding="12,5" BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
@@ -238,22 +258,33 @@
                                 <Label Grid.Column="0" Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" HorizontalOptions="End" />
                                 <Label Grid.Column="1" Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="{DynamicResource HimoOnAccent}">
                                     <Label.Triggers>
-                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger>
-                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="#9CA3AF" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="#168BFF" /></DataTrigger>
                                         <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="Text" Value="!" /><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger>
                                     </Label.Triggers>
                                 </Label>
                             </Grid>
-                            <Button Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" BackgroundColor="{DynamicResource HimoAccent}" BorderColor="{DynamicResource HimoBorder}" BorderWidth="1" CornerRadius="11" Padding="14,5" HorizontalOptions="End" IsVisible="False" Clicked="ResendFailedMessageClicked">
-                                <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="IsVisible" Value="True" /></DataTrigger></Button.Triggers>
-                            </Button>
+                            <Border IsVisible="False" Padding="14,5" HorizontalOptions="End"
+        BackgroundColor="{DynamicResource HimoAccent}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
+    <Border.StrokeShape><shapes:RoundRectangle CornerRadius="11" /></Border.StrokeShape>
+    <Border.GestureRecognizers>
+        <TapGestureRecognizer Tapped="ResendFailedMessageTapped" />
+    </Border.GestureRecognizers>
+    <Border.Triggers>
+        <DataTrigger TargetType="Border" Binding="{Binding DeliveryStatus}" Value="failed">
+            <Setter Property="IsVisible" Value="True" />
+        </DataTrigger>
+    </Border.Triggers>
+    <Label Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold"
+           TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+</Border>
                         </VerticalStackLayout>
                     </Border>
                 </VerticalStackLayout>
             </DataTemplate>
 
             <DataTemplate x:Key="ChatAudioTemplate" x:DataType="models:ChatMessage">
-                <VerticalStackLayout Spacing="2" Padding="0,1" HorizontalOptions="Fill">
+                <VerticalStackLayout Loaded="ChatAudioTemplateLoaded" Spacing="2" Padding="0,1" HorizontalOptions="Fill">
                     <Grid IsVisible="{Binding HasDateSeparator}" ColumnDefinitions="*,Auto,*" Margin="8,8">
                         <BoxView Grid.Column="0" HeightRequest="1" Color="{DynamicResource HimoBorder}" VerticalOptions="Center" />
                         <Border Grid.Column="1" Padding="12,5" BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
@@ -279,22 +310,33 @@
                                 <Label Grid.Column="0" Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" HorizontalOptions="End" />
                                 <Label Grid.Column="1" Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="{DynamicResource HimoOnAccent}">
                                     <Label.Triggers>
-                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger>
-                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="#9CA3AF" /></DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="#168BFF" /></DataTrigger>
                                         <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="Text" Value="!" /><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger>
                                     </Label.Triggers>
                                 </Label>
                             </Grid>
-                            <Button Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" BackgroundColor="{DynamicResource HimoAccent}" BorderColor="{DynamicResource HimoBorder}" BorderWidth="1" CornerRadius="11" Padding="14,5" HorizontalOptions="End" IsVisible="False" Clicked="ResendFailedMessageClicked">
-                                <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="IsVisible" Value="True" /></DataTrigger></Button.Triggers>
-                            </Button>
+                            <Border IsVisible="False" Padding="14,5" HorizontalOptions="End"
+        BackgroundColor="{DynamicResource HimoAccent}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
+    <Border.StrokeShape><shapes:RoundRectangle CornerRadius="11" /></Border.StrokeShape>
+    <Border.GestureRecognizers>
+        <TapGestureRecognizer Tapped="ResendFailedMessageTapped" />
+    </Border.GestureRecognizers>
+    <Border.Triggers>
+        <DataTrigger TargetType="Border" Binding="{Binding DeliveryStatus}" Value="failed">
+            <Setter Property="IsVisible" Value="True" />
+        </DataTrigger>
+    </Border.Triggers>
+    <Label Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold"
+           TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+</Border>
                         </VerticalStackLayout>
                     </Border>
                 </VerticalStackLayout>
             </DataTemplate>
 
             <DataTemplate x:Key="ChatFileTemplate" x:DataType="models:ChatMessage">
-                <VerticalStackLayout Spacing="2" Padding="0,1" HorizontalOptions="Fill">
+                <VerticalStackLayout Loaded="ChatFileTemplateLoaded" Spacing="2" Padding="0,1" HorizontalOptions="Fill">
                     <Grid IsVisible="{Binding HasDateSeparator}" ColumnDefinitions="*,Auto,*" Margin="8,8">
                         <BoxView Grid.Column="0" HeightRequest="1" Color="{DynamicResource HimoBorder}" VerticalOptions="Center" />
                         <Border Grid.Column="1" Padding="12,5" BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
@@ -319,11 +361,27 @@
                     </Border>
                     <HorizontalStackLayout HorizontalOptions="End" Spacing="4">
                         <Label Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" />
-                        <Label Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="{DynamicResource HimoOnAccent}" />
+                        <Label Text="{Binding DeliveryStatusText}" IsVisible="{Binding IsMine}" FontSize="10.5" FontAttributes="Bold" TextColor="#9CA3AF">
+                            <Label.Triggers>
+                                <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="delivered"><Setter Property="TextColor" Value="#9CA3AF" /></DataTrigger>
+                                <DataTrigger TargetType="Label" Binding="{Binding DeliveryStatus}" Value="read"><Setter Property="TextColor" Value="#168BFF" /></DataTrigger>
+                            </Label.Triggers>
+                        </Label>
                     </HorizontalStackLayout>
-                    <Button Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" BackgroundColor="{DynamicResource HimoAccent}" BorderColor="{DynamicResource HimoBorder}" BorderWidth="1" CornerRadius="11" Padding="14,5" HorizontalOptions="End" IsVisible="False" Clicked="ResendFailedMessageClicked">
-                        <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding DeliveryStatus}" Value="failed"><Setter Property="IsVisible" Value="True" /></DataTrigger></Button.Triggers>
-                    </Button>
+                    <Border IsVisible="False" Padding="14,5" HorizontalOptions="End"
+        BackgroundColor="{DynamicResource HimoAccent}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
+    <Border.StrokeShape><shapes:RoundRectangle CornerRadius="11" /></Border.StrokeShape>
+    <Border.GestureRecognizers>
+        <TapGestureRecognizer Tapped="ResendFailedMessageTapped" />
+    </Border.GestureRecognizers>
+    <Border.Triggers>
+        <DataTrigger TargetType="Border" Binding="{Binding DeliveryStatus}" Value="failed">
+            <Setter Property="IsVisible" Value="True" />
+        </DataTrigger>
+    </Border.Triggers>
+    <Label Text="إعادة الإرسال" FontSize="10.5" FontAttributes="Bold"
+           TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+</Border>
                 </VerticalStackLayout>
             </DataTemplate>
 
@@ -412,120 +470,13 @@
             </Grid>
         </Border>
 
-        <!-- INLINE VIDEO PLAYER -->
-        <Grid x:Name="InlineVideoOverlay" Grid.RowSpan="4" IsVisible="False" ZIndex="200"
-              BackgroundColor="{DynamicResource HimoBackground}" HorizontalOptions="Fill" VerticalOptions="Fill">
-            <ContentView x:Name="InlineVideoHost"
-                         HorizontalOptions="Fill" VerticalOptions="Fill"
-                         BackgroundColor="{DynamicResource HimoBackground}" />
-
-            <ActivityIndicator x:Name="InlineVideoLoading"
-                               IsVisible="False"
-                               IsRunning="True"
-                               Color="White"
-                               WidthRequest="44"
-                               HeightRequest="44"
-                               HorizontalOptions="Center"
-                               VerticalOptions="Center"
-                               ZIndex="8" />
-
-            <!-- Top bar -->
-            <Border HorizontalOptions="Fill" VerticalOptions="Start"
-                    Padding="14,10,12,10"
-                    BackgroundColor="#B20B0F14"
-                    StrokeThickness="0"
-                    ZIndex="10">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                    <VerticalStackLayout Grid.Column="0" Spacing="1" VerticalOptions="Center">
-                        <Label x:Name="InlineVideoTitleLabel"
-                               Text="الفيديو"
-                               FontSize="14"
-                               FontAttributes="Bold"
-                               TextColor="{DynamicResource HimoPrimary}"
-                               VerticalTextAlignment="Center"
-                               HorizontalTextAlignment="Start"
-                               LineBreakMode="TailTruncation" />
-                        <Label Text="مشغل الفيديو"
-                               FontSize="10.5"
-                               TextColor="{DynamicResource HimoTextSecondary}"
-                               VerticalTextAlignment="Center" />
-                    </VerticalStackLayout>
-                    <Button Grid.Column="1" Text="×"
-                            WidthRequest="42" HeightRequest="42"
-                            Padding="0" FontSize="26" FontAttributes="Bold"
-                            BackgroundColor="#4DFFFFFF" TextColor="{DynamicResource HimoOnAccent}"
-                            CornerRadius="21" Clicked="CloseInlineVideoClicked" />
-                </Grid>
-            </Border>
-
-            <!-- Center play/pause control -->
-            <Button x:Name="InlineVideoCenterPlayButton"
-                    Text="▶"
-                    WidthRequest="76" HeightRequest="76"
-                    Padding="0"
-                    FontSize="28" FontAttributes="Bold"
-                    BackgroundColor="#A66C3FD1" TextColor="{DynamicResource HimoOnAccent}"
-                    CornerRadius="38"
-                    HorizontalOptions="Center" VerticalOptions="Center"
-                    ZIndex="7" Clicked="InlineVideoPlayClicked" />
-
-            <!-- Bottom transport controls -->
-            <Border HorizontalOptions="Fill" VerticalOptions="End"
-                    Padding="14,10,14,14"
-                    BackgroundColor="#D90B0F14"
-                    StrokeThickness="0"
-                    ZIndex="10">
-                <VerticalStackLayout Spacing="8">
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                        <Label x:Name="InlineVideoCurrentTimeLabel"
-                               Grid.Column="0" Text="00:00" FontSize="11.5"
-                               TextColor="{DynamicResource HimoPrimary}" VerticalTextAlignment="Center" />
-                        <Slider x:Name="InlineVideoSlider"
-                                Grid.Column="1" Minimum="0" Maximum="1" Value="0"
-                                HeightRequest="26" ThumbColor="White"
-                                MinimumTrackColor="{DynamicResource HimoAccent}"
-                                MaximumTrackColor="#775B92"
-                                ValueChanged="InlineVideoSliderValueChanged" />
-                        <Label x:Name="InlineVideoDurationLabel"
-                               Grid.Column="2" Text="00:00" FontSize="11.5"
-                               TextColor="{DynamicResource HimoPrimary}" VerticalTextAlignment="Center" />
-                    </Grid>
-
-                    <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,*"
-                          ColumnSpacing="10" HorizontalOptions="Center">
-                        <Button x:Name="InlineVideoRewindButton"
-                                Grid.Column="1" Text="↶ 10"
-                                WidthRequest="62" HeightRequest="42" Padding="0"
-                                FontSize="11" FontAttributes="Bold"
-                                BackgroundColor="{DynamicResource HimoCard}" TextColor="{DynamicResource HimoOnAccent}"
-                                CornerRadius="21" Clicked="InlineVideoRewindClicked" />
-                        <Button x:Name="InlineVideoPlayButton"
-                                Grid.Column="2" Text="▶"
-                                WidthRequest="50" HeightRequest="50" Padding="0"
-                                FontSize="18" FontAttributes="Bold"
-                                BackgroundColor="{DynamicResource HimoAccent}" TextColor="{DynamicResource HimoOnAccent}"
-                                CornerRadius="25" Clicked="InlineVideoPlayClicked" />
-                        <Button x:Name="InlineVideoForwardButton"
-                                Grid.Column="3" Text="10 ↷"
-                                WidthRequest="62" HeightRequest="42" Padding="0"
-                                FontSize="11" FontAttributes="Bold"
-                                BackgroundColor="{DynamicResource HimoCard}" TextColor="{DynamicResource HimoOnAccent}"
-                                CornerRadius="21" Clicked="InlineVideoForwardClicked" />
-                        <Button x:Name="InlineVideoMuteButton"
-                                Grid.Column="4" Text="🔊"
-                                WidthRequest="48" HeightRequest="42" Padding="0"
-                                FontSize="17" BackgroundColor="{DynamicResource HimoCard}" TextColor="{DynamicResource HimoOnAccent}"
-                                CornerRadius="21" Clicked="InlineVideoMuteClicked" />
-                    </Grid>
-                </VerticalStackLayout>
-            </Border>
-        </Grid>
+        <!-- Inline video controls are created on first playback by EnsureInlineVideoOverlay(). -->
 
         <!-- MESSAGES -->
         <!-- MESSAGES -->
         <Grid Grid.Row="2" Padding="0" BackgroundColor="Transparent">
             <!-- Keep the selected photograph fully visible: no dimming/veil layer above it. -->
-            <Image x:Name="ChatWallpaper"
+            <Image x:Name="ChatWallpaper" Source="himo_chat_preview_purple_flowers.jpg"
                    HorizontalOptions="Fill"
                    VerticalOptions="Fill"
                    InputTransparent="True"
@@ -608,43 +559,8 @@
                            TextColor="{DynamicResource HimoPrimary}" VerticalTextAlignment="Center" />
                     <Label Grid.Column="2" Text="اضغط لإيقاف التسجيل" FontSize="9.5" TextColor="{DynamicResource HimoTextSecondary}" VerticalTextAlignment="Center" />
                 </Grid>
-                <!-- ATTACHMENT / MEDIA PANEL -->
-                <Border x:Name="AttachmentPanel" IsVisible="False" Margin="2,4,2,5"
-                        BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="0.8"
-                        Padding="10,9">
-                    <Border.StrokeShape><shapes:RoundRectangle CornerRadius="20" /></Border.StrokeShape>
-                    <VerticalStackLayout Spacing="7">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <VerticalStackLayout Spacing="0">
-                                <Label Text="إرسال وسائط" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" />
-                                <Label Text="اختر ما تريد إرساله" FontSize="9.5" TextColor="{DynamicResource HimoTextSecondary}" />
-                            </VerticalStackLayout>
-                            <BoxView Grid.Column="1" WidthRequest="28" HeightRequest="2" CornerRadius="1" Color="#E7E2EF" VerticalOptions="Center" />
-                        </Grid>
-                        <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8" HeightRequest="76">
-                        <VerticalStackLayout Grid.Column="0" Spacing="4" HorizontalOptions="Center">
-                            <ImageButton Source="himo_icon_chat_camera.png" WidthRequest="42" HeightRequest="42" Padding="10"
-                                         BackgroundColor="{DynamicResource HimoSurface}" BorderColor="{DynamicResource HimoBorder}" BorderWidth="0.8" CornerRadius="13" Clicked="CameraPanelClicked" />
-                            <Label Text="الكاميرا" FontSize="10" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
-                        </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Column="1" Spacing="4" HorizontalOptions="Center">
-                            <ImageButton Source="himo_icon_chat_gallery.png" WidthRequest="42" HeightRequest="42" Padding="10"
-                                         BackgroundColor="{DynamicResource HimoSurface}" BorderColor="{DynamicResource HimoBorder}" BorderWidth="0.8" CornerRadius="13" Clicked="PickPhotoClicked" />
-                            <Label Text="الصور" FontSize="10" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
-                        </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Column="2" Spacing="4" HorizontalOptions="Center">
-                            <ImageButton Source="himo_icon_chat_video.png" WidthRequest="42" HeightRequest="42" Padding="10"
-                                         BackgroundColor="{DynamicResource HimoSurface}" BorderColor="{DynamicResource HimoBorder}" BorderWidth="0.8" CornerRadius="13" Clicked="PickVideoClicked" />
-                            <Label Text="الفيديو" FontSize="10" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
-                        </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Column="3" Spacing="4" HorizontalOptions="Center">
-                            <ImageButton Source="himo_icon_chat_attachment.png" WidthRequest="42" HeightRequest="42" Padding="10"
-                                         BackgroundColor="{DynamicResource HimoSurface}" BorderColor="{DynamicResource HimoBorder}" BorderWidth="0.8" CornerRadius="13" Clicked="PickFileClicked" />
-                            <Label Text="ملف" FontSize="10" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
-                        </VerticalStackLayout>
-                        </Grid>
-                    </VerticalStackLayout>
-                </Border>
+                <!-- Attachment panel is created only when the user opens it. -->
+                <ContentView x:Name="AttachmentPanelHost" IsVisible="False" />
 
                 <Grid ColumnDefinitions="44,44,*,44,44" ColumnSpacing="4" HeightRequest="48">
                     <ImageButton x:Name="RecordButton" Grid.Column="0" Source="himo_icon_chat_mic.png"

@@ -1,4 +1,4 @@
-using CommunityToolkit.Maui.Views;
+﻿using CommunityToolkit.Maui.Views;
 using Himo.Services;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
@@ -501,6 +501,14 @@ public sealed class ChatAnimatedWallpaperPage : Himo.Services.LocalizedContentPa
         LineBreakMode = LineBreakMode.WordWrap
     };
     private readonly List<(string VideoUrl, Button Button, Border Card)> _animatedItems = new();
+    private readonly ContentView _inlinePreviewHost = new()
+    {
+        IsVisible = false,
+        HeightRequest = 0,
+        HorizontalOptions = LayoutOptions.Fill,
+        VerticalOptions = LayoutOptions.Start
+    };
+    private MediaElement? _inlinePreviewPlayer;
 
     public ChatAnimatedWallpaperPage()
     {
@@ -520,6 +528,16 @@ public sealed class ChatAnimatedWallpaperPage : Himo.Services.LocalizedContentPa
         };
         ChatAppearancePageStyle.ApplyMutedText(intro);
         content.Add(intro);
+
+        var previewHint = new Label
+        {
+            Text = "لمعاينة أي فيديو، اضغط على صورته؛ ستعمل المعاينة داخل Himo دون فتح مشغل خارجي.",
+            FontSize = 12,
+            LineBreakMode = LineBreakMode.WordWrap
+        };
+        ChatAppearancePageStyle.ApplyMutedText(previewHint);
+        content.Add(previewHint);
+        content.Add(_inlinePreviewHost);
 
         var current = Preferences.Default.Get(GlobalAnimatedWallpaperKey, string.Empty);
         if (string.Equals(Preferences.Default.Get(ChatThemePage.BackgroundModeKey, "photo"), "animated", StringComparison.OrdinalIgnoreCase))
@@ -544,8 +562,17 @@ public sealed class ChatAnimatedWallpaperPage : Himo.Services.LocalizedContentPa
         for (var i = 0; i < Options.Length; i++)
         {
             var option = Options[i];
-            var preview = new Image { HeightRequest = 150, Aspect = Aspect.AspectFill, Opacity = 1 };
+            var preview = new Image
+            {
+                HeightRequest = 150,
+                Aspect = Aspect.AspectFill,
+                Opacity = 1
+            };
+            SemanticProperties.SetDescription(preview, $"معاينة خلفية {option.Name} داخل التطبيق");
             _ = ChatThemePage.LoadPreviewAsync(preview, option.PreviewAsset);
+            var previewTap = new TapGestureRecognizer();
+            previewTap.Tapped += async (_, _) => await PreviewBuiltInInsideAppAsync(option);
+            preview.GestureRecognizers.Add(previewTap);
 
             var name = new Label { Text = option.Name, FontSize = 14, FontAttributes = FontAttributes.Bold, LineBreakMode = LineBreakMode.TailTruncation, MaxLines = 1 };
             ChatAppearancePageStyle.ApplyPrimaryText(name);
@@ -631,6 +658,79 @@ public sealed class ChatAnimatedWallpaperPage : Himo.Services.LocalizedContentPa
         HimoAppearanceManager.ApplyToTree(this);
     }
 
+    protected override void OnDisappearing()
+    {
+        StopInlinePreview();
+        base.OnDisappearing();
+    }
+
+    private async Task PreviewBuiltInInsideAppAsync(AnimatedWallpaperOption option)
+    {
+        try
+        {
+            StopInlinePreview();
+
+            if (!Uri.TryCreate(option.VideoUrl, UriKind.Absolute, out var videoUri)
+                || videoUri.Scheme != Uri.UriSchemeHttps
+                || !string.Equals(videoUri.Host, "videos.pexels.com", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("رابط فيديو المعاينة غير صالح.");
+
+            var player = new MediaElement
+            {
+                Aspect = Aspect.AspectFill,
+                AndroidViewType = CommunityToolkit.Maui.Core.AndroidViewType.TextureView,
+                ShouldAutoPlay = true,
+                ShouldLoopPlayback = true,
+                ShouldShowPlaybackControls = false,
+                ShouldKeepScreenOn = false,
+                ShouldMute = true,
+                Volume = 0,
+                HorizontalOptions = LayoutOptions.Fill,
+                VerticalOptions = LayoutOptions.Fill,
+                HeightRequest = 190
+            };
+
+            player.MediaFailed += (_, args) => MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (!ReferenceEquals(_inlinePreviewPlayer, player)) return;
+                StopInlinePreview();
+                _status.Text = "تعذرت معاينة الفيديو داخل التطبيق. تحقق من اتصال الإنترنت ثم حاول مجددًا.";
+                System.Diagnostics.Debug.WriteLine($"[Himo AnimatedWallpaperPreview] Inline playback failed: {args?.ErrorMessage}");
+            });
+
+            _inlinePreviewPlayer = player;
+            _inlinePreviewHost.Content = new Border
+            {
+                HeightRequest = 190,
+                Padding = 0,
+                BackgroundColor = Colors.Black,
+                Stroke = CardBorder,
+                StrokeThickness = 1,
+                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 15 },
+                Content = player
+            };
+            _inlinePreviewHost.HeightRequest = 190;
+            _inlinePreviewHost.IsVisible = true;
+            player.Source = MediaSource.FromUri(videoUri);
+            _status.Text = $"تُعرض معاينة {option.Name} داخل Himo. اضغط «استخدام الخلفية» لحفظها للمحادثات.";
+        }
+        catch (Exception ex)
+        {
+            StopInlinePreview();
+            _status.Text = "تعذر تشغيل المعاينة داخل التطبيق: " + ex.Message;
+            System.Diagnostics.Debug.WriteLine($"[Himo AnimatedWallpaperPreview] {ex}");
+        }
+    }
+
+    private void StopInlinePreview()
+    {
+        try { _inlinePreviewPlayer?.Stop(); } catch { }
+        _inlinePreviewPlayer = null;
+        _inlinePreviewHost.Content = null;
+        _inlinePreviewHost.IsVisible = false;
+        _inlinePreviewHost.HeightRequest = 0;
+    }
+
     private async Task ApplyBuiltInAsync(AnimatedWallpaperOption option)
     {
         try
@@ -640,6 +740,7 @@ public sealed class ChatAnimatedWallpaperPage : Himo.Services.LocalizedContentPa
                 || !string.Equals(videoUri.Host, "videos.pexels.com", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("رابط فيديو الخلفية غير صالح.");
 
+            StopInlinePreview();
             RememberPreviousMode();
             Preferences.Default.Set(GlobalAnimatedWallpaperKey, "url:" + option.VideoUrl);
             Preferences.Default.Set(ChatThemePage.BackgroundModeKey, "animated");
@@ -696,6 +797,7 @@ public sealed class ChatAnimatedWallpaperPage : Himo.Services.LocalizedContentPa
 
     private async Task DisableAnimatedWallpaperAsync()
     {
+        StopInlinePreview();
         var previousMode = Preferences.Default.Get(PreviousBackgroundModeKey, "photo");
         if (!string.Equals(previousMode, "theme", StringComparison.OrdinalIgnoreCase))
             previousMode = "photo";

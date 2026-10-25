@@ -3226,13 +3226,13 @@ ON CONFLICT(ConversationId,ReporterUserId) DO UPDATE SET Reason=excluded.Reason,
             var statusSql = currentUserId.HasValue ? @", COALESCE((SELECT CASE WHEN COUNT(*) = 0 THEN 'sent' WHEN SUM(CASE WHEN mr.ReadAt IS NOT NULL THEN 1 ELSE 0 END) = COUNT(*) THEN 'read' WHEN SUM(CASE WHEN mr.DeliveredAt IS NOT NULL THEN 1 ELSE 0 END) = COUNT(*) THEN 'delivered' ELSE 'sent' END FROM MessageReceipts mr WHERE mr.MessageId=m.Id AND mr.RecipientUserId<>m.SenderUserId), 'sent')" : ", 'sent'";
             var where = "m.ConversationId=@id";
             if (since.HasValue)
-                where += " AND m.SentAt >= @since";
+                where += " AND CAST(m.SentAt AS timestamptz) >= CAST(@since AS timestamptz)";
             if (before.HasValue)
             {
                 if (beforeId.HasValue)
-                    where += " AND (m.SentAt < @before OR (m.SentAt = @before AND m.Id < @beforeId))";
+                    where += " AND (CAST(m.SentAt AS timestamptz) < CAST(@before AS timestamptz) OR (CAST(m.SentAt AS timestamptz) = CAST(@before AS timestamptz) AND m.Id < @beforeId))";
                 else
-                    where += " AND m.SentAt < @before";
+                    where += " AND CAST(m.SentAt AS timestamptz) < CAST(@before AS timestamptz)";
             }
 
             limit = Math.Clamp(limit, 1, 1000);
@@ -3240,7 +3240,7 @@ ON CONFLICT(ConversationId,ReporterUserId) DO UPDATE SET Reason=excluded.Reason,
             // Chat pages are cursor based. The client asks for the newest page or
             // a page before its current oldest message; the DB never returns the
             // whole conversation for a chat screen.
-            command.CommandText = $"SELECT m.Id,m.ConversationId,m.SenderUserId,m.SenderPhoneNumber,m.Text,m.SentAt,m.AttachmentFileName,m.AttachmentContentType,m.AttachmentSize{statusSql},m.ReplyToMessageId,rm.Text AS ReplyToText,m.EditedAt,m.DeletedAt FROM Messages m LEFT JOIN Messages rm ON rm.Id=m.ReplyToMessageId WHERE {where} ORDER BY m.SentAt DESC, m.Id DESC LIMIT @limit;";
+            command.CommandText = $"SELECT m.Id,m.ConversationId,m.SenderUserId,m.SenderPhoneNumber,m.Text,m.SentAt,m.AttachmentFileName,m.AttachmentContentType,m.AttachmentSize{statusSql},m.ReplyToMessageId,rm.Text AS ReplyToText,m.EditedAt,m.DeletedAt FROM Messages m LEFT JOIN Messages rm ON rm.Id=m.ReplyToMessageId WHERE {where} ORDER BY CAST(m.SentAt AS timestamptz) DESC, m.Id DESC LIMIT @limit;";
             command.Parameters.AddWithValue("@id", id.ToString());
             if (since.HasValue)
                 command.Parameters.AddWithValue("@since", since.Value.ToString("O"));

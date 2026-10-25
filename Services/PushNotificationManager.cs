@@ -69,15 +69,25 @@ public sealed class PushNotificationManager
 
     private async Task StartRealtimeInBackgroundAsync()
     {
-        try
+        // AutomaticReconnect does not retry a connection that failed on its first start.
+        var delays = new[] { 0, 2, 5, 10, 15 };
+        for (var attempt = 0; attempt < delays.Length; attempt++)
         {
-            await _realtime.StartAsync().ConfigureAwait(false);
+            if (attempt > 0)
+                await Task.Delay(TimeSpan.FromSeconds(delays[attempt])).ConfigureAwait(false);
+
+            try
+            {
+                await _realtime.StartAsync().ConfigureAwait(false);
+                if (_realtime.IsConnected) return;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo Push] SignalR startup attempt {attempt + 1} failed: {ex.Message}");
+            }
         }
-        catch (Exception ex)
-        {
-            // FCM remains the background delivery path even when SignalR is unavailable.
-            System.Diagnostics.Debug.WriteLine($"[Himo Push] SignalR background startup skipped: {ex.Message}");
-        }
+
+        System.Diagnostics.Debug.WriteLine("[Himo Push] SignalR remains offline after retries; API polling and FCM remain available.");
     }
 
     public async Task InitializeAsync()

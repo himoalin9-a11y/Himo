@@ -1,4 +1,4 @@
-using Microsoft.Maui;
+﻿using Microsoft.Maui;
 using Microsoft.Maui.Platform;
 using Plugin.Firebase.CloudMessaging;
 
@@ -106,12 +106,25 @@ public class MainActivity : MauiAppCompatActivity
     protected override void OnResume()
     {
         base.OnResume();
+        ApplyImmersiveFullscreen();
         Volatile.Write(ref _isAppForeground, 1);
 
         // Do not show an incoming-call UI over other apps. Route the saved invite only after Himo opens.
         RestorePendingCall();
         TryNavigateToPendingCall();
         SchedulePendingCallNavigation();
+
+        try
+        {
+            var activeChatPage = Shell.Current?.Navigation.NavigationStack
+                .OfType<Himo.Views.ChatPage>().LastOrDefault()
+                ?? Shell.Current?.CurrentPage as Himo.Views.ChatPage;
+            activeChatPage?.NotifyNativeActivityResumed();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo AnimatedWallpaper] Native OnResume restore skipped: {ex.Message}");
+        }
 
         try
         {
@@ -173,11 +186,34 @@ public class MainActivity : MauiAppCompatActivity
     protected override void OnPause()
     {
         Volatile.Write(ref _isAppForeground, 0);
+        try
+        {
+            var activeChatPage = Shell.Current?.Navigation.NavigationStack
+                .OfType<Himo.Views.ChatPage>().LastOrDefault()
+                ?? Shell.Current?.CurrentPage as Himo.Views.ChatPage;
+            activeChatPage?.NotifyNativeActivityPaused();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo AnimatedWallpaper] Native OnPause stop skipped: {ex.Message}");
+        }
         base.OnPause();
     }
 
     protected override void OnStop()
     {
+        try
+        {
+            var activeChatPage = Shell.Current?.Navigation.NavigationStack
+                .OfType<Himo.Views.ChatPage>().LastOrDefault()
+                ?? Shell.Current?.CurrentPage as Himo.Views.ChatPage;
+            activeChatPage?.NotifyNativeActivityPaused();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo AnimatedWallpaper] Native OnStop stop skipped: {ex.Message}");
+        }
+
         try
         {
             var callPage = Shell.Current?.Navigation.NavigationStack
@@ -209,6 +245,7 @@ public class MainActivity : MauiAppCompatActivity
         SetLaunchWindowBackground();
         base.OnCreate(savedInstanceState);
         SetLaunchWindowBackground();
+        ApplyImmersiveFullscreen();
         try { FirebaseCloudMessagingImplementation.OnNewIntent(Intent); } catch { }
         CreateNotificationChannel();
 
@@ -221,6 +258,26 @@ public class MainActivity : MauiAppCompatActivity
         SchedulePendingConversationNavigation();
     }
 
+
+    private void ApplyImmersiveFullscreen()
+    {
+        try
+        {
+            var decor = Window?.DecorView;
+            if (decor is null) return;
+            decor.SystemUiFlags =
+                global::Android.Views.SystemUiFlags.LayoutStable |
+                global::Android.Views.SystemUiFlags.LayoutHideNavigation |
+                global::Android.Views.SystemUiFlags.LayoutFullscreen |
+                global::Android.Views.SystemUiFlags.HideNavigation |
+                global::Android.Views.SystemUiFlags.Fullscreen |
+                global::Android.Views.SystemUiFlags.ImmersiveSticky;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo fullscreen] {ex.Message}");
+        }
+    }
 
     private void SetLaunchWindowBackground()
     {

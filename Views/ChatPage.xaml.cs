@@ -22,7 +22,7 @@ namespace Himo.Views;
 public partial class ChatPage : ContentPage
 {
     private const int MessagePageSize = 30;
-    private const int InitialVisibleMessageCount = 4;
+    private const int InitialVisibleMessageCount = 20;
     private const int MessageSyncPageSize = 100;
     private readonly ChatService _chat;
     private readonly HimoApiClient _api;
@@ -54,6 +54,9 @@ public partial class ChatPage : ContentPage
     private bool _initialRemoteSyncCompleted;
     private ChatMessage? _replyingTo;
     private readonly HashSet<int> _selectedMessageIds = new();
+    // Diagnostic-only stopwatch for identifying which message templates are realized during chat opening.
+    private readonly Stopwatch _chatTemplateTraceClock = Stopwatch.StartNew();
+    private int _chatTemplateLoadedTraceCount;
     private bool _selectionMode;
 #if ANDROID
     private readonly HashSet<global::Android.Views.View> _longPressViews = new();
@@ -81,6 +84,21 @@ public partial class ChatPage : ContentPage
     private Window? _wallpaperLifecycleWindow;
     private bool _isAppInBackground;
 
+    // Expensive controls are intentionally constructed on demand instead of during InitializeComponent.
+    private Grid? InlineVideoOverlay;
+    private ContentView? InlineVideoHost;
+    private ActivityIndicator? InlineVideoLoading;
+    private Label? InlineVideoTitleLabel;
+    private Button? InlineVideoCenterPlayButton;
+    private Label? InlineVideoCurrentTimeLabel;
+    private Slider? InlineVideoSlider;
+    private Label? InlineVideoDurationLabel;
+    private Button? InlineVideoRewindButton;
+    private Button? InlineVideoPlayButton;
+    private Button? InlineVideoForwardButton;
+    private Button? InlineVideoMuteButton;
+    private Border? AttachmentPanel;
+
     public string ConversationId
     {
         get => _conversationId.ToString();
@@ -91,6 +109,7 @@ public partial class ChatPage : ContentPage
                 PrepareForConversationChange();
                 _conversationId = id;
                 _remoteConversationId = _chat.Conversations.FirstOrDefault(x => x.Id == id)?.RemoteId;
+                SetInitialWallpaperPreview();
                 return;
             }
 
@@ -110,6 +129,7 @@ public partial class ChatPage : ContentPage
                         StringComparison.OrdinalIgnoreCase));
 
                 _conversationId = cachedConversation?.Id ?? 0;
+                SetInitialWallpaperPreview();
             }
         }
     }
@@ -139,6 +159,24 @@ public partial class ChatPage : ContentPage
         if (ScrollToBottomButton is not null) ScrollToBottomButton.IsVisible = false;
     }
 
+    // These handlers are temporary diagnostics. They report the template type and elapsed
+    // time when each item root reaches Loaded, capped to avoid flooding the device log.
+    private void ChatTextTemplateLoaded(object? sender, EventArgs e) => TraceChatTemplateLoaded("Text");
+    private void ChatImageTemplateLoaded(object? sender, EventArgs e) => TraceChatTemplateLoaded("Image");
+    private void ChatVideoTemplateLoaded(object? sender, EventArgs e) => TraceChatTemplateLoaded("Video");
+    private void ChatAudioTemplateLoaded(object? sender, EventArgs e) => TraceChatTemplateLoaded("Audio");
+    private void ChatFileTemplateLoaded(object? sender, EventArgs e) => TraceChatTemplateLoaded("File");
+
+    private void TraceChatTemplateLoaded(string templateKind)
+    {
+        var count = Interlocked.Increment(ref _chatTemplateLoadedTraceCount);
+        if (count > 40)
+            return;
+
+        System.Diagnostics.Debug.WriteLine(
+            $"[HimoTemplateTrace] rootLoaded={templateKind} elapsed={_chatTemplateTraceClock.ElapsedMilliseconds}ms count={count}");
+    }
+
     public ChatPage(ChatService chat, HimoApiClient api, AccountService account, INotificationService notifications, HimoRealtimeService realtime)
     {
         System.Diagnostics.Debug.WriteLine("[Himo ChatPage] Constructor started.");
@@ -164,6 +202,348 @@ public partial class ChatPage : ContentPage
         Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
     }
 
+    private void EnsureInlineVideoOverlay()
+    {
+        if (InlineVideoOverlay is not null)
+            return;
+
+        if (ChatRoot.Content is not Grid root)
+            throw new InvalidOperationException("تعذر إنشاء واجهة تشغيل الفيديو.");
+
+        var overlay = new Grid
+        {
+            IsVisible = false,
+            ZIndex = 200,
+            HorizontalOptions = LayoutOptions.Fill,
+            VerticalOptions = LayoutOptions.Fill
+        };
+        overlay.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
+
+        var videoHost = new ContentView
+        {
+            HorizontalOptions = LayoutOptions.Fill,
+            VerticalOptions = LayoutOptions.Fill
+        };
+        videoHost.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
+
+        var loading = new ActivityIndicator
+        {
+            IsVisible = false,
+            IsRunning = true,
+            Color = Colors.White,
+            WidthRequest = 44,
+            HeightRequest = 44,
+            HorizontalOptions = LayoutOptions.Center,
+            VerticalOptions = LayoutOptions.Center,
+            ZIndex = 8
+        };
+
+        var title = new Label
+        {
+            Text = "الفيديو",
+            FontSize = 14,
+            FontAttributes = FontAttributes.Bold,
+            VerticalTextAlignment = TextAlignment.Center,
+            HorizontalTextAlignment = TextAlignment.Start,
+            LineBreakMode = LineBreakMode.TailTruncation
+        };
+        title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+
+        var subtitle = new Label
+        {
+            Text = "مشغل الفيديو",
+            FontSize = 10.5,
+            VerticalTextAlignment = TextAlignment.Center
+        };
+        subtitle.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+
+        var titleStack = new VerticalStackLayout { Spacing = 1, VerticalOptions = LayoutOptions.Center };
+        titleStack.Children.Add(title);
+        titleStack.Children.Add(subtitle);
+
+        var close = new Button
+        {
+            Text = "×",
+            WidthRequest = 42,
+            HeightRequest = 42,
+            Padding = 0,
+            FontSize = 26,
+            FontAttributes = FontAttributes.Bold,
+            BackgroundColor = Color.FromArgb("#4DFFFFFF"),
+            CornerRadius = 21
+        };
+        close.SetDynamicResource(Button.TextColorProperty, "HimoOnAccent");
+        close.Clicked += CloseInlineVideoClicked;
+
+        var topGrid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            },
+            ColumnSpacing = 10
+        };
+        topGrid.Children.Add(titleStack);
+        Grid.SetColumn(titleStack, 0);
+        topGrid.Children.Add(close);
+        Grid.SetColumn(close, 1);
+
+        var topBar = new Border
+        {
+            Padding = new Thickness(14, 10, 12, 10),
+            StrokeThickness = 0,
+            HorizontalOptions = LayoutOptions.Fill,
+            VerticalOptions = LayoutOptions.Start,
+            ZIndex = 10,
+            Content = topGrid
+        };
+        topBar.BackgroundColor = Color.FromArgb("#B20B0F14");
+
+        var centerPlay = new Button
+        {
+            Text = "▶",
+            WidthRequest = 76,
+            HeightRequest = 76,
+            Padding = 0,
+            FontSize = 28,
+            FontAttributes = FontAttributes.Bold,
+            CornerRadius = 38,
+            HorizontalOptions = LayoutOptions.Center,
+            VerticalOptions = LayoutOptions.Center,
+            ZIndex = 7
+        };
+        centerPlay.BackgroundColor = Color.FromArgb("#A66C3FD1");
+        centerPlay.SetDynamicResource(Button.TextColorProperty, "HimoOnAccent");
+#if ANDROID
+        centerPlay.Clicked += InlineVideoPlayClicked;
+#endif
+
+        var currentTime = new Label
+        {
+            Text = "00:00",
+            FontSize = 11.5,
+            VerticalTextAlignment = TextAlignment.Center
+        };
+        currentTime.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+
+        var slider = new Slider
+        {
+            Minimum = 0,
+            Maximum = 1,
+            Value = 0,
+            HeightRequest = 26,
+            ThumbColor = Colors.White
+        };
+        slider.SetDynamicResource(Slider.MinimumTrackColorProperty, "HimoAccent");
+        slider.MaximumTrackColor = Color.FromArgb("#775B92");
+#if ANDROID
+        slider.ValueChanged += InlineVideoSliderValueChanged;
+#endif
+
+        var duration = new Label
+        {
+            Text = "00:00",
+            FontSize = 11.5,
+            VerticalTextAlignment = TextAlignment.Center
+        };
+        duration.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+
+        var timeline = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition(GridLength.Auto),
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            },
+            ColumnSpacing = 8
+        };
+        timeline.Children.Add(currentTime);
+        Grid.SetColumn(currentTime, 0);
+        timeline.Children.Add(slider);
+        Grid.SetColumn(slider, 1);
+        timeline.Children.Add(duration);
+        Grid.SetColumn(duration, 2);
+
+        Button MakeTransportButton(string text, int width, int height, double fontSize, string backgroundResource)
+        {
+            var button = new Button
+            {
+                Text = text,
+                WidthRequest = width,
+                HeightRequest = height,
+                Padding = 0,
+                FontSize = fontSize,
+                FontAttributes = FontAttributes.Bold,
+                CornerRadius = height / 2
+            };
+            button.SetDynamicResource(Button.BackgroundColorProperty, backgroundResource);
+            button.SetDynamicResource(Button.TextColorProperty, "HimoOnAccent");
+            return button;
+        }
+
+        var rewind = MakeTransportButton("↶ 10", 62, 42, 11, "HimoCard");
+        var play = MakeTransportButton("▶", 50, 50, 18, "HimoAccent");
+        var forward = MakeTransportButton("10 ↷", 62, 42, 11, "HimoCard");
+        var mute = MakeTransportButton("🔊", 48, 42, 17, "HimoCard");
+#if ANDROID
+        rewind.Clicked += InlineVideoRewindClicked;
+        play.Clicked += InlineVideoPlayClicked;
+        forward.Clicked += InlineVideoForwardClicked;
+        mute.Clicked += InlineVideoMuteClicked;
+#endif
+
+        var transport = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto),
+                new ColumnDefinition(GridLength.Auto),
+                new ColumnDefinition(GridLength.Auto),
+                new ColumnDefinition(GridLength.Auto),
+                new ColumnDefinition(GridLength.Star)
+            },
+            ColumnSpacing = 10,
+            HorizontalOptions = LayoutOptions.Center
+        };
+        transport.Children.Add(rewind); Grid.SetColumn(rewind, 1);
+        transport.Children.Add(play); Grid.SetColumn(play, 2);
+        transport.Children.Add(forward); Grid.SetColumn(forward, 3);
+        transport.Children.Add(mute); Grid.SetColumn(mute, 4);
+
+        var bottomStack = new VerticalStackLayout { Spacing = 8 };
+        bottomStack.Children.Add(timeline);
+        bottomStack.Children.Add(transport);
+        var bottomBar = new Border
+        {
+            Padding = new Thickness(14, 10, 14, 14),
+            StrokeThickness = 0,
+            HorizontalOptions = LayoutOptions.Fill,
+            VerticalOptions = LayoutOptions.End,
+            ZIndex = 10,
+            Content = bottomStack,
+            BackgroundColor = Color.FromArgb("#D90B0F14")
+        };
+
+        overlay.Children.Add(videoHost);
+        overlay.Children.Add(loading);
+        overlay.Children.Add(topBar);
+        overlay.Children.Add(centerPlay);
+        overlay.Children.Add(bottomBar);
+
+        InlineVideoOverlay = overlay;
+        InlineVideoHost = videoHost;
+        InlineVideoLoading = loading;
+        InlineVideoTitleLabel = title;
+        InlineVideoCenterPlayButton = centerPlay;
+        InlineVideoCurrentTimeLabel = currentTime;
+        InlineVideoSlider = slider;
+        InlineVideoDurationLabel = duration;
+        InlineVideoRewindButton = rewind;
+        InlineVideoPlayButton = play;
+        InlineVideoForwardButton = forward;
+        InlineVideoMuteButton = mute;
+
+        root.Children.Add(overlay);
+        Grid.SetRow(overlay, 0);
+        Grid.SetRowSpan(overlay, 4);
+    }
+
+    private void EnsureAttachmentPanel()
+    {
+        if (AttachmentPanel is not null || AttachmentPanelHost is null)
+            return;
+
+        var panel = new Border
+        {
+            IsVisible = false,
+            Margin = new Thickness(2, 4, 2, 5),
+            Padding = new Thickness(10, 9),
+            StrokeThickness = 0.8
+        };
+        panel.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoCard");
+        panel.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+        panel.StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(20) };
+
+        var headerText = new VerticalStackLayout { Spacing = 0 };
+        var heading = new Label { Text = "إرسال وسائط", FontSize = 12, FontAttributes = FontAttributes.Bold };
+        heading.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        var subheading = new Label { Text = "اختر ما تريد إرساله", FontSize = 9.5 };
+        subheading.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        headerText.Children.Add(heading);
+        headerText.Children.Add(subheading);
+
+        var smallLine = new BoxView { WidthRequest = 28, HeightRequest = 2, CornerRadius = 1, Color = Color.FromArgb("#E7E2EF"), VerticalOptions = LayoutOptions.Center };
+        var panelHeader = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            }
+        };
+        panelHeader.Children.Add(headerText); Grid.SetColumn(headerText, 0);
+        panelHeader.Children.Add(smallLine); Grid.SetColumn(smallLine, 1);
+
+        VerticalStackLayout MakeOption(string icon, string caption, EventHandler click)
+        {
+            var option = new VerticalStackLayout { Spacing = 4, HorizontalOptions = LayoutOptions.Center };
+            var iconButton = new ImageButton
+            {
+                Source = icon,
+                WidthRequest = 42,
+                HeightRequest = 42,
+                Padding = 10,
+                CornerRadius = 13,
+                BorderWidth = 0.8
+            };
+            iconButton.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoSurface");
+            iconButton.SetDynamicResource(ImageButton.BorderColorProperty, "HimoBorder");
+            iconButton.Clicked += click;
+            var label = new Label { Text = caption, FontSize = 10, HorizontalTextAlignment = TextAlignment.Center };
+            label.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+            option.Children.Add(iconButton);
+            option.Children.Add(label);
+            return option;
+        }
+
+        var options = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star)
+            },
+            ColumnSpacing = 8,
+            HeightRequest = 76
+        };
+        var cameraOption = MakeOption("himo_icon_chat_camera.png", "الكاميرا", CameraPanelClicked);
+        var photoOption = MakeOption("himo_icon_chat_gallery.png", "الصور", PickPhotoClicked);
+        var videoOption = MakeOption("himo_icon_chat_video.png", "الفيديو", PickVideoClicked);
+        var fileOption = MakeOption("himo_icon_chat_attachment.png", "ملف", PickFileClicked);
+        options.Children.Add(cameraOption); Grid.SetColumn(cameraOption, 0);
+        options.Children.Add(photoOption); Grid.SetColumn(photoOption, 1);
+        options.Children.Add(videoOption); Grid.SetColumn(videoOption, 2);
+        options.Children.Add(fileOption); Grid.SetColumn(fileOption, 3);
+
+        var content = new VerticalStackLayout { Spacing = 7 };
+        content.Children.Add(panelHeader);
+        content.Children.Add(options);
+        panel.Content = content;
+        AttachmentPanelHost.Content = panel;
+        AttachmentPanel = panel;
+    }
+
+    private void HideAttachmentPanel()
+    {
+        if (AttachmentPanel is not null)
+            AttachmentPanel.IsVisible = false;
+        if (AttachmentPanelHost is not null)
+            AttachmentPanelHost.IsVisible = false;
+    }
+
     private void OnConnectivityChanged(object? sender, ConnectivityChangedEventArgs e)
     {
         // Media messages are intentionally NOT sent automatically after the network returns.
@@ -181,6 +561,7 @@ public partial class ChatPage : ContentPage
         var appearTrace = Stopwatch.StartNew();
         System.Diagnostics.Debug.WriteLine("[HimoOpenTrace] OnAppearing START");
         base.OnAppearing();
+        SetInitialWallpaperPreview();
         System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] after base.OnAppearing elapsed={appearTrace.ElapsedMilliseconds}ms");
         // Defer the expensive legacy icon/palette traversal until after the chat
         // first frame. A synchronous tree walk here was responsible for 80-145
@@ -897,6 +1278,135 @@ public partial class ChatPage : ContentPage
         }
     }
 
+    private void SetInitialWallpaperPreview()
+    {
+        if (ChatWallpaper is null)
+            return;
+
+        try
+        {
+            var key = !string.IsNullOrWhiteSpace(_remoteConversationId)
+                ? $"himo_chat_background_{_remoteConversationId}"
+                : $"himo_chat_background_local_{_conversationId}";
+            var selected = Preferences.Default.Get(key, string.Empty);
+
+            if (string.IsNullOrWhiteSpace(selected))
+            {
+                var mode = Preferences.Default.Get(ChatThemePage.BackgroundModeKey, "photo");
+                if (string.Equals(mode, "animated", StringComparison.OrdinalIgnoreCase))
+                {
+                    SetChatWallpaperPreview("himo_chat_preview_animated_flowers.jpg");
+                    return;
+                }
+
+                selected = string.Equals(mode, "theme", StringComparison.OrdinalIgnoreCase)
+                    ? Preferences.Default.Get(ChatThemePage.ThemeBackgroundKey, "himo_theme_purple_flow.png")
+                    : Preferences.Default.Get(ChatWallpaperSettingsPage.GlobalWallpaperKey, "himo_wallpaper_purple_flowers.jpg");
+            }
+
+            if (selected.StartsWith("local:", StringComparison.OrdinalIgnoreCase))
+            {
+                var localPath = selected.Substring("local:".Length);
+                if (File.Exists(localPath))
+                {
+                    ChatWallpaper.Source = ImageSource.FromFile(localPath);
+                    ChatWallpaper.Aspect = Aspect.AspectFill;
+                    ChatWallpaper.Opacity = 1.0;
+                    ChatWallpaper.IsVisible = true;
+                    return;
+                }
+
+                SetChatWallpaperPreview("himo_chat_preview_purple_flowers.jpg");
+                return;
+            }
+
+            var normalized = NormalizeChatWallpaperFile(selected);
+            SetChatWallpaperPreview(GetChatWallpaperPreviewAsset(normalized));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatWallpaper] Fast preview selection failed: {ex.Message}");
+            if (ChatWallpaper.Source is null)
+                SetChatWallpaperPreview("himo_chat_preview_purple_flowers.jpg");
+        }
+    }
+
+    private static string GetChatWallpaperPreviewAsset(string wallpaperFile) => wallpaperFile switch
+    {
+        "himo_wallpaper_purple_flowers.jpg" => "himo_chat_preview_purple_flowers.jpg",
+        "himo_wallpaper_mountain_sunset.jpg" => "himo_chat_preview_mountain_sunset.jpg",
+        "himo_wallpaper_moon_lake.jpg" => "himo_chat_preview_moon_lake.jpg",
+        "himo_wallpaper_close_flowers.jpg" => "himo_chat_preview_close_flowers.jpg",
+        "himo_wallpaper_quiet_lake.jpg" => "himo_chat_preview_quiet_lake.jpg",
+        "himo_wallpaper_purple_water.jpg" => "himo_chat_preview_purple_water.jpg",
+        "himo_wallpaper_emerald_forest.jpg" => "himo_chat_preview_emerald_forest.jpg",
+        "himo_wallpaper_city_lights.jpg" => "himo_chat_preview_city_lights.jpg",
+        "himo_wallpaper_sakura_city.jpg" => "himo_chat_preview_sakura_city.jpg",
+        "himo_wallpaper_golden_desert.jpg" => "himo_chat_preview_golden_desert.jpg",
+        "himo_theme_purple_flow.png" => "himo_chat_preview_theme_purple_flow.jpg",
+        "himo_theme_blue_ocean.png" => "himo_chat_preview_theme_blue_ocean.jpg",
+        "himo_theme_emerald_flow.png" => "himo_chat_preview_theme_emerald_flow.jpg",
+        "himo_theme_rose_glass.png" => "himo_chat_preview_theme_rose_glass.jpg",
+        "himo_theme_sunset_silk.png" => "himo_chat_preview_theme_sunset_silk.jpg",
+        "himo_theme_neon_orbit.png" => "himo_chat_preview_theme_neon_orbit.jpg",
+        "himo_theme_gold_glow.png" => "himo_chat_preview_theme_gold_glow.jpg",
+        "himo_theme_aurora.png" => "himo_chat_preview_theme_aurora.jpg",
+        _ => "himo_chat_preview_purple_flowers.jpg"
+    };
+
+    private void SetChatWallpaperPreview(string assetName)
+    {
+        if (ChatWallpaper is null)
+            return;
+
+        ChatWallpaper.Source = ImageSource.FromFile(assetName);
+        ChatWallpaper.Aspect = Aspect.AspectFill;
+        ChatWallpaper.Opacity = 1.0;
+        ChatWallpaper.IsVisible = true;
+    }
+    private static bool IsPackagedStaticChatWallpaper(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) ||
+            value.StartsWith("local:", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var normalized = NormalizeChatWallpaperFile(value);
+        return normalized is
+            "himo_wallpaper_purple_flowers.jpg" or
+            "himo_wallpaper_mountain_sunset.jpg" or
+            "himo_wallpaper_moon_lake.jpg" or
+            "himo_wallpaper_close_flowers.jpg" or
+            "himo_wallpaper_quiet_lake.jpg" or
+            "himo_wallpaper_purple_water.jpg" or
+            "himo_wallpaper_emerald_forest.jpg" or
+            "himo_wallpaper_city_lights.jpg" or
+            "himo_wallpaper_sakura_city.jpg" or
+            "himo_wallpaper_golden_desert.jpg" or
+            "himo_theme_purple_flow.png" or
+            "himo_theme_blue_ocean.png" or
+            "himo_theme_emerald_flow.png" or
+            "himo_theme_rose_glass.png" or
+            "himo_theme_sunset_silk.png" or
+            "himo_theme_neon_orbit.png" or
+            "himo_theme_gold_glow.png" or
+            "himo_theme_aurora.png";
+    }
+
+    private void KeepBundledChatWallpaperPreviewDuringOpen(string wallpaper)
+    {
+        // SetInitialWallpaperPreview() has already selected the matching packaged
+        // preview. Do not immediately decode and swap in the full-size image while
+        // the initial message cells are being laid out on Android.
+        StopChatAnimatedWallpaper();
+        if (ChatWallpaper is not null)
+        {
+            ChatWallpaper.Aspect = Aspect.AspectFill;
+            ChatWallpaper.Opacity = 1.0;
+            ChatWallpaper.IsVisible = true;
+        }
+        System.Diagnostics.Debug.WriteLine($"[Himo ChatWallpaper] Keeping packaged preview during chat open: {wallpaper}");
+    }
+
     private async Task ApplySavedChatWallpaperAsync()
     {
         var key = !string.IsNullOrWhiteSpace(_remoteConversationId)
@@ -908,6 +1418,12 @@ public partial class ChatPage : ContentPage
         var saved = Preferences.Default.Get(key, string.Empty);
         if (!string.IsNullOrWhiteSpace(saved))
         {
+            if (IsPackagedStaticChatWallpaper(saved))
+            {
+                KeepBundledChatWallpaperPreviewDuringOpen(NormalizeChatWallpaperFile(saved));
+                return;
+            }
+
             await ApplyChatWallpaperAsync(saved, persist: false);
             return;
         }
@@ -923,9 +1439,15 @@ public partial class ChatPage : ContentPage
         saved = string.Equals(mode, "theme", StringComparison.OrdinalIgnoreCase)
             ? Preferences.Default.Get(ChatThemePage.ThemeBackgroundKey, "himo_theme_purple_flow.png")
             : Preferences.Default.Get(ChatWallpaperSettingsPage.GlobalWallpaperKey, "himo_wallpaper_purple_flowers.jpg");
+
+        if (IsPackagedStaticChatWallpaper(saved))
+        {
+            KeepBundledChatWallpaperPreviewDuringOpen(NormalizeChatWallpaperFile(saved));
+            return;
+        }
+
         await ApplyChatWallpaperAsync(saved, persist: false);
     }
-
     private async Task ApplyChatAnimatedWallpaperAsync(string animatedValue)
     {
         if (ChatAnimatedWallpaperHost is null || ChatWallpaper is null) return;
@@ -934,9 +1456,15 @@ public partial class ChatPage : ContentPage
         {
             StopChatAnimatedWallpaper();
             var mediaPath = await ChatAnimatedWallpaperPage.ResolveVideoPathAsync(animatedValue);
+            if (_isAppInBackground || !IsConversationVisible)
+            {
+                Debug.WriteLine("[Himo AnimatedWallpaper] Skipping player creation because chat is not in foreground.");
+                return;
+            }
             var media = new MediaElement
             {
                 Aspect = Aspect.AspectFill,
+                AndroidViewType = CommunityToolkit.Maui.Core.AndroidViewType.TextureView,
                 // Never start playback while the app's window is in the background.
                 ShouldAutoPlay = !_isAppInBackground,
                 ShouldLoopPlayback = true,
@@ -985,6 +1513,56 @@ public partial class ChatPage : ContentPage
         await ApplyChatWallpaperAsync(fallback, persist: false);
     }
 
+    public void NotifyNativeActivityPaused()
+    {
+        _isAppInBackground = true;
+
+        void StopAndReleaseWallpaperPlayer()
+        {
+            var media = _chatAnimatedWallpaperElement;
+            _chatAnimatedWallpaperElement = null;
+            if (media is not null)
+            {
+                try { media.ShouldAutoPlay = false; } catch { }
+                try { media.Pause(); } catch { }
+                try { media.Stop(); } catch { }
+                try { media.Source = null; } catch { }
+            }
+
+            if (ChatAnimatedWallpaperHost is not null)
+            {
+                ChatAnimatedWallpaperHost.Content = null;
+                ChatAnimatedWallpaperHost.IsVisible = false;
+            }
+
+            // Drop the native handler so the Android decoder/surface cannot keep
+            // rendering the old MediaElement after the app leaves the foreground.
+            if (media is not null)
+            {
+                try { media.Handler?.DisconnectHandler(); } catch { }
+            }
+
+            if (ChatWallpaper is not null)
+                ChatWallpaper.IsVisible = true;
+
+            Debug.WriteLine("[Himo AnimatedWallpaper] Native Activity paused: player stopped, source cleared, handler disconnected.");
+        }
+
+        if (MainThread.IsMainThread)
+            StopAndReleaseWallpaperPlayer();
+        else
+            MainThread.BeginInvokeOnMainThread(StopAndReleaseWallpaperPlayer);
+    }
+
+    public void NotifyNativeActivityResumed()
+    {
+        // Reuse the same guarded resume path used by the MAUI Window lifecycle.
+        // It restores the saved wallpaper only if this conversation is visible.
+        if (!_isAppInBackground)
+            return;
+
+        OnWallpaperWindowResumed(this, EventArgs.Empty);
+    }
     private void AttachWallpaperLifecycleHandlers()
     {
         var currentWindow = Window;
@@ -1012,9 +1590,19 @@ public partial class ChatPage : ContentPage
         _isAppInBackground = true;
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            // Pause, rather than remove, so the live wallpaper resumes at the same frame.
-            try { _chatAnimatedWallpaperElement?.Pause(); }
-            catch (Exception ex) { Debug.WriteLine($"[Himo AnimatedWallpaper] Pause on background failed: {ex.Message}"); }
+            // Stop and detach the native video view instead of merely pausing it.
+            // This prevents decoder/surface playback from continuing while Himo is backgrounded.
+            try
+            {
+                StopChatAnimatedWallpaper();
+                if (ChatWallpaper is not null)
+                    ChatWallpaper.IsVisible = true;
+                Debug.WriteLine("[Himo AnimatedWallpaper] Playback stopped and view detached on background.");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Himo AnimatedWallpaper] Stop on background failed: {ex.Message}");
+            }
 #if ANDROID
             _inlineVideoWasPlayingBeforeBackground = _inlineVideoIsPlaying;
             try { _inlineVideoElement?.Pause(); }
@@ -1031,6 +1619,7 @@ public partial class ChatPage : ContentPage
 
     private void OnWallpaperWindowResumed(object? sender, EventArgs e)
     {
+        var wasInBackground = _isAppInBackground;
         _isAppInBackground = false;
         MainThread.BeginInvokeOnMainThread(() =>
         {
@@ -1042,10 +1631,12 @@ public partial class ChatPage : ContentPage
                 return;
             }
 
-            if (ChatAnimatedWallpaperHost?.IsVisible == true)
+            // Recreate a wallpaper player only after Himo returns to foreground.
+            // The old native player was stopped and removed when the window stopped.
+            if (wasInBackground &&
+                string.Equals(Preferences.Default.Get(ChatThemePage.BackgroundModeKey, "photo"), "animated", StringComparison.OrdinalIgnoreCase))
             {
-                try { _chatAnimatedWallpaperElement?.Play(); }
-                catch (Exception ex) { Debug.WriteLine($"[Himo AnimatedWallpaper] Resume playback failed: {ex.Message}"); }
+                _ = RestoreAnimatedWallpaperAfterForegroundAsync();
             }
 #if ANDROID
             if (_inlineVideoWasPlayingBeforeBackground &&
@@ -1065,10 +1656,31 @@ public partial class ChatPage : ContentPage
         });
     }
 
+    private async Task RestoreAnimatedWallpaperAfterForegroundAsync()
+    {
+        try
+        {
+            if (!IsConversationVisible || _isAppInBackground)
+                return;
+            await ApplySavedChatWallpaperAsync();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Himo AnimatedWallpaper] Restore in foreground failed: {ex.Message}");
+        }
+    }
+
     private void StopChatAnimatedWallpaper()
     {
-        try { _chatAnimatedWallpaperElement?.Stop(); } catch { }
+        var media = _chatAnimatedWallpaperElement;
         _chatAnimatedWallpaperElement = null;
+        if (media is not null)
+        {
+            try { media.Pause(); } catch { }
+            try { media.Stop(); } catch { }
+            // Clearing the source releases the decoder and prevents later automatic replay.
+            try { media.Source = null; } catch { }
+        }
         if (ChatAnimatedWallpaperHost is not null)
         {
             ChatAnimatedWallpaperHost.Content = null;
@@ -1154,8 +1766,11 @@ public partial class ChatPage : ContentPage
         catch (Exception ex)
         {
             // Never leave the chat on a blank/white background when an asset cannot be opened.
-            ChatWallpaper.Source = null;
-            ChatWallpaper.BackgroundColor = Color.FromArgb("#24103D");
+            // Keep the already visible selected-wallpaper preview instead of
+            // clearing the image and exposing the purple page background.
+            if (ChatWallpaper.Source is null)
+                ChatWallpaper.Source = ImageSource.FromFile("himo_chat_preview_purple_flowers.jpg");
+            ChatWallpaper.BackgroundColor = Colors.Transparent;
             System.Diagnostics.Debug.WriteLine($"[Himo ChatWallpaper] Failed to load {normalizedFile}: {ex}");
         }
     }
@@ -1633,7 +2248,7 @@ public partial class ChatPage : ContentPage
         {
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
                 await LoadRemoteAsync(cancellationToken);
             }
             catch (OperationCanceledException) { break; }
@@ -1729,15 +2344,12 @@ public partial class ChatPage : ContentPage
             }
             else
             {
-                DateTimeOffset? lastSyncedAt = cacheBeforeSync
-                    .Where(x => !string.IsNullOrWhiteSpace(x.RemoteId))
-                    .Select(x => (DateTimeOffset?)new DateTimeOffset(x.SentAt))
-                    .DefaultIfEmpty()
-                    .Max();
-
+                // Always refresh the most recent page. Do not use a device-local
+                // timestamp cursor here: the previous server compared ISO TEXT values
+                // lexicographically, which can skip messages across UTC offsets.
+                // This also refreshes delivered/read receipts for already-cached messages.
                 remoteMessages = await _api.GetMessagesAsync(
                     remoteConversationId,
-                    since: lastSyncedAt,
                     limit: MessageSyncPageSize,
                     cancellationToken: cancellationToken).ConfigureAwait(false);
             }
@@ -1756,6 +2368,9 @@ public partial class ChatPage : ContentPage
                     message.Id.ToString(), message.AttachmentFileName, message.AttachmentContentType,
                     message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"),
                     message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted);
+
+                if (added && !isMine)
+                    _ = _realtime.MarkMessageDeliveredAsync(message.Id);
 
             }
 
@@ -2201,8 +2816,13 @@ public partial class ChatPage : ContentPage
 
     private void AttachmentButtonClicked(object? sender, EventArgs e)
     {
-        if (AttachmentPanel is not null)
-            AttachmentPanel.IsVisible = !AttachmentPanel.IsVisible;
+        EnsureAttachmentPanel();
+        if (AttachmentPanel is null || AttachmentPanelHost is null)
+            return;
+
+        var show = !AttachmentPanel.IsVisible;
+        AttachmentPanel.IsVisible = show;
+        AttachmentPanelHost.IsVisible = show;
     }
 
     private async void CameraButtonClicked(object? sender, EventArgs e)
@@ -2212,7 +2832,7 @@ public partial class ChatPage : ContentPage
 
     private async void CameraPanelClicked(object? sender, EventArgs e)
     {
-        if (AttachmentPanel is not null) AttachmentPanel.IsVisible = false;
+        HideAttachmentPanel();
         await CaptureMediaAsync();
     }
 
@@ -2225,8 +2845,7 @@ public partial class ChatPage : ContentPage
 
         try
         {
-            if (AttachmentPanel is not null)
-                AttachmentPanel.IsVisible = false;
+            HideAttachmentPanel();
 
             // The capture screen is part of Himo itself. It no longer launches
             // the device Camera application or a MediaPicker capture activity.
@@ -2255,7 +2874,7 @@ public partial class ChatPage : ContentPage
 
     private async void PickPhotoClicked(object? sender, EventArgs e)
     {
-        if (AttachmentPanel is not null) AttachmentPanel.IsVisible = false;
+        HideAttachmentPanel();
         try
         {
             if (_conversationId == 0) return;
@@ -2288,7 +2907,7 @@ public partial class ChatPage : ContentPage
 
     private async void PickVideoClicked(object? sender, EventArgs e)
     {
-        if (AttachmentPanel is not null) AttachmentPanel.IsVisible = false;
+        HideAttachmentPanel();
         try
         {
             if (_conversationId == 0) return;
@@ -2357,7 +2976,7 @@ public partial class ChatPage : ContentPage
 
     private async void PickFileClicked(object? sender, EventArgs e)
     {
-        if (AttachmentPanel is not null) AttachmentPanel.IsVisible = false;
+        HideAttachmentPanel();
         try
         {
             if (_conversationId == 0) return;
@@ -2943,7 +3562,8 @@ public partial class ChatPage : ContentPage
 #if ANDROID
         await MainThread.InvokeOnMainThreadAsync(() =>
         {
-            if (InlineVideoHost is null)
+            EnsureInlineVideoOverlay();
+            if (InlineVideoHost is null || InlineVideoOverlay is null)
                 throw new InvalidOperationException("تعذر إنشاء مساحة تشغيل الفيديو داخل التطبيق.");
 
             CloseInlineVideoCore();

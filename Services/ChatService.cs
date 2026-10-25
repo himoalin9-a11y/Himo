@@ -252,7 +252,7 @@ public sealed class ChatService
         {
             pending.RemoteId = remoteId;
             pending.IsPending = false;
-            pending.DeliveryStatus = "sent";
+            SetDeliveryStatusIfNewer(pending, "sent");
             pending.ClientMessageId = null;
             Save();
         }
@@ -308,7 +308,7 @@ public sealed class ChatService
 
             pending.RemoteId = remoteId;
             pending.IsPending = false;
-            pending.DeliveryStatus = "sent";
+            SetDeliveryStatusIfNewer(pending, "sent");
             pending.ClientMessageId = null;
             // ChatMessage uses init-only values for text/time, so keep the optimistic
             // timestamp for a stable UI and only attach the authoritative server ID.
@@ -393,6 +393,28 @@ public sealed class ChatService
         }
     }
 
+    private static int DeliveryStatusRank(string? status) => (status ?? string.Empty).Trim().ToLowerInvariant() switch
+    {
+        "sending" => 0,
+        "failed" => 0,
+        "sent" => 1,
+        "received" => 1,
+        "delivered" => 2,
+        "read" => 3,
+        _ => 1
+    };
+
+    private static bool SetDeliveryStatusIfNewer(ChatMessage message, string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status)) return false;
+        var candidate = status.Trim().ToLowerInvariant();
+        var current = string.IsNullOrWhiteSpace(message.DeliveryStatus) ? "sent" : message.DeliveryStatus.Trim().ToLowerInvariant();
+        if (string.Equals(current, candidate, StringComparison.OrdinalIgnoreCase)) return false;
+        if (DeliveryStatusRank(candidate) < DeliveryStatusRank(current)) return false;
+        message.DeliveryStatus = candidate;
+        return true;
+    }
+
     public bool UpdateDeliveryStatus(string remoteId, string status)
     {
         if (string.IsNullOrWhiteSpace(remoteId) || string.IsNullOrWhiteSpace(status)) return false;
@@ -403,7 +425,7 @@ public sealed class ChatService
             {
                 var message = messages.FirstOrDefault(x => string.Equals(x.RemoteId, remoteId, StringComparison.OrdinalIgnoreCase) && x.IsMine);
                 if (message is null) continue;
-                message.DeliveryStatus = status;
+                if (!SetDeliveryStatusIfNewer(message, status)) return false;
                 Save();
                 return true;
             }
@@ -476,7 +498,7 @@ public sealed class ChatService
                     {
                         pending.RemoteId = remoteId;
                         pending.IsPending = false;
-                        pending.DeliveryStatus = string.IsNullOrWhiteSpace(deliveryStatus) ? "sent" : deliveryStatus;
+                        SetDeliveryStatusIfNewer(pending, string.IsNullOrWhiteSpace(deliveryStatus) ? "sent" : deliveryStatus);
                         pending.ClientMessageId = null;
                         if (pending.IsAttachment && attachmentSize.HasValue)
                         {
@@ -491,8 +513,14 @@ public sealed class ChatService
                 // Server messages have stable IDs; use them as the authoritative
                 // deduplication key so two legitimate identical messages sent close
                 // together are never collapsed into one.
-                if (messages.Any(x => string.Equals(x.RemoteId, remoteId, StringComparison.OrdinalIgnoreCase)))
+                var existingRemote = messages.FirstOrDefault(x => string.Equals(x.RemoteId, remoteId, StringComparison.OrdinalIgnoreCase));
+                if (existingRemote is not null)
+                {
+                    // The message content is a duplicate, but its receipt may have advanced.
+                    if (existingRemote.IsMine && isMine && SetDeliveryStatusIfNewer(existingRemote, deliveryStatus))
+                        Save();
                     return false;
+                }
             }
             else if (messages.Any(x => x.RemoteId is null && x.Text == text && Math.Abs((x.SentAt - localTime).TotalSeconds) <= 2))
             {

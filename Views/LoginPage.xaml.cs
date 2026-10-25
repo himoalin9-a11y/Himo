@@ -8,6 +8,7 @@ public partial class LoginPage : ContentPage
     private readonly AccountService _account;
     private readonly HimoApiClient _api;
     private bool _busy;
+    private bool _navigationInProgress;
 
     public LoginPage(AccountService account, HimoApiClient api)
     {
@@ -15,6 +16,13 @@ public partial class LoginPage : ContentPage
         Himo.Services.AppLocalization.AttachToPage(this);
         _account = account;
         _api = api;
+        // The login page remains a normal native MAUI page. Its only transition
+        // is the paper-like 3D flip when opening/closing account registration.
+        AnchorX = 1.0;
+        AnchorY = 0.5;
+        RotationY = 0;
+        TranslationX = 0;
+        Scale = 1.0;
         if (PasswordEyeButton is not null)
         {
             PasswordEyeButton.Source = "himo_pro_ui_himo_login_eye_open.png";
@@ -23,6 +31,17 @@ public partial class LoginPage : ContentPage
         }
     }
 
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        // Restore the login page after the registration modal has flipped away.
+        RotationY = 0;
+        TranslationX = 0;
+        Scale = 1.0;
+        _navigationInProgress = false;
+        if (ModeButton is not null)
+            ModeButton.IsEnabled = !_busy;
+    }
     private async void PrimaryClicked(object sender, EventArgs e)
     {
         var primaryButton = PrimaryButton;
@@ -150,12 +169,60 @@ public partial class LoginPage : ContentPage
 
     private async void ModeClicked(object sender, EventArgs e)
     {
-        if (_busy || ModeButton is null) return;
-        if (sender is VisualElement visual)
-            await UiMotion.PressAsync(visual);
-        var registrationPage = new RegisterPage(_account, _api);
-        NavigationPage.SetHasNavigationBar(registrationPage, false);
-        await Navigation.PushModalAsync(new NavigationPage(registrationPage), animated: true);
+        if (_busy || _navigationInProgress || ModeButton is null) return;
+
+        _navigationInProgress = true;
+        ModeButton.IsEnabled = false;
+        try
+        {
+            if (sender is VisualElement visual)
+                await UiMotion.PressAsync(visual);
+
+            // Fold the current page away, then unfold the real registration form.
+            // No WebView, JavaScript, timer, or external scene is involved.
+            await AnimatePageFlipAsync(0, 82, 0, -18, 1.0, 0.965, 230, Easing.CubicIn);
+
+            var registrationPage = new RegisterPage(_account, _api);
+            registrationPage.PrepareForPageFlip();
+            NavigationPage.SetHasNavigationBar(registrationPage, false);
+            await Navigation.PushModalAsync(new NavigationPage(registrationPage), animated: false);
+            await registrationPage.AnimatePageFlipInAsync();
+        }
+        catch (Exception ex)
+        {
+            // If navigation fails, restore the login page instead of leaving it folded.
+            RotationY = 0;
+            TranslationX = 0;
+            Scale = 1.0;
+            System.Diagnostics.Debug.WriteLine($"[Himo AuthNav] Unable to open registration page: {ex}");
+            _navigationInProgress = false;
+            if (ModeButton is not null) ModeButton.IsEnabled = !_busy;
+            await DisplayAlertAsync("Himo", "تعذر فتح واجهة إنشاء الحساب. حاول مرة أخرى.", "حسنًا");
+        }
+    }
+
+    private Task AnimatePageFlipAsync(
+        double rotationFrom, double rotationTo,
+        double translationFrom, double translationTo,
+        double scaleFrom, double scaleTo,
+        uint duration, Easing easing)
+    {
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var animation = new Animation();
+        animation.Add(0, 1, new Animation(value => RotationY = value, rotationFrom, rotationTo));
+        animation.Add(0, 1, new Animation(value => TranslationX = value, translationFrom, translationTo));
+        animation.Add(0, 1, new Animation(value => Scale = value, scaleFrom, scaleTo));
+        animation.Commit(this, "HimoLoginPageFlip", 16, duration, easing, (value, cancelled) =>
+        {
+            if (!cancelled)
+            {
+                RotationY = rotationTo;
+                TranslationX = translationTo;
+                Scale = scaleTo;
+            }
+            completion.TrySetResult(true);
+        });
+        return completion.Task;
     }
 
     private void SetStatus(string text)
@@ -184,7 +251,7 @@ public partial class LoginPage : ContentPage
     {
         _busy = value;
         if (PrimaryButton is not null) PrimaryButton.IsEnabled = !value;
-        if (ModeButton is not null) ModeButton.IsEnabled = !value;
+        if (ModeButton is not null) ModeButton.IsEnabled = !value && !_navigationInProgress;
         if (ForgotPasswordButton is not null) ForgotPasswordButton.IsEnabled = !value;
         if (EmailEntry is not null) EmailEntry.IsEnabled = !value;
         if (PasswordEntry is not null) PasswordEntry.IsEnabled = !value;

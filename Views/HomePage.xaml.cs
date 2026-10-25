@@ -15,6 +15,8 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private readonly HimoApiClient _api;
     private readonly ProfileService _profile;
     private readonly CallHistoryService _callHistory;
+    private readonly HimoRealtimeService _realtime;
+    private bool _homePageVisible;
     private readonly ObservableCollection<ContactMatchDto> _phoneMatches = new();
     private readonly ObservableCollection<Conversation> _visibleConversations = new();
     private string _activeConversationFilter = "all";
@@ -35,7 +37,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     public ICommand ConversationTapCommand { get; }
     public ICommand ConversationLongPressCommand { get; }
 
-    public HomePage(HomeViewModel vm, HimoApiClient api, ProfileService profile, CallHistoryService callHistory)
+    public HomePage(HomeViewModel vm, HimoApiClient api, ProfileService profile, CallHistoryService callHistory, HimoRealtimeService realtime)
     {
         // Commands used through x:Reference bindings must exist before InitializeComponent
         // evaluates the Behavior bindings in the conversation-row DataTemplate.
@@ -52,6 +54,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         _api = api;
         _profile = profile;
         _callHistory = callHistory;
+        _realtime = realtime;
         BindingContext = vm;
         ConversationsCollection.ItemsSource = _visibleConversations;
         _vm.FilteredConversations.CollectionChanged += FilteredConversationsCollectionChanged;
@@ -335,6 +338,9 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        _homePageVisible = true;
+        _realtime.MessageReceived -= OnHomeRealtimeMessageReceived;
+        _realtime.MessageReceived += OnHomeRealtimeMessageReceived;
         // Do not recolor and rescan the full HomePage tree synchronously before
         // Android has drawn the first frame. This pass is batched by the manager.
         _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this);
@@ -427,8 +433,39 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         StartPolling();
     }
 
+    private void OnHomeRealtimeMessageReceived(object? sender, HimoApiClient.MessageDto message)
+    {
+        if (!_homePageVisible || !_vm.HasServerSession) return;
+        _ = RefreshHomeAfterRealtimeMessageAsync();
+    }
+
+    private async Task RefreshHomeAfterRealtimeMessageAsync()
+    {
+        if (!_homePageVisible || !await _refreshGate.WaitAsync(0)) return;
+        try
+        {
+            await _vm.RefreshFromServerAsync();
+            if (!_homePageVisible) return;
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                RefreshDisplayedConversations();
+                UpdateEmptyState();
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo Home] Realtime conversation refresh failed: {ex.Message}");
+        }
+        finally
+        {
+            _refreshGate.Release();
+        }
+    }
+
     protected override void OnDisappearing()
     {
+        _homePageVisible = false;
+        _realtime.MessageReceived -= OnHomeRealtimeMessageReceived;
         StopPolling();
         base.OnDisappearing();
     }
@@ -497,7 +534,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         {
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
                 await RefreshAsync();
             }
             catch (OperationCanceledException)

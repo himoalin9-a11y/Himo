@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 using Microsoft.Maui.Controls;
 namespace Himo;
 
@@ -277,9 +277,8 @@ public partial class App : Application
 
         try
         {
-            // Do not create a second, page-based splash screen. Android already
-            // displays Maui.SplashTheme; there is no fixed 2-second pause or
-            // subsequent page replacement after a welcome screen.
+            // First-run users see the native MAUI flying-saucer launch scene.
+            // The animation uses GraphicsView and remains independent of WebView/WebGL.
             if (!_account.IsSignedIn)
             {
                 _sessionUnlocked = false;

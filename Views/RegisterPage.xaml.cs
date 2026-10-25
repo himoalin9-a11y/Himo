@@ -12,11 +12,63 @@ public partial class RegisterPage : ContentPage
     private readonly AccountService _account;
     private readonly HimoApiClient _api;
     private bool _busy;
+    private bool _closing;
     private bool _verificationPending;
     private string _pendingEmail = string.Empty;
     private string _pendingName = string.Empty;
     private string _pendingPhoneNumber = string.Empty;
     private string _pendingPassword = string.Empty;
+    private sealed class CountryDialOption
+    {
+        public CountryDialOption(string label, string dialCode)
+        {
+            Label = label;
+            DialCode = dialCode;
+        }
+
+        public string Label { get; }
+        public string DialCode { get; }
+    }
+
+    private static readonly CountryDialOption[] CountryDialOptions =
+    {
+        new("🇸🇦 السعودية (+966)", "+966"),
+        new("🇦🇪 الإمارات (+971)", "+971"),
+        new("🇰🇼 الكويت (+965)", "+965"),
+        new("🇧🇭 البحرين (+973)", "+973"),
+        new("🇶🇦 قطر (+974)", "+974"),
+        new("🇴🇲 عُمان (+968)", "+968"),
+        new("🇾🇪 اليمن (+967)", "+967"),
+        new("🇯🇴 الأردن (+962)", "+962"),
+        new("🇵🇸 فلسطين (+970)", "+970"),
+        new("🇮🇶 العراق (+964)", "+964"),
+        new("🇪🇬 مصر (+20)", "+20"),
+        new("🇸🇾 سوريا (+963)", "+963"),
+        new("🇱🇧 لبنان (+961)", "+961"),
+        new("🇸🇩 السودان (+249)", "+249"),
+        new("🇲🇦 المغرب (+212)", "+212"),
+        new("🇩🇿 الجزائر (+213)", "+213"),
+        new("🇹🇳 تونس (+216)", "+216"),
+        new("🇱🇾 ليبيا (+218)", "+218"),
+        new("🇹🇷 تركيا (+90)", "+90"),
+        new("🇵🇰 باكستان (+92)", "+92"),
+        new("🇮🇳 الهند (+91)", "+91"),
+        new("🇧🇩 بنغلاديش (+880)", "+880"),
+        new("🇵🇭 الفلبين (+63)", "+63"),
+        new("🇮🇩 إندونيسيا (+62)", "+62"),
+        new("🇺🇸 الولايات المتحدة (+1)", "+1"),
+        new("🇨🇦 كندا (+1)", "+1"),
+        new("🇬🇧 المملكة المتحدة (+44)", "+44"),
+        new("🇩🇪 ألمانيا (+49)", "+49"),
+        new("🇫🇷 فرنسا (+33)", "+33"),
+        new("🇪🇸 إسبانيا (+34)", "+34"),
+        new("🇮🇹 إيطاليا (+39)", "+39"),
+        new("🇳🇬 نيجيريا (+234)", "+234"),
+        new("🇸🇴 الصومال (+252)", "+252"),
+        new("🇦🇫 أفغانستان (+93)", "+93"),
+        new("🇲🇾 ماليزيا (+60)", "+60"),
+        new("🇱🇰 سريلانكا (+94)", "+94")
+    };
 
     public RegisterPage(AccountService account, HimoApiClient api)
     {
@@ -24,6 +76,9 @@ public partial class RegisterPage : ContentPage
         Himo.Services.AppLocalization.AttachToPage(this);
         _account = account;
         _api = api;
+        AnchorX = 1.0;
+        AnchorY = 0.5;
+        InitializeCountryCodePicker();
         NavigationPage.SetHasNavigationBar(this, false);
         if (PasswordEyeButton is not null)
             PasswordEyeButton.Source = "himo_pro_ui_himo_login_eye_open.png";
@@ -46,7 +101,7 @@ public partial class RegisterPage : ContentPage
 
         var name = NameEntry?.Text?.Trim() ?? string.Empty;
         var email = EmailEntry?.Text?.Trim() ?? string.Empty;
-        var phone = PhoneEntry?.Text?.Trim() ?? string.Empty;
+        var phone = NormalizePhoneNumber(PhoneEntry?.Text, CountryCodePicker?.SelectedItem as CountryDialOption);
         var password = PasswordEntry?.Text ?? string.Empty;
         var confirmPassword = ConfirmPasswordEntry?.Text ?? string.Empty;
 
@@ -196,30 +251,100 @@ public partial class RegisterPage : ContentPage
         await Task.CompletedTask;
     }
 
+    /// <summary>Prepare this native page at the folded edge before it is presented.</summary>
+    public void PrepareForPageFlip()
+    {
+        AnchorX = 1.0;
+        AnchorY = 0.5;
+        RotationY = -82;
+        TranslationX = 18;
+        Scale = 0.965;
+    }
+
+    /// <summary>Unfold the actual registration form after its modal host is shown.</summary>
+    public Task AnimatePageFlipInAsync() => AnimatePageFlipAsync(
+        -82, 0, 18, 0, 0.965, 1.0, 260, Easing.CubicOut);
+
+    private Task AnimatePageFlipOutAsync() => AnimatePageFlipAsync(
+        0, -82, 0, 18, 1.0, 0.965, 210, Easing.CubicIn);
+
+    private Task AnimatePageFlipAsync(
+        double rotationFrom, double rotationTo,
+        double translationFrom, double translationTo,
+        double scaleFrom, double scaleTo,
+        uint duration, Easing easing)
+    {
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var animation = new Animation();
+        animation.Add(0, 1, new Animation(value => RotationY = value, rotationFrom, rotationTo));
+        animation.Add(0, 1, new Animation(value => TranslationX = value, translationFrom, translationTo));
+        animation.Add(0, 1, new Animation(value => Scale = value, scaleFrom, scaleTo));
+        animation.Commit(this, "HimoRegisterPageFlip", 16, duration, easing, (value, cancelled) =>
+        {
+            if (!cancelled)
+            {
+                RotationY = rotationTo;
+                TranslationX = translationTo;
+                Scale = scaleTo;
+            }
+            completion.TrySetResult(true);
+        });
+        return completion.Task;
+    }
+
     private async void BackClicked(object sender, EventArgs e)
     {
-        if (_busy) return;
-        await UiMotion.PressAsync(sender as VisualElement);
-        await CloseRegistrationAsync();
+        if (_busy || _closing) return;
+        _closing = true;
+        try
+        {
+            await UiMotion.PressAsync(sender as VisualElement);
+            await CloseRegistrationCoreAsync();
+        }
+        finally
+        {
+            _closing = false;
+        }
     }
 
     private async Task CloseRegistrationAsync()
     {
+        if (_busy || _closing) return;
+        _closing = true;
+        try
+        {
+            await CloseRegistrationCoreAsync();
+        }
+        finally
+        {
+            _closing = false;
+        }
+    }
+
+    private async Task CloseRegistrationCoreAsync()
+    {
         try
         {
             if (Navigation.ModalStack.Count > 0)
-                await Navigation.PopModalAsync(animated: true);
-            else if (Navigation.NavigationStack.Count > 1)
-                await Navigation.PopAsync(animated: true);
-            else
             {
-                var window = Application.Current?.Windows.FirstOrDefault();
-                if (window is not null)
-                    window.Page = new LoginPage(_account, _api);
+                await AnimatePageFlipOutAsync();
+                await Navigation.PopModalAsync(animated: false);
+                return;
             }
+            if (Navigation.NavigationStack.Count > 1)
+            {
+                await AnimatePageFlipOutAsync();
+                await Navigation.PopAsync(animated: false);
+                return;
+            }
+
+            var window = Application.Current?.Windows.FirstOrDefault();
+            if (window is not null)
+                window.Page = new LoginPage(_account, _api);
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[Himo AuthNav] Return-to-login fallback: {ex.Message}");
             var window = Application.Current?.Windows.FirstOrDefault();
             if (window is not null)
                 window.Page = new LoginPage(_account, _api);
@@ -228,8 +353,8 @@ public partial class RegisterPage : ContentPage
 
     protected override bool OnBackButtonPressed()
     {
-        if (_busy) return true;
-        MainThread.BeginInvokeOnMainThread(async () => await CloseRegistrationAsync());
+        if (_busy || _closing) return true;
+        _ = CloseRegistrationAsync();
         return true;
     }
 
@@ -339,6 +464,57 @@ public partial class RegisterPage : ContentPage
         return at > 0 && at < email.Length - 1 && email[(at + 1)..].Contains('.');
     }
 
+    private void InitializeCountryCodePicker()
+    {
+        if (CountryCodePicker is null) return;
+        CountryCodePicker.ItemsSource = CountryDialOptions;
+        CountryCodePicker.ItemDisplayBinding = new Binding(nameof(CountryDialOption.Label));
+        CountryCodePicker.SelectedItem = CountryDialOptions[0];
+    }
+
+    private static string NormalizePhoneNumber(string? value, CountryDialOption? selectedCountry)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var trimmed = value.Trim();
+        var startsWithPlus = trimmed.StartsWith("+", StringComparison.Ordinal);
+        var plusCount = trimmed.Count(ch => ch == '+');
+        if (plusCount > 1 || (plusCount == 1 && !startsWithPlus)) return trimmed;
+
+        var digitBuilder = new System.Text.StringBuilder(trimmed.Length);
+        foreach (var ch in trimmed)
+        {
+            if (char.IsDigit(ch))
+            {
+                var numeric = (int)char.GetNumericValue(ch);
+                if (numeric < 0 || numeric > 9) return trimmed;
+                digitBuilder.Append((char)('0' + numeric));
+            }
+            else if (char.IsWhiteSpace(ch) || ch is '-' or '(' or ')')
+            {
+                continue;
+            }
+            else if (ch == '+' && startsWithPlus)
+            {
+                continue;
+            }
+            else
+            {
+                return trimmed;
+            }
+        }
+
+        var digits = digitBuilder.ToString();
+        if (digits.Length == 0) return trimmed;
+        if (startsWithPlus) return "+" + digits;
+        if (trimmed.StartsWith("00", StringComparison.Ordinal) && digits.StartsWith("00", StringComparison.Ordinal))
+            return "+" + digits[2..];
+
+        var dialCode = selectedCountry?.DialCode ?? "+966";
+        var dialDigits = dialCode.TrimStart('+');
+        if (digits.StartsWith(dialDigits, StringComparison.Ordinal)) return "+" + digits;
+        if (digits.StartsWith("0", StringComparison.Ordinal)) digits = digits[1..];
+        return dialCode + digits;
+    }
     private static bool IsValidOptionalPhone(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return true;
@@ -376,6 +552,7 @@ public partial class RegisterPage : ContentPage
         if (NameEntry is not null) NameEntry.IsEnabled = editDetails;
         if (EmailEntry is not null) EmailEntry.IsEnabled = editDetails;
         if (PhoneEntry is not null) PhoneEntry.IsEnabled = editDetails;
+        if (CountryCodePicker is not null) CountryCodePicker.IsEnabled = editDetails;
         if (PasswordEntry is not null) PasswordEntry.IsEnabled = editDetails;
         if (ConfirmPasswordEntry is not null) ConfirmPasswordEntry.IsEnabled = editDetails;
         if (PasswordEyeButton is not null) PasswordEyeButton.IsEnabled = editDetails;

@@ -120,6 +120,9 @@ public sealed class HimoRealtimeService
             "MessageReceived",
             message =>
             {
+                // A message delivered to this client must produce a receipt even if
+                // the conversation page is not currently open.
+                _ = MarkMessageDeliveredAsync(message.Id);
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     MessageReceived?.Invoke(this, message);
@@ -397,21 +400,33 @@ public sealed class HimoRealtimeService
         Guid messageId,
         CancellationToken cancellationToken = default)
     {
+        if (messageId == Guid.Empty) return;
+
         var connection = _connection;
+        if (connection?.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                await connection.InvokeAsync(
+                    "MarkMessageDelivered",
+                    messageId,
+                    cancellationToken);
+                return;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo Realtime] SignalR delivery receipt failed: {ex.Message}");
+            }
+        }
 
-        if (connection?.State != HubConnectionState.Connected)
-            return;
-
+        // Keep receipts reliable during startup and network transitions.
         try
         {
-            await connection.SendAsync(
-                "MarkMessageDelivered",
-                messageId,
-                cancellationToken);
+            await _api.MarkMessageDeliveredAsync(messageId, cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
-            // HTTP synchronization remains the fallback.
+            System.Diagnostics.Debug.WriteLine($"[Himo Realtime] HTTP delivery receipt failed: {ex.Message}");
         }
     }
 

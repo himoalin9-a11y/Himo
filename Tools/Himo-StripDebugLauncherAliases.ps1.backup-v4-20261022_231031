@@ -1,0 +1,76 @@
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory = $true)]
+    [string]$ManifestPath
+)
+
+$ErrorActionPreference = 'Stop'
+$ManifestPath = [System.IO.Path]::GetFullPath($ManifestPath)
+if (-not (Test-Path -LiteralPath $ManifestPath)) {
+    throw "Generated Android manifest was not found: $ManifestPath"
+}
+
+$androidNs = 'http://schemas.android.com/apk/res/android'
+$doc = [System.Xml.XmlDocument]::new()
+$doc.PreserveWhitespace = $false
+$doc.XmlResolver = $null
+$doc.Load($ManifestPath)
+$ns = [System.Xml.XmlNamespaceManager]::new($doc.NameTable)
+$ns.AddNamespace('android', $androidNs)
+
+$aliases = @($doc.SelectNodes('/manifest/application/activity-alias'))
+if ($aliases.Count -eq 0) {
+    throw "No activity-alias elements found in generated manifest: $ManifestPath"
+}
+
+$removedFilters = 0
+foreach ($alias in $aliases) {
+    foreach ($filter in @($alias.SelectNodes('intent-filter'))) {
+        $main = $false
+        $launcher = $false
+        foreach ($action in @($filter.SelectNodes('action'))) {
+            if ($action.GetAttribute('name', $androidNs) -eq 'android.intent.action.MAIN') { $main = $true }
+        }
+        foreach ($category in @($filter.SelectNodes('category'))) {
+            if ($category.GetAttribute('name', $androidNs) -eq 'android.intent.category.LAUNCHER') { $launcher = $true }
+        }
+        if ($main -and $launcher) {
+            [void]$alias.RemoveChild($filter)
+            $removedFilters++
+        }
+    }
+}
+
+# Fail the Debug build instead of producing an app without a stable launch entry.
+$stable = $doc.SelectSingleNode("/manifest/application/activity[@android:name='com.companyname.himo.LauncherIconDefault']", $ns)
+if ($null -eq $stable) {
+    throw 'Stable activity com.companyname.himo.LauncherIconDefault was not found in the generated manifest.'
+}
+$stableHasLauncher = $false
+foreach ($filter in @($stable.SelectNodes('intent-filter'))) {
+    $main = $false
+    $launcher = $false
+    foreach ($action in @($filter.SelectNodes('action'))) {
+        if ($action.GetAttribute('name', $androidNs) -eq 'android.intent.action.MAIN') { $main = $true }
+    }
+    foreach ($category in @($filter.SelectNodes('category'))) {
+        if ($category.GetAttribute('name', $androidNs) -eq 'android.intent.category.LAUNCHER') { $launcher = $true }
+    }
+    if ($main -and $launcher) { $stableHasLauncher = $true }
+}
+if (-not $stableHasLauncher) {
+    throw 'LauncherIconDefault does not have a MAIN/LAUNCHER filter. Confirm MainActivity.cs sets MainLauncher=true under #if DEBUG.'
+}
+
+$settings = [System.Xml.XmlWriterSettings]::new()
+$settings.Encoding = [System.Text.UTF8Encoding]::new($false)
+$settings.Indent = $true
+$settings.IndentChars = '  '
+$settings.NewLineChars = "`r`n"
+$settings.NewLineHandling = [System.Xml.NewLineHandling]::Replace
+$writer = [System.Xml.XmlWriter]::Create($ManifestPath, $settings)
+try { $doc.Save($writer) } finally { $writer.Dispose() }
+
+Write-Host "Debug manifest adjusted: $ManifestPath"
+Write-Host "Removed MAIN/LAUNCHER filters from activity aliases: $removedFilters"
+Write-Host 'Verified stable launch activity: com.companyname.himo.LauncherIconDefault'

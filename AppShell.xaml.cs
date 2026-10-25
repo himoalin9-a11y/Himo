@@ -30,6 +30,7 @@ public partial class AppShell : Shell
         Routing.RegisterRoute("icons-appearance", typeof(IconsAppearanceSettingsPage));
         Routing.RegisterRoute("icon-selection", typeof(IconSelectionSettingsPage));
         Routing.RegisterRoute("appearance-settings", typeof(AppearanceSettingsPage));
+        Routing.RegisterRoute("default-interface-settings", typeof(DefaultInterfacesSettingsPage));
         Routing.RegisterRoute("system-icons-settings", typeof(SystemIconsSettingsPage));
         Routing.RegisterRoute("glass-icons-settings", typeof(GlassIconsSettingsPage));
         Routing.RegisterRoute("professional-icons-settings", typeof(ProfessionalIconsSettingsPage));
