@@ -3590,10 +3590,11 @@ LIMIT 1;";
             throw new InvalidOperationException("Message insert did not return a row.");
         }
         if (!Guid.TryParse(reader.GetString(0), out var messageId) ||
-            !Guid.TryParse(reader.GetString(1), out var actualConversationId) ||
-            !Guid.TryParse(reader.GetString(2), out var actualSenderId) ||
-            reader.IsDBNull(3) || reader.IsDBNull(4) ||
-            !DateTimeOffset.TryParse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var sentAt))
+    !Guid.TryParse(reader.GetString(1), out var actualConversationId) ||
+    !Guid.TryParse(reader.GetString(2), out var actualSenderId) ||
+    reader.IsDBNull(3) || reader.IsDBNull(4) ||
+    !DateTimeOffset.TryParse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var sentAt) ||
+    reader.IsDBNull(6) || reader.IsDBNull(7) || reader.IsDBNull(8))
         {
             throw new InvalidOperationException("Stored message row is invalid.");
         }
