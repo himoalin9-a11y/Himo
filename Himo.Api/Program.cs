@@ -746,9 +746,11 @@ webApp.MapGet("/api/conversations/{id:guid}/messages", (Guid id, HttpRequest htt
 webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequest http, [Microsoft.AspNetCore.Mvc.FromBody] SendMessageRequest request, PostgresStore store, IHubContext<HimoChatHub> hub) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
-    if (!store.ExistsConversation(id, session.UserId)) return Results.NotFound();
-    if (store.IsConversationBlockedForUser(id, session.UserId))
+    var sendContext = store.GetMessageSendContext(id, session.UserId);
+    if (!sendContext.Exists) return Results.NotFound();
+    if (sendContext.IsBlocked)
         return Results.Conflict(new { message = "لا يمكن إرسال رسائل في هذه المحادثة لأن أحد الطرفين حظر الآخر." });
+    var recipientIds = sendContext.RecipientUserIds;
     var text = request.Text?.Trim() ?? string.Empty;
     if (string.IsNullOrWhiteSpace(text)) return Results.BadRequest(new { message = "نص الرسالة مطلوب." });
     if (text.Length > 4000) return Results.BadRequest(new { message = "الرسالة طويلة جدًا. الحد الأقصى 4000 حرف." });
@@ -764,7 +766,6 @@ webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequ
     if (request.ReplyToMessageId.HasValue && !store.MessageBelongsToConversation(request.ReplyToMessageId.Value, id))
         return Results.BadRequest(new { message = "الرسالة المقتبس منها غير موجودة في هذه المحادثة." });
     var message = store.AddMessage(id, session.UserId, session.PhoneNumber, text, clientMessageId, request.ReplyToMessageId);
-    var recipientIds = store.GetOtherParticipantUserIds(id, session.UserId);
 
     // The message is already persisted. Return 201 immediately so the sender
     // can show its checkmark without waiting for realtime delivery or FCM.
@@ -3109,6 +3110,46 @@ ON CONFLICT(ConversationId,ReporterUserId) DO UPDATE SET Reason=excluded.Reason,
         }
     }
 
+    public (bool Exists, bool IsBlocked, IReadOnlyList<Guid> RecipientUserIds) GetMessageSendContext(Guid conversationId, Guid currentUserId)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = @"
+SELECT
+    EXISTS (
+        SELECT 1 FROM ConversationParticipants cp
+        WHERE cp.ConversationId=@conversation AND cp.UserId=@user
+    ) AS conversation_exists,
+    EXISTS (
+        SELECT 1
+        FROM Conversations c
+        JOIN ConversationParticipants self ON self.ConversationId=c.Id AND self.UserId=@user
+        JOIN ConversationParticipants peer ON peer.ConversationId=c.Id AND peer.UserId<>@user
+        JOIN BlockedUsers b ON ((b.BlockerUserId=@user AND b.BlockedUserId=peer.UserId)
+                            OR (b.BlockerUserId=peer.UserId AND b.BlockedUserId=@user))
+        WHERE c.Id=@conversation
+          AND COALESCE(c.IsGroup,FALSE)=FALSE
+          AND (SELECT COUNT(*) FROM ConversationParticipants cpCount WHERE cpCount.ConversationId=c.Id)=2
+    ) AS is_blocked,
+    COALESCE((
+        SELECT string_agg(cp.UserId, ',')
+        FROM ConversationParticipants cp
+        WHERE cp.ConversationId=@conversation AND cp.UserId<>@user
+    ), '') AS recipient_user_ids;";
+        command.Parameters.AddWithValue("@conversation", conversationId.ToString());
+        command.Parameters.AddWithValue("@user", currentUserId.ToString());
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return (false, false, Array.Empty<Guid>());
+        var exists = reader.GetBoolean(0);
+        var isBlocked = reader.GetBoolean(1);
+        var recipientText = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
+        var recipients = new List<Guid>();
+        foreach (var value in recipientText.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (Guid.TryParse(value, out var recipientId)) recipients.Add(recipientId);
+        }
+        return (exists, isBlocked, recipients);
+    }
     public bool ExistsConversation(Guid id, Guid userId)
     {
         using var connection = Open();
@@ -3315,91 +3356,114 @@ DO UPDATE SET IsDeleted=FALSE,UpdatedAt=EXCLUDED.UpdatedAt;";
 
     public MessageDto AddMessage(Guid conversationId, Guid userId, string senderPhone, string text, string? clientMessageId, Guid? replyToMessageId = null)
     {
+        var message = new MessageDto(Guid.NewGuid(), conversationId, userId, senderPhone, text, DateTimeOffset.UtcNow, null, null, null, "sent", replyToMessageId, null);
         using var connection = Open();
-        if (!string.IsNullOrWhiteSpace(clientMessageId))
-        {
-            using var existing = connection.CreateCommand();
-            existing.CommandText = "SELECT Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,AttachmentFileName,AttachmentContentType,AttachmentSize FROM Messages WHERE ConversationId=@conversation AND SenderUserId=@user AND ClientMessageId=@client LIMIT 1;";
-            existing.Parameters.AddWithValue("@conversation", conversationId.ToString());
-            existing.Parameters.AddWithValue("@user", userId.ToString());
-            existing.Parameters.AddWithValue("@client", clientMessageId);
-            using (var reader = existing.ExecuteReader())
-            {
-                if (reader.Read())
-                {
-                    if (!Guid.TryParse(reader.GetString(0), out var existingId) ||
-                        !Guid.TryParse(reader.GetString(1), out var existingConversationId) ||
-                        !Guid.TryParse(reader.GetString(2), out var existingSenderId) ||
-                        reader.IsDBNull(3) || reader.IsDBNull(4) ||
-                        !DateTimeOffset.TryParse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var existingSentAt))
-                    {
-                        throw new InvalidOperationException("بيانات الرسالة الموجودة غير صالحة.");
-                    }
+        using var command = connection.CreateCommand();
+        command.CommandText = @"
+WITH inserted AS (
+    INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,SentAtEpochUs,ClientMessageId,ReplyToMessageId)
+    VALUES(@id,@conversation,@user,@phone,@text,@sent,@sentEpochUs,@client,@reply)
+    ON CONFLICT DO NOTHING
+    RETURNING Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,AttachmentFileName,AttachmentContentType,AttachmentSize,ReplyToMessageId
+),
+chosen AS (
+    SELECT Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,AttachmentFileName,AttachmentContentType,AttachmentSize,ReplyToMessageId
+    FROM inserted
+    UNION ALL
+    SELECT m.Id,m.ConversationId,m.SenderUserId,m.SenderPhoneNumber,m.Text,m.SentAt,m.AttachmentFileName,m.AttachmentContentType,m.AttachmentSize,m.ReplyToMessageId
+    FROM Messages m
+    WHERE @client IS NOT NULL
+      AND m.ConversationId=@conversation
+      AND m.SenderUserId=@user
+      AND m.ClientMessageId=@client
+      AND NOT EXISTS (SELECT 1 FROM inserted)
+    LIMIT 1
+),
+receipt_insert AS (
+    INSERT INTO MessageReceipts(MessageId,RecipientUserId)
+    SELECT chosen.Id,cp.UserId
+    FROM chosen
+    JOIN ConversationParticipants cp ON cp.ConversationId=chosen.ConversationId
+    WHERE cp.UserId<>chosen.SenderUserId
+    ON CONFLICT DO NOTHING
+    RETURNING MessageId
+),
+conversation_update AS (
+    UPDATE Conversations c
+    SET LastMessage=chosen.Text,UpdatedAt=chosen.SentAt
+    FROM chosen
+    WHERE c.Id=@conversation
+      AND EXISTS (SELECT 1 FROM inserted)
+    RETURNING c.Id
+)
+SELECT Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,AttachmentFileName,AttachmentContentType,AttachmentSize,ReplyToMessageId
+FROM chosen
+LIMIT 1;";
+        command.Parameters.AddWithValue("@id", message.Id.ToString());
+        command.Parameters.AddWithValue("@conversation", conversationId.ToString());
+        command.Parameters.AddWithValue("@user", userId.ToString());
+        command.Parameters.AddWithValue("@phone", senderPhone);
+        command.Parameters.AddWithValue("@text", text);
+        command.Parameters.AddWithValue("@sent", message.SentAt.ToString("O"));
+        command.Parameters.AddWithValue("@sentEpochUs", ToEpochMicroseconds(message.SentAt));
+        command.Parameters.AddWithValue("@client", (object?)clientMessageId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@reply", (object?)replyToMessageId?.ToString("D") ?? DBNull.Value);
 
-                    return new MessageDto(existingId, existingConversationId, existingSenderId, reader.GetString(3), reader.GetString(4), existingSentAt, reader.IsDBNull(6) ? null : reader.GetString(6), reader.IsDBNull(7) ? null : reader.GetString(7), reader.IsDBNull(8) ? null : reader.GetInt64(8));
+        using var reader = command.ExecuteReader();
+        if (!reader.Read())
+        {
+            // A concurrent retry can win the unique ClientMessageId race after this
+            // statement's snapshot was taken. Re-read in a new command/snapshot.
+            reader.Close();
+            if (!string.IsNullOrWhiteSpace(clientMessageId))
+            {
+                using var existingAfterRace = connection.CreateCommand();
+                existingAfterRace.CommandText = "SELECT Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,AttachmentFileName,AttachmentContentType,AttachmentSize,ReplyToMessageId FROM Messages WHERE ConversationId=@conversation AND SenderUserId=@user AND ClientMessageId=@client LIMIT 1;";
+                existingAfterRace.Parameters.AddWithValue("@conversation", conversationId.ToString());
+                existingAfterRace.Parameters.AddWithValue("@user", userId.ToString());
+                existingAfterRace.Parameters.AddWithValue("@client", clientMessageId);
+                using var existingReader = existingAfterRace.ExecuteReader();
+                if (existingReader.Read())
+                {
+                    if (!Guid.TryParse(existingReader.GetString(0), out var existingId) ||
+                        !Guid.TryParse(existingReader.GetString(1), out var existingConversationId) ||
+                        !Guid.TryParse(existingReader.GetString(2), out var existingSenderId) ||
+                        existingReader.IsDBNull(3) || existingReader.IsDBNull(4) ||
+                        !DateTimeOffset.TryParse(existingReader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var existingSentAt))
+                        throw new InvalidOperationException("Stored duplicate message row is invalid.");
+                    Guid? existingReplyTo = null;
+                    if (!existingReader.IsDBNull(9) && Guid.TryParse(existingReader.GetString(9), out var parsedExistingReply)) existingReplyTo = parsedExistingReply;
+                    return new MessageDto(existingId, existingConversationId, existingSenderId, existingReader.GetString(3), existingReader.GetString(4), existingSentAt,
+                        existingReader.IsDBNull(6) ? null : existingReader.GetString(6),
+                        existingReader.IsDBNull(7) ? null : existingReader.GetString(7),
+                        existingReader.IsDBNull(8) ? null : existingReader.GetInt64(8), "sent", existingReplyTo, null);
                 }
             }
+            throw new InvalidOperationException("Message insert did not return a row.");
         }
-
-        var message = new MessageDto(Guid.NewGuid(), conversationId, userId, senderPhone, text, DateTimeOffset.UtcNow, null, null, null, "sent", replyToMessageId, null);
-        using var transaction = connection.BeginTransaction();
-        using var insert = connection.CreateCommand();
-        insert.Transaction = transaction;
-        insert.CommandText = string.IsNullOrWhiteSpace(clientMessageId)
-            ? "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,SentAtEpochUs,ClientMessageId,ReplyToMessageId) VALUES(@id,@conversation,@user,@phone,@text,@sent,@sentEpochUs,@client,@reply);"
-            : "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,SentAtEpochUs,ClientMessageId,ReplyToMessageId) VALUES(@id,@conversation,@user,@phone,@text,@sent,@sentEpochUs,@client,@reply) ON CONFLICT DO NOTHING;";
-        insert.Parameters.AddWithValue("@id", message.Id.ToString());
-        insert.Parameters.AddWithValue("@conversation", conversationId.ToString());
-        insert.Parameters.AddWithValue("@user", userId.ToString());
-        insert.Parameters.AddWithValue("@phone", senderPhone);
-        insert.Parameters.AddWithValue("@text", text);
-        insert.Parameters.AddWithValue("@sent", message.SentAt.ToString("O"));
-        insert.Parameters.AddWithValue("@sentEpochUs", ToEpochMicroseconds(message.SentAt));
-        insert.Parameters.AddWithValue("@client", (object?)clientMessageId ?? DBNull.Value);
-        insert.Parameters.AddWithValue("@reply", (object?)replyToMessageId?.ToString("D") ?? DBNull.Value);
-        var inserted = insert.ExecuteNonQuery();
-        if (inserted == 0 && !string.IsNullOrWhiteSpace(clientMessageId))
+        if (!Guid.TryParse(reader.GetString(0), out var messageId) ||
+            !Guid.TryParse(reader.GetString(1), out var actualConversationId) ||
+            !Guid.TryParse(reader.GetString(2), out var actualSenderId) ||
+            reader.IsDBNull(3) || reader.IsDBNull(4) ||
+            !DateTimeOffset.TryParse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var sentAt))
         {
-            transaction.Rollback();
-            using var existingAfterRace = connection.CreateCommand();
-            existingAfterRace.CommandText = "SELECT Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,AttachmentFileName,AttachmentContentType,AttachmentSize FROM Messages WHERE ConversationId=@conversation AND SenderUserId=@user AND ClientMessageId=@client LIMIT 1;";
-            existingAfterRace.Parameters.AddWithValue("@conversation", conversationId.ToString());
-            existingAfterRace.Parameters.AddWithValue("@user", userId.ToString());
-            existingAfterRace.Parameters.AddWithValue("@client", clientMessageId);
-            using var existingReader = existingAfterRace.ExecuteReader();
-            if (existingReader.Read())
-            {
-                if (!Guid.TryParse(existingReader.GetString(0), out var racedId) ||
-                    !Guid.TryParse(existingReader.GetString(1), out var racedConversationId) ||
-                    !Guid.TryParse(existingReader.GetString(2), out var racedSenderId) ||
-                    !DateTimeOffset.TryParse(existingReader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var racedSentAt))
-                    throw new InvalidOperationException("بيانات الرسالة الموجودة غير صالحة.");
-                return new MessageDto(racedId, racedConversationId, racedSenderId, existingReader.GetString(3), existingReader.GetString(4), racedSentAt, existingReader.IsDBNull(6) ? null : existingReader.GetString(6), existingReader.IsDBNull(7) ? null : existingReader.GetString(7), existingReader.IsDBNull(8) ? null : existingReader.GetInt64(8));
-            }
-            throw new InvalidOperationException("تعذر حفظ الرسالة.");
+            throw new InvalidOperationException("Stored message row is invalid.");
         }
-        using (var receipt = connection.CreateCommand())
-        {
-            receipt.Transaction = transaction;
-            receipt.CommandText = "INSERT INTO MessageReceipts(MessageId,RecipientUserId) SELECT @message,UserId FROM ConversationParticipants WHERE ConversationId=@conversation AND UserId<>@sender ON CONFLICT DO NOTHING;";
-            receipt.Parameters.AddWithValue("@message", message.Id.ToString());
-            receipt.Parameters.AddWithValue("@conversation", conversationId.ToString());
-            receipt.Parameters.AddWithValue("@sender", userId.ToString());
-            receipt.ExecuteNonQuery();
-        }
-
-        using var update = connection.CreateCommand();
-        update.Transaction = transaction;
-        update.CommandText = "UPDATE Conversations SET LastMessage=@text, UpdatedAt=@updated WHERE Id=@id;";
-        update.Parameters.AddWithValue("@text", text);
-        update.Parameters.AddWithValue("@updated", message.SentAt.ToString("O"));
-        update.Parameters.AddWithValue("@id", conversationId.ToString());
-        update.ExecuteNonQuery();
-        // A new message revives a conversation that the recipient previously hid.
-        // Preserve archive/mute preferences; only clear the per-user deleted flag.
-        RestoreConversationVisibilityForAllParticipants(connection, transaction, conversationId, message.SentAt);
-        transaction.Commit();
-        return message;
+        Guid? actualReplyTo = null;
+        if (!reader.IsDBNull(9) && Guid.TryParse(reader.GetString(9), out var parsedReplyTo)) actualReplyTo = parsedReplyTo;
+        return new MessageDto(
+            messageId,
+            actualConversationId,
+            actualSenderId,
+            reader.GetString(3),
+            reader.GetString(4),
+            sentAt,
+            reader.IsDBNull(6) ? null : reader.GetString(6),
+            reader.IsDBNull(7) ? null : reader.GetString(7),
+            reader.IsDBNull(8) ? null : reader.GetInt64(8),
+            "sent",
+            actualReplyTo,
+            null);
     }
 
     public (MessageDto? Message, bool Changed) EditMessage(Guid messageId, Guid userId, string text)
