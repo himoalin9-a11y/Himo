@@ -112,11 +112,6 @@ public sealed class ConversationInfoPage : ContentPage
         var stripScroll = new ScrollView { Orientation = ScrollOrientation.Horizontal, Content = _mediaStrip, HorizontalScrollBarVisibility = ScrollBarVisibility.Never };
         stripScroll.HeightRequest = 82;
         sharedCardBody.Add(stripScroll);
-        var categoryRow = new Grid { ColumnDefinitions = new ColumnDefinitionCollection { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star) }, ColumnSpacing = 8 };
-        categoryRow.Add(MakePill("الوسائط", "media"), 0, 0);
-        categoryRow.Add(MakePill("الروابط", "links"), 1, 0);
-        categoryRow.Add(MakePill("المستندات", "documents"), 2, 0);
-        sharedCardBody.Add(categoryRow);
         var sharedCard = MakeCard(sharedCardBody);
         // Header/category buttons remain independently clickable; no gesture is put over the buttons.
         content.Add(sharedCard);
@@ -327,7 +322,21 @@ public sealed class ConversationInfoPage : ContentPage
             card.Content = glyph;
         }
         var tap = new TapGestureRecognizer();
-        tap.Tapped += async (_, _) => await OpenSharedAsync("media");
+        tap.Tapped += async (_, _) =>
+        {
+            try
+            {
+                var path = localPath;
+                if ((string.IsNullOrWhiteSpace(path) || !File.Exists(path)) &&
+                    message.IsImageAttachment && Guid.TryParse(message.RemoteId, out var id) && _api.HasToken)
+                    path = await _api.DownloadAttachmentAsync(id, message.AttachmentFileName ?? "image");
+                if (message.IsImageAttachment && !string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                    await Navigation.PushAsync(new ImagePreviewPage(path, message.AttachmentFileName ?? "الصورة"));
+                else
+                    await OpenSharedAsync("media");
+            }
+            catch { await OpenSharedAsync("media"); }
+        };
         card.GestureRecognizers.Add(tap);
         return card;
     }
@@ -554,6 +563,23 @@ public sealed class ConversationSharedContentPage : ContentPage
         }
 
         var list = items.OrderByDescending(x => x.Message.SentAt).ToList();
+        // Remote message pages may not carry a local path. Download image thumbnails lazily
+        // so images are displayed as images in Storage, Media, and any attachment listing.
+        foreach (var item in list.Where(x => x.Kind == "image"))
+        {
+            if (!string.IsNullOrWhiteSpace(item.LocalPath) && File.Exists(item.LocalPath)) continue;
+            if (!Guid.TryParse(item.Message.RemoteId, out var attachmentId) || !_api.HasToken) continue;
+            try
+            {
+                var path = await _api.DownloadAttachmentAsync(attachmentId, item.Message.AttachmentFileName ?? "image");
+                if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                {
+                    item.LocalPath = path;
+                    item.Message.AttachmentLocalPath = path;
+                }
+            }
+            catch { /* Keep a fallback icon if this attachment cannot be downloaded. */ }
+        }
         _visibleItems = list;
         _summary.Text = _storageMode ? $"{list.Count} صورة أو فيديو" : _tab switch { "links" => $"{list.Count} رابطًا", "documents" => $"{list.Count} مستندًا", _ => $"{list.Count} ملفًا صوتيًا أو صورة أو فيديو" };
         if (list.Count == 0)
@@ -563,8 +589,38 @@ public sealed class ConversationSharedContentPage : ContentPage
             _itemsHost.Add(empty);
             return;
         }
-        foreach (var item in list)
-            _itemsHost.Add(BuildItemRow(item));
+        if (_storageMode)
+        {
+            var gallery = new Grid { ColumnSpacing = 7, RowSpacing = 7, ColumnDefinitions = new ColumnDefinitionCollection { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star) } };
+            for (var i = 0; i < list.Count; i++)
+            {
+                var item = list[i];
+                var tile = new Border { HeightRequest = 112, Padding = 0, StrokeThickness = 1, StrokeShape = new RoundRectangle { CornerRadius = 10 } };
+                tile.SetDynamicResource(Border.BackgroundColorProperty, "HimoSurface");
+                tile.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+                if (item.Kind == "image" && !string.IsNullOrWhiteSpace(item.LocalPath) && File.Exists(item.LocalPath))
+                    tile.Content = new Image { Source = ImageSource.FromFile(item.LocalPath), Aspect = Aspect.AspectFill };
+                else
+                {
+                    var fallback = ConversationInfoPage.MakeLabel(item.Kind == "video" ? "▶" : "▧", 28, true);
+                    fallback.HorizontalTextAlignment = TextAlignment.Center;
+                    fallback.VerticalTextAlignment = TextAlignment.Center;
+                    tile.Content = fallback;
+                }
+                var tap = new TapGestureRecognizer();
+                tap.Tapped += async (_, _) => await OpenItemAsync(item);
+                tile.GestureRecognizers.Add(tap);
+                gallery.Add(tile, i % 3, i / 3);
+                if (i / 3 + 1 > gallery.RowDefinitions.Count)
+                    gallery.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            }
+            _itemsHost.Add(gallery);
+        }
+        else
+        {
+            foreach (var item in list)
+                _itemsHost.Add(BuildItemRow(item));
+        }
         await Task.CompletedTask;
     }
 
@@ -640,7 +696,7 @@ public sealed class ConversationSharedContentPage : ContentPage
         public string Kind { get; init; } = string.Empty;
         public string? Url { get; init; }
         public ChatMessage Message { get; init; } = null!;
-        public string? LocalPath { get; init; }
+        public string? LocalPath { get; set; }
     }
 }
 
