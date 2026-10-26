@@ -1946,6 +1946,10 @@ public partial class ChatPage : ContentPage
     }
 
     private int _flushingOutbox;
+    // Newly composed text messages bypass the serialized background outbox so an
+    // older retry or attachment upload cannot hold up the message the user just sent.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _directMessageSends =
+        new(StringComparer.OrdinalIgnoreCase);
 
     private async Task FlushOutboxAsync(string? prioritizeClientMessageId = null)
     {
@@ -1959,8 +1963,10 @@ public partial class ChatPage : ContentPage
             while (_api.HasToken)
             {
                 var pendingBatch = _chat.GetPendingMessages()
-                    // Send the message the user just submitted before older failed
-                    // or offline messages, then drain the durable outbox normally.
+                    // Directly-sent new text messages are handled by their own request.
+                    // Keep them out of the serialized retry queue.
+                    .Where(x => string.IsNullOrWhiteSpace(x.ClientMessageId) ||
+                                !_directMessageSends.ContainsKey(x.ClientMessageId))
                     .OrderBy(x => !string.IsNullOrWhiteSpace(prioritizeClientMessageId) &&
                                   string.Equals(x.ClientMessageId, prioritizeClientMessageId, StringComparison.Ordinal)
                         ? 0 : 1)
@@ -1977,6 +1983,11 @@ public partial class ChatPage : ContentPage
                 {
                     if (!_api.HasToken)
                         break;
+
+                    // A newer send can be marked direct after this batch snapshot was taken.
+                    if (!string.IsNullOrWhiteSpace(pending.ClientMessageId) &&
+                        _directMessageSends.ContainsKey(pending.ClientMessageId))
+                        continue;
 
                     var conversation = _chat.Conversations
                         .FirstOrDefault(x => x.Id == pending.ConversationId);
@@ -2091,8 +2102,12 @@ public partial class ChatPage : ContentPage
         {
             Interlocked.Exchange(ref _flushingOutbox, 0);
 
-            if (_api.HasToken &&
-                _chat.GetPendingMessages().Count > 0)
+            var queuedPending = _chat.GetPendingMessages()
+                .Where(x => string.IsNullOrWhiteSpace(x.ClientMessageId) ||
+                            !_directMessageSends.ContainsKey(x.ClientMessageId))
+                .Any();
+
+            if (_api.HasToken && queuedPending)
             {
                 _ = Task.Run(async () =>
                 {
@@ -2100,6 +2115,66 @@ public partial class ChatPage : ContentPage
                     await FlushOutboxAsync();
                 });
             }
+        }
+    }
+
+    private async Task SendPendingTextImmediatelyAsync(
+        int localConversationId,
+        Guid remoteConversationId,
+        string text,
+        string clientMessageId,
+        string? replyToRemoteId)
+    {
+        var timing = Stopwatch.StartNew();
+        try
+        {
+            if (!_api.HasToken)
+                throw new InvalidOperationException("جلسة الدخول غير متاحة حاليًا.");
+            if (Connectivity.Current.NetworkAccess != NetworkAccess.Internet)
+                throw new HttpRequestException("لا يوجد اتصال إنترنت متاح لإرسال الرسالة.");
+
+            var replyId = Guid.TryParse(replyToRemoteId, out var parsedReplyId)
+                ? parsedReplyId
+                : (Guid?)null;
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[HimoTiming] direct text send started conversation={remoteConversationId:D} clientMessageId={clientMessageId}");
+
+            var remote = await _api.SendMessageAsync(
+                remoteConversationId,
+                text,
+                clientMessageId,
+                replyId);
+
+            _chat.CompletePendingMessage(
+                localConversationId,
+                clientMessageId,
+                remote.Id.ToString("D"),
+                remote.SentAt.LocalDateTime);
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[HimoTiming] direct text send acknowledged elapsed={timing.ElapsedMilliseconds}ms remoteId={remote.Id:D}");
+        }
+        catch (Exception ex)
+        {
+            _chat.FailPendingMessage(localConversationId, clientMessageId);
+            System.Diagnostics.Debug.WriteLine(
+                $"[HimoTiming] direct text send failed elapsed={timing.ElapsedMilliseconds}ms clientMessageId={clientMessageId}: {ex}");
+        }
+        finally
+        {
+            _directMessageSends.TryRemove(clientMessageId, out _);
+            try
+            {
+                await MainThread.InvokeOnMainThreadAsync(() => RefreshMessagesView(scrollToEnd: false));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Refresh after direct send failed: {ex.Message}");
+            }
+
+            // Once the foreground message is handled, continue draining older queued items.
+            _ = FlushOutboxAsync();
         }
     }
 
@@ -4357,6 +4432,11 @@ public partial class ChatPage : ContentPage
         if (Interlocked.Exchange(ref _sending, 1) != 0)
             return;
 
+        // Keep the editor enabled while sending. Disabling an Android Entry dismisses
+        // the soft keyboard, which forced users to reopen it after every message.
+        var shouldKeepKeyboard = !string.IsNullOrWhiteSpace(MessageEntry?.Text)
+            && (ReferenceEquals(sender, MessageEntry) || ReferenceEquals(sender, SendButton));
+
         try
         {
             if (SendButton is not null)
@@ -4365,16 +4445,10 @@ public partial class ChatPage : ContentPage
                 SendButton.Source = ChatIconSource("send");
             }
 
-            if (MessageEntry is not null)
-                MessageEntry.IsEnabled = false;
-
             await SendMessageAsync();
         }
         finally
         {
-            if (MessageEntry is not null)
-                MessageEntry.IsEnabled = true;
-
             if (SendButton is not null)
             {
                 SendButton.IsEnabled = true;
@@ -4382,9 +4456,49 @@ public partial class ChatPage : ContentPage
             }
 
             Interlocked.Exchange(ref _sending, 0);
+
+            if (shouldKeepKeyboard)
+                KeepComposerKeyboardOpen();
         }
     }
 
+    private void KeepComposerKeyboardOpen()
+    {
+        if (MessageEntry is null)
+            return;
+
+        // Entry.Completed may cause Android's IME to close its soft keyboard.
+        // Refocus after the send operation and explicitly request the IME again.
+        Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(120), () =>
+        {
+            if (MessageEntry is null || !MessageEntry.IsVisible || !MessageEntry.IsEnabled)
+                return;
+
+            MessageEntry.Focus();
+
+#if ANDROID
+            try
+            {
+                var nativeEntry = MessageEntry.Handler?.PlatformView as Android.Widget.EditText;
+                var inputMethodManager = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity?
+                    .GetSystemService(Android.Content.Context.InputMethodService)
+                    as Android.Views.InputMethods.InputMethodManager;
+
+                if (nativeEntry is not null)
+                {
+                    nativeEntry.RequestFocus();
+                    inputMethodManager?.ShowSoftInput(
+                        nativeEntry,
+                        Android.Views.InputMethods.ShowFlags.Implicit);
+                }
+            }
+            catch
+            {
+                // A keyboard service failure must not interrupt sending messages.
+            }
+#endif
+        });
+    }
     private async void ResendFailedMessageClicked(object? sender, EventArgs e)
     {
         if (sender is not Element element || element.BindingContext is not ChatMessage message)
@@ -4506,7 +4620,7 @@ public partial class ChatPage : ContentPage
             conversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
         }
 
-        if (conversation is null || !Guid.TryParse(conversation.RemoteId, out _))
+        if (conversation is null || !Guid.TryParse(conversation.RemoteId, out var remoteConversationId))
         {
             await DisplayAlertAsync(
                 Himo.Services.AppLocalization.TranslateSourceText("الإرسال"),
@@ -4516,6 +4630,9 @@ public partial class ChatPage : ContentPage
         }
 
         var clientMessageId = Guid.NewGuid().ToString("D");
+        // Register before adding the pending row so a concurrent outbox flush cannot
+        // capture it and queue it behind unrelated older messages.
+        _directMessageSends.TryAdd(clientMessageId, 0);
 
         var pending = _chat.AddPendingMessage(
             _conversationId,
@@ -4525,15 +4642,23 @@ public partial class ChatPage : ContentPage
             _replyingTo?.Text);
 
         if (pending is null)
+        {
+            _directMessageSends.TryRemove(clientMessageId, out _);
             return;
+        }
 
-        // Optimistic UI: the message appears immediately as "sending". The same
-        // ClientMessageId makes retries idempotent on the server.
+        // Optimistic UI: show the message immediately, then POST it independently
+        // from the background retry queue so a slow old item cannot delay this send.
         MessageEntry?.Text = string.Empty;
         ClearReply();
         RefreshMessagesView(scrollToEnd: true);
 
-        _ = FlushOutboxAsync(clientMessageId);
+        _ = SendPendingTextImmediatelyAsync(
+            _conversationId,
+            remoteConversationId,
+            text,
+            clientMessageId,
+            pending.ReplyToRemoteId);
     }
 
     private static string GetMessageUiKey(ChatMessage message)

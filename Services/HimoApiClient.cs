@@ -1140,6 +1140,10 @@ public sealed class HimoApiClient
              attempt < attempts.Length;
              attempt++)
         {
+            var attemptTiming = Stopwatch.StartNew();
+            Debug.WriteLine(
+                $"[HimoTiming] POST message started attempt={attempt + 1}/{attempts.Length} conversation={conversationId:D} clientMessageId={clientMessageId ?? "(none)"}");
+
             using var timeoutCts =
                 CancellationTokenSource
                     .CreateLinkedTokenSource(
@@ -1161,20 +1165,29 @@ public sealed class HimoApiClient
                         },
                         timeoutCts.Token);
 
+                Debug.WriteLine(
+                    $"[HimoTiming] POST message response HTTP={(int)response.StatusCode} elapsed={attemptTiming.ElapsedMilliseconds}ms attempt={attempt + 1}/{attempts.Length}");
+
                 await EnsureSuccessAsync(
                     response,
                     timeoutCts.Token);
 
-                return await response.Content
+                var result = await response.Content
                     .ReadFromJsonAsync<MessageDto>(
                         cancellationToken:
                             timeoutCts.Token)
                     ?? throw new InvalidOperationException(
                         "استجابة الخادم غير صالحة.");
+
+                Debug.WriteLine(
+                    $"[HimoTiming] POST message acknowledged elapsed={attemptTiming.ElapsedMilliseconds}ms id={result.Id:D}");
+                return result;
             }
             catch (OperationCanceledException)
                 when (!cancellationToken.IsCancellationRequested)
             {
+                Debug.WriteLine(
+                    $"[HimoTiming] POST message timeout elapsed={attemptTiming.ElapsedMilliseconds}ms attempt={attempt + 1}/{attempts.Length}");
                 lastError =
                     new TaskCanceledException(
                         "انتهت مهلة إرسال الرسالة.");
@@ -1189,6 +1202,8 @@ public sealed class HimoApiClient
             }
             catch (HttpRequestException ex)
             {
+                Debug.WriteLine(
+                    $"[HimoTiming] POST message HTTP/network failure elapsed={attemptTiming.ElapsedMilliseconds}ms attempt={attempt + 1}/{attempts.Length}: {ex.Message}");
                 lastError = ex;
 
                 if (!HasToken ||

@@ -60,6 +60,30 @@ builder.WebHost.ConfigureKestrel(options =>
 
 var webApp = builder.Build();
 
+// Server-side timing for message requests; use Render logs to separate API/DB time from client/network time.
+webApp.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value ?? string.Empty;
+    var isMessageApi = path.StartsWith("/api/conversations/", StringComparison.OrdinalIgnoreCase)
+        && path.EndsWith("/messages", StringComparison.OrdinalIgnoreCase)
+        && (HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsPost(context.Request.Method));
+    if (!isMessageApi)
+    {
+        await next();
+        return;
+    }
+
+    var timing = System.Diagnostics.Stopwatch.StartNew();
+    try
+    {
+        await next();
+    }
+    finally
+    {
+        Console.WriteLine($"[HimoServerTiming] method={context.Request.Method} path={path}{context.Request.QueryString} status={context.Response.StatusCode} elapsed={timing.ElapsedMilliseconds}ms trace={context.TraceIdentifier}");
+    }
+});
+
 webApp.MapGet("/health/push", (FcmPushService push, PostgresStore store) =>
 {
     return Results.Ok(new
@@ -1509,6 +1533,10 @@ CREATE INDEX IF NOT EXISTS IX_Messages_Conversation_Sent_Id ON Messages(Conversa
 ALTER TABLE Messages ADD COLUMN IF NOT EXISTS ReplyToMessageId TEXT NULL;
 ALTER TABLE Messages ADD COLUMN IF NOT EXISTS EditedAt TEXT NULL;
 ALTER TABLE Messages ADD COLUMN IF NOT EXISTS DeletedAt TEXT NULL;
+ALTER TABLE Messages ADD COLUMN IF NOT EXISTS SentAtEpochUs BIGINT NULL;
+CREATE INDEX IF NOT EXISTS IX_Messages_SentAtEpochUs_Null ON Messages(Id) WHERE SentAtEpochUs IS NULL;
+UPDATE Messages SET SentAtEpochUs = ROUND(EXTRACT(EPOCH FROM CAST(SentAt AS timestamptz)) * 1000000)::bigint WHERE SentAtEpochUs IS NULL;
+CREATE INDEX IF NOT EXISTS IX_Messages_Conversation_SentEpochUs ON Messages(ConversationId, SentAtEpochUs DESC, Id DESC);
 ALTER TABLE Messages ADD COLUMN IF NOT EXISTS AttachmentData BYTEA NULL;
 ALTER TABLE Messages ADD COLUMN IF NOT EXISTS AudioData BYTEA NULL;
 CREATE INDEX IF NOT EXISTS IX_Messages_ReplyTo ON Messages(ReplyToMessageId);
@@ -1525,36 +1553,30 @@ WHERE NOT EXISTS (SELECT 1 FROM ConversationParticipants cp WHERE cp.Conversatio
 
     public object GetProfile(Guid userId)
     {
-        lock (_sync)
-        {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT PhoneNumber,Name,Status,ContactPhoneNumber,COALESCE(PhoneDiscoverable,FALSE),(ProfilePhoto IS NOT NULL),Username FROM Users WHERE Id=@id LIMIT 1;";
-            command.Parameters.AddWithValue("@id", userId.ToString());
-            using var reader = command.ExecuteReader();
-            if (!reader.Read()) throw new InvalidOperationException("المستخدم غير موجود.");
-            if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2))
-                throw new InvalidOperationException("بيانات الملف الشخصي غير صالحة.");
-            var contactPhoneNumber = reader.IsDBNull(3) ? null : reader.GetString(3);
-            var phoneDiscoverable = !reader.IsDBNull(4) && reader.GetBoolean(4);
-            var hasProfilePhoto = !reader.IsDBNull(5) && reader.GetBoolean(5);
-            var username = reader.IsDBNull(6) ? null : reader.GetString(6);
-            return new { userId, email = reader.GetString(0), name = reader.GetString(1), status = reader.GetString(2), contactPhoneNumber, phoneDiscoverable, hasProfilePhoto, username };
-        }
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT PhoneNumber,Name,Status,ContactPhoneNumber,COALESCE(PhoneDiscoverable,FALSE),(ProfilePhoto IS NOT NULL),Username FROM Users WHERE Id=@id LIMIT 1;";
+        command.Parameters.AddWithValue("@id", userId.ToString());
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) throw new InvalidOperationException("المستخدم غير موجود.");
+        if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2))
+            throw new InvalidOperationException("بيانات الملف الشخصي غير صالحة.");
+        var contactPhoneNumber = reader.IsDBNull(3) ? null : reader.GetString(3);
+        var phoneDiscoverable = !reader.IsDBNull(4) && reader.GetBoolean(4);
+        var hasProfilePhoto = !reader.IsDBNull(5) && reader.GetBoolean(5);
+        var username = reader.IsDBNull(6) ? null : reader.GetString(6);
+        return new { userId, email = reader.GetString(0), name = reader.GetString(1), status = reader.GetString(2), contactPhoneNumber, phoneDiscoverable, hasProfilePhoto, username };
     }
 
     public (string Email, string Name) GetAccountEmailAndName(Guid userId)
     {
-        lock (_sync)
-        {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT PhoneNumber,Name FROM Users WHERE Id=@id LIMIT 1;";
-            command.Parameters.AddWithValue("@id", userId.ToString());
-            using var reader = command.ExecuteReader();
-            if (!reader.Read()) throw new InvalidOperationException("المستخدم غير موجود.");
-            return (reader.GetString(0), reader.GetString(1));
-        }
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT PhoneNumber,Name FROM Users WHERE Id=@id LIMIT 1;";
+        command.Parameters.AddWithValue("@id", userId.ToString());
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) throw new InvalidOperationException("المستخدم غير موجود.");
+        return (reader.GetString(0), reader.GetString(1));
     }
 
     public bool TryUpdateUsername(Guid userId, string username, out string? error)
@@ -1774,24 +1796,21 @@ ON CONFLICT(UserId) DO UPDATE SET NewEmail=@email,Code=@code,ExpiresAt=@expires,
     public IReadOnlyList<ContactMatchResponse> FindUsersByPhoneNumbers(IReadOnlySet<string> normalizedPhoneNumbers, Guid currentUserId)
     {
         if (normalizedPhoneNumbers.Count == 0) return Array.Empty<ContactMatchResponse>();
-        lock (_sync)
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT Id,Name,ContactPhoneNumber FROM Users WHERE Id<>@current AND COALESCE(PhoneDiscoverable,FALSE)=TRUE AND ContactPhoneNumber IS NOT NULL ORDER BY Name;";
+        command.Parameters.AddWithValue("@current", currentUserId.ToString());
+        using var reader = command.ExecuteReader();
+        var found = new Dictionary<Guid, ContactMatchResponse>();
+        while (reader.Read())
         {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT Id,Name,ContactPhoneNumber FROM Users WHERE Id<>@current AND COALESCE(PhoneDiscoverable,FALSE)=TRUE AND ContactPhoneNumber IS NOT NULL ORDER BY Name;";
-            command.Parameters.AddWithValue("@current", currentUserId.ToString());
-            using var reader = command.ExecuteReader();
-            var found = new Dictionary<Guid, ContactMatchResponse>();
-            while (reader.Read())
-            {
-                if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2)) continue;
-                if (!Guid.TryParse(reader.GetString(0), out var id)) continue;
-                var phoneDigits = NormalizeContactPhoneDigitsForStore(reader.GetString(2));
-                if (normalizedPhoneNumbers.Contains(phoneDigits))
-                    found[id] = new ContactMatchResponse(id, reader.GetString(1), "+" + phoneDigits);
-            }
-            return found.Values.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase).Take(200).ToList();
+            if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2)) continue;
+            if (!Guid.TryParse(reader.GetString(0), out var id)) continue;
+            var phoneDigits = NormalizeContactPhoneDigitsForStore(reader.GetString(2));
+            if (normalizedPhoneNumbers.Contains(phoneDigits))
+                found[id] = new ContactMatchResponse(id, reader.GetString(1), "+" + phoneDigits);
         }
+        return found.Values.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase).Take(200).ToList();
     }
 
     private static string NormalizeContactPhoneDigitsForStore(string? value)
@@ -1811,18 +1830,15 @@ ON CONFLICT(UserId) DO UPDATE SET NewEmail=@email,Code=@code,ExpiresAt=@expires,
 
     public (byte[]? Data, string ContentType) GetProfilePhoto(Guid userId)
     {
-        lock (_sync)
-        {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT ProfilePhoto,ProfilePhotoContentType FROM Users WHERE Id=@id LIMIT 1;";
-            command.Parameters.AddWithValue("@id", userId.ToString());
-            using var reader = command.ExecuteReader();
-            if (!reader.Read()) throw new InvalidOperationException("المستخدم غير موجود.");
-            var data = reader.IsDBNull(0) ? null : reader.GetFieldValue<byte[]>(0);
-            var contentType = reader.IsDBNull(1) ? "image/jpeg" : reader.GetString(1);
-            return (data, contentType);
-        }
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT ProfilePhoto,ProfilePhotoContentType FROM Users WHERE Id=@id LIMIT 1;";
+        command.Parameters.AddWithValue("@id", userId.ToString());
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) throw new InvalidOperationException("المستخدم غير موجود.");
+        var data = reader.IsDBNull(0) ? null : reader.GetFieldValue<byte[]>(0);
+        var contentType = reader.IsDBNull(1) ? "image/jpeg" : reader.GetString(1);
+        return (data, contentType);
     }
 
     public void UpdateProfilePhoto(Guid userId, byte[] data, string contentType)
@@ -1993,14 +2009,11 @@ WHERE ConversationId IN (SELECT Id FROM Conversations WHERE OwnerUserId=@user);"
 
     public bool EmailExists(string email)
     {
-        lock (_sync)
-        {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT 1 FROM Users WHERE lower(PhoneNumber)=lower(@email) LIMIT 1;";
-            command.Parameters.AddWithValue("@email", email);
-            return command.ExecuteScalar() is not null;
-        }
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT 1 FROM Users WHERE lower(PhoneNumber)=lower(@email) LIMIT 1;";
+        command.Parameters.AddWithValue("@email", email);
+        return command.ExecuteScalar() is not null;
     }
 
     public bool TrySetEmailVerification(
@@ -2355,21 +2368,18 @@ VALUES(@id,@userId,@documentType,@documentVersion,@acceptedAt,'account_registrat
 
     public UserRecord? AuthenticateEmail(string email, string password)
     {
-        lock (_sync)
-        {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT Id,PhoneNumber,Name,PasswordHash,EmailVerified FROM Users WHERE lower(PhoneNumber)=lower(@email) LIMIT 1;";
-            command.Parameters.AddWithValue("@email", email);
-            using var reader = command.ExecuteReader();
-            if (!reader.Read() || reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2) || reader.IsDBNull(3)) return null;
-            if (!Guid.TryParse(reader.GetString(0), out var id)) return null;
-            if (!reader.IsDBNull(4) && !reader.GetBoolean(4))
-                throw new InvalidOperationException("يجب التحقق من البريد الإلكتروني قبل تسجيل الدخول.");
-            var storedHash = reader.GetString(3);
-            if (!PasswordRules.Verify(password, storedHash)) return null;
-            return new UserRecord(id, reader.GetString(1), reader.GetString(2));
-        }
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT Id,PhoneNumber,Name,PasswordHash,EmailVerified FROM Users WHERE lower(PhoneNumber)=lower(@email) LIMIT 1;";
+        command.Parameters.AddWithValue("@email", email);
+        using var reader = command.ExecuteReader();
+        if (!reader.Read() || reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2) || reader.IsDBNull(3)) return null;
+        if (!Guid.TryParse(reader.GetString(0), out var id)) return null;
+        if (!reader.IsDBNull(4) && !reader.GetBoolean(4))
+            throw new InvalidOperationException("يجب التحقق من البريد الإلكتروني قبل تسجيل الدخول.");
+        var storedHash = reader.GetString(3);
+        if (!PasswordRules.Verify(password, storedHash)) return null;
+        return new UserRecord(id, reader.GetString(1), reader.GetString(2));
     }
 
     public void CreateSession(string token, Guid userId, DateTimeOffset expiresAt)
@@ -2433,54 +2443,51 @@ VALUES(@id,@userId,@documentType,@documentVersion,@acceptedAt,'account_registrat
         session = null;
         var token = GetBearerToken(request);
         if (token is null) return false;
-        lock (_sync)
+        using var connection = Open();
+    using var command = connection.CreateCommand();
+    command.CommandText = @"SELECT s.UserId,u.PhoneNumber,u.Name,s.ExpiresAt FROM Sessions s LEFT JOIN Users u ON u.Id=s.UserId WHERE s.Token=@token;";
+        command.Parameters.AddWithValue("@token", token);
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return false;
+        var tokenValue = token;
+        if (!DateTimeOffset.TryParse(reader.GetString(3), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var expires))
         {
-            using var connection = Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = @"SELECT s.UserId,u.PhoneNumber,u.Name,s.ExpiresAt FROM Sessions s LEFT JOIN Users u ON u.Id=s.UserId WHERE s.Token=@token;";
-            command.Parameters.AddWithValue("@token", token);
-            using var reader = command.ExecuteReader();
-            if (!reader.Read()) return false;
-            var tokenValue = token;
-            if (!DateTimeOffset.TryParse(reader.GetString(3), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var expires))
-            {
-                // Treat a malformed persisted expiry as an invalid session rather
-                // than allowing a corrupt database value to turn authentication
-                // requests into HTTP 500 errors.
-                reader.Close();
-                using var deleteMalformed = connection.CreateCommand();
-                deleteMalformed.CommandText = "DELETE FROM Sessions WHERE Token=@token;";
-                deleteMalformed.Parameters.AddWithValue("@token", tokenValue);
-                deleteMalformed.ExecuteNonQuery();
-                return false;
-            }
-            if (expires <= DateTimeOffset.UtcNow)
-            {
-                // Remove the expired session immediately so stale bearer tokens do not
-                // accumulate in the SQLite database.
-                reader.Close();
-                using var delete = connection.CreateCommand();
-                delete.CommandText = "DELETE FROM Sessions WHERE Token=@token;";
-                delete.Parameters.AddWithValue("@token", tokenValue);
-                delete.ExecuteNonQuery();
-                return false;
-            }
-            if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2) ||
-                !Guid.TryParse(reader.GetString(0), out var userId))
-            {
-                // A malformed or orphaned persisted session must not turn authentication
-                // into HTTP 500. Remove the invalid session and require login.
-                reader.Close();
-                using var deleteMalformedUser = connection.CreateCommand();
-                deleteMalformedUser.CommandText = "DELETE FROM Sessions WHERE Token=@token;";
-                deleteMalformedUser.Parameters.AddWithValue("@token", tokenValue);
-                deleteMalformedUser.ExecuteNonQuery();
-                return false;
-            }
-
-            session = new SessionRecord(userId, reader.GetString(1), reader.GetString(2), expires);
-            return true;
+            // Treat a malformed persisted expiry as an invalid session rather
+            // than allowing a corrupt database value to turn authentication
+            // requests into HTTP 500 errors.
+            reader.Close();
+            using var deleteMalformed = connection.CreateCommand();
+            deleteMalformed.CommandText = "DELETE FROM Sessions WHERE Token=@token;";
+            deleteMalformed.Parameters.AddWithValue("@token", tokenValue);
+            deleteMalformed.ExecuteNonQuery();
+            return false;
         }
+        if (expires <= DateTimeOffset.UtcNow)
+        {
+            // Remove the expired session immediately so stale bearer tokens do not
+            // accumulate in the SQLite database.
+            reader.Close();
+            using var delete = connection.CreateCommand();
+            delete.CommandText = "DELETE FROM Sessions WHERE Token=@token;";
+            delete.Parameters.AddWithValue("@token", tokenValue);
+            delete.ExecuteNonQuery();
+            return false;
+        }
+        if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2) ||
+            !Guid.TryParse(reader.GetString(0), out var userId))
+        {
+            // A malformed or orphaned persisted session must not turn authentication
+            // into HTTP 500. Remove the invalid session and require login.
+            reader.Close();
+            using var deleteMalformedUser = connection.CreateCommand();
+            deleteMalformedUser.CommandText = "DELETE FROM Sessions WHERE Token=@token;";
+            deleteMalformedUser.Parameters.AddWithValue("@token", tokenValue);
+            deleteMalformedUser.ExecuteNonQuery();
+            return false;
+        }
+
+        session = new SessionRecord(userId, reader.GetString(1), reader.GetString(2), expires);
+        return true;
     }
 
     public void SavePushToken(Guid userId, string token)
@@ -2515,13 +2522,10 @@ ON CONFLICT(Token) DO UPDATE SET UserId=@user, UpdatedAt=@updated;";
 
     public int GetPushTokenCount()
     {
-        lock (_sync)
-        {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT COUNT(*) FROM PushTokens;";
-            return Convert.ToInt32(command.ExecuteScalar());
-        }
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM PushTokens;";
+        return Convert.ToInt32(command.ExecuteScalar());
     }
 
     public void RemovePushToken(string token)
@@ -2541,80 +2545,71 @@ ON CONFLICT(Token) DO UPDATE SET UserId=@user, UpdatedAt=@updated;";
     {
         if (userIds.Count == 0) return Array.Empty<string>();
 
-        lock (_sync)
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        var parameterNames = new List<string>(userIds.Count);
+        for (var i = 0; i < userIds.Count; i++)
         {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            var parameterNames = new List<string>(userIds.Count);
-            for (var i = 0; i < userIds.Count; i++)
-            {
-                var name = "@u" + i;
-                parameterNames.Add(name);
-                command.Parameters.AddWithValue(name, userIds[i].ToString());
-            }
-
-            command.CommandText = $"SELECT Token FROM PushTokens WHERE UserId IN ({string.Join(',', parameterNames)});";
-            using var reader = command.ExecuteReader();
-            var result = new List<string>();
-            while (reader.Read())
-            {
-                if (!reader.IsDBNull(0))
-                {
-                    var token = reader.GetString(0);
-                    if (!string.IsNullOrWhiteSpace(token)) result.Add(token);
-                }
-            }
-            return result;
+            var name = "@u" + i;
+            parameterNames.Add(name);
+            command.Parameters.AddWithValue(name, userIds[i].ToString());
         }
+
+        command.CommandText = $"SELECT Token FROM PushTokens WHERE UserId IN ({string.Join(',', parameterNames)});";
+        using var reader = command.ExecuteReader();
+        var result = new List<string>();
+        while (reader.Read())
+        {
+            if (!reader.IsDBNull(0))
+            {
+                var token = reader.GetString(0);
+                if (!string.IsNullOrWhiteSpace(token)) result.Add(token);
+            }
+        }
+        return result;
     }
 
     public IReadOnlyList<Guid> GetPushTokenOwners(IReadOnlyList<string> tokens)
     {
         if (tokens.Count == 0) return Array.Empty<Guid>();
 
-        lock (_sync)
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        var parameterNames = new List<string>(tokens.Count);
+        for (var i = 0; i < tokens.Count; i++)
         {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            var parameterNames = new List<string>(tokens.Count);
-            for (var i = 0; i < tokens.Count; i++)
-            {
-                var name = "@t" + i;
-                parameterNames.Add(name);
-                command.Parameters.AddWithValue(name, tokens[i]);
-            }
-
-            command.CommandText = $"SELECT DISTINCT UserId FROM PushTokens WHERE Token IN ({string.Join(',', parameterNames)});";
-            using var reader = command.ExecuteReader();
-            var result = new List<Guid>();
-            while (reader.Read() && !reader.IsDBNull(0) && Guid.TryParse(reader.GetString(0), out var userId))
-                result.Add(userId);
-
-            return result;
+            var name = "@t" + i;
+            parameterNames.Add(name);
+            command.Parameters.AddWithValue(name, tokens[i]);
         }
+
+        command.CommandText = $"SELECT DISTINCT UserId FROM PushTokens WHERE Token IN ({string.Join(',', parameterNames)});";
+        using var reader = command.ExecuteReader();
+        var result = new List<Guid>();
+        while (reader.Read() && !reader.IsDBNull(0) && Guid.TryParse(reader.GetString(0), out var userId))
+            result.Add(userId);
+
+        return result;
     }
 
     public IReadOnlyList<Guid> GetOtherParticipantUserIds(Guid conversationId, Guid currentUserId)
     {
-        lock (_sync)
-        {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = @"
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = @"
 SELECT UserId
 FROM ConversationParticipants
 WHERE ConversationId=@conversation AND UserId<>@user;";
-            command.Parameters.AddWithValue("@conversation", conversationId.ToString());
-            command.Parameters.AddWithValue("@user", currentUserId.ToString());
-            using var reader = command.ExecuteReader();
-            var result = new List<Guid>();
-            while (reader.Read())
-            {
-                if (!reader.IsDBNull(0) && Guid.TryParse(reader.GetString(0), out var userId))
-                    result.Add(userId);
-            }
-            return result;
+        command.Parameters.AddWithValue("@conversation", conversationId.ToString());
+        command.Parameters.AddWithValue("@user", currentUserId.ToString());
+        using var reader = command.ExecuteReader();
+        var result = new List<Guid>();
+        while (reader.Read())
+        {
+            if (!reader.IsDBNull(0) && Guid.TryParse(reader.GetString(0), out var userId))
+                result.Add(userId);
         }
+        return result;
     }
 
     public void ApplyConversationAction(Guid conversationId, Guid userId, string action)
@@ -2692,162 +2687,150 @@ ON CONFLICT(ConversationId,UserId) DO UPDATE SET
 
     public bool IsConversationBlockedForUser(Guid conversationId, Guid currentUserId)
     {
-        lock (_sync)
-        {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = @"
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = @"
 SELECT EXISTS (
-    SELECT 1
-    FROM Conversations c
-    JOIN ConversationParticipants self ON self.ConversationId=c.Id AND self.UserId=@user
-    JOIN ConversationParticipants peer ON peer.ConversationId=c.Id AND peer.UserId<>@user
-    JOIN BlockedUsers b ON (b.BlockerUserId=@user AND b.BlockedUserId=peer.UserId)
-                       OR (b.BlockerUserId=peer.UserId AND b.BlockedUserId=@user)
-    WHERE c.Id=@conversation AND COALESCE(c.IsGroup,FALSE)=FALSE
-      AND (SELECT COUNT(*) FROM ConversationParticipants cpCount WHERE cpCount.ConversationId=c.Id)=2
+SELECT 1
+FROM Conversations c
+JOIN ConversationParticipants self ON self.ConversationId=c.Id AND self.UserId=@user
+JOIN ConversationParticipants peer ON peer.ConversationId=c.Id AND peer.UserId<>@user
+JOIN BlockedUsers b ON (b.BlockerUserId=@user AND b.BlockedUserId=peer.UserId)
+                   OR (b.BlockerUserId=peer.UserId AND b.BlockedUserId=@user)
+WHERE c.Id=@conversation AND COALESCE(c.IsGroup,FALSE)=FALSE
+  AND (SELECT COUNT(*) FROM ConversationParticipants cpCount WHERE cpCount.ConversationId=c.Id)=2
 );";
-            command.Parameters.AddWithValue("@conversation", conversationId.ToString());
-            command.Parameters.AddWithValue("@user", currentUserId.ToString());
-            return command.ExecuteScalar() is bool blocked && blocked;
-        }
+        command.Parameters.AddWithValue("@conversation", conversationId.ToString());
+        command.Parameters.AddWithValue("@user", currentUserId.ToString());
+        return command.ExecuteScalar() is bool blocked && blocked;
     }
 
     public IReadOnlyList<Guid> GetUnmutedNotificationRecipients(Guid conversationId, IReadOnlyList<Guid> candidateUserIds)
     {
         if (candidateUserIds.Count == 0) return Array.Empty<Guid>();
-        lock (_sync)
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        var parameters = new List<string>();
+        for (var i = 0; i < candidateUserIds.Count; i++)
         {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            var parameters = new List<string>();
-            for (var i = 0; i < candidateUserIds.Count; i++)
-            {
-                var name = "@recipient" + i.ToString(CultureInfo.InvariantCulture);
-                parameters.Add(name);
-                command.Parameters.AddWithValue(name, candidateUserIds[i].ToString());
-            }
-            command.CommandText = $@"
+            var name = "@recipient" + i.ToString(CultureInfo.InvariantCulture);
+            parameters.Add(name);
+            command.Parameters.AddWithValue(name, candidateUserIds[i].ToString());
+        }
+        command.CommandText = $@"
 SELECT cp.UserId
 FROM ConversationParticipants cp
 LEFT JOIN ConversationUserStates s ON s.ConversationId=cp.ConversationId AND s.UserId=cp.UserId
 WHERE cp.ConversationId=@conversation
   AND cp.UserId IN ({string.Join(",", parameters)})
   AND COALESCE(s.IsMuted,FALSE)=FALSE;";
-            command.Parameters.AddWithValue("@conversation", conversationId.ToString());
-            using var reader = command.ExecuteReader();
-            var result = new List<Guid>();
-            while (reader.Read())
-                if (!reader.IsDBNull(0) && Guid.TryParse(reader.GetString(0), out var id)) result.Add(id);
-            return result;
-        }
+        command.Parameters.AddWithValue("@conversation", conversationId.ToString());
+        using var reader = command.ExecuteReader();
+        var result = new List<Guid>();
+        while (reader.Read())
+            if (!reader.IsDBNull(0) && Guid.TryParse(reader.GetString(0), out var id)) result.Add(id);
+        return result;
     }
 
     public IReadOnlyList<ConversationDto> GetConversations(Guid userId)
     {
-        lock (_sync)
-        {
-            using var connection = Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = @"
+        using var connection = Open();
+    using var command = connection.CreateCommand();
+    command.CommandText = @"
 SELECT c.Id,
-       CASE
-           WHEN COALESCE(c.IsGroup,FALSE)=FALSE
-                AND (SELECT COUNT(*) FROM ConversationParticipants cp WHERE cp.ConversationId=c.Id)=2
-                THEN COALESCE((SELECT u.Name
-                               FROM ConversationParticipants cp2
-                               JOIN Users u ON u.Id=cp2.UserId
-                               WHERE cp2.ConversationId=c.Id AND cp2.UserId<>@user
-                               LIMIT 1), c.Name)
-           ELSE c.Name
-       END AS DisplayName,
-       c.LastMessage,
-       c.UpdatedAt,
-       (SELECT COUNT(*)
-        FROM Messages m
-        WHERE m.ConversationId=c.Id
-          AND m.SenderUserId<>@user
-          AND m.SentAt > COALESCE(p.LastReadAt, p.JoinedAt)) AS UnreadCount,
-       other.ParticipantUserId AS OtherParticipantUserId,
-       COALESCE(other.HasProfilePhoto,FALSE) AS HasProfilePhoto,
-       COALESCE(other.ProfilePhotoVersion,0) AS ProfilePhotoVersion,
-       COALESCE(state.IsArchived,FALSE) AS IsArchived,
-       COALESCE(state.IsMuted,FALSE) AS IsMuted,
-       EXISTS (
-          SELECT 1 FROM ConversationParticipants peer
-          JOIN BlockedUsers b ON b.BlockerUserId=@user AND b.BlockedUserId=peer.UserId
-          WHERE peer.ConversationId=c.Id AND peer.UserId<>@user
-       ) AS IsBlocked,
-       COALESCE(c.IsGroup,FALSE) AS IsGroup
+   CASE
+       WHEN COALESCE(c.IsGroup,FALSE)=FALSE
+            AND (SELECT COUNT(*) FROM ConversationParticipants cp WHERE cp.ConversationId=c.Id)=2
+            THEN COALESCE((SELECT u.Name
+                           FROM ConversationParticipants cp2
+                           JOIN Users u ON u.Id=cp2.UserId
+                           WHERE cp2.ConversationId=c.Id AND cp2.UserId<>@user
+                           LIMIT 1), c.Name)
+       ELSE c.Name
+   END AS DisplayName,
+   c.LastMessage,
+   c.UpdatedAt,
+   (SELECT COUNT(*)
+    FROM Messages m
+    WHERE m.ConversationId=c.Id
+      AND m.SenderUserId<>@user
+      AND m.SentAt > COALESCE(p.LastReadAt, p.JoinedAt)) AS UnreadCount,
+   other.ParticipantUserId AS OtherParticipantUserId,
+   COALESCE(other.HasProfilePhoto,FALSE) AS HasProfilePhoto,
+   COALESCE(other.ProfilePhotoVersion,0) AS ProfilePhotoVersion,
+   COALESCE(state.IsArchived,FALSE) AS IsArchived,
+   COALESCE(state.IsMuted,FALSE) AS IsMuted,
+   EXISTS (
+      SELECT 1 FROM ConversationParticipants peer
+      JOIN BlockedUsers b ON b.BlockerUserId=@user AND b.BlockedUserId=peer.UserId
+      WHERE peer.ConversationId=c.Id AND peer.UserId<>@user
+   ) AS IsBlocked,
+   COALESCE(c.IsGroup,FALSE) AS IsGroup
 FROM Conversations c
 JOIN ConversationParticipants p ON p.ConversationId=c.Id
 LEFT JOIN ConversationUserStates state ON state.ConversationId=c.Id AND state.UserId=@user
 LEFT JOIN LATERAL (
-    SELECT cp2.UserId AS ParticipantUserId,
-           (u.ProfilePhoto IS NOT NULL) AS HasProfilePhoto,
-           COALESCE(u.ProfilePhotoVersion,0) AS ProfilePhotoVersion
-    FROM ConversationParticipants cp2
-    JOIN Users u ON u.Id=cp2.UserId
-    WHERE cp2.ConversationId=c.Id AND cp2.UserId<>@user
-    LIMIT 1
+SELECT cp2.UserId AS ParticipantUserId,
+       (u.ProfilePhoto IS NOT NULL) AS HasProfilePhoto,
+       COALESCE(u.ProfilePhotoVersion,0) AS ProfilePhotoVersion
+FROM ConversationParticipants cp2
+JOIN Users u ON u.Id=cp2.UserId
+WHERE cp2.ConversationId=c.Id AND cp2.UserId<>@user
+LIMIT 1
 ) other ON COALESCE(c.IsGroup,FALSE)=FALSE
-          AND (SELECT COUNT(*) FROM ConversationParticipants cpCount WHERE cpCount.ConversationId=c.Id)=2
+      AND (SELECT COUNT(*) FROM ConversationParticipants cpCount WHERE cpCount.ConversationId=c.Id)=2
 WHERE p.UserId=@user AND COALESCE(state.IsDeleted,FALSE)=FALSE
 ORDER BY c.UpdatedAt DESC;";
-            command.Parameters.AddWithValue("@user", userId.ToString());
-            using var reader = command.ExecuteReader();
-            var result = new List<ConversationDto>();
-            while (reader.Read())
-            {
-                if (!Guid.TryParse(reader.GetString(0), out var id) ||
-                    reader.IsDBNull(1) || reader.IsDBNull(2) || reader.IsDBNull(4) ||
-                    !DateTimeOffset.TryParse(reader.GetString(3), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var updatedAt))
-                    continue;
-                Guid? otherParticipantUserId = null;
-                if (!reader.IsDBNull(5) && Guid.TryParse(reader.GetString(5), out var parsedOtherUserId))
-                    otherParticipantUserId = parsedOtherUserId;
+        command.Parameters.AddWithValue("@user", userId.ToString());
+        using var reader = command.ExecuteReader();
+        var result = new List<ConversationDto>();
+        while (reader.Read())
+        {
+            if (!Guid.TryParse(reader.GetString(0), out var id) ||
+                reader.IsDBNull(1) || reader.IsDBNull(2) || reader.IsDBNull(4) ||
+                !DateTimeOffset.TryParse(reader.GetString(3), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var updatedAt))
+                continue;
+            Guid? otherParticipantUserId = null;
+            if (!reader.IsDBNull(5) && Guid.TryParse(reader.GetString(5), out var parsedOtherUserId))
+                otherParticipantUserId = parsedOtherUserId;
 
-                var hasProfilePhoto = !reader.IsDBNull(6) && reader.GetBoolean(6);
-                var profilePhotoVersion = reader.IsDBNull(7) ? 0L : reader.GetInt64(7);
-                result.Add(new ConversationDto(
-                    id,
-                    reader.GetString(1),
-                    reader.GetString(2),
-                    updatedAt,
-                    reader.GetInt32(4),
-                    otherParticipantUserId,
-                    hasProfilePhoto,
-                    profilePhotoVersion,
-                    !reader.IsDBNull(8) && reader.GetBoolean(8),
-                    !reader.IsDBNull(9) && reader.GetBoolean(9),
-                    !reader.IsDBNull(10) && reader.GetBoolean(10),
-                    !reader.IsDBNull(11) && reader.GetBoolean(11)));
-            }
-            return result;
+            var hasProfilePhoto = !reader.IsDBNull(6) && reader.GetBoolean(6);
+            var profilePhotoVersion = reader.IsDBNull(7) ? 0L : reader.GetInt64(7);
+            result.Add(new ConversationDto(
+                id,
+                reader.GetString(1),
+                reader.GetString(2),
+                updatedAt,
+                reader.GetInt32(4),
+                otherParticipantUserId,
+                hasProfilePhoto,
+                profilePhotoVersion,
+                !reader.IsDBNull(8) && reader.GetBoolean(8),
+                !reader.IsDBNull(9) && reader.GetBoolean(9),
+                !reader.IsDBNull(10) && reader.GetBoolean(10),
+                !reader.IsDBNull(11) && reader.GetBoolean(11)));
         }
+        return result;
     }
 
     public IReadOnlyList<UserSearchDto> SearchUsers(string email, Guid currentUserId)
     {
-        lock (_sync)
+        using var connection = Open();
+    using var command = connection.CreateCommand();
+        command.CommandText = "SELECT Id,PhoneNumber,Name FROM Users WHERE lower(PhoneNumber)=lower(@email) AND Id <> @current ORDER BY PhoneNumber LIMIT 20;";
+        command.Parameters.AddWithValue("@email", email);
+        command.Parameters.AddWithValue("@current", currentUserId.ToString());
+        using var reader = command.ExecuteReader();
+        var result = new List<UserSearchDto>();
+        while (reader.Read())
         {
-            using var connection = Open();
-        using var command = connection.CreateCommand();
-            command.CommandText = "SELECT Id,PhoneNumber,Name FROM Users WHERE lower(PhoneNumber)=lower(@email) AND Id <> @current ORDER BY PhoneNumber LIMIT 20;";
-            command.Parameters.AddWithValue("@email", email);
-            command.Parameters.AddWithValue("@current", currentUserId.ToString());
-            using var reader = command.ExecuteReader();
-            var result = new List<UserSearchDto>();
-            while (reader.Read())
-            {
-                if (!Guid.TryParse(reader.GetString(0), out var userId) ||
-                    reader.IsDBNull(1) || reader.IsDBNull(2))
-                    continue;
+            if (!Guid.TryParse(reader.GetString(0), out var userId) ||
+                reader.IsDBNull(1) || reader.IsDBNull(2))
+                continue;
 
-                result.Add(new UserSearchDto(userId, reader.GetString(1), reader.GetString(2)));
-            }
-            return result;
+            result.Add(new UserSearchDto(userId, reader.GetString(1), reader.GetString(2)));
         }
+        return result;
     }
 
     public IReadOnlyList<UserSearchDto> SearchUsersByName(string query, Guid currentUserId)
@@ -2856,91 +2839,85 @@ ORDER BY c.UpdatedAt DESC;";
         if (query.Length < 3 || query.Length > 254)
             return Array.Empty<UserSearchDto>();
 
-        lock (_sync)
-        {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = @"SELECT Id, ''::text AS Email, COALESCE(Name,'')
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = @"SELECT Id, ''::text AS Email, COALESCE(Name,'')
 FROM Users
 WHERE Id <> @current
   AND COALESCE(Name,'') <> ''
   AND POSITION(LOWER(@query) IN LOWER(Name)) > 0
 ORDER BY Name
 LIMIT 50;";
-            command.Parameters.AddWithValue("@query", query);
-            command.Parameters.AddWithValue("@current", currentUserId.ToString());
+        command.Parameters.AddWithValue("@query", query);
+        command.Parameters.AddWithValue("@current", currentUserId.ToString());
 
-            using var reader = command.ExecuteReader();
-            var result = new List<UserSearchDto>();
-            while (reader.Read())
-            {
-                if (reader.IsDBNull(0) || !Guid.TryParse(reader.GetString(0), out var userId))
-                    continue;
+        using var reader = command.ExecuteReader();
+        var result = new List<UserSearchDto>();
+        while (reader.Read())
+        {
+            if (reader.IsDBNull(0) || !Guid.TryParse(reader.GetString(0), out var userId))
+                continue;
 
-                var email = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
-                var name = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
-                if (string.IsNullOrWhiteSpace(name)) continue;
-                result.Add(new UserSearchDto(userId, email, name));
-            }
-            return result;
+            var email = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
+            var name = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
+            if (string.IsNullOrWhiteSpace(name)) continue;
+            result.Add(new UserSearchDto(userId, email, name));
         }
+        return result;
     }
 
     public IReadOnlyList<UserSearchDto> SearchGroupMembers(string? email, string? normalizedPhone, Guid currentUserId)
     {
-        lock (_sync)
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        if (!string.IsNullOrWhiteSpace(email))
         {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            if (!string.IsNullOrWhiteSpace(email))
-            {
-                // In this account model the verified email is stored in Users.PhoneNumber.
-                // Match exactly to avoid exposing a directory through prefix enumeration.
-                command.CommandText = @"SELECT Id,PhoneNumber,Name FROM Users
+            // In this account model the verified email is stored in Users.PhoneNumber.
+            // Match exactly to avoid exposing a directory through prefix enumeration.
+            command.CommandText = @"SELECT Id,PhoneNumber,Name FROM Users
 WHERE lower(PhoneNumber)=lower(@email) AND Id<>@current LIMIT 10;";
-                command.Parameters.AddWithValue("@email", email.Trim());
-            }
-            else
-            {
-                if (string.IsNullOrWhiteSpace(normalizedPhone)) return Array.Empty<UserSearchDto>();
-                var digits = new string(normalizedPhone.Where(ch => ch >= '0' && ch <= '9').ToArray());
-                if (digits.Length is < 7 or > 15) return Array.Empty<UserSearchDto>();
-                var localMobile = digits.StartsWith("9665", StringComparison.Ordinal) && digits.Length == 12
-                    ? "0" + digits[3..]
-                    : digits;
-                var nationalMobile = digits.StartsWith("966", StringComparison.Ordinal) && digits.Length > 10
-                    ? digits[3..]
-                    : digits;
-                command.CommandText = @"SELECT DISTINCT Id,
-       CASE WHEN regexp_replace(COALESCE(ContactPhoneNumber,''), '[^0-9]', '', 'g') IN (@digits,@local,@national)
-                 AND COALESCE(PhoneDiscoverable,FALSE)=TRUE
-            THEN ContactPhoneNumber ELSE PhoneNumber END AS MatchedContact,
-       Name
+            command.Parameters.AddWithValue("@email", email.Trim());
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(normalizedPhone)) return Array.Empty<UserSearchDto>();
+            var digits = new string(normalizedPhone.Where(ch => ch >= '0' && ch <= '9').ToArray());
+            if (digits.Length is < 7 or > 15) return Array.Empty<UserSearchDto>();
+            var localMobile = digits.StartsWith("9665", StringComparison.Ordinal) && digits.Length == 12
+                ? "0" + digits[3..]
+                : digits;
+            var nationalMobile = digits.StartsWith("966", StringComparison.Ordinal) && digits.Length > 10
+                ? digits[3..]
+                : digits;
+            command.CommandText = @"SELECT DISTINCT Id,
+   CASE WHEN regexp_replace(COALESCE(ContactPhoneNumber,''), '[^0-9]', '', 'g') IN (@digits,@local,@national)
+             AND COALESCE(PhoneDiscoverable,FALSE)=TRUE
+        THEN ContactPhoneNumber ELSE PhoneNumber END AS MatchedContact,
+   Name
 FROM Users
 WHERE Id<>@current
   AND COALESCE(PhoneDiscoverable,FALSE)=TRUE
   AND (
-    regexp_replace(COALESCE(PhoneNumber,''), '[^0-9]', '', 'g') IN (@digits,@local,@national)
-    OR regexp_replace(COALESCE(ContactPhoneNumber,''), '[^0-9]', '', 'g') IN (@digits,@local,@national)
+regexp_replace(COALESCE(PhoneNumber,''), '[^0-9]', '', 'g') IN (@digits,@local,@national)
+OR regexp_replace(COALESCE(ContactPhoneNumber,''), '[^0-9]', '', 'g') IN (@digits,@local,@national)
   )
 ORDER BY Name LIMIT 10;";
-                command.Parameters.AddWithValue("@digits", digits);
-                command.Parameters.AddWithValue("@local", localMobile);
-                command.Parameters.AddWithValue("@national", nationalMobile);
-            }
-
-            command.Parameters.AddWithValue("@current", currentUserId.ToString());
-            using var reader = command.ExecuteReader();
-            var result = new List<UserSearchDto>();
-            while (reader.Read())
-            {
-                if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2) ||
-                    !Guid.TryParse(reader.GetString(0), out var userId))
-                    continue;
-                result.Add(new UserSearchDto(userId, reader.GetString(1), reader.GetString(2)));
-            }
-            return result;
+            command.Parameters.AddWithValue("@digits", digits);
+            command.Parameters.AddWithValue("@local", localMobile);
+            command.Parameters.AddWithValue("@national", nationalMobile);
         }
+
+        command.Parameters.AddWithValue("@current", currentUserId.ToString());
+        using var reader = command.ExecuteReader();
+        var result = new List<UserSearchDto>();
+        while (reader.Read())
+        {
+            if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2) ||
+                !Guid.TryParse(reader.GetString(0), out var userId))
+                continue;
+            result.Add(new UserSearchDto(userId, reader.GetString(1), reader.GetString(2)));
+        }
+        return result;
     }
 
     public ConversationDto CreateConversation(Guid userId, string name, Guid? participantUserId = null)
@@ -3134,177 +3111,166 @@ ON CONFLICT(ConversationId,ReporterUserId) DO UPDATE SET Reason=excluded.Reason,
 
     public bool ExistsConversation(Guid id, Guid userId)
     {
-        lock (_sync)
-        {
-            using var connection = Open();
-        using var command = connection.CreateCommand();
-            command.CommandText = "SELECT 1 FROM ConversationParticipants WHERE ConversationId=@id AND UserId=@user LIMIT 1;";
-            command.Parameters.AddWithValue("@id", id.ToString());
-            command.Parameters.AddWithValue("@user", userId.ToString());
-            return command.ExecuteScalar() is not null;
-        }
+        using var connection = Open();
+    using var command = connection.CreateCommand();
+        command.CommandText = "SELECT 1 FROM ConversationParticipants WHERE ConversationId=@id AND UserId=@user LIMIT 1;";
+        command.Parameters.AddWithValue("@id", id.ToString());
+        command.Parameters.AddWithValue("@user", userId.ToString());
+        return command.ExecuteScalar() is not null;
     }
 
     public IReadOnlyList<(Guid MessageId, Guid SenderUserId)> MarkConversationRead(Guid conversationId, Guid userId)
     {
-        lock (_sync)
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        var result = new List<(Guid MessageId, Guid SenderUserId)>();
+        using (var find = connection.CreateCommand())
         {
-            using var connection = Open();
-            using var transaction = connection.BeginTransaction();
-            var result = new List<(Guid MessageId, Guid SenderUserId)>();
-            using (var find = connection.CreateCommand())
-            {
-                find.Transaction = transaction;
-                find.CommandText = @"SELECT m.Id,m.SenderUserId FROM Messages m JOIN MessageReceipts r ON r.MessageId=m.Id WHERE m.ConversationId=@conversation AND r.RecipientUserId=@user AND r.ReadAt IS NULL AND m.SenderUserId<>@user;";
-                find.Parameters.AddWithValue("@conversation", conversationId.ToString());
-                find.Parameters.AddWithValue("@user", userId.ToString());
-                using var reader = find.ExecuteReader();
-                while (reader.Read() && Guid.TryParse(reader.GetString(0), out var messageId) && Guid.TryParse(reader.GetString(1), out var senderId))
-                    result.Add((messageId, senderId));
-            }
-            using (var update = connection.CreateCommand())
-            {
-                update.Transaction = transaction;
-                update.CommandText = "UPDATE MessageReceipts SET ReadAt=COALESCE(ReadAt,@read), DeliveredAt=COALESCE(DeliveredAt,@read) WHERE RecipientUserId=@user AND MessageId IN (SELECT Id FROM Messages WHERE ConversationId=@conversation AND SenderUserId<>@user);";
-                update.Parameters.AddWithValue("@read", DateTimeOffset.UtcNow.ToString("O"));
-                update.Parameters.AddWithValue("@user", userId.ToString());
-                update.Parameters.AddWithValue("@conversation", conversationId.ToString());
-                update.ExecuteNonQuery();
-            }
-            var readAt = DateTimeOffset.UtcNow;
-            using (var conversationUpdate = connection.CreateCommand())
-            {
-                conversationUpdate.Transaction = transaction;
-                conversationUpdate.CommandText = "UPDATE ConversationParticipants SET LastReadAt=@read WHERE ConversationId=@conversation AND UserId=@user;";
-                conversationUpdate.Parameters.AddWithValue("@read", readAt.ToString("O"));
-                conversationUpdate.Parameters.AddWithValue("@conversation", conversationId.ToString());
-                conversationUpdate.Parameters.AddWithValue("@user", userId.ToString());
-                conversationUpdate.ExecuteNonQuery();
-            }
-            // Opening a chat from its push notification is an explicit action to
-            // restore it in the list if it had previously been deleted for this user.
-            RestoreConversationVisibilityForUser(connection, transaction, conversationId, userId, readAt);
-            transaction.Commit();
-            return result;
+            find.Transaction = transaction;
+            find.CommandText = @"SELECT m.Id,m.SenderUserId FROM Messages m JOIN MessageReceipts r ON r.MessageId=m.Id WHERE m.ConversationId=@conversation AND r.RecipientUserId=@user AND r.ReadAt IS NULL AND m.SenderUserId<>@user;";
+            find.Parameters.AddWithValue("@conversation", conversationId.ToString());
+            find.Parameters.AddWithValue("@user", userId.ToString());
+            using var reader = find.ExecuteReader();
+            while (reader.Read() && Guid.TryParse(reader.GetString(0), out var messageId) && Guid.TryParse(reader.GetString(1), out var senderId))
+                result.Add((messageId, senderId));
         }
+        using (var update = connection.CreateCommand())
+        {
+            update.Transaction = transaction;
+            update.CommandText = "UPDATE MessageReceipts SET ReadAt=COALESCE(ReadAt,@read), DeliveredAt=COALESCE(DeliveredAt,@read) WHERE RecipientUserId=@user AND MessageId IN (SELECT Id FROM Messages WHERE ConversationId=@conversation AND SenderUserId<>@user);";
+            update.Parameters.AddWithValue("@read", DateTimeOffset.UtcNow.ToString("O"));
+            update.Parameters.AddWithValue("@user", userId.ToString());
+            update.Parameters.AddWithValue("@conversation", conversationId.ToString());
+            update.ExecuteNonQuery();
+        }
+        var readAt = DateTimeOffset.UtcNow;
+        using (var conversationUpdate = connection.CreateCommand())
+        {
+            conversationUpdate.Transaction = transaction;
+            conversationUpdate.CommandText = "UPDATE ConversationParticipants SET LastReadAt=@read WHERE ConversationId=@conversation AND UserId=@user;";
+            conversationUpdate.Parameters.AddWithValue("@read", readAt.ToString("O"));
+            conversationUpdate.Parameters.AddWithValue("@conversation", conversationId.ToString());
+            conversationUpdate.Parameters.AddWithValue("@user", userId.ToString());
+            conversationUpdate.ExecuteNonQuery();
+        }
+        // Opening a chat from its push notification is an explicit action to
+        // restore it in the list if it had previously been deleted for this user.
+        RestoreConversationVisibilityForUser(connection, transaction, conversationId, userId, readAt);
+        transaction.Commit();
+        return result;
     }
 
     public (Guid? SenderUserId, bool Changed) MarkMessageDelivered(Guid messageId, Guid userId)
     {
-        lock (_sync)
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        Guid? senderId = null;
+        using (var find = connection.CreateCommand())
         {
-            using var connection = Open();
-            using var transaction = connection.BeginTransaction();
-            Guid? senderId = null;
-            using (var find = connection.CreateCommand())
-            {
-                find.Transaction = transaction;
-                find.CommandText = "SELECT m.SenderUserId FROM Messages m JOIN ConversationParticipants cp ON cp.ConversationId=m.ConversationId WHERE m.Id=@message AND cp.UserId=@user AND m.SenderUserId<>@user LIMIT 1;";
-                find.Parameters.AddWithValue("@message", messageId.ToString());
-                find.Parameters.AddWithValue("@user", userId.ToString());
-                var value = find.ExecuteScalar() as string;
-                if (!Guid.TryParse(value, out var parsedSender)) return (null, false);
-                senderId = parsedSender;
-            }
-            using var update = connection.CreateCommand();
-            update.Transaction = transaction;
-            update.CommandText = "UPDATE MessageReceipts SET DeliveredAt=COALESCE(DeliveredAt,@delivered) WHERE MessageId=@message AND RecipientUserId=@user AND DeliveredAt IS NULL;";
-            update.Parameters.AddWithValue("@delivered", DateTimeOffset.UtcNow.ToString("O"));
-            update.Parameters.AddWithValue("@message", messageId.ToString());
-            update.Parameters.AddWithValue("@user", userId.ToString());
-            var changed = update.ExecuteNonQuery() > 0;
-            transaction.Commit();
-            return (senderId, changed);
+            find.Transaction = transaction;
+            find.CommandText = "SELECT m.SenderUserId FROM Messages m JOIN ConversationParticipants cp ON cp.ConversationId=m.ConversationId WHERE m.Id=@message AND cp.UserId=@user AND m.SenderUserId<>@user LIMIT 1;";
+            find.Parameters.AddWithValue("@message", messageId.ToString());
+            find.Parameters.AddWithValue("@user", userId.ToString());
+            var value = find.ExecuteScalar() as string;
+            if (!Guid.TryParse(value, out var parsedSender)) return (null, false);
+            senderId = parsedSender;
         }
+        using var update = connection.CreateCommand();
+        update.Transaction = transaction;
+        update.CommandText = "UPDATE MessageReceipts SET DeliveredAt=COALESCE(DeliveredAt,@delivered) WHERE MessageId=@message AND RecipientUserId=@user AND DeliveredAt IS NULL;";
+        update.Parameters.AddWithValue("@delivered", DateTimeOffset.UtcNow.ToString("O"));
+        update.Parameters.AddWithValue("@message", messageId.ToString());
+        update.Parameters.AddWithValue("@user", userId.ToString());
+        var changed = update.ExecuteNonQuery() > 0;
+        transaction.Commit();
+        return (senderId, changed);
     }
 
+    private static long ToEpochMicroseconds(DateTimeOffset value)
+    {
+        var ticksSinceUnixEpoch = value.UtcDateTime.Ticks - DateTime.UnixEpoch.Ticks;
+        return ticksSinceUnixEpoch >= 0
+            ? (ticksSinceUnixEpoch + 5L) / 10L
+            : (ticksSinceUnixEpoch - 5L) / 10L;
+    }
     public IReadOnlyList<MessageDto> GetMessages(Guid id, DateTimeOffset? since = null, DateTimeOffset? before = null, Guid? currentUserId = null, Guid? beforeId = null, int limit = 1000)
     {
-        lock (_sync)
+        using var connection = Open();
+    using var command = connection.CreateCommand();
+        // Normal syncs are returned chronologically. The optional "before"
+        // cursor is used by the Android client to page older messages without
+        // replacing the visible conversation or losing the current scroll anchor.
+        var statusSql = currentUserId.HasValue ? @", COALESCE((SELECT CASE WHEN COUNT(*) = 0 THEN 'sent' WHEN SUM(CASE WHEN mr.ReadAt IS NOT NULL THEN 1 ELSE 0 END) = COUNT(*) THEN 'read' WHEN SUM(CASE WHEN mr.DeliveredAt IS NOT NULL THEN 1 ELSE 0 END) = COUNT(*) THEN 'delivered' ELSE 'sent' END FROM MessageReceipts mr WHERE mr.MessageId=m.Id AND mr.RecipientUserId<>m.SenderUserId), 'sent')" : ", 'sent'";
+        var where = "m.ConversationId=@id";
+        if (since.HasValue)
+            where += " AND m.SentAtEpochUs >= @sinceEpochUs";
+        if (before.HasValue)
         {
-            using var connection = Open();
-        using var command = connection.CreateCommand();
-            // Normal syncs are returned chronologically. The optional "before"
-            // cursor is used by the Android client to page older messages without
-            // replacing the visible conversation or losing the current scroll anchor.
-            var statusSql = currentUserId.HasValue ? @", COALESCE((SELECT CASE WHEN COUNT(*) = 0 THEN 'sent' WHEN SUM(CASE WHEN mr.ReadAt IS NOT NULL THEN 1 ELSE 0 END) = COUNT(*) THEN 'read' WHEN SUM(CASE WHEN mr.DeliveredAt IS NOT NULL THEN 1 ELSE 0 END) = COUNT(*) THEN 'delivered' ELSE 'sent' END FROM MessageReceipts mr WHERE mr.MessageId=m.Id AND mr.RecipientUserId<>m.SenderUserId), 'sent')" : ", 'sent'";
-            var where = "m.ConversationId=@id";
-            if (since.HasValue)
-                where += " AND CAST(m.SentAt AS timestamptz) >= CAST(@since AS timestamptz)";
-            if (before.HasValue)
-            {
-                if (beforeId.HasValue)
-                    where += " AND (CAST(m.SentAt AS timestamptz) < CAST(@before AS timestamptz) OR (CAST(m.SentAt AS timestamptz) = CAST(@before AS timestamptz) AND m.Id < @beforeId))";
-                else
-                    where += " AND CAST(m.SentAt AS timestamptz) < CAST(@before AS timestamptz)";
-            }
-
-            limit = Math.Clamp(limit, 1, 1000);
-
-            // Chat pages are cursor based. The client asks for the newest page or
-            // a page before its current oldest message; the DB never returns the
-            // whole conversation for a chat screen.
-            command.CommandText = $"SELECT m.Id,m.ConversationId,m.SenderUserId,m.SenderPhoneNumber,m.Text,m.SentAt,m.AttachmentFileName,m.AttachmentContentType,m.AttachmentSize{statusSql},m.ReplyToMessageId,rm.Text AS ReplyToText,m.EditedAt,m.DeletedAt FROM Messages m LEFT JOIN Messages rm ON rm.Id=m.ReplyToMessageId WHERE {where} ORDER BY CAST(m.SentAt AS timestamptz) DESC, m.Id DESC LIMIT @limit;";
-            command.Parameters.AddWithValue("@id", id.ToString());
-            if (since.HasValue)
-                command.Parameters.AddWithValue("@since", since.Value.ToString("O"));
-            if (before.HasValue)
-                command.Parameters.AddWithValue("@before", before.Value.ToString("O"));
             if (beforeId.HasValue)
-                command.Parameters.AddWithValue("@beforeId", beforeId.Value.ToString());
-            command.Parameters.AddWithValue("@limit", limit);
-            using var reader = command.ExecuteReader();
-            var result = new List<MessageDto>();
-            while (reader.Read())
-            {
-                if (!Guid.TryParse(reader.GetString(0), out var messageId) ||
-                    !Guid.TryParse(reader.GetString(1), out var conversationId) ||
-                    !Guid.TryParse(reader.GetString(2), out var senderId) ||
-                    reader.IsDBNull(3) || reader.IsDBNull(4) ||
-                    !DateTimeOffset.TryParse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var sentAt))
-                    continue;
-                result.Add(new MessageDto(messageId, conversationId, senderId, reader.GetString(3), reader.GetString(4), sentAt, reader.IsDBNull(6) ? null : reader.GetString(6), reader.IsDBNull(7) ? null : reader.GetString(7), reader.IsDBNull(8) ? null : reader.GetInt64(8), reader.IsDBNull(9) ? "sent" : reader.GetString(9), reader.IsDBNull(10) || !Guid.TryParse(reader.GetString(10), out var replyToId) ? null : replyToId, reader.IsDBNull(11) ? null : reader.GetString(11), !reader.IsDBNull(12), reader.IsDBNull(12) ? null : reader.GetString(12), !reader.IsDBNull(13)) );
-            }
-            result.Sort((a, b) =>
-            {
-                var byTime = a.SentAt.CompareTo(b.SentAt);
-                return byTime != 0 ? byTime : a.Id.CompareTo(b.Id);
-            });
-            return result;
+                where += " AND (m.SentAtEpochUs < @beforeEpochUs OR (m.SentAtEpochUs = @beforeEpochUs AND m.Id < @beforeId))";
+            else
+                where += " AND m.SentAtEpochUs < @beforeEpochUs";
         }
+
+        limit = Math.Clamp(limit, 1, 1000);
+
+        // Chat pages are cursor based. The client asks for the newest page or
+        // a page before its current oldest message; the DB never returns the
+        // whole conversation for a chat screen.
+        command.CommandText = $"SELECT m.Id,m.ConversationId,m.SenderUserId,m.SenderPhoneNumber,m.Text,m.SentAt,m.AttachmentFileName,m.AttachmentContentType,m.AttachmentSize{statusSql},m.ReplyToMessageId,rm.Text AS ReplyToText,m.EditedAt,m.DeletedAt FROM Messages m LEFT JOIN Messages rm ON rm.Id=m.ReplyToMessageId WHERE {where} ORDER BY m.SentAtEpochUs DESC, m.Id DESC LIMIT @limit;";
+        command.Parameters.AddWithValue("@id", id.ToString());
+        if (since.HasValue)
+            command.Parameters.AddWithValue("@sinceEpochUs", ToEpochMicroseconds(since.Value));
+        if (before.HasValue)
+            command.Parameters.AddWithValue("@beforeEpochUs", ToEpochMicroseconds(before.Value));
+        if (beforeId.HasValue)
+            command.Parameters.AddWithValue("@beforeId", beforeId.Value.ToString());
+        command.Parameters.AddWithValue("@limit", limit);
+        using var reader = command.ExecuteReader();
+        var result = new List<MessageDto>();
+        while (reader.Read())
+        {
+            if (!Guid.TryParse(reader.GetString(0), out var messageId) ||
+                !Guid.TryParse(reader.GetString(1), out var conversationId) ||
+                !Guid.TryParse(reader.GetString(2), out var senderId) ||
+                reader.IsDBNull(3) || reader.IsDBNull(4) ||
+                !DateTimeOffset.TryParse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var sentAt))
+                continue;
+            result.Add(new MessageDto(messageId, conversationId, senderId, reader.GetString(3), reader.GetString(4), sentAt, reader.IsDBNull(6) ? null : reader.GetString(6), reader.IsDBNull(7) ? null : reader.GetString(7), reader.IsDBNull(8) ? null : reader.GetInt64(8), reader.IsDBNull(9) ? "sent" : reader.GetString(9), reader.IsDBNull(10) || !Guid.TryParse(reader.GetString(10), out var replyToId) ? null : replyToId, reader.IsDBNull(11) ? null : reader.GetString(11), !reader.IsDBNull(12), reader.IsDBNull(12) ? null : reader.GetString(12), !reader.IsDBNull(13)) );
+        }
+        result.Sort((a, b) =>
+        {
+            var byTime = a.SentAt.CompareTo(b.SentAt);
+            return byTime != 0 ? byTime : a.Id.CompareTo(b.Id);
+        });
+        return result;
     }
 
     public IReadOnlyList<Guid> GetPresenceRecipientUserIds(Guid userId)
     {
-        lock (_sync)
-        {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = @"
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = @"
 SELECT DISTINCT cp2.UserId
 FROM ConversationParticipants cp1
 JOIN ConversationParticipants cp2 ON cp2.ConversationId = cp1.ConversationId
 WHERE cp1.UserId=@user AND cp2.UserId<>@user;";
-            command.Parameters.AddWithValue("@user", userId.ToString());
-            using var reader = command.ExecuteReader();
-            var result = new List<Guid>();
-            while (reader.Read() && Guid.TryParse(reader.GetString(0), out var id))
-                result.Add(id);
-            return result;
-        }
+        command.Parameters.AddWithValue("@user", userId.ToString());
+        using var reader = command.ExecuteReader();
+        var result = new List<Guid>();
+        while (reader.Read() && Guid.TryParse(reader.GetString(0), out var id))
+            result.Add(id);
+        return result;
     }
 
     public bool MessageBelongsToConversation(Guid messageId, Guid conversationId)
     {
-        lock (_sync)
-        {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT 1 FROM Messages WHERE Id=@id AND ConversationId=@conversation LIMIT 1;";
-            command.Parameters.AddWithValue("@id", messageId.ToString());
-            command.Parameters.AddWithValue("@conversation", conversationId.ToString());
-            return command.ExecuteScalar() is not null;
-        }
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT 1 FROM Messages WHERE Id=@id AND ConversationId=@conversation LIMIT 1;";
+        command.Parameters.AddWithValue("@id", messageId.ToString());
+        command.Parameters.AddWithValue("@conversation", conversationId.ToString());
+        return command.ExecuteScalar() is not null;
     }
 
     private static void RestoreConversationVisibilityForAllParticipants(
@@ -3349,274 +3315,258 @@ DO UPDATE SET IsDeleted=FALSE,UpdatedAt=EXCLUDED.UpdatedAt;";
 
     public MessageDto AddMessage(Guid conversationId, Guid userId, string senderPhone, string text, string? clientMessageId, Guid? replyToMessageId = null)
     {
-        lock (_sync)
+        using var connection = Open();
+        if (!string.IsNullOrWhiteSpace(clientMessageId))
         {
-            using var connection = Open();
-            if (!string.IsNullOrWhiteSpace(clientMessageId))
+            using var existing = connection.CreateCommand();
+            existing.CommandText = "SELECT Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,AttachmentFileName,AttachmentContentType,AttachmentSize FROM Messages WHERE ConversationId=@conversation AND SenderUserId=@user AND ClientMessageId=@client LIMIT 1;";
+            existing.Parameters.AddWithValue("@conversation", conversationId.ToString());
+            existing.Parameters.AddWithValue("@user", userId.ToString());
+            existing.Parameters.AddWithValue("@client", clientMessageId);
+            using (var reader = existing.ExecuteReader())
             {
-                using var existing = connection.CreateCommand();
-                existing.CommandText = "SELECT Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,AttachmentFileName,AttachmentContentType,AttachmentSize FROM Messages WHERE ConversationId=@conversation AND SenderUserId=@user AND ClientMessageId=@client LIMIT 1;";
-                existing.Parameters.AddWithValue("@conversation", conversationId.ToString());
-                existing.Parameters.AddWithValue("@user", userId.ToString());
-                existing.Parameters.AddWithValue("@client", clientMessageId);
-                using (var reader = existing.ExecuteReader())
+                if (reader.Read())
                 {
-                    if (reader.Read())
+                    if (!Guid.TryParse(reader.GetString(0), out var existingId) ||
+                        !Guid.TryParse(reader.GetString(1), out var existingConversationId) ||
+                        !Guid.TryParse(reader.GetString(2), out var existingSenderId) ||
+                        reader.IsDBNull(3) || reader.IsDBNull(4) ||
+                        !DateTimeOffset.TryParse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var existingSentAt))
                     {
-                        if (!Guid.TryParse(reader.GetString(0), out var existingId) ||
-                            !Guid.TryParse(reader.GetString(1), out var existingConversationId) ||
-                            !Guid.TryParse(reader.GetString(2), out var existingSenderId) ||
-                            reader.IsDBNull(3) || reader.IsDBNull(4) ||
-                            !DateTimeOffset.TryParse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var existingSentAt))
-                        {
-                            throw new InvalidOperationException("بيانات الرسالة الموجودة غير صالحة.");
-                        }
-
-                        return new MessageDto(existingId, existingConversationId, existingSenderId, reader.GetString(3), reader.GetString(4), existingSentAt, reader.IsDBNull(6) ? null : reader.GetString(6), reader.IsDBNull(7) ? null : reader.GetString(7), reader.IsDBNull(8) ? null : reader.GetInt64(8));
-                    }
-                }
-            }
-
-            var message = new MessageDto(Guid.NewGuid(), conversationId, userId, senderPhone, text, DateTimeOffset.UtcNow, null, null, null, "sent", replyToMessageId, null);
-            using var transaction = connection.BeginTransaction();
-            using var insert = connection.CreateCommand();
-            insert.Transaction = transaction;
-            insert.CommandText = string.IsNullOrWhiteSpace(clientMessageId)
-                ? "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,ClientMessageId,ReplyToMessageId) VALUES(@id,@conversation,@user,@phone,@text,@sent,@client,@reply);"
-                : "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,ClientMessageId,ReplyToMessageId) VALUES(@id,@conversation,@user,@phone,@text,@sent,@client,@reply) ON CONFLICT DO NOTHING;";
-            insert.Parameters.AddWithValue("@id", message.Id.ToString());
-            insert.Parameters.AddWithValue("@conversation", conversationId.ToString());
-            insert.Parameters.AddWithValue("@user", userId.ToString());
-            insert.Parameters.AddWithValue("@phone", senderPhone);
-            insert.Parameters.AddWithValue("@text", text);
-            insert.Parameters.AddWithValue("@sent", message.SentAt.ToString("O"));
-            insert.Parameters.AddWithValue("@client", (object?)clientMessageId ?? DBNull.Value);
-            insert.Parameters.AddWithValue("@reply", (object?)replyToMessageId?.ToString("D") ?? DBNull.Value);
-            var inserted = insert.ExecuteNonQuery();
-            if (inserted == 0 && !string.IsNullOrWhiteSpace(clientMessageId))
-            {
-                transaction.Rollback();
-                using var existingAfterRace = connection.CreateCommand();
-                existingAfterRace.CommandText = "SELECT Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,AttachmentFileName,AttachmentContentType,AttachmentSize FROM Messages WHERE ConversationId=@conversation AND SenderUserId=@user AND ClientMessageId=@client LIMIT 1;";
-                existingAfterRace.Parameters.AddWithValue("@conversation", conversationId.ToString());
-                existingAfterRace.Parameters.AddWithValue("@user", userId.ToString());
-                existingAfterRace.Parameters.AddWithValue("@client", clientMessageId);
-                using var existingReader = existingAfterRace.ExecuteReader();
-                if (existingReader.Read())
-                {
-                    if (!Guid.TryParse(existingReader.GetString(0), out var racedId) ||
-                        !Guid.TryParse(existingReader.GetString(1), out var racedConversationId) ||
-                        !Guid.TryParse(existingReader.GetString(2), out var racedSenderId) ||
-                        !DateTimeOffset.TryParse(existingReader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var racedSentAt))
                         throw new InvalidOperationException("بيانات الرسالة الموجودة غير صالحة.");
-                    return new MessageDto(racedId, racedConversationId, racedSenderId, existingReader.GetString(3), existingReader.GetString(4), racedSentAt, existingReader.IsDBNull(6) ? null : existingReader.GetString(6), existingReader.IsDBNull(7) ? null : existingReader.GetString(7), existingReader.IsDBNull(8) ? null : existingReader.GetInt64(8));
-                }
-                throw new InvalidOperationException("تعذر حفظ الرسالة.");
-            }
-            using (var receipt = connection.CreateCommand())
-            {
-                receipt.Transaction = transaction;
-                receipt.CommandText = "INSERT INTO MessageReceipts(MessageId,RecipientUserId) SELECT @message,UserId FROM ConversationParticipants WHERE ConversationId=@conversation AND UserId<>@sender ON CONFLICT DO NOTHING;";
-                receipt.Parameters.AddWithValue("@message", message.Id.ToString());
-                receipt.Parameters.AddWithValue("@conversation", conversationId.ToString());
-                receipt.Parameters.AddWithValue("@sender", userId.ToString());
-                receipt.ExecuteNonQuery();
-            }
+                    }
 
-            using var update = connection.CreateCommand();
-            update.Transaction = transaction;
-            update.CommandText = "UPDATE Conversations SET LastMessage=@text, UpdatedAt=@updated WHERE Id=@id;";
-            update.Parameters.AddWithValue("@text", text);
-            update.Parameters.AddWithValue("@updated", message.SentAt.ToString("O"));
-            update.Parameters.AddWithValue("@id", conversationId.ToString());
-            update.ExecuteNonQuery();
-            // A new message revives a conversation that the recipient previously hid.
-            // Preserve archive/mute preferences; only clear the per-user deleted flag.
-            RestoreConversationVisibilityForAllParticipants(connection, transaction, conversationId, message.SentAt);
-            transaction.Commit();
-            return message;
+                    return new MessageDto(existingId, existingConversationId, existingSenderId, reader.GetString(3), reader.GetString(4), existingSentAt, reader.IsDBNull(6) ? null : reader.GetString(6), reader.IsDBNull(7) ? null : reader.GetString(7), reader.IsDBNull(8) ? null : reader.GetInt64(8));
+                }
+            }
         }
+
+        var message = new MessageDto(Guid.NewGuid(), conversationId, userId, senderPhone, text, DateTimeOffset.UtcNow, null, null, null, "sent", replyToMessageId, null);
+        using var transaction = connection.BeginTransaction();
+        using var insert = connection.CreateCommand();
+        insert.Transaction = transaction;
+        insert.CommandText = string.IsNullOrWhiteSpace(clientMessageId)
+            ? "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,SentAtEpochUs,ClientMessageId,ReplyToMessageId) VALUES(@id,@conversation,@user,@phone,@text,@sent,@sentEpochUs,@client,@reply);"
+            : "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,SentAtEpochUs,ClientMessageId,ReplyToMessageId) VALUES(@id,@conversation,@user,@phone,@text,@sent,@sentEpochUs,@client,@reply) ON CONFLICT DO NOTHING;";
+        insert.Parameters.AddWithValue("@id", message.Id.ToString());
+        insert.Parameters.AddWithValue("@conversation", conversationId.ToString());
+        insert.Parameters.AddWithValue("@user", userId.ToString());
+        insert.Parameters.AddWithValue("@phone", senderPhone);
+        insert.Parameters.AddWithValue("@text", text);
+        insert.Parameters.AddWithValue("@sent", message.SentAt.ToString("O"));
+        insert.Parameters.AddWithValue("@sentEpochUs", ToEpochMicroseconds(message.SentAt));
+        insert.Parameters.AddWithValue("@client", (object?)clientMessageId ?? DBNull.Value);
+        insert.Parameters.AddWithValue("@reply", (object?)replyToMessageId?.ToString("D") ?? DBNull.Value);
+        var inserted = insert.ExecuteNonQuery();
+        if (inserted == 0 && !string.IsNullOrWhiteSpace(clientMessageId))
+        {
+            transaction.Rollback();
+            using var existingAfterRace = connection.CreateCommand();
+            existingAfterRace.CommandText = "SELECT Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,AttachmentFileName,AttachmentContentType,AttachmentSize FROM Messages WHERE ConversationId=@conversation AND SenderUserId=@user AND ClientMessageId=@client LIMIT 1;";
+            existingAfterRace.Parameters.AddWithValue("@conversation", conversationId.ToString());
+            existingAfterRace.Parameters.AddWithValue("@user", userId.ToString());
+            existingAfterRace.Parameters.AddWithValue("@client", clientMessageId);
+            using var existingReader = existingAfterRace.ExecuteReader();
+            if (existingReader.Read())
+            {
+                if (!Guid.TryParse(existingReader.GetString(0), out var racedId) ||
+                    !Guid.TryParse(existingReader.GetString(1), out var racedConversationId) ||
+                    !Guid.TryParse(existingReader.GetString(2), out var racedSenderId) ||
+                    !DateTimeOffset.TryParse(existingReader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var racedSentAt))
+                    throw new InvalidOperationException("بيانات الرسالة الموجودة غير صالحة.");
+                return new MessageDto(racedId, racedConversationId, racedSenderId, existingReader.GetString(3), existingReader.GetString(4), racedSentAt, existingReader.IsDBNull(6) ? null : existingReader.GetString(6), existingReader.IsDBNull(7) ? null : existingReader.GetString(7), existingReader.IsDBNull(8) ? null : existingReader.GetInt64(8));
+            }
+            throw new InvalidOperationException("تعذر حفظ الرسالة.");
+        }
+        using (var receipt = connection.CreateCommand())
+        {
+            receipt.Transaction = transaction;
+            receipt.CommandText = "INSERT INTO MessageReceipts(MessageId,RecipientUserId) SELECT @message,UserId FROM ConversationParticipants WHERE ConversationId=@conversation AND UserId<>@sender ON CONFLICT DO NOTHING;";
+            receipt.Parameters.AddWithValue("@message", message.Id.ToString());
+            receipt.Parameters.AddWithValue("@conversation", conversationId.ToString());
+            receipt.Parameters.AddWithValue("@sender", userId.ToString());
+            receipt.ExecuteNonQuery();
+        }
+
+        using var update = connection.CreateCommand();
+        update.Transaction = transaction;
+        update.CommandText = "UPDATE Conversations SET LastMessage=@text, UpdatedAt=@updated WHERE Id=@id;";
+        update.Parameters.AddWithValue("@text", text);
+        update.Parameters.AddWithValue("@updated", message.SentAt.ToString("O"));
+        update.Parameters.AddWithValue("@id", conversationId.ToString());
+        update.ExecuteNonQuery();
+        // A new message revives a conversation that the recipient previously hid.
+        // Preserve archive/mute preferences; only clear the per-user deleted flag.
+        RestoreConversationVisibilityForAllParticipants(connection, transaction, conversationId, message.SentAt);
+        transaction.Commit();
+        return message;
     }
 
     public (MessageDto? Message, bool Changed) EditMessage(Guid messageId, Guid userId, string text)
     {
-        lock (_sync)
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        Guid conversationId;
+        Guid senderId;
+        using (var find = connection.CreateCommand())
         {
-            using var connection = Open();
-            using var transaction = connection.BeginTransaction();
-            Guid conversationId;
-            Guid senderId;
-            using (var find = connection.CreateCommand())
-            {
-                find.Transaction = transaction;
-                find.CommandText = "SELECT ConversationId,SenderUserId,AttachmentFileName FROM Messages WHERE Id=@id LIMIT 1;";
-                find.Parameters.AddWithValue("@id", messageId.ToString());
-                using var reader = find.ExecuteReader();
-                if (!reader.Read() || !Guid.TryParse(reader.GetString(0), out conversationId) || !Guid.TryParse(reader.GetString(1), out senderId))
-                    return (null, false);
-                if (senderId != userId || !reader.IsDBNull(2)) return (null, false);
-            }
-
-            var editedAt = DateTimeOffset.UtcNow;
-            using (var update = connection.CreateCommand())
-            {
-                update.Transaction = transaction;
-                update.CommandText = "UPDATE Messages SET Text=@text,EditedAt=@edited WHERE Id=@id AND SenderUserId=@user;";
-                update.Parameters.AddWithValue("@text", text);
-                update.Parameters.AddWithValue("@edited", editedAt.ToString("O"));
-                update.Parameters.AddWithValue("@id", messageId.ToString());
-                update.Parameters.AddWithValue("@user", userId.ToString());
-                if (update.ExecuteNonQuery() == 0) return (null, false);
-            }
-
-            using (var latest = connection.CreateCommand())
-            {
-                latest.Transaction = transaction;
-                latest.CommandText = "UPDATE Conversations SET LastMessage=@text,UpdatedAt=@updated WHERE Id=@conversation AND EXISTS (SELECT 1 FROM Messages WHERE Id=@message AND SentAt=(SELECT MAX(SentAt) FROM Messages WHERE ConversationId=@conversation));";
-                latest.Parameters.AddWithValue("@text", text);
-                latest.Parameters.AddWithValue("@updated", editedAt.ToString("O"));
-                latest.Parameters.AddWithValue("@conversation", conversationId.ToString());
-                latest.Parameters.AddWithValue("@message", messageId.ToString());
-                latest.ExecuteNonQuery();
-            }
-            transaction.Commit();
-
-            var messages = GetMessages(conversationId, null, null, userId);
-            var message = messages.FirstOrDefault(x => x.Id == messageId);
-            return (message, message is not null);
+            find.Transaction = transaction;
+            find.CommandText = "SELECT ConversationId,SenderUserId,AttachmentFileName FROM Messages WHERE Id=@id LIMIT 1;";
+            find.Parameters.AddWithValue("@id", messageId.ToString());
+            using var reader = find.ExecuteReader();
+            if (!reader.Read() || !Guid.TryParse(reader.GetString(0), out conversationId) || !Guid.TryParse(reader.GetString(1), out senderId))
+                return (null, false);
+            if (senderId != userId || !reader.IsDBNull(2)) return (null, false);
         }
+
+        var editedAt = DateTimeOffset.UtcNow;
+        using (var update = connection.CreateCommand())
+        {
+            update.Transaction = transaction;
+            update.CommandText = "UPDATE Messages SET Text=@text,EditedAt=@edited WHERE Id=@id AND SenderUserId=@user;";
+            update.Parameters.AddWithValue("@text", text);
+            update.Parameters.AddWithValue("@edited", editedAt.ToString("O"));
+            update.Parameters.AddWithValue("@id", messageId.ToString());
+            update.Parameters.AddWithValue("@user", userId.ToString());
+            if (update.ExecuteNonQuery() == 0) return (null, false);
+        }
+
+        using (var latest = connection.CreateCommand())
+        {
+            latest.Transaction = transaction;
+            latest.CommandText = "UPDATE Conversations SET LastMessage=@text,UpdatedAt=@updated WHERE Id=@conversation AND EXISTS (SELECT 1 FROM Messages WHERE Id=@message AND SentAt=(SELECT MAX(SentAt) FROM Messages WHERE ConversationId=@conversation));";
+            latest.Parameters.AddWithValue("@text", text);
+            latest.Parameters.AddWithValue("@updated", editedAt.ToString("O"));
+            latest.Parameters.AddWithValue("@conversation", conversationId.ToString());
+            latest.Parameters.AddWithValue("@message", messageId.ToString());
+            latest.ExecuteNonQuery();
+        }
+        transaction.Commit();
+
+        var messages = GetMessages(conversationId, null, null, userId);
+        var message = messages.FirstOrDefault(x => x.Id == messageId);
+        return (message, message is not null);
     }
 
     public MessageDto? DeleteMessage(Guid messageId, Guid userId)
     {
-        lock (_sync)
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        Guid conversationId;
+        Guid senderId;
+        using (var find = connection.CreateCommand())
         {
-            using var connection = Open();
-            using var transaction = connection.BeginTransaction();
-            Guid conversationId;
-            Guid senderId;
-            using (var find = connection.CreateCommand())
-            {
-                find.Transaction = transaction;
-                find.CommandText = "SELECT ConversationId,SenderUserId FROM Messages WHERE Id=@id AND DeletedAt IS NULL LIMIT 1;";
-                find.Parameters.AddWithValue("@id", messageId.ToString());
-                using var reader = find.ExecuteReader();
-                if (!reader.Read() || !Guid.TryParse(reader.GetString(0), out conversationId) || !Guid.TryParse(reader.GetString(1), out senderId))
-                    return null;
-                if (senderId != userId) return null;
-            }
-
-            var deletedAt = DateTimeOffset.UtcNow;
-            using (var update = connection.CreateCommand())
-            {
-                update.Transaction = transaction;
-                update.CommandText = "UPDATE Messages SET Text=@text,DeletedAt=@deleted,EditedAt=NULL WHERE Id=@id AND SenderUserId=@user AND DeletedAt IS NULL;";
-                update.Parameters.AddWithValue("@text", "تم حذف هذه الرسالة");
-                update.Parameters.AddWithValue("@deleted", deletedAt.ToString("O"));
-                update.Parameters.AddWithValue("@id", messageId.ToString());
-                update.Parameters.AddWithValue("@user", userId.ToString());
-                if (update.ExecuteNonQuery() == 0) return null;
-            }
-            transaction.Commit();
-            return GetMessages(conversationId, null, null, userId).FirstOrDefault(x => x.Id == messageId);
+            find.Transaction = transaction;
+            find.CommandText = "SELECT ConversationId,SenderUserId FROM Messages WHERE Id=@id AND DeletedAt IS NULL LIMIT 1;";
+            find.Parameters.AddWithValue("@id", messageId.ToString());
+            using var reader = find.ExecuteReader();
+            if (!reader.Read() || !Guid.TryParse(reader.GetString(0), out conversationId) || !Guid.TryParse(reader.GetString(1), out senderId))
+                return null;
+            if (senderId != userId) return null;
         }
+
+        var deletedAt = DateTimeOffset.UtcNow;
+        using (var update = connection.CreateCommand())
+        {
+            update.Transaction = transaction;
+            update.CommandText = "UPDATE Messages SET Text=@text,DeletedAt=@deleted,EditedAt=NULL WHERE Id=@id AND SenderUserId=@user AND DeletedAt IS NULL;";
+            update.Parameters.AddWithValue("@text", "تم حذف هذه الرسالة");
+            update.Parameters.AddWithValue("@deleted", deletedAt.ToString("O"));
+            update.Parameters.AddWithValue("@id", messageId.ToString());
+            update.Parameters.AddWithValue("@user", userId.ToString());
+            if (update.ExecuteNonQuery() == 0) return null;
+        }
+        transaction.Commit();
+        return GetMessages(conversationId, null, null, userId).FirstOrDefault(x => x.Id == messageId);
     }
 
     public MessageDto AddAttachmentMessage(Guid messageId, Guid conversationId, Guid userId, string senderPhone, string displayText, string fileName, string contentType, long size, byte[] attachmentData)
     {
-        lock (_sync)
+        using var connection = Open();
+        var message = new MessageDto(messageId, conversationId, userId, senderPhone, displayText, DateTimeOffset.UtcNow, fileName, contentType, size);
+        using var transaction = connection.BeginTransaction();
+        using var insert = connection.CreateCommand();
+        insert.Transaction = transaction;
+        insert.CommandText = "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,SentAtEpochUs,ClientMessageId,AttachmentFileName,AttachmentContentType,AttachmentSize,AttachmentData,AudioData) VALUES(@id,@conversation,@user,@phone,@text,@sent,@sentEpochUs,NULL,@file,@type,@size,@data,@audio);";
+        insert.Parameters.AddWithValue("@id", message.Id.ToString());
+        insert.Parameters.AddWithValue("@conversation", conversationId.ToString());
+        insert.Parameters.AddWithValue("@user", userId.ToString());
+        insert.Parameters.AddWithValue("@phone", senderPhone);
+        insert.Parameters.AddWithValue("@text", displayText);
+        insert.Parameters.AddWithValue("@sent", message.SentAt.ToString("O"));
+        insert.Parameters.AddWithValue("@sentEpochUs", ToEpochMicroseconds(message.SentAt));
+        insert.Parameters.AddWithValue("@file", fileName);
+        insert.Parameters.AddWithValue("@type", contentType);
+        insert.Parameters.AddWithValue("@size", size);
+        insert.Parameters.Add("@data", NpgsqlTypes.NpgsqlDbType.Bytea).Value = attachmentData;
+        insert.Parameters.Add("@audio", NpgsqlTypes.NpgsqlDbType.Bytea).Value = contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) ? attachmentData : DBNull.Value;
+        insert.ExecuteNonQuery();
+
+        using (var receipt = connection.CreateCommand())
         {
-            using var connection = Open();
-            var message = new MessageDto(messageId, conversationId, userId, senderPhone, displayText, DateTimeOffset.UtcNow, fileName, contentType, size);
-            using var transaction = connection.BeginTransaction();
-            using var insert = connection.CreateCommand();
-            insert.Transaction = transaction;
-            insert.CommandText = "INSERT INTO Messages(Id,ConversationId,SenderUserId,SenderPhoneNumber,Text,SentAt,ClientMessageId,AttachmentFileName,AttachmentContentType,AttachmentSize,AttachmentData,AudioData) VALUES(@id,@conversation,@user,@phone,@text,@sent,NULL,@file,@type,@size,@data,@audio);";
-            insert.Parameters.AddWithValue("@id", message.Id.ToString());
-            insert.Parameters.AddWithValue("@conversation", conversationId.ToString());
-            insert.Parameters.AddWithValue("@user", userId.ToString());
-            insert.Parameters.AddWithValue("@phone", senderPhone);
-            insert.Parameters.AddWithValue("@text", displayText);
-            insert.Parameters.AddWithValue("@sent", message.SentAt.ToString("O"));
-            insert.Parameters.AddWithValue("@file", fileName);
-            insert.Parameters.AddWithValue("@type", contentType);
-            insert.Parameters.AddWithValue("@size", size);
-            insert.Parameters.Add("@data", NpgsqlTypes.NpgsqlDbType.Bytea).Value = attachmentData;
-            insert.Parameters.Add("@audio", NpgsqlTypes.NpgsqlDbType.Bytea).Value = contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) ? attachmentData : DBNull.Value;
-            insert.ExecuteNonQuery();
-
-            using (var receipt = connection.CreateCommand())
-            {
-                receipt.Transaction = transaction;
-                receipt.CommandText = "INSERT INTO MessageReceipts(MessageId,RecipientUserId) SELECT @message,UserId FROM ConversationParticipants WHERE ConversationId=@conversation AND UserId<>@sender ON CONFLICT DO NOTHING;";
-                receipt.Parameters.AddWithValue("@message", message.Id.ToString());
-                receipt.Parameters.AddWithValue("@conversation", conversationId.ToString());
-                receipt.Parameters.AddWithValue("@sender", userId.ToString());
-                receipt.ExecuteNonQuery();
-            }
-
-            using var update = connection.CreateCommand();
-            update.Transaction = transaction;
-            update.CommandText = "UPDATE Conversations SET LastMessage=@text, UpdatedAt=@updated WHERE Id=@id;";
-            update.Parameters.AddWithValue("@text", displayText);
-            update.Parameters.AddWithValue("@updated", message.SentAt.ToString("O"));
-            update.Parameters.AddWithValue("@id", conversationId.ToString());
-            update.ExecuteNonQuery();
-            // A new message revives a conversation that the recipient previously hid.
-            // Preserve archive/mute preferences; only clear the per-user deleted flag.
-            RestoreConversationVisibilityForAllParticipants(connection, transaction, conversationId, message.SentAt);
-            transaction.Commit();
-            return message;
+            receipt.Transaction = transaction;
+            receipt.CommandText = "INSERT INTO MessageReceipts(MessageId,RecipientUserId) SELECT @message,UserId FROM ConversationParticipants WHERE ConversationId=@conversation AND UserId<>@sender ON CONFLICT DO NOTHING;";
+            receipt.Parameters.AddWithValue("@message", message.Id.ToString());
+            receipt.Parameters.AddWithValue("@conversation", conversationId.ToString());
+            receipt.Parameters.AddWithValue("@sender", userId.ToString());
+            receipt.ExecuteNonQuery();
         }
+
+        using var update = connection.CreateCommand();
+        update.Transaction = transaction;
+        update.CommandText = "UPDATE Conversations SET LastMessage=@text, UpdatedAt=@updated WHERE Id=@id;";
+        update.Parameters.AddWithValue("@text", displayText);
+        update.Parameters.AddWithValue("@updated", message.SentAt.ToString("O"));
+        update.Parameters.AddWithValue("@id", conversationId.ToString());
+        update.ExecuteNonQuery();
+        // A new message revives a conversation that the recipient previously hid.
+        // Preserve archive/mute preferences; only clear the per-user deleted flag.
+        RestoreConversationVisibilityForAllParticipants(connection, transaction, conversationId, message.SentAt);
+        transaction.Commit();
+        return message;
     }
 
     public AttachmentRecord? GetAttachment(Guid messageId, Guid userId)
     {
-        lock (_sync)
-        {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = @"SELECT m.AttachmentFileName,m.AttachmentContentType,m.AttachmentData,m.AudioData
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = @"SELECT m.AttachmentFileName,m.AttachmentContentType,m.AttachmentData,m.AudioData
 FROM Messages m
 WHERE m.Id=@id
   AND m.AttachmentFileName IS NOT NULL
   AND EXISTS (
-      SELECT 1
-      FROM ConversationParticipants cp
-      WHERE cp.ConversationId=m.ConversationId
-        AND cp.UserId=@user
+  SELECT 1
+  FROM ConversationParticipants cp
+  WHERE cp.ConversationId=m.ConversationId
+    AND cp.UserId=@user
   )
 LIMIT 1;";
-            command.Parameters.AddWithValue("@id", messageId.ToString());
-            command.Parameters.AddWithValue("@user", userId.ToString());
-            using var reader = command.ExecuteReader();
-            if (!reader.Read()) return null;
-            var fileName = reader.GetString(0);
-            var contentType = reader.IsDBNull(1) ? "application/octet-stream" : reader.GetString(1);
-            byte[]? data = !reader.IsDBNull(2) ? (byte[])reader.GetValue(2) : (!reader.IsDBNull(3) ? (byte[])reader.GetValue(3) : null);
-            return new AttachmentRecord(
-                fileName,
-                contentType,
-                data,
-                Path.Combine("uploads", messageId.ToString("D") + "_" + SanitizeFileName(fileName)));
-        }
+        command.Parameters.AddWithValue("@id", messageId.ToString());
+        command.Parameters.AddWithValue("@user", userId.ToString());
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return null;
+        var fileName = reader.GetString(0);
+        var contentType = reader.IsDBNull(1) ? "application/octet-stream" : reader.GetString(1);
+        byte[]? data = !reader.IsDBNull(2) ? (byte[])reader.GetValue(2) : (!reader.IsDBNull(3) ? (byte[])reader.GetValue(3) : null);
+        return new AttachmentRecord(
+            fileName,
+            contentType,
+            data,
+            Path.Combine("uploads", messageId.ToString("D") + "_" + SanitizeFileName(fileName)));
     }
 
     public void SaveAttachmentData(Guid messageId, Guid userId, byte[] data)
     {
         if (data.Length == 0) return;
-        lock (_sync)
-        {
-            using var connection = Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = @"UPDATE Messages SET AttachmentData=@data
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = @"UPDATE Messages SET AttachmentData=@data
 WHERE Id=@id AND AttachmentFileName IS NOT NULL
   AND EXISTS (SELECT 1 FROM ConversationParticipants cp WHERE cp.ConversationId=Messages.ConversationId AND cp.UserId=@user);";
-            command.Parameters.Add("@data", NpgsqlTypes.NpgsqlDbType.Bytea).Value = data;
-            command.Parameters.AddWithValue("@id", messageId.ToString());
-            command.Parameters.AddWithValue("@user", userId.ToString());
-            command.ExecuteNonQuery();
-        }
+        command.Parameters.Add("@data", NpgsqlTypes.NpgsqlDbType.Bytea).Value = data;
+        command.Parameters.AddWithValue("@id", messageId.ToString());
+        command.Parameters.AddWithValue("@user", userId.ToString());
+        command.ExecuteNonQuery();
     }
 
     private static string SanitizeFileName(string fileName)
