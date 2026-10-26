@@ -131,6 +131,8 @@
                         <VerticalStackLayout Spacing="5">
                             <Border IsVisible="{Binding HasReply}" Padding="9,6" BackgroundColor="{DynamicResource HimoSurface}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="0.8"><Border.StrokeShape><shapes:RoundRectangle CornerRadius="10" /></Border.StrokeShape><Label Text="{Binding ReplyToText}" FontSize="10.5" TextColor="{DynamicResource HimoPrimary}" MaxLines="2" LineBreakMode="TailTruncation" /></Border>
                             <Label Text="{Binding Text}" FontSize="{Binding MessageFontSize}" LineHeight="1.16" TextColor="{DynamicResource HimoPrimary}" LineBreakMode="WordWrap" Margin="1,1,1,0"><Label.Triggers><DataTrigger TargetType="Label" Binding="{Binding x:DataType=models:ChatMessage, Path=IsMine}" Value="True"><Setter Property="TextColor" Value="{DynamicResource HimoOnAccent}" /></DataTrigger></Label.Triggers></Label>
+                            <Label Text="{Binding TranslatedText}" IsVisible="{Binding IsTranslationVisible}" FontSize="{Binding MessageFontSize}" LineHeight="1.16" TextColor="{DynamicResource HimoTextSecondary}" LineBreakMode="WordWrap" Margin="5,1,5,0" />
+                            <Button Text="{Binding TranslationActionText}" IsVisible="{Binding TranslationEnabled}" Clicked="TranslateMessageClicked" FontSize="10.5" Padding="8,3" HeightRequest="27" CornerRadius="9" HorizontalOptions="End" BackgroundColor="Transparent" TextColor="{DynamicResource HimoAccent}" />
                             <HorizontalStackLayout HorizontalOptions="End" Spacing="4">
                                 <Label Text="{Binding EditedLabel}" Style="{StaticResource ChatMeta}" />
                                 <Label Text="{Binding SentAt, StringFormat='{0:HH:mm}'}" Style="{StaticResource ChatMeta}" />
@@ -408,6 +410,7 @@
                 </HorizontalStackLayout>
 
                 <Grid Grid.Column="2" ColumnDefinitions="*,58" ColumnSpacing="9" VerticalOptions="Center" HorizontalOptions="End" FlowDirection="LeftToRight">
+                    <Grid.GestureRecognizers><TapGestureRecognizer Tapped="ConversationHeaderTapped" /></Grid.GestureRecognizers>
                     <Grid Grid.Column="1" WidthRequest="50" HeightRequest="50">
                         <Border WidthRequest="46" HeightRequest="46" BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoAccent}" StrokeThickness="1">
                             <Border.StrokeShape><shapes:RoundRectangle CornerRadius="25" /></Border.StrokeShape>

@@ -884,6 +884,39 @@ public sealed class HimoApiClient
             cancellationToken);
     }
 
+    public async Task<int> GetDisappearingSecondsAsync(Guid conversationId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync($"api/conversations/{conversationId:D}/disappearing", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<DisappearingSettingsResponse>(cancellationToken: cancellationToken);
+        return result?.Seconds ?? 0;
+    }
+
+    public async Task SetDisappearingSecondsAsync(Guid conversationId, int seconds, CancellationToken cancellationToken = default)
+    {
+        if (seconds is not (0 or 3600 or 86400 or 432000 or 2592000)) throw new ArgumentOutOfRangeException(nameof(seconds));
+        using var response = await _http.PostAsJsonAsync($"api/conversations/{conversationId:D}/disappearing", new { seconds }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task ClearConversationContentAsync(Guid conversationId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsync($"api/conversations/{conversationId:D}/clear", null, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task<string> TranslateTextAsync(string text, string targetLanguage, CancellationToken cancellationToken = default)
+    {
+        text = text?.Trim() ?? string.Empty;
+        targetLanguage = targetLanguage?.Trim().ToLowerInvariant() ?? "ar";
+        if (text.Length == 0) return string.Empty;
+        if (text.Length > 4000) throw new ArgumentException("نص الرسالة طويل جدًا للترجمة.", nameof(text));
+        using var response = await _http.PostAsJsonAsync("api/translate", new { text, targetLanguage }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<TranslateResponse>(cancellationToken: cancellationToken);
+        return result?.TranslatedText ?? throw new InvalidOperationException("استجابة الترجمة غير صالحة.");
+    }
+
     public async Task MarkConversationReadAsync(
         Guid conversationId,
         CancellationToken cancellationToken = default)
@@ -1070,7 +1103,7 @@ public sealed class HimoApiClient
         var path =
             $"api/conversations/{conversationId}/messages";
 
-        limit = Math.Clamp(limit, 1, 100);
+        limit = Math.Clamp(limit, 1, 1000);
 
         var query =
             new List<string>
@@ -1550,7 +1583,11 @@ public sealed class HimoApiClient
         string? ReplyToText = null,
         bool IsEdited = false,
         string? EditedAt = null,
-        bool IsDeleted = false);
+        bool IsDeleted = false,
+        DateTimeOffset? ExpiresAt = null);
+
+    private sealed record DisappearingSettingsResponse(int Seconds);
+    private sealed record TranslateResponse(string TranslatedText);
 
     private sealed record AuthResponse(
         string Token,

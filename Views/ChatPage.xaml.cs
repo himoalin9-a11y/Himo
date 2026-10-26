@@ -202,6 +202,7 @@ public partial class ChatPage : ContentPage
         _scrollIdleTimer.IsRepeating = false;
         _scrollIdleTimer.Tick += OnScrollIdleTimerTick;
         Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
+        EnsureConversationFeaturesOverlay();
     }
 
     private void EnsureInlineVideoOverlay()
@@ -578,6 +579,8 @@ public partial class ChatPage : ContentPage
         Connectivity.Current.ConnectivityChanged -= OnConnectivityChanged;
         Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
         Volatile.Write(ref _conversationVisible, 1);
+        UpdateConversationFeatureState();
+        StartConversationExpiryTimer();
         UpdateActiveConversationPreference();
         if (_conversationId > 0)
         {
@@ -1188,24 +1191,14 @@ public partial class ChatPage : ContentPage
     private async void DisappearingMessagesMenuClicked(object? sender, EventArgs e)
     {
         CloseConversationMenu();
-        var selected = await DisplayActionSheetAsync(
-            "الرسائل ذاتية الاختفاء",
-            "إلغاء",
-            null,
-            "إيقاف",
-            "بعد ساعة",
-            "بعد 24 ساعة",
-            "بعد 7 أيام");
-
-        if (!string.IsNullOrWhiteSpace(selected) && selected != "إلغاء")
+        var conversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
+        if (conversation is null)
         {
-            var key = !string.IsNullOrWhiteSpace(_remoteConversationId)
-                ? $"himo_disappearing_{_remoteConversationId}"
-                : $"himo_disappearing_local_{_conversationId}";
-
-            Preferences.Default.Set(key, selected);
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الرسائل ذاتية الاختفاء"), $"تم اختيار: {selected}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync("الرسائل ذاتية الاختفاء", "تعذر العثور على المحادثة الحالية.", "حسنًا");
+            return;
         }
+        await Navigation.PushAsync(new DisappearingMessagesPage(
+            _api, conversation, ConversationFeatureStore.ConversationKey(conversation)));
     }
 
     private async void ChatBackgroundMenuClicked(object? sender, EventArgs e)
@@ -1907,6 +1900,7 @@ public partial class ChatPage : ContentPage
     {
         ClearActiveConversationPreference();
         Volatile.Write(ref _conversationVisible, 0);
+        StopConversationExpiryTimer();
         DetachWallpaperLifecycleHandlers();
         StopChatAnimatedWallpaper();
 #if ANDROID
@@ -2430,7 +2424,7 @@ public partial class ChatPage : ContentPage
                 _chat.AddRemoteMessage(conversation!.Id, message.Text, message.SentAt.LocalDateTime, isMine,
                     message.Id.ToString(), message.AttachmentFileName, message.AttachmentContentType,
                     message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"),
-                    message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted);
+                    message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted, message.ExpiresAt?.LocalDateTime);
             });
 
             var isCurrentConversation = isCurrentRemoteConversation || conversation.Id == _conversationId;
@@ -2534,7 +2528,7 @@ public partial class ChatPage : ContentPage
                     _conversationId, message.Text, message.SentAt.LocalDateTime, isMine,
                     message.Id.ToString(), message.AttachmentFileName, message.AttachmentContentType,
                     message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"),
-                    message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted);
+                    message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted, message.ExpiresAt?.LocalDateTime);
 
                 if (added && !isMine)
                     _ = _realtime.MarkMessageDeliveredAsync(message.Id);
@@ -2666,7 +2660,7 @@ public partial class ChatPage : ContentPage
                     _conversationId, message.Text, message.SentAt.LocalDateTime, isMine,
                     message.Id.ToString("D"), message.AttachmentFileName, message.AttachmentContentType,
                     message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"),
-                    message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted);
+                    message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted, message.ExpiresAt?.LocalDateTime);
             }
 
             var currentCache = _chat.GetMessages(_conversationId);
@@ -4713,6 +4707,7 @@ public partial class ChatPage : ContentPage
             .OrderBy(x => x.SentAt)
             .ThenBy(x => x.Id)
             .ToList();
+        ApplyTranslationPreference(orderedMessages);
         foreach (var item in orderedMessages) item.MessageFontSize = fontSize;
         System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] message normalization count={orderedMessages.Count} elapsed={bindTrace.ElapsedMilliseconds}ms");
 

@@ -115,6 +115,53 @@ public sealed class ChatService
         }
     }
 
+    public void ClearConversationMessages(int conversationId)
+    {
+        EnsureLoaded();
+        lock (_sync)
+        {
+            if (_messages.TryGetValue(conversationId, out var messages)) messages.Clear();
+            var conversation = Conversations.FirstOrDefault(x => x.Id == conversationId);
+            if (conversation is not null)
+            {
+                conversation.LastMessage = string.Empty;
+                conversation.UnreadCount = 0;
+                conversation.Time = DateTime.Now.ToString("HH:mm");
+                conversation.UpdatedAt = DateTime.Now;
+            }
+            Save();
+        }
+        NotifyMessagesChanged(conversationId);
+        NotifyConversationsChanged();
+    }
+
+    public int PurgeExpiredMessages(int conversationId, DateTime? now = null)
+    {
+        EnsureLoaded();
+        var cutoff = now ?? DateTime.Now;
+        var expiredCount = 0;
+        lock (_sync)
+        {
+            if (!_messages.TryGetValue(conversationId, out var messages)) return 0;
+            var expired = messages.Where(m => m.ExpiresAt.HasValue && m.ExpiresAt.Value <= cutoff).ToList();
+            if (expired.Count == 0) return 0;
+            expiredCount = expired.Count;
+            foreach (var message in expired) messages.Remove(message);
+            var conversation = Conversations.FirstOrDefault(x => x.Id == conversationId);
+            if (conversation is not null)
+            {
+                var latest = messages.OrderByDescending(m => m.SentAt).ThenByDescending(m => m.Id).FirstOrDefault();
+                conversation.LastMessage = latest?.Text ?? string.Empty;
+                conversation.Time = latest?.SentAt.ToString("HH:mm") ?? string.Empty;
+                conversation.UpdatedAt = latest?.SentAt ?? cutoff;
+            }
+            Save();
+        }
+        NotifyMessagesChanged(conversationId);
+        NotifyConversationsChanged();
+        return expiredCount;
+    }
+
     public void ReplaceConversations(IEnumerable<Conversation> items)
     {
         EnsureLoaded();
@@ -599,7 +646,7 @@ public sealed class ChatService
         return false;
     }
 
-    public bool AddRemoteMessage(int conversationId, string text, DateTime sentAt, bool isMine, string? remoteId = null, string? attachmentFileName = null, string? attachmentContentType = null, long? attachmentSize = null, string? deliveryStatus = null, string? replyToRemoteId = null, string? replyToText = null, bool isEdited = false, string? editedAt = null, bool isDeleted = false)
+    public bool AddRemoteMessage(int conversationId, string text, DateTime sentAt, bool isMine, string? remoteId = null, string? attachmentFileName = null, string? attachmentContentType = null, long? attachmentSize = null, string? deliveryStatus = null, string? replyToRemoteId = null, string? replyToText = null, bool isEdited = false, string? editedAt = null, bool isDeleted = false, DateTime? expiresAt = null)
     {
         EnsureLoaded();
         lock (_sync)
@@ -624,6 +671,7 @@ public sealed class ChatService
                     if (pending is not null)
                     {
                         pending.RemoteId = remoteId;
+                        pending.ExpiresAt = expiresAt;
                         pending.IsPending = false;
                         SetDeliveryStatusIfNewer(pending, string.IsNullOrWhiteSpace(deliveryStatus) ? "sent" : deliveryStatus);
                         pending.ClientMessageId = null;
@@ -646,7 +694,13 @@ public sealed class ChatService
                 if (existingRemote is not null)
                 {
                     // The message content is a duplicate, but its receipt may have advanced.
-                    if (existingRemote.IsMine && isMine && SetDeliveryStatusIfNewer(existingRemote, deliveryStatus))
+                    var metadataChanged = existingRemote.IsMine && isMine && SetDeliveryStatusIfNewer(existingRemote, deliveryStatus);
+                    if (expiresAt.HasValue && existingRemote.ExpiresAt != expiresAt)
+                    {
+                        existingRemote.ExpiresAt = expiresAt;
+                        metadataChanged = true;
+                    }
+                    if (metadataChanged)
                     {
                         Save();
                         NotifyMessagesChanged(conversationId);
@@ -662,7 +716,7 @@ public sealed class ChatService
             }
 
             var next = messages.Count == 0 ? 1 : messages.Max(x => x.Id) + 1;
-            var remoteMessage = new ChatMessage { Id = next, RemoteId = remoteId, ConversationId = conversationId, Text = text, SentAt = localTime, IsMine = isMine, AttachmentFileName = attachmentFileName, AttachmentContentType = attachmentContentType, AttachmentSize = attachmentSize, DeliveryStatus = string.IsNullOrWhiteSpace(deliveryStatus) ? (isMine ? "sent" : "received") : deliveryStatus, ReplyToRemoteId = replyToRemoteId, ReplyToText = replyToText, IsEdited = isEdited, IsDeleted = isDeleted };
+            var remoteMessage = new ChatMessage { Id = next, RemoteId = remoteId, ConversationId = conversationId, Text = text, SentAt = localTime, IsMine = isMine, AttachmentFileName = attachmentFileName, AttachmentContentType = attachmentContentType, AttachmentSize = attachmentSize, DeliveryStatus = string.IsNullOrWhiteSpace(deliveryStatus) ? (isMine ? "sent" : "received") : deliveryStatus, ReplyToRemoteId = replyToRemoteId, ReplyToText = replyToText, IsEdited = isEdited, IsDeleted = isDeleted, ExpiresAt = expiresAt };
             InsertMessageChronological(messages, remoteMessage);
             var c = Conversations.FirstOrDefault(x => x.Id == conversationId);
             if (c != null)

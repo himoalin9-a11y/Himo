@@ -216,6 +216,55 @@ public sealed class ChatMessage : INotifyPropertyChanged
     public string? ReplyToRemoteId { get; set; }
     public string? ReplyToText { get; set; }
     public bool IsEdited { get; set; }
+    private string? _translatedText;
+    public string? TranslatedText
+    {
+        get => _translatedText;
+        set
+        {
+            if (string.Equals(_translatedText, value, StringComparison.Ordinal)) return;
+            _translatedText = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TranslatedText)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TranslationActionText)));
+        }
+    }
+    private bool _isTranslationVisible;
+    public bool IsTranslationVisible
+    {
+        get => _isTranslationVisible;
+        set
+        {
+            if (_isTranslationVisible == value) return;
+            _isTranslationVisible = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsTranslationVisible)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TranslationActionText)));
+        }
+    }
+    private bool _translationEnabled;
+    public bool TranslationEnabled
+    {
+        get => _translationEnabled;
+        set
+        {
+            if (_translationEnabled == value) return;
+            _translationEnabled = value;
+            if (!value) IsTranslationVisible = false;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TranslationEnabled)));
+        }
+    }
+    private bool _isTranslating;
+    public bool IsTranslating
+    {
+        get => _isTranslating;
+        set
+        {
+            if (_isTranslating == value) return;
+            _isTranslating = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsTranslating)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TranslationActionText)));
+        }
+    }
+    public string TranslationActionText => IsTranslating ? "جارٍ الترجمة…" : IsTranslationVisible ? "إخفاء الترجمة" : string.IsNullOrWhiteSpace(TranslatedText) ? "ترجمة الرسالة" : "عرض الترجمة";
     private bool _isSelected;
     public bool IsSelected
     {
@@ -228,6 +277,8 @@ public sealed class ChatMessage : INotifyPropertyChanged
         }
     }
     public bool IsDeleted { get; set; }
+    /// <summary>Server-specified expiry for disappearing messages.</summary>
+    public DateTime? ExpiresAt { get; set; }
     public string EditedLabel => IsEdited ? "(معدلة)" : string.Empty;
     public string DateSeparatorText { get; set; } = string.Empty;
     public bool HasDateSeparator => !string.IsNullOrWhiteSpace(DateSeparatorText);

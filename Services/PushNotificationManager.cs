@@ -559,7 +559,7 @@ public sealed class PushNotificationManager
                 _chat.AddRemoteMessage(conversation.Id, message.Text, message.SentAt.LocalDateTime, isMine,
                     message.Id.ToString("D"), message.AttachmentFileName, message.AttachmentContentType,
                     message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"),
-                    message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted));
+                    message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted, message.ExpiresAt?.LocalDateTime));
 
             // Persist first regardless of mute state. Muting suppresses notifications;
             // it must never stop the message from reaching the local conversation cache.
@@ -649,7 +649,7 @@ public sealed class PushNotificationManager
                         localConversation.Id, message.Text, message.SentAt.LocalDateTime, isMine,
                         message.Id.ToString("D"), message.AttachmentFileName, message.AttachmentContentType,
                         message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"),
-                        message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted);
+                        message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted, message.ExpiresAt?.LocalDateTime);
                     if (added && !isMine)
                         newlyAddedIncomingIds.Add(message.Id);
                 }
