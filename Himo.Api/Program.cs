@@ -3593,7 +3593,7 @@ LIMIT 1;";
     !Guid.TryParse(reader.GetString(1), out var actualConversationId) ||
     !Guid.TryParse(reader.GetString(2), out var actualSenderId) ||
     reader.IsDBNull(3) || reader.IsDBNull(4) ||
-    !DateTimeOffset.TryParse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var sentAt) ||
+    !DateTimeOffset.TryParse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out  sentAt) ||
     reader.IsDBNull(6) || reader.IsDBNull(7) || reader.IsDBNull(8))
         {
             throw new InvalidOperationException("Stored message row is invalid.");
