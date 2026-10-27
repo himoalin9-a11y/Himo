@@ -5,13 +5,13 @@ using Google.Apis.Auth.OAuth2;
 sealed class FcmPushService
 {
     private readonly ILogger<FcmPushService> _logger;
-    private readonly PostgresStore _store;
+    private readonly MongoStore _store;
     private readonly FirebaseMessaging? _messaging;
 
     public bool IsEnabled => _messaging is not null;
     public string? ProjectId { get; private set; }
 
-    public FcmPushService(ILogger<FcmPushService> logger, IHostEnvironment environment, PostgresStore store)
+    public FcmPushService(ILogger<FcmPushService> logger, IHostEnvironment environment, MongoStore store)
     {
         _logger = logger;
         _store = store;

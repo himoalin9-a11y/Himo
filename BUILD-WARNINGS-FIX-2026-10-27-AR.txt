@@ -1,0 +1,7 @@
+إصلاحات أخطاء البناء — 27 أكتوبر 2026
+
+1) MongoStore.cs: تم تمرير ExpressionFieldDefinition إلى MongoDB.Driver Filter.Regex لتصحيح عدم توافق وسيط Expression<Func<T,string?>> مع FieldDefinition<T>.
+2) Program.cs: استبدال ForwardedHeadersOptions.KnownNetworks بـ KnownIPNetworks وفق واجهة .NET الحديثة.
+3) Platforms/Android/MainActivity.cs: استخدام WindowInsetsController على Android 11+، مع إبقاء SystemUiFlags كمسار توافق للأجهزة الأقدم وإحاطة ذلك بتعطيل تحذير CA1422 محليًا.
+
+ملاحظة: لم تتوفر .NET SDK أو Android workload في بيئة تعديل الملفات، لذلك لم يمكن تنفيذ dotnet build هنا. تحذيرا nullable اللذان وردا من دون اسم ملف أو رقم سطر لا يمكن نسبتهما بأمان إلى موضع واحد؛ يلزم استخدام تفاصيل التحذير من قائمة أخطاء Visual Studio إذا استمرا.

@@ -1,21 +1,45 @@
 # Himo.Api
 
-Backend API for Himo.
+ASP.NET Core 10 API for the Himo MAUI application.
 
-## v21
-- Messages now include `SenderUserId` in API responses.
-- The MAUI client polls the active conversation every 2 seconds while it is open.
-- Incoming messages are identified using the signed-in phone number and stored with their remote message id to prevent duplicates.
+## Production deployment (Render + MongoDB Atlas)
 
-Email verification is the current mobile registration flow. Legacy phone/SMS OTP code remains only for backward-compatible API paths and is not used by the current mobile UI.
+This API stores accounts, sessions, contacts, conversations, messages, message receipts, and push tokens in MongoDB Atlas. The previous PostgreSQL/Npgsql persistence layer has been replaced by `MongoStore` using `MongoDB.Driver`.
 
+### Required Render environment variables
 
-## v48
-- API is explicitly bound to `http://0.0.0.0:5080` so physical Android devices on the same LAN can connect.
-- Android emulator can continue using `http://10.0.2.2:5080/`.
-- Physical phone should use the PC LAN address, for example `http://192.168.8.85:5080/`.
+- `MONGODB_URI`: the Atlas connection string. Put credentials only in Render's secret environment settings; never commit a real URI.
+- `MONGODB_DATABASE`: database name; the supplied Render Blueprint defaults to `himo`.
+- `ASPNETCORE_ENVIRONMENT`: `Production`.
 
+Render sets `PORT` itself (typically `10000`). `Program.cs` binds Kestrel to the injected `PORT`, and `Dockerfile` exposes port `10000` as a container fallback. Do not define a conflicting `PORT` value manually in a Blueprint.
 
-## External production database
+Optional integration variables:
 
-The hosted API uses Supabase PostgreSQL through the `DATABASE_URL` environment variable. SQLite is no longer used by the API. Set `DATABASE_URL` only in Render Environment Variables; do not place the database password in the Android app or source repository. The `/health` endpoint reports the database connection state.
+- `HIMO_FIREBASE_SERVICE_ACCOUNT_JSON` enables Firebase Cloud Messaging. Keep the full JSON value as a secret.
+- `HIMO_SMS_ACCOUNT_SID`, `HIMO_SMS_AUTH_TOKEN`, and `HIMO_SMS_FROM` are used if SMS verification is enabled in the configured server path.
+- `ICE_SERVERS` may be retained for deployments that already use it; the client also has its own WebRTC configuration.
+
+### Render root and Docker paths
+
+If the repository root contains the `Himo.Api` folder, set Render **Root Directory** to `Himo.Api`; then `Dockerfile` and `render.yaml` are relative to that folder. If the repository root itself is the contents of `Himo.Api`, leave Root Directory blank. Do not set it to `Himo.Api/Properties`.
+
+### Health endpoints
+
+- `/health`: liveness endpoint for Render; confirms the process is responding.
+- `/health/database`: pings MongoDB and verifies that application indexes can be initialized; returns `degraded` if Atlas connection or index initialization fails.
+- `/health/push`: reports Firebase status and registered push-token count.
+
+### First deployment and existing PostgreSQL data
+
+The MongoDB store creates its indexes on first use. The MongoDB change does **not** automatically import records from a previous PostgreSQL/Supabase database; existing accounts, messages, and attachments need a separate migration/export-import if they must be preserved. Do not delete the old database until you have verified MongoDB data and app flows.
+
+### Local build
+
+```powershell
+dotnet restore .\Himo.Api.csproj
+dotnet build .\Himo.Api.csproj -c Release
+dotnet run --project .\Himo.Api.csproj
+```
+
+For local execution configure `MONGODB_URI` and `MONGODB_DATABASE` in the process environment. This project targets .NET 10.

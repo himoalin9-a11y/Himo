@@ -1,4 +1,4 @@
-﻿using Microsoft.Maui;
+using Microsoft.Maui;
 using Microsoft.Maui.Platform;
 using Plugin.Firebase.CloudMessaging;
 
@@ -68,13 +68,14 @@ public class MainActivity : MauiAppCompatActivity
         // running both navigation retries was one source of stacked call screens.
         ClearPendingConversation();
         _pendingCallConversationId = conversationId;
-        _pendingCallMode = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio";
+        var normalizedMode = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio";
+        _pendingCallMode = normalizedMode;
         _pendingCallId = Guid.TryParse(callId, out var parsedCallId) && parsedCallId != Guid.Empty
             ? parsedCallId.ToString("D")
             : null;
 
         Preferences.Default.Set(PendingCallConversationPreferenceKey, conversationId);
-        Preferences.Default.Set(PendingCallModePreferenceKey, _pendingCallMode);
+        Preferences.Default.Set(PendingCallModePreferenceKey, normalizedMode);
         if (_pendingCallId is not null)
             Preferences.Default.Set(PendingCallIdPreferenceKey, _pendingCallId);
         else
@@ -263,8 +264,23 @@ public class MainActivity : MauiAppCompatActivity
     {
         try
         {
+            // Android 11+ uses WindowInsetsController; SystemUiFlags is retained only
+            // as a compatibility path for older Android versions.
+            if (OperatingSystem.IsAndroidVersionAtLeast(30))
+            {
+                var controller = Window?.InsetsController;
+                if (controller is null) return;
+                controller.Hide(
+                    global::Android.Views.WindowInsets.Type.StatusBars() |
+                    global::Android.Views.WindowInsets.Type.NavigationBars());
+                controller.SystemBarsBehavior = (int)
+                    global::Android.Views.WindowInsetsControllerBehavior.ShowTransientBarsBySwipe;
+                return;
+            }
+
             var decor = Window?.DecorView;
             if (decor is null) return;
+#pragma warning disable CA1422 // Required compatibility path for Android versions below API 30.
             decor.SystemUiFlags =
                 global::Android.Views.SystemUiFlags.LayoutStable |
                 global::Android.Views.SystemUiFlags.LayoutHideNavigation |
@@ -272,6 +288,7 @@ public class MainActivity : MauiAppCompatActivity
                 global::Android.Views.SystemUiFlags.HideNavigation |
                 global::Android.Views.SystemUiFlags.Fullscreen |
                 global::Android.Views.SystemUiFlags.ImmersiveSticky;
+#pragma warning restore CA1422
         }
         catch (Exception ex)
         {
@@ -284,13 +301,14 @@ public class MainActivity : MauiAppCompatActivity
         try
         {
             var background = global::Android.Graphics.Color.ParseColor("#10071A");
-            if (Window is null) return;
-            Window.SetBackgroundDrawable(new global::Android.Graphics.Drawables.ColorDrawable(background));
+            var window = Window;
+            if (window is null) return;
+            window.SetBackgroundDrawable(new global::Android.Graphics.Drawables.ColorDrawable(background));
 #pragma warning disable CA1422 // Android 15+ controls these bars through edge-to-edge APIs; retain compatibility with earlier Android versions.
-            Window.SetStatusBarColor(background);
-            Window.SetNavigationBarColor(global::Android.Graphics.Color.ParseColor("#10071A"));
+            window.SetStatusBarColor(background);
+            window.SetNavigationBarColor(global::Android.Graphics.Color.ParseColor("#10071A"));
 #pragma warning restore CA1422
-            Window.DecorView?.SetBackgroundColor(background);
+            window.DecorView?.SetBackgroundColor(background);
         }
         catch (Exception ex)
         {

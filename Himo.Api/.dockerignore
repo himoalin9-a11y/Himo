@@ -1,8 +1,21 @@
+# Build outputs and IDE state
 bin/
 obj/
-App_Data/*.db
-App_Data/*.db-shm
-App_Data/*.db-wal
+.vs/
+publish/
 *.user
 *.suo
-.vs/
+
+# Local databases, uploads, environment files, and secrets must never enter image layers
+App_Data/
+.env
+.env.*
+**/.env
+**/.env.*
+**/*service-account*.json
+**/*credentials*.json
+**/*.pfx
+**/*.p12
+**/*.jks
+**/*.pem
+**/*.key

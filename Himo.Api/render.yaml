@@ -7,15 +7,29 @@ services:
     dockerContext: .
     healthCheckPath: /health
     envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
       - key: ASPNETCORE_URLS
-        value: http://0.0.0.0:8080
-      - key: DATABASE_URL
+        value: http://0.0.0.0:10000
+      - key: MONGODB_URI
         sync: false
+      - key: MONGODB_DATABASE
+        value: himo
       - key: HIMO_FIREBASE_SERVICE_ACCOUNT_JSON
         sync: false
+      - key: HIMO_EMAIL_API_KEY
+        sync: false
+      - key: HIMO_EMAIL_FROM
+        sync: false
+      - key: HIMO_EMAIL_FROM_NAME
+        value: Himo
       - key: HIMO_SMS_ACCOUNT_SID
         sync: false
       - key: HIMO_SMS_AUTH_TOKEN
         sync: false
       - key: HIMO_SMS_FROM
+        sync: false
+      - key: ICE_SERVERS
+        sync: false
+      - key: JWT_SECRET
         sync: false

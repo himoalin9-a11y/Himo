@@ -1,9 +1,17 @@
 # Himo.Api production environment template
-# Replace the placeholders on the SERVER only. Never commit real values.
-# Persistent data directory for the API database. On a Linux host, point this to persistent storage.
-HIMO_DATA_DIR=/var/lib/himo
-ASPNETCORE_URLS=http://0.0.0.0:5080
+# Set these values in Render Dashboard > Himo API > Environment.
+# Never commit actual credentials or paste them into chat.
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-host>/himo?retryWrites=true&w=majority
+MONGODB_DATABASE=himo
+ASPNETCORE_ENVIRONMENT=Production
+# Render sets PORT automatically (usually 10000). Do not hardcode or overwrite it in Render.
+# Local development can use ASPNETCORE_URLS=http://0.0.0.0:5080
+HIMO_EMAIL_API_KEY=YOUR_BREVO_API_KEY
+HIMO_EMAIL_FROM=YOUR_VERIFIED_BREVO_SENDER_EMAIL
+HIMO_EMAIL_FROM_NAME=Himo
 HIMO_SMS_ACCOUNT_SID=YOUR_TWILIO_ACCOUNT_SID
 HIMO_SMS_AUTH_TOKEN=YOUR_TWILIO_AUTH_TOKEN
 HIMO_SMS_FROM=YOUR_TWILIO_SENDER
 HIMO_FIREBASE_SERVICE_ACCOUNT_JSON=PASTE_FIREBASE_SERVICE_ACCOUNT_JSON_ON_SERVER_ONLY
+ICE_SERVERS=KEEP_YOUR_EXISTING_VALUE_IF_USED
+JWT_SECRET=KEEP_YOUR_EXISTING_SECRET_VALUE_IF_USED
