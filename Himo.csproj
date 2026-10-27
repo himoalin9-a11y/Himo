@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net10.0-android36.0</TargetFrameworks>
@@ -41,6 +41,11 @@
 
   <!-- Explicit Debug configuration: Visual Studio can attach the Android debugger. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <!-- Use the debug manifest that removes launcher filters from icon aliases.
+         This makes Visual Studio launch the stable LauncherIconDefault activity,
+         rather than a LauncherIconHomeDefault alias that may be disabled by icon switching. -->
+    <AndroidManifest>Platforms\Android\AndroidManifest.Debug.xml</AndroidManifest>
+    <AndroidLaunchActivity>com.companyname.himo.LauncherIconDefault</AndroidLaunchActivity>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>Embedded</DebugType>
     <Optimize>false</Optimize>
