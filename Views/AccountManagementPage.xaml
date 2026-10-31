@@ -203,9 +203,9 @@
                             <Image Grid.Column="0" Source="himo_s8_account_chevron.png" WidthRequest="17" HeightRequest="17"
                                    Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
                             <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center" FlowDirection="RightToLeft">
-                                <Label Text="إضافة حساب" FontSize="15" FontAttributes="Bold"
+                                <Label Text="تسجيل الدخول" FontSize="15" FontAttributes="Bold"
                                        TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
-                                <Label Text="فتح صفحة تسجيل الدخول بحساب آخر" FontSize="11.5"
+                                <Label Text="الدخول بحساب آخر على هذا الجهاز" FontSize="11.5"
                                        TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
                             </VerticalStackLayout>
                             <Border Grid.Column="2" WidthRequest="44" HeightRequest="44"
@@ -218,6 +218,37 @@
                             </Border>
                         </Grid>
                     </VerticalStackLayout>
+                </Border>
+
+                <Label Text="إجراءات الحساب" FontSize="14.5" FontAttributes="Bold"
+                       TextColor="{DynamicResource HimoPrimary}"
+                       Margin="3,3,3,0" HorizontalTextAlignment="Start" />
+                <Border BackgroundColor="{DynamicResource HimoCard}"
+                        Stroke="{DynamicResource HimoBorder}" StrokeThickness="1"
+                        Padding="8,2">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
+                    <Grid HeightRequest="76" ColumnDefinitions="24,*,44" ColumnSpacing="4"
+                          FlowDirection="LeftToRight">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OpenAccountActionsPage" />
+                        </Grid.GestureRecognizers>
+                        <Image Grid.Column="0" Source="himo_s8_account_chevron.png" WidthRequest="17" HeightRequest="17"
+                               Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center" FlowDirection="RightToLeft">
+                            <Label Text="إدارة الجلسات وحذف الحساب" FontSize="15" FontAttributes="Bold"
+                                   TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
+                            <Label Text="الخروج من الأجهزة أو حذف الحساب نهائيًا" FontSize="11.5"
+                                   TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
+                        </VerticalStackLayout>
+                        <Border Grid.Column="2" WidthRequest="44" HeightRequest="44"
+                                BackgroundColor="{DynamicResource HimoSoft}"
+                                Stroke="{DynamicResource HimoBorder}" StrokeThickness="0.8"
+                                VerticalOptions="Center" HorizontalOptions="End">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+                            <Image Source="himo_pro_ui_settings_icon_shield.png" WidthRequest="23" HeightRequest="23"
+                                   Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                    </Grid>
                 </Border>
 
                 <Grid ColumnDefinitions="18,*" ColumnSpacing="7" Padding="3,2,3,0"

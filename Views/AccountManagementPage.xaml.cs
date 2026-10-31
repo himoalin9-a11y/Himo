@@ -8,14 +8,19 @@ public partial class AccountManagementPage : ContentPage
     private readonly HimoApiClient _api;
     private readonly AccountService _account;
     private readonly ProfileService _profile;
+    private readonly ChatService _chat;
+    private readonly INotificationService _notifications;
 
-    public AccountManagementPage(HimoApiClient api, AccountService account, ProfileService profile)
+    public AccountManagementPage(HimoApiClient api, AccountService account, ProfileService profile,
+        ChatService chat, INotificationService notifications)
     {
         InitializeComponent();
         Himo.Services.AppLocalization.AttachToPage(this);
         _api = api;
         _account = account;
         _profile = profile;
+        _chat = chat;
+        _notifications = notifications;
         RegisterChildRoutes();
         UpdateSummaryFromLocalAccount();
         DisplayAccountPhoto(_profile.Profile.PhotoPath);
@@ -143,6 +148,18 @@ public partial class AccountManagementPage : ContentPage
 
     private async void OpenAddAccountPage(object? sender, TappedEventArgs e) =>
         await NavigateAsync("account-add", () => new AddAccountPage(_api, _account, _profile));
+
+    private async void OpenAccountActionsPage(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            await Navigation.PushAsync(new AccountActionsPage(_api, _account, _chat, _notifications));
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("إجراءات الحساب", "تعذر فتح الصفحة: " + ex.Message, "حسنًا");
+        }
+    }
 
     private async void BackClicked(object? sender, EventArgs e)
     {

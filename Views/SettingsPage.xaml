@@ -421,40 +421,33 @@
                     </VerticalStackLayout>
                 </Border>
 
-                <!-- Delete account action, intentionally the only destructive accent. -->
-                <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.2" Padding="13">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="19" /></Border.StrokeShape>
-                    <Grid ColumnDefinitions="36,*,42" ColumnSpacing="0" FlowDirection="LeftToRight">
-                        <Image Grid.Column="0" Source="himo_pro_ui_settings_icon_chevron.png" WidthRequest="16" HeightRequest="16"
-                               HorizontalOptions="Center" VerticalOptions="Center" Aspect="AspectFit" />
-                        <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center"
-                                             FlowDirection="RightToLeft">
-                            <Label Text="حذف الحساب" FontSize="14.5" FontAttributes="Bold"
-                                   TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
-                            <Label Text="إجراء حذف نهائي لحسابك وجميع بياناتك" FontSize="11"
-                                   TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
-                        </VerticalStackLayout>
-                        <Border Grid.Column="2" WidthRequest="40" HeightRequest="40"
-                                BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0" HorizontalOptions="End">
-                            <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
-                            <Image Source="himo_pro_ui_settings_icon_trash.png" WidthRequest="22" HeightRequest="22"
+                <!-- App distribution link -->
+                <Label Text="حول Himo" FontSize="14" FontAttributes="Bold"
+                       TextColor="{DynamicResource HimoPrimary}" Margin="2,2,2,0" HorizontalTextAlignment="Start" />
+                <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="0">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                    <Grid Padding="13,11" ColumnDefinitions="30,*,42" ColumnSpacing="0"
+                          FlowDirection="LeftToRight" MinimumHeightRequest="68">
+                        <Border Grid.Column="2" WidthRequest="42" HeightRequest="42"
+                                BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" HorizontalOptions="End">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
+                            <Image Source="himo_pro_ui_settings_icon_globe.png" WidthRequest="23" HeightRequest="23"
                                    Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
                         </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="3" HorizontalOptions="Fill" VerticalOptions="Center"
+                                             FlowDirection="RightToLeft">
+                            <Label Text="رابط التطبيق" FontSize="14.5" FontAttributes="Bold"
+                                   TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
+                            <Label Text="مشاركة رابط تنزيل Himo" FontSize="11"
+                                   TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
+                        </VerticalStackLayout>
+                        <Image Grid.Column="0" Source="himo_pro_ui_settings_icon_chevron.png" WidthRequest="16" HeightRequest="16"
+                               HorizontalOptions="Center" VerticalOptions="Center" Aspect="AspectFit" />
                         <Grid.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="DeleteAccountRowTapped" />
+                            <TapGestureRecognizer Tapped="AppDownloadLinkTapped" />
                         </Grid.GestureRecognizers>
                     </Grid>
                 </Border>
-
-                <!-- Keep account-session actions available below the main reference layout. -->
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="9">
-                    <Button Grid.Column="0" Text="تسجيل الخروج" Clicked="LogoutClicked"
-                            HeightRequest="42" CornerRadius="14" FontSize="11"
-                            BackgroundColor="{DynamicResource HimoSoft}" TextColor="{DynamicResource HimoTextSecondary}" />
-                    <Button Grid.Column="1" Text="الخروج من جميع الأجهزة" Clicked="LogoutAllClicked"
-                            HeightRequest="42" CornerRadius="14" FontSize="11"
-                            BackgroundColor="{DynamicResource HimoSoft}" TextColor="{DynamicResource HimoTextSecondary}" />
-                </Grid>
             </VerticalStackLayout>
         </ScrollView>
 

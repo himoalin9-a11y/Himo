@@ -109,6 +109,30 @@ public sealed class HimoApiClient
     private void ApplyToken() =>
         ApplyToken(_http, _accessToken);
 
+    public async Task<string?> GetAppDownloadUrlAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync("api/app-info", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var appInfo = await response.Content.ReadFromJsonAsync<AppInfoResponse>(
+            cancellationToken: cancellationToken);
+        var candidate = appInfo?.DownloadUrl?.Trim();
+
+        if (!Uri.TryCreate(candidate, UriKind.Absolute, out var downloadUri) ||
+            downloadUri.Scheme != Uri.UriSchemeHttps)
+        {
+            return null;
+        }
+
+        return downloadUri.ToString();
+    }
+
+    private sealed class AppInfoResponse
+    {
+        public string? DownloadUrl { get; set; }
+    }
+
     public async Task<bool> HealthAsync(
         CancellationToken cancellationToken = default)
     {

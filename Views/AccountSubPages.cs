@@ -895,7 +895,7 @@ public sealed class AddAccountPage : AccountSubPageBase
     private int _busy;
 
     public AddAccountPage(HimoApiClient api, AccountService account, ProfileService profile)
-        : base("إضافة حساب", "تسجيل الدخول باستخدام حساب آخر")
+        : base("تسجيل الدخول", "الدخول باستخدام حساب آخر")
     {
         _api = api; _account = account; _profile = profile;
         _loginButton = PrimaryButton("تسجيل الدخول", LoginClicked);

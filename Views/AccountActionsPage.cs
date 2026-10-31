@@ -21,7 +21,7 @@ public sealed class AccountActionsPage : Himo.Services.LocalizedContentPage
         _account = account ?? throw new ArgumentNullException(nameof(account));
         _chat = chat ?? throw new ArgumentNullException(nameof(chat));
         _notifications = notifications ?? throw new ArgumentNullException(nameof(notifications));
-        Title = "الحساب";
+        Title = "إجراءات الحساب";
         FlowDirection = FlowDirection.RightToLeft;
         Shell.SetNavBarIsVisible(this, false);
         SetDynamicResource(BackgroundColorProperty, "HimoBackground");
@@ -58,9 +58,9 @@ public sealed class AccountActionsPage : Himo.Services.LocalizedContentPage
         header.Add(back, 0, 0);
 
         var titleStack = new VerticalStackLayout { Spacing = 1, HorizontalOptions = LayoutOptions.End, VerticalOptions = LayoutOptions.Center, FlowDirection = FlowDirection.RightToLeft };
-        var title = new Label { Text = "الحساب", FontSize = 24, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Start };
+        var title = new Label { Text = "إجراءات الحساب", FontSize = 24, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Start };
         title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
-        var subtitle = new Label { Text = "إدارة جلساتك وإجراءات حسابك", FontSize = 12, HorizontalTextAlignment = TextAlignment.Start };
+        var subtitle = new Label { Text = "إدارة جلساتك وأمان حسابك", FontSize = 12, HorizontalTextAlignment = TextAlignment.Start };
         subtitle.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
         titleStack.Add(title);
         titleStack.Add(subtitle);

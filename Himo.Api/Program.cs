@@ -154,6 +154,27 @@ webApp.MapGet("/health", () =>
     });
 });
 
+webApp.MapGet("/api/app-info", (IConfiguration configuration) =>
+{
+    var configuredUrl = configuration["HIMO_APP_DOWNLOAD_URL"]?.Trim();
+    if (!Uri.TryCreate(configuredUrl, UriKind.Absolute, out var downloadUri) ||
+        downloadUri.Scheme != Uri.UriSchemeHttps)
+    {
+        configuredUrl = null;
+    }
+    else
+    {
+        configuredUrl = downloadUri.ToString();
+    }
+
+    return Results.Ok(new
+    {
+        appName = "Himo",
+        downloadUrl = configuredUrl,
+        available = !string.IsNullOrWhiteSpace(configuredUrl)
+    });
+});
+
 webApp.MapGet("/health/database", (MongoStore store) =>
 {
     var database = store.GetHealthStatus();

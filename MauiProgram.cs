@@ -163,6 +163,8 @@ public static class MauiProgram
         // ContentPage instances have navigation state and must not be reused as singletons.
         builder.Services.AddTransient<Views.SettingsPage>();
         builder.Services.AddTransient<Views.AccountManagementPage>();
+        builder.Services.AddTransient<Views.AccountActionsPage>();
+        builder.Services.AddTransient<Views.AppDownloadLinkPage>();
         builder.Services.AddTransient<Views.AccountUsernamePage>();
         builder.Services.AddTransient<Views.AccountPhonePage>();
         builder.Services.AddTransient<Views.AccountLoginDetailsPage>();

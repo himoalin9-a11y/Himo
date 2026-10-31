@@ -13,7 +13,6 @@ namespace Himo.Views;
 public partial class SettingsPage : ContentPage
 {
 
-    private const string PushTokenKey = "himo_registered_fcm_token";
     private readonly HimoApiClient _api;
     private readonly AccountService _account;
     private readonly ProfileService _profile;
@@ -29,7 +28,6 @@ public partial class SettingsPage : ContentPage
     private bool _initializingNotificationPreviewSwitch;
     private bool _contactsSearchBusy;
     private bool _openingContactConversation;
-    private int _accountActionInProgress;
     private static int _accountRouteRegistered;
     private static int _privacyRoutesRegistered;
 
@@ -213,9 +211,6 @@ public partial class SettingsPage : ContentPage
 
     private async void ChatsNavTapped(object? sender, TappedEventArgs e) =>
         await SwipePageTransition.NavigateToHomeSectionAsync(this, "chats", SwipeDirection.Right);
-
-    private void DeleteAccountRowTapped(object? sender, TappedEventArgs e) =>
-        DeleteAccountClicked(sender, EventArgs.Empty);
 
 
     private async void IconsAndAppearanceTapped(object? sender, TappedEventArgs e)
@@ -667,121 +662,15 @@ public partial class SettingsPage : ContentPage
         }
     }
 
-    private async void DeleteAccountClicked(object? sender, EventArgs e)
+    private async void AppDownloadLinkTapped(object? sender, TappedEventArgs e)
     {
-        if (Interlocked.Exchange(ref _accountActionInProgress, 1) != 0) return;
         try
         {
-            var confirm = await DisplayAlertAsync(
-                "حذف الحساب",
-                "سيتم حذف حسابك وبياناته ومحادثاتك من الخادم نهائيًا. لا يمكن التراجع عن هذه العملية.",
-                "حذف نهائي",
-                "إلغاء");
-            if (!confirm) return;
-
-            try
-            {
-                await _api.DeleteAccountAsync();
-            }
-            catch (Exception ex)
-            {
-                await DisplayAlertAsync("حذف الحساب", $"تعذر حذف الحساب: {ex.Message}", "حسنًا");
-                return;
-            }
-
-            try { await _notifications.ClearAllAsync(); } catch { }
-            _account.SignOut();
-            _chat.ClearAll();
-            _api.ClearToken();
-            Preferences.Default.Remove(PushTokenKey);
-
-            var window = Application.Current?.Windows.FirstOrDefault();
-            if (window is not null)
-                window.Page = new LoginPage(_account, _api);
+            await Navigation.PushAsync(new AppDownloadLinkPage(_api));
         }
-        finally
+        catch (Exception ex)
         {
-            Interlocked.Exchange(ref _accountActionInProgress, 0);
-        }
-    }
-
-
-    private async void LogoutAllClicked(object sender, EventArgs e)
-    {
-        if (Interlocked.Exchange(ref _accountActionInProgress, 1) != 0) return;
-        try
-        {
-            var confirm = await DisplayAlertAsync("تسجيل الخروج من جميع الأجهزة",
-                "سيتم إنهاء جميع جلسات Himo وإيقاف إشعارات الأجهزة المسجلة. هل تريد المتابعة؟",
-                "متابعة", "إلغاء");
-            if (!confirm) return;
-
-            try
-            {
-                await _api.LogoutAllAsync();
-            }
-            catch (Exception ex)
-            {
-                await DisplayAlertAsync("تسجيل الخروج", $"تعذر تنفيذ العملية: {ex.Message}", "حسنًا");
-                return;
-            }
-
-            try { await _notifications.ClearAllAsync(); } catch { }
-            _account.SignOut();
-            _chat.ClearAll();
-            _api.ClearToken();
-            Preferences.Default.Remove(PushTokenKey);
-
-            var window = Application.Current?.Windows.FirstOrDefault();
-            if (window is not null)
-                window.Page = new LoginPage(_account, _api);
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _accountActionInProgress, 0);
-        }
-    }
-
-    private async void LogoutClicked(object sender, EventArgs e)
-    {
-        if (Interlocked.Exchange(ref _accountActionInProgress, 1) != 0) return;
-        try
-        {
-            var confirm = await DisplayAlertAsync("تسجيل الخروج", "هل تريد تسجيل الخروج من هذا الجهاز؟", "خروج", "إلغاء");
-            if (!confirm) return;
-
-            string? logoutError = null;
-            try
-            {
-#if ANDROID
-                if (Application.Current is App app)
-                    await app.UnregisterCurrentPushTokenAsync();
-#endif
-                await _api.LogoutAsync();
-            }
-            catch (Exception ex)
-            {
-                logoutError = ex.Message;
-            }
-            finally
-            {
-                try { await _notifications.ClearAllAsync(); } catch { }
-                _account.SignOut();
-                _chat.ClearAll();
-                _api.ClearToken();
-                Preferences.Default.Remove(PushTokenKey);
-
-                var window = Application.Current?.Windows.FirstOrDefault();
-                if (window is not null)
-                    window.Page = new LoginPage(_account, _api);
-            }
-
-            if (!string.IsNullOrWhiteSpace(logoutError))
-                await DisplayAlertAsync("تسجيل الخروج", "تم تسجيل الخروج من هذا الجهاز، لكن تعذر إكمال تسجيل الخروج من الخادم. يمكنك المتابعة وتسجيل الدخول لاحقًا.", "حسنًا");
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _accountActionInProgress, 0);
+            await DisplayAlertAsync("رابط التطبيق", "تعذر فتح صفحة رابط التطبيق: " + ex.Message, "حسنًا");
         }
     }
 
