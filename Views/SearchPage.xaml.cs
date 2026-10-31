@@ -294,34 +294,221 @@ public partial class SearchPage : ContentPage
         try
         {
             if (!immediate)
-                await Task.Delay(180, token);
+                await Task.Delay(260, token);
 
             var snapshot = _allEntries.ToArray();
             var matching = await Task.Run(
                 () => snapshot.Where(contact => contact.Matches(query, normalizedPhoneQuery)).ToList(), token);
             token.ThrowIfCancellationRequested();
 
+            // The old implementation filtered only the phone book. It never called
+            // the server for what the user typed, so email / arbitrary phone / name
+            // searches could never find accounts that were not already local matches.
+            // Use the already-deployed authenticated group-search endpoint for typed
+            // account searches; no address-book names or emails are uploaded.
+            var remoteQuery = BuildRemoteSearchQuery(query, normalizedPhoneQuery);
+            var remoteEntries = new List<DeviceContactEntry>();
+            var remoteSearchFailed = false;
+
+            if (!string.IsNullOrWhiteSpace(remoteQuery))
+            {
+                await _api.TokenInitialization;
+                if (_api.HasToken)
+                {
+                    if (!token.IsCancellationRequested && ReferenceEquals(_filterCts, cts))
+                    {
+                        ContactsLoadIndicator.IsVisible = true;
+                        ContactsLoadIndicator.IsRunning = true;
+                        ContactsStatusLabel.Text = "جارٍ البحث في حسابات Himo...";
+                    }
+
+                    try
+                    {
+                        var users = await _api.SearchGroupMembersAsync(remoteQuery, token);
+                        token.ThrowIfCancellationRequested();
+
+                        var knownIds = matching
+                            .Where(contact => contact.HimoUserId.HasValue)
+                            .Select(contact => contact.HimoUserId!.Value)
+                            .ToHashSet();
+
+                        var conversations = _home.Conversations
+                            .Where(item => !item.IsGroup && item.OtherParticipantUserId.HasValue)
+                            .GroupBy(item => item.OtherParticipantUserId!.Value)
+                            .ToDictionary(group => group.Key, group => group.OrderByDescending(item => item.UpdatedAt).First());
+
+                        foreach (var user in users)
+                        {
+                            if (user.Id == _myProfile?.UserId || knownIds.Contains(user.Id))
+                                continue;
+
+                            // SearchGroupMembersAsync returns the account email for an
+                            // email query, the matched phone for an opted-in phone query,
+                            // and an empty detail for a name query.
+                            var detail = user.Email?.Trim() ?? string.Empty;
+                            var isEmail = detail.Contains('@');
+                            var emailDisplay = isEmail ? detail : string.Empty;
+                            // This field is the visible secondary line in the row;
+                            // show the searched email there as well as phone numbers.
+                            var phoneDisplay = detail;
+                            var normalizedPhones = string.IsNullOrWhiteSpace(phoneDisplay)
+                                ? Array.Empty<string>()
+                                : new[] { NormalizePhoneForMatching(phoneDisplay, _phoneRegionIso) }
+                                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                                    .ToArray();
+
+                            conversations.TryGetValue(user.Id, out var previousConversation);
+
+                            // When a remote account matches one of the visible local
+                            // contacts, upgrade that row instead of showing a duplicate
+                            // "Invite" row beside the account result.
+                            var localMatchIndex = -1;
+                            if (isEmail)
+                            {
+                                localMatchIndex = matching.FindIndex(contact =>
+                                    !contact.HasHimoAccount &&
+                                    contact.EmailAddressesDisplay.Contains(detail, StringComparison.OrdinalIgnoreCase));
+                            }
+                            else if (normalizedPhones.Length > 0)
+                            {
+                                var remoteDigits = normalizedPhones[0];
+                                localMatchIndex = matching.FindIndex(contact =>
+                                    !contact.HasHimoAccount &&
+                                    contact.NormalizedPhoneNumbers.Contains(remoteDigits, StringComparer.Ordinal));
+                            }
+
+                            if (localMatchIndex >= 0)
+                            {
+                                var local = matching[localMatchIndex];
+                                matching[localMatchIndex] = new DeviceContactEntry(
+                                    local.Name,
+                                    local.PhoneNumbersDisplay,
+                                    local.EmailAddressesDisplay,
+                                    local.NormalizedPhoneNumbers,
+                                    user.Id,
+                                    user.Name,
+                                    matchingCompleted: true,
+                                    isSelf: local.IsSelf,
+                                    isExistingConversation: previousConversation is not null,
+                                    hasRemoteProfilePhoto: previousConversation?.HasRemoteProfilePhoto ?? false,
+                                    profilePhotoVersion: previousConversation?.ProfilePhotoVersion ?? 0,
+                                    profilePhotoPath: previousConversation?.ProfilePhotoPath);
+                            }
+                            else
+                            {
+                                remoteEntries.Add(new DeviceContactEntry(
+                                    user.Name,
+                                    phoneDisplay,
+                                    emailDisplay,
+                                    normalizedPhones,
+                                    user.Id,
+                                    user.Name,
+                                    matchingCompleted: true,
+                                    isExistingConversation: previousConversation is not null,
+                                    hasRemoteProfilePhoto: previousConversation?.HasRemoteProfilePhoto ?? false,
+                                    profilePhotoVersion: previousConversation?.ProfilePhotoVersion ?? 0,
+                                    profilePhotoPath: previousConversation?.ProfilePhotoPath));
+                            }
+                            knownIds.Add(user.Id);
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        remoteSearchFailed = true;
+                        System.Diagnostics.Debug.WriteLine($"[Himo People Search] Remote search failed for '{remoteQuery}': {ex}");
+                    }
+                }
+            }
+
+            // The current user's email is intentionally excluded by the server's
+            // directory query. Still include the self-chat row when its own email
+            // is what the user typed.
+            if (!string.IsNullOrWhiteSpace(query) && _myProfile is not null &&
+                !string.IsNullOrWhiteSpace(_myProfile.Email) &&
+                _myProfile.Email.Contains(query, StringComparison.OrdinalIgnoreCase))
+            {
+                var selfEntry = snapshot.FirstOrDefault(contact => contact.IsSelf);
+                if (selfEntry is not null && matching.All(contact => contact.HimoUserId != selfEntry.HimoUserId))
+                    matching.Insert(0, selfEntry);
+            }
+
+            token.ThrowIfCancellationRequested();
+            var combined = matching.Concat(remoteEntries)
+                .OrderByDescending(contact => contact.IsSelf)
+                .ThenByDescending(contact => contact.HasHimoAccount)
+                .ThenBy(contact => contact.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 if (token.IsCancellationRequested || !ReferenceEquals(_filterCts, cts)) return;
-                _visibleContacts = matching;
-                ContactsList.ItemsSource = matching;
+                _visibleContacts = combined;
+                ContactsList.ItemsSource = combined;
 
-                if (_contactsLoaded)
-                {
-                    var total = _allEntries.Count;
-                    ContactsStatusLabel.Text = string.IsNullOrWhiteSpace(query)
-                        ? _discoveryCompleted
-                            ? $"على Himo: {matching.Count(contact => contact.HasHimoAccount)}   ·   جهات الاتصال: {total}"
-                            : $"جهات الاتصال: {total}"
-                        : $"النتائج: {matching.Count} من {total}";
-                }
+                var total = combined.Count;
+                if (remoteSearchFailed)
+                    ContactsStatusLabel.Text = $"النتائج المحلية: {matching.Count} · تعذر الاتصال ببحث الحسابات";
+                else if (!string.IsNullOrWhiteSpace(query))
+                    ContactsStatusLabel.Text = $"نتائج البحث: {total}";
+                else if (_contactsLoaded)
+                    ContactsStatusLabel.Text = _discoveryCompleted
+                        ? $"على Himo: {combined.Count(contact => contact.HasHimoAccount)}   ·   جهات الاتصال: {_allEntries.Count}"
+                        : $"جهات الاتصال: {_allEntries.Count}";
+
+                ContactsLoadIndicator.IsVisible = false;
+                ContactsLoadIndicator.IsRunning = false;
             });
+
+            if (remoteEntries.Count > 0)
+                _ = LoadContactPhotosAsync(remoteEntries);
         }
         catch (OperationCanceledException)
         {
-            // The newest query supersedes the previous filtering operation.
+            // The newest query supersedes the previous local/server search.
         }
+        finally
+        {
+            if (ReferenceEquals(_filterCts, cts))
+            {
+                ContactsLoadIndicator.IsVisible = false;
+                ContactsLoadIndicator.IsRunning = false;
+            }
+        }
+    }
+
+    private string BuildRemoteSearchQuery(string query, string normalizedPhoneQuery)
+    {
+        if (string.IsNullOrWhiteSpace(query) || query.Length < 3 || query.Length > 254)
+            return string.Empty;
+
+        if (query.Contains('@'))
+        {
+            var at = query.LastIndexOf('@');
+            var domain = at >= 0 && at < query.Length - 1 ? query[(at + 1)..] : string.Empty;
+            // Email lookup is exact on the server. Do not issue requests for incomplete
+            // addresses while the user is still typing.
+            return at > 0 && domain.Contains('.') && !domain.StartsWith('.') && !domain.EndsWith('.')
+                ? query.Trim().ToLowerInvariant()
+                : string.Empty;
+        }
+
+        var isPhoneLike = query.Any(char.IsDigit) && query.All(ch =>
+            char.IsDigit(ch) || char.IsWhiteSpace(ch) || ch is '+' or '-' or '(' or ')');
+        if (isPhoneLike)
+        {
+            // Normalize local input with the SIM's country and send E.164 digits.
+            // Explicit + / 00 international prefixes are retained by the normalizer.
+            if (normalizedPhoneQuery.Length is < 7 or > 15)
+                return string.Empty;
+            return "+" + normalizedPhoneQuery;
+        }
+
+        // The same endpoint searches display names for non-email, non-phone queries.
+        return query.Trim();
     }
 
     private async Task RebuildContactEntriesAsync()

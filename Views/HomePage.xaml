@@ -41,10 +41,11 @@
 
     <Grid RowDefinitions="Auto,Auto,*,Auto" BackgroundColor="{DynamicResource HimoBackground}">
         <!-- Clean surface: use palette colors without decorative glow layers. -->
-<!-- Compact welcome header with the profile button on the right. -->
+<!-- Centered welcome header: group action on the left and a larger profile button on the right. -->
         <Grid x:Name="HomeHeader" Grid.Row="0" Padding="15,7,15,7"
-              ColumnDefinitions="*,Auto" FlowDirection="LeftToRight">
-            <VerticalStackLayout Grid.Column="0" HorizontalOptions="End"
+              ColumnDefinitions="*,Auto,*" FlowDirection="LeftToRight">
+
+            <VerticalStackLayout Grid.Column="1" HorizontalOptions="End"
                                  VerticalOptions="Center" Spacing="2" FlowDirection="RightToLeft">
                 <Label Text="مرحبًا بعودتك" FontSize="16.5" FontAttributes="Bold"
                        TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="End" />
@@ -52,7 +53,7 @@
                        HorizontalTextAlignment="End" />
             </VerticalStackLayout>
 
-            <Border Grid.Column="1" WidthRequest="50" HeightRequest="50"
+            <Border Grid.Column="2" WidthRequest="50" HeightRequest="50"
                     BackgroundColor="{DynamicResource HimoSurface}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.6"
                     HorizontalOptions="End" VerticalOptions="Center">
                 <Border.StrokeShape><RoundRectangle CornerRadius="25" /></Border.StrokeShape>
@@ -332,17 +333,17 @@
             <Grid x:Name="PhoneSearchSection" IsVisible="False" RowDefinitions="Auto,Auto,*" Padding="15,7,15,0" RowSpacing="11" BackgroundColor="Transparent">
                 <VerticalStackLayout Grid.Row="0" Spacing="4" Padding="4,3">
                     <Label Text="ابحث عن الأشخاص" FontSize="22" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" />
-                    <Label Text="استخدم رقم الهاتف أو البريد الإلكتروني في حقل بحث واحد." FontSize="12.5" TextColor="{DynamicResource HimoPrimary}" />
+                    <Label Text="ابحث بالاسم أو البريد الإلكتروني أو رقم الهاتف." FontSize="12.5" TextColor="{DynamicResource HimoPrimary}" />
                 </VerticalStackLayout>
 
                 <Border Grid.Row="1" Padding="12" BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.2">
                     <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
                     <VerticalStackLayout Spacing="10">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                            <Entry x:Name="PhoneSearchEntry" Placeholder="رقم الهاتف أو البريد الإلكتروني" Keyboard="Text"
-                                   FlowDirection="LeftToRight" MaxLength="22"
+                            <Entry x:Name="PhoneSearchEntry" Placeholder="الاسم أو البريد الإلكتروني أو رقم الهاتف" Keyboard="Text"
+                                   FlowDirection="LeftToRight" MaxLength="254"
                                    PlaceholderColor="{DynamicResource HimoTextSecondary}" TextColor="{DynamicResource HimoPrimary}" BackgroundColor="{DynamicResource HimoCard}"
-                                   ClearButtonVisibility="WhileEditing" ReturnType="Search" Completed="PhoneSearchCompleted"
+                                   ClearButtonVisibility="WhileEditing" ReturnType="Search" Completed="PhoneSearchCompleted" TextChanged="PhoneSearchTextChanged"
                                    Margin="0" />
                             <Image Source="home_search_neon.png" Grid.Column="1" WidthRequest="21" HeightRequest="21" Margin="7,0,3,0" VerticalOptions="Center" />
                         </Grid>
@@ -364,7 +365,7 @@
                             <ActivityIndicator IsRunning="True" Color="{DynamicResource HimoAccent}" WidthRequest="20" HeightRequest="20" />
                             <Label Text="جارٍ البحث..." TextColor="{DynamicResource HimoTextSecondary}" FontSize="12" VerticalTextAlignment="Center" />
                         </HorizontalStackLayout>
-                        <Label Text="لرؤية قائمة جهات الاتصال كاملة، اضغط أيقونة البحث أعلى الشاشة. الحسابات بالرقم تظهر فقط عند تفعيل صاحبها خيار العثور عليه." FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" />
+                        <Label Text="ستظهر حسابات Himo المطابقة، ويمكنك فتح محادثة مباشرة من النتائج." FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" />
                     </VerticalStackLayout>
                 </Border>
 

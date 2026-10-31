@@ -153,6 +153,12 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
 
     private async Task HandleProfileLinkAsync(string value)
     {
+        if (TryParseGroupInviteLink(value, out var inviteCode))
+        {
+            await HandleGroupInviteAsync(inviteCode);
+            return;
+        }
+
         if (!TryParseProfileLink(value, out var userId, out var userName))
         {
             await DisplayAlertAsync("رمز غير صالح", "هذا الرمز لا يحتوي على رابط حساب Himo صالح.", "حسنًا");
@@ -215,6 +221,56 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
             await DisplayAlertAsync("تعذر فتح الحساب", ex.Message, "حسنًا");
             ScannerStatusLabel.Text = "لم نتمكن من فتح هذا الحساب. تحقق من الاتصال ثم جرّب مرة أخرى.";
         }
+    }
+
+    private async Task HandleGroupInviteAsync(string inviteCode)
+    {
+        try { await _api.TokenInitialization; }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo QR] Token initialization failed: {ex.Message}"); }
+        if (!_api.HasToken)
+        {
+            await DisplayAlertAsync("تسجيل الدخول", "سجّل الدخول إلى Himo قبل الانضمام إلى مجموعة.", "حسنًا");
+            return;
+        }
+
+        if (!await DisplayAlertAsync("دعوة مجموعة", "تم العثور على رابط دعوة إلى مجموعة Himo. هل تريد الانضمام؟", "انضمام", "إلغاء"))
+        {
+            ScannerStatusLabel.Text = "يمكنك مسح رمز آخر في أي وقت.";
+            return;
+        }
+
+        try
+        {
+            var group = await _api.JoinGroupByInviteAsync(inviteCode);
+            try { await _home.RefreshFromServerAsync(); }
+            catch (Exception refreshError) { System.Diagnostics.Debug.WriteLine($"[Himo QR] Group refresh failed: {refreshError.Message}"); }
+            if (Shell.Current is not null)
+                await SwipePageTransition.NavigateAsync(this, $"chat?id={Uri.EscapeDataString(group.Id.ToString("D"))}", SwipeDirection.Left);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("تعذر الانضمام", ex.Message, "حسنًا");
+            ScannerStatusLabel.Text = "تعذر الانضمام إلى المجموعة. تحقق من صلاحية رابط الدعوة.";
+        }
+    }
+
+    private static bool TryParseGroupInviteLink(string value, out string inviteCode)
+    {
+        inviteCode = string.Empty;
+        if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri) ||
+            !uri.Scheme.Equals("himo", StringComparison.OrdinalIgnoreCase) ||
+            !uri.Host.Equals("group", StringComparison.OrdinalIgnoreCase) ||
+            !Guid.TryParse(Uri.UnescapeDataString(uri.AbsolutePath).Trim('/'), out _))
+            return false;
+
+        foreach (var item in uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var pair = item.Split('=', 2);
+            if (pair.Length != 2 || !pair[0].Equals("invite", StringComparison.OrdinalIgnoreCase)) continue;
+            inviteCode = Uri.UnescapeDataString(pair[1]).Trim();
+            return inviteCode.Length is >= 16 and <= 80 && inviteCode.All(Uri.IsHexDigit);
+        }
+        return false;
     }
 
     private static bool TryParseProfileLink(string value, out Guid userId, out string name)

@@ -636,7 +636,7 @@ webApp.MapPost("/api/conversations/{id:guid}/disappearing", (Guid id, HttpReques
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
     if (!store.ExistsConversation(id, session.UserId)) return Results.NotFound();
-    if (request.Seconds is not (0 or 3600 or 86400 or 432000 or 2592000))
+    if (request.Seconds is not (0 or 3600 or 7200 or 86400 or 432000 or 2592000))
         return Results.BadRequest(new { message = "قيمة مؤقت الاختفاء غير مدعومة." });
     store.SetDisappearingSeconds(id, session.UserId, request.Seconds);
     return Results.Ok(new { seconds = request.Seconds });
@@ -793,6 +793,133 @@ webApp.MapPost("/api/groups", (HttpRequest http, CreateGroupRequest request, Mon
     }
 });
 
+webApp.MapPost("/api/groups/{id:guid}/members", (Guid id, HttpRequest http, AddGroupMembersRequest request, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    var memberIds = (request.UserIds ?? Array.Empty<Guid>()).Where(x => x != Guid.Empty && x != session.UserId).Distinct().ToArray();
+    try
+    {
+        var added = store.AddGroupMembers(id, session.UserId, memberIds);
+        return Results.Ok(new { conversationId = id, addedCount = added });
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "غير مسموح", detail: ex.Message);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+webApp.MapGet("/api/groups/{id:guid}", (Guid id, HttpRequest http, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    var details = store.GetGroupDetails(id, session.UserId);
+    return details is null ? Results.NotFound() : Results.Ok(details);
+});
+
+webApp.MapPut("/api/groups/{id:guid}", (Guid id, HttpRequest http, UpdateGroupInfoRequest request, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    try
+    {
+        if (!store.UpdateGroupInfo(id, session.UserId, request.Name ?? string.Empty, request.Description ?? string.Empty))
+            return Results.NotFound();
+        return Results.Ok(store.GetGroupDetails(id, session.UserId));
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "غير مسموح", detail: ex.Message);
+    }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { message = ex.Message }); }
+});
+
+webApp.MapGet("/api/groups/{id:guid}/photo", (Guid id, HttpRequest http, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    var photo = store.GetGroupPhoto(id, session.UserId);
+    if (photo is null) return Results.NotFound();
+    if (photo.Value.Data is not { Length: > 0 } bytes) return Results.NotFound();
+    return Results.File(bytes, photo.Value.ContentType);
+});
+
+webApp.MapPut("/api/groups/{id:guid}/photo", (Guid id, HttpRequest http, GroupPhotoUploadRequest request, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    var contentType = (request.ContentType ?? string.Empty).Trim().ToLowerInvariant();
+    if (contentType == "image/jpg") contentType = "image/jpeg";
+    if (!IsSupportedProfilePhotoType(contentType)) return Results.BadRequest(new { message = "صيغة الصورة غير مدعومة." });
+    if (string.IsNullOrWhiteSpace(request.Base64Data) || request.Base64Data.Length > 6 * 1024 * 1024)
+        return Results.BadRequest(new { message = "حجم الصورة غير صالح أو أكبر من 4 ميغابايت." });
+    byte[] bytes;
+    try { bytes = Convert.FromBase64String(request.Base64Data); }
+    catch (FormatException) { return Results.BadRequest(new { message = "بيانات الصورة غير صالحة." }); }
+    if (bytes.Length == 0 || bytes.Length > 4 * 1024 * 1024 || !IsValidProfilePhotoPayload(bytes, contentType))
+        return Results.BadRequest(new { message = "الملف ليس صورة مدعومة أو يتجاوز 4 ميغابايت." });
+    try
+    {
+        store.UpdateGroupPhoto(id, session.UserId, bytes, contentType);
+        return Results.Ok(new { hasPhoto = true });
+    }
+    catch (UnauthorizedAccessException ex) { return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "غير مسموح", detail: ex.Message); }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { message = ex.Message }); }
+});
+
+webApp.MapDelete("/api/groups/{id:guid}/photo", (Guid id, HttpRequest http, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    try { store.DeleteGroupPhoto(id, session.UserId); return Results.NoContent(); }
+    catch (UnauthorizedAccessException ex) { return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "غير مسموح", detail: ex.Message); }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { message = ex.Message }); }
+});
+
+webApp.MapPut("/api/groups/{id:guid}/members/{memberId:guid}/admin", (Guid id, Guid memberId, HttpRequest http, SetGroupMemberAdminRequest request, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    try
+    {
+        if (!store.PromoteGroupMember(id, session.UserId, memberId, request.IsAdmin)) return Results.NotFound();
+        return Results.Ok(new { memberId, isAdmin = request.IsAdmin });
+    }
+    catch (UnauthorizedAccessException ex) { return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "غير مسموح", detail: ex.Message); }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { message = ex.Message }); }
+});
+
+webApp.MapDelete("/api/groups/{id:guid}/members/{memberId:guid}", (Guid id, Guid memberId, HttpRequest http, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    try
+    {
+        if (!store.RemoveGroupMember(id, session.UserId, memberId)) return Results.NotFound();
+        return Results.NoContent();
+    }
+    catch (UnauthorizedAccessException ex) { return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "غير مسموح", detail: ex.Message); }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { message = ex.Message }); }
+});
+
+webApp.MapGet("/api/groups/{id:guid}/invite", (Guid id, HttpRequest http, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    try
+    {
+        var invite = store.GetGroupInviteCode(id, session.UserId);
+        return invite is null ? Results.NotFound() : Results.Ok(new { inviteCode = invite, link = $"himo://group/{id:D}?invite={Uri.EscapeDataString(invite)}" });
+    }
+    catch (UnauthorizedAccessException ex) { return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "غير مسموح", detail: ex.Message); }
+});
+
+webApp.MapPost("/api/groups/join", (HttpRequest http, JoinGroupByInviteRequest request, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    try
+    {
+        var conversation = store.JoinGroupByInvite(request.InviteCode ?? string.Empty, session.UserId);
+        return conversation is null ? Results.NotFound() : Results.Ok(conversation);
+    }
+    catch (UnauthorizedAccessException ex) { return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "يتطلب موافقة المشرف", detail: ex.Message); }
+});
+
 webApp.MapGet("/api/conversations/{id:guid}/messages", (Guid id, HttpRequest http, MongoStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
@@ -837,6 +964,8 @@ webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequ
     if (!sendContext.Exists) return Results.NotFound();
     if (sendContext.IsBlocked)
         return Results.Conflict(new { message = "لا يمكن إرسال رسائل في هذه المحادثة لأن أحد الطرفين حظر الآخر." });
+    if (!store.CanSendGroupMessage(id, session.UserId))
+        return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "الإرسال مقيد", detail: "يسمح المشرفون فقط بإرسال الرسائل في هذه المجموعة.");
     var recipientIds = sendContext.RecipientUserIds;
     var text = request.Text?.Trim() ?? string.Empty;
     if (string.IsNullOrWhiteSpace(text)) return Results.BadRequest(new { message = "نص الرسالة مطلوب." });
@@ -1384,14 +1513,14 @@ record ContactLookupRequest(string[]? PhoneNumbers);
 record ContactMatchResponse(Guid Id, string Name, string MatchedPhoneNumber, bool HasProfilePhoto = false, long ProfilePhotoVersion = 0);
 record ProfilePhotoUploadRequest(string? Base64Data, string? ContentType);
 record CreateConversationRequest(string? Name, Guid? UserId);
-record CreateGroupRequest(
-    string? Name,
-    Guid[]? UserIds,
-    int DisappearingSeconds = 0,
-    bool AllMembersCanAddMembers = false,
-    bool AllMembersCanShareInviteLink = false,
-    bool RequireAdminApproval = false,
-    bool AdminsOnlyMessages = false);
+record UpdateGroupInfoRequest(string? Name, string? Description);
+record GroupPhotoUploadRequest(string? Base64Data, string? ContentType);
+record SetGroupMemberAdminRequest(bool IsAdmin);
+record JoinGroupByInviteRequest(string? InviteCode);
+record GroupMemberDto(Guid Id, string Name, bool IsAdmin, bool HasProfilePhoto, long ProfilePhotoVersion, DateTimeOffset JoinedAt, string Status = "", string Username = "");
+record GroupDetailsDto(Guid Id, string Name, string Description, string InviteCode, bool HasPhoto, long PhotoVersion, bool CanManage, bool CanShareInviteLink, int DisappearingSeconds, IReadOnlyList<GroupMemberDto> Members);
+record CreateGroupRequest(string? Name, Guid[]? UserIds, int DisappearingSeconds = 0, bool AllMembersCanAddMembers = false, bool AllMembersCanShareInviteLink = false, bool RequireAdminApproval = false, bool AdminsOnlyMessages = false);
+record AddGroupMembersRequest(Guid[]? UserIds);
 record CallSignalMessage(Guid ConversationId, Guid SenderUserId, string Type, string? Payload);
 record SendMessageRequest(string? Text, string? ClientMessageId, Guid? ReplyToMessageId);
 record ReportConversationRequest(string? Reason);
@@ -1476,4 +1605,4 @@ sealed class ExpiredMessagesCleanupService(MongoStore store, ILogger<ExpiredMess
 record MessageDto(Guid Id, Guid ConversationId, Guid SenderUserId, string SenderPhoneNumber, string Text, DateTimeOffset SentAt, string? AttachmentFileName = null, string? AttachmentContentType = null, long? AttachmentSize = null, string Status = "sent", Guid? ReplyToMessageId = null, string? ReplyToText = null, bool IsEdited = false, string? EditedAt = null, bool IsDeleted = false, DateTimeOffset? ExpiresAt = null);
 record AttachmentStreamRecord(string FileName, string ContentType, Stream Stream);
 record EditMessageRequest(string Text);
-record UserSearchDto(Guid Id, string Email, string Name);
+record UserSearchDto(Guid Id, string Email, string Name, bool HasProfilePhoto = false, long ProfilePhotoVersion = 0);

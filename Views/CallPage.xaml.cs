@@ -1,4 +1,4 @@
-﻿using Himo.Services;
+using Himo.Services;
 using Himo.Models;
 using Microsoft.Maui.Controls.Shapes;
 #if ANDROID
@@ -437,14 +437,14 @@ public partial class CallPage : ContentPage
     private async void CallButtonPressed(object? sender, EventArgs e)
     {
         if (sender is not VisualElement button) return;
-        try { await button.ScaleTo(0.9, 70, Easing.CubicOut); }
+        try { await button.ScaleToAsync(0.9, 70, Easing.CubicOut); }
         catch { /* A disposed visual during navigation needs no further animation. */ }
     }
 
     private async void CallButtonReleased(object? sender, EventArgs e)
     {
         if (sender is not VisualElement button) return;
-        try { await button.ScaleTo(1, 90, Easing.CubicOut); }
+        try { await button.ScaleToAsync(1, 90, Easing.CubicOut); }
         catch { /* A disposed visual during navigation needs no further animation. */ }
     }
 
@@ -1123,7 +1123,15 @@ public partial class CallPage : ContentPage
         {
             StopIncomingRingtone();
             var context = global::Android.App.Application.Context;
-            var uri = global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone);
+            if (NotificationService.IsGroupCallMutedForConversation(_conversationId.ToString("D")))
+            {
+                // Keep the incoming call screen available, but remain silent for this group.
+                StartIncomingRingTimeout(_callId);
+                return;
+            }
+
+            var uri = NotificationService.GetGroupCallToneUriForConversation(context, _conversationId.ToString("D"))
+                ?? global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone);
             if (uri is null) return;
 
             var ringtone = global::Android.Media.RingtoneManager.GetRingtone(context, uri);

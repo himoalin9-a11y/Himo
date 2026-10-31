@@ -25,6 +25,8 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private bool _contactSearchBusy;
     private bool _openingMatchedConversation;
     private bool _openingConversation;
+    private CancellationTokenSource? _peopleSearchCts;
+    private HimoApiClient.UserProfileResponse? _peopleSearchOwnProfile;
     private string _currentSection = "chats";
     private bool _sectionTransitioning;
     private bool _selectionMode;
@@ -329,10 +331,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private async void NewConversationClicked(object? sender, EventArgs e)
     {
         if (Shell.Current is null) return;
-
-        // Open a dedicated, styled page instead of a platform ActionSheet.
-        // The page lets the user choose between creating a group and starting a chat.
-        await Shell.Current.GoToAsync("new-conversation");
+        await SwipePageTransition.NavigateAsync(this, "new-conversation", SwipeDirection.Left);
     }
 
     protected override void OnAppearing()
@@ -432,6 +431,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
 
     protected override void OnDisappearing()
     {
+        _peopleSearchCts?.Cancel();
         StopPolling();
         base.OnDisappearing();
     }
@@ -538,6 +538,12 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
                 button.IsEnabled = true;
             }
         }
+    }
+
+    private async void CreateGroupClicked(object? sender, EventArgs e)
+    {
+        OverflowMenu.IsVisible = false;
+        await Shell.Current.GoToAsync("CreateGroupPage");
     }
 
     private async void OpenQrScannerClicked(object? sender, EventArgs e)
@@ -739,68 +745,286 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         UpdateEmptyState();
     }
 
-    private async void PhoneSearchCompleted(object? sender, EventArgs e) => await SearchPhoneNumberAsync();
-    private async void PhoneSearchClicked(object? sender, EventArgs e) => await SearchPhoneNumberAsync();
+    private async void PhoneSearchTextChanged(object? sender, TextChangedEventArgs e)
+        => await SearchPeopleAsync(e.NewTextValue, immediate: false);
 
-    private async Task SearchPhoneNumberAsync()
+    private async void PhoneSearchCompleted(object? sender, EventArgs e)
+        => await SearchPeopleAsync(PhoneSearchEntry.Text, immediate: true);
+
+    private async void PhoneSearchClicked(object? sender, EventArgs e)
+        => await SearchPeopleAsync(PhoneSearchEntry.Text, immediate: true);
+
+    /// <summary>
+    /// Unified live search for Himo accounts. The previous implementation accepted
+    /// only numeric input and called the phone-contact lookup endpoint, so email and
+    /// name searches were rejected before a request ever reached the server.
+    /// </summary>
+    private async Task SearchPeopleAsync(string? rawQuery, bool immediate)
     {
-        if (_phoneSearchBusy || _contactSearchBusy) return;
-        var enteredPhone = PhoneSearchEntry.Text?.Trim() ?? string.Empty;
-        var digits = PhoneNumberUtils.Normalize(enteredPhone);
-        if (digits.Length is < 7 or > 15)
+        _peopleSearchCts?.Cancel();
+        _peopleSearchCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _peopleSearchCts = cts;
+        var token = cts.Token;
+        var query = PhoneNumberUtils.NormalizeDigits(rawQuery?.Trim() ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(query))
         {
-            PhoneSearchStatusLabel.Text = "أدخل رقم هاتف صحيحًا من 7 إلى 15 رقمًا مع مفتاح الدولة عند الحاجة.";
-            PhoneSearchStatusLabel.TextColor = GetThemeColor("HimoDanger", Color.FromArgb("#FF4678"));
+            _phoneMatches.Clear();
+            PhoneSearchStatusLabel.Text = "ابحث بالاسم أو البريد الإلكتروني أو رقم الهاتف.";
+            PhoneSearchStatusLabel.TextColor = GetThemeColor("HimoTextSecondary", Color.FromArgb("#A9A2B7"));
+            if (ReferenceEquals(_peopleSearchCts, cts))
+            {
+                _phoneSearchBusy = false;
+                PhoneSearchButton.IsEnabled = true;
+                FindContactsButton.IsEnabled = true;
+                PhoneSearchButton.Text = "بحث";
+                PhoneSearchProgress.IsVisible = false;
+            }
             return;
         }
 
-        _phoneSearchBusy = true;
-        PhoneSearchButton.IsEnabled = false;
-        FindContactsButton.IsEnabled = false;
-        PhoneSearchButton.Text = "جارٍ البحث...";
-        PhoneSearchProgress.IsVisible = true;
-        PhoneSearchStatusLabel.Text = "يتم البحث عن الحسابات التي تسمح بالعثور عليها...";
-        PhoneSearchStatusLabel.TextColor = GetThemeColor("HimoAccent", Color.FromArgb("#A12AFF"));
-        _phoneMatches.Clear();
-
         try
         {
+            if (!immediate)
+                await Task.Delay(420, token);
+            token.ThrowIfCancellationRequested();
+
+            var isEmail = query.Contains('@');
+            var isPhone = IsPhoneSearchQuery(query);
+            string remoteQuery;
+
+            if (isEmail)
+            {
+                var at = query.LastIndexOf('@');
+                var domain = at >= 0 && at < query.Length - 1 ? query[(at + 1)..] : string.Empty;
+                if (at <= 0 || !domain.Contains('.') || domain.StartsWith('.') || domain.EndsWith('.') || query.Contains(' '))
+                {
+                    _phoneMatches.Clear();
+                    PhoneSearchStatusLabel.Text = "أكمل عنوان البريد الإلكتروني للبحث.";
+                    PhoneSearchStatusLabel.TextColor = GetThemeColor("HimoTextSecondary", Color.FromArgb("#A9A2B7"));
+                    return;
+                }
+                remoteQuery = query.ToLowerInvariant();
+            }
+            else if (isPhone)
+            {
+                var digits = PhoneNumberUtils.Normalize(query);
+                if (digits.Length is < 7 or > 15)
+                {
+                    _phoneMatches.Clear();
+                    PhoneSearchStatusLabel.Text = "أدخل رقمًا من 7 إلى 15 رقمًا، محليًا أو مع مفتاح الدولة.";
+                    PhoneSearchStatusLabel.TextColor = GetThemeColor("HimoTextSecondary", Color.FromArgb("#A9A2B7"));
+                    return;
+                }
+
+                remoteQuery = NormalizePhoneSearchForServer(query);
+            }
+            else
+            {
+                if (query.Length < 3)
+                {
+                    _phoneMatches.Clear();
+                    PhoneSearchStatusLabel.Text = "اكتب 3 أحرف على الأقل للبحث بالاسم.";
+                    PhoneSearchStatusLabel.TextColor = GetThemeColor("HimoTextSecondary", Color.FromArgb("#A9A2B7"));
+                    return;
+                }
+                remoteQuery = query;
+            }
+
             await _api.TokenInitialization;
+            token.ThrowIfCancellationRequested();
             if (!_api.HasToken)
             {
+                _phoneMatches.Clear();
                 PhoneSearchStatusLabel.Text = "سجّل الدخول أولًا للبحث عن حسابات Himo.";
                 return;
             }
 
-            var matches = await _api.FindUsersByPhoneNumbersAsync(new[] { enteredPhone });
-            foreach (var match in matches)
-                _phoneMatches.Add(match);
+            _phoneSearchBusy = true;
+            PhoneSearchButton.IsEnabled = false;
+            FindContactsButton.IsEnabled = false;
+            PhoneSearchButton.Text = "جارٍ البحث...";
+            PhoneSearchProgress.IsVisible = true;
+            PhoneSearchStatusLabel.Text = "جارٍ البحث في حسابات Himo...";
+            PhoneSearchStatusLabel.TextColor = GetThemeColor("HimoAccent", Color.FromArgb("#A12AFF"));
 
-            if (matches.Count == 0)
+            var users = await _api.SearchGroupMembersAsync(remoteQuery, token);
+            token.ThrowIfCancellationRequested();
+
+            var results = users
+                .Where(user => user.Id != Guid.Empty)
+                .GroupBy(user => user.Id)
+                .Select(group => group.First())
+                .Select(user => new ContactMatchDto(user.Id, user.Name ?? string.Empty)
+                {
+                    Email = isEmail ? user.Email : null,
+                    MatchedPhoneNumber = isPhone ? user.Email : null
+                })
+                .ToList();
+
+            // The directory endpoint intentionally omits the signed-in account.
+            // Add it locally when the query matches so self-chat remains discoverable.
+            try
             {
-                PhoneSearchStatusLabel.Text = "لم نعثر على حساب يطابق هذا الرقم. قد لا يكون الرقم مضافًا أو البحث عنه غير مفعّل.";
+                _peopleSearchOwnProfile ??= await _api.GetMyProfileAsync(token);
+                if (MatchesOwnProfile(_peopleSearchOwnProfile, query, isEmail, isPhone) &&
+                    results.All(result => result.Id != _peopleSearchOwnProfile.UserId))
+                {
+                    results.Insert(0, new ContactMatchDto(
+                        _peopleSearchOwnProfile.UserId,
+                        _peopleSearchOwnProfile.Name ?? "حسابي")
+                    {
+                        Email = isEmail ? _peopleSearchOwnProfile.Email : null,
+                        MatchedPhoneNumber = isPhone ? _peopleSearchOwnProfile.ContactPhoneNumber : null
+                    });
+                }
             }
-            else
+            catch (OperationCanceledException) { throw; }
+            catch (Exception profileException)
             {
-                PhoneSearchStatusLabel.Text = matches.Count == 1
-                    ? "عثرنا على حساب واحد. اضغط عليه لبدء محادثة."
-                    : $"عثرنا على {matches.Count} حسابات. اختر حسابًا لبدء محادثة.";
+                System.Diagnostics.Debug.WriteLine($"[Himo People Search] Own profile lookup failed: {profileException.Message}");
             }
+
+            token.ThrowIfCancellationRequested();
+            _phoneMatches.Clear();
+            foreach (var result in results.OrderByDescending(item =>
+                         _peopleSearchOwnProfile is not null && item.Id == _peopleSearchOwnProfile.UserId)
+                     .ThenBy(item => item.Name, StringComparer.CurrentCultureIgnoreCase))
+                _phoneMatches.Add(result);
+
+            PhoneSearchStatusLabel.Text = results.Count == 0
+                ? isPhone
+                    ? "لم نعثر على حساب بهذا الرقم. تأكد من صحة الرقم وأن صاحبه فعّل العثور عليه عبر الهاتف."
+                    : "لم نعثر على حساب يطابق هذا البحث."
+                : results.Count == 1
+                    ? "عثرنا على حساب واحد. اضغط عليه لبدء المحادثة."
+                    : $"عثرنا على {results.Count} حسابات. اختر حسابًا لبدء المحادثة.";
+            PhoneSearchStatusLabel.TextColor = GetThemeColor("HimoTextSecondary", Color.FromArgb("#A9A2B7"));
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer query superseded this one; no UI update is needed.
         }
         catch (Exception ex)
         {
-            PhoneSearchStatusLabel.Text = "تعذر البحث الآن. تحقق من الاتصال بالخادم ثم حاول مجددًا.";
-            System.Diagnostics.Debug.WriteLine($"[Himo Home] Phone lookup failed: {ex}");
-            await DisplayAlertAsync("البحث برقم الهاتف", ex.Message, "حسنًا");
+            if (!token.IsCancellationRequested)
+            {
+                _phoneMatches.Clear();
+                PhoneSearchStatusLabel.Text = "تعذر البحث في حسابات Himo. تحقق من اتصال الخادم ثم حاول مجددًا.";
+                PhoneSearchStatusLabel.TextColor = GetThemeColor("HimoDanger", Color.FromArgb("#FF4678"));
+                System.Diagnostics.Debug.WriteLine($"[Himo Home] People search failed for '{remoteQuerySafe(query)}': {ex}");
+            }
         }
         finally
         {
-            _phoneSearchBusy = false;
-            PhoneSearchButton.IsEnabled = true;
-            FindContactsButton.IsEnabled = true;
-            PhoneSearchButton.Text = "بحث عن الرقم";
-            PhoneSearchProgress.IsVisible = false;
+            if (ReferenceEquals(_peopleSearchCts, cts))
+            {
+                _phoneSearchBusy = false;
+                PhoneSearchButton.IsEnabled = true;
+                FindContactsButton.IsEnabled = true;
+                PhoneSearchButton.Text = "بحث";
+                PhoneSearchProgress.IsVisible = false;
+            }
         }
+
+        static string remoteQuerySafe(string value) => value.Length > 80 ? value[..80] : value;
+    }
+
+    private static bool IsPhoneSearchQuery(string query)
+    {
+        return query.Any(char.IsDigit) && query.All(ch =>
+            char.IsDigit(ch) || char.IsWhiteSpace(ch) || ch is '+' or '-' or '(' or ')');
+    }
+
+    private static bool MatchesOwnProfile(
+        HimoApiClient.UserProfileResponse profile,
+        string query,
+        bool isEmail,
+        bool isPhone)
+    {
+        if (profile.UserId == Guid.Empty) return false;
+        if (isEmail)
+            return string.Equals(profile.Email, query, StringComparison.OrdinalIgnoreCase);
+        if (isPhone)
+        {
+            var searched = PhoneNumberUtils.Normalize(NormalizePhoneSearchForServer(query));
+            var own = PhoneNumberUtils.Normalize(NormalizePhoneSearchForServer(profile.ContactPhoneNumber ?? string.Empty));
+            return searched.Length >= 7 && own.Length >= 7 &&
+                   string.Equals(own, searched, StringComparison.Ordinal);
+        }
+        return !string.IsNullOrWhiteSpace(profile.Name) &&
+               profile.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase);
+    }
+
+    private static string NormalizePhoneSearchForServer(string value)
+    {
+        var input = PhoneNumberUtils.NormalizeDigits(value?.Trim() ?? string.Empty);
+        if (input.StartsWith("00", StringComparison.Ordinal))
+            input = "+" + input[2..];
+
+        // Explicit international input is sent unchanged apart from visual separators.
+        if (input.StartsWith('+'))
+        {
+            var internationalDigits = PhoneNumberUtils.Normalize(input);
+            return internationalDigits.Length is >= 7 and <= 15 ? "+" + internationalDigits : input;
+        }
+
+#if ANDROID
+        var regionIso = GetPhoneRegionIso();
+        if (regionIso.Length == 2)
+        {
+            try
+            {
+                var e164 = global::Android.Telephony.PhoneNumberUtils.FormatNumberToE164(input, regionIso);
+                if (!string.IsNullOrWhiteSpace(e164))
+                {
+                    var e164Digits = PhoneNumberUtils.Normalize(e164);
+                    if (e164Digits.Length is >= 7 and <= 15)
+                        return "+" + e164Digits;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo People Search] E.164 normalization failed: {ex.Message}");
+            }
+        }
+#endif
+
+        // Legacy Saudi local formats remain understood by the deployed API.
+        var digits = PhoneNumberUtils.Normalize(input);
+        if (digits.Length == 10 && digits.StartsWith("05", StringComparison.Ordinal))
+            return "+966" + digits[1..];
+        if (digits.Length == 9 && digits.StartsWith('5'))
+            return "+966" + digits;
+        return digits;
+    }
+
+    private static string GetPhoneRegionIso()
+    {
+#if ANDROID
+        try
+        {
+            var context = global::Android.App.Application.Context;
+            var telephony = context.GetSystemService(global::Android.Content.Context.TelephonyService)
+                as global::Android.Telephony.TelephonyManager;
+            var simIso = telephony?.SimCountryIso;
+            if (!string.IsNullOrWhiteSpace(simIso) && simIso.Length == 2)
+                return simIso.ToUpperInvariant();
+            var networkIso = telephony?.NetworkCountryIso;
+            if (!string.IsNullOrWhiteSpace(networkIso) && networkIso.Length == 2)
+                return networkIso.ToUpperInvariant();
+            var localeIso = global::Java.Util.Locale.Default?.Country;
+            if (!string.IsNullOrWhiteSpace(localeIso) && localeIso.Length == 2)
+                return localeIso.ToUpperInvariant();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo People Search] Region lookup failed: {ex.Message}");
+        }
+#endif
+        try { return System.Globalization.RegionInfo.CurrentRegion.TwoLetterISORegionName.ToUpperInvariant(); }
+        catch { return string.Empty; }
     }
 
     private async void FindContactsClicked(object? sender, EventArgs e) => await SearchDeviceContactsAsync();
@@ -914,13 +1138,9 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
 
     private static string? NormalizeContactNumber(string? value)
     {
-        var digits = PhoneNumberUtils.Normalize(value);
-        if (digits.StartsWith("00", StringComparison.Ordinal))
-            digits = digits[2..];
-        if (digits.Length == 10 && digits.StartsWith("05", StringComparison.Ordinal))
-            digits = "966" + digits[1..];
-        else if (digits.Length == 9 && digits.StartsWith("5", StringComparison.Ordinal))
-            digits = "966" + digits;
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var normalized = NormalizePhoneSearchForServer(value);
+        var digits = PhoneNumberUtils.Normalize(normalized);
         return digits.Length is >= 7 and <= 15 ? digits : null;
     }
 

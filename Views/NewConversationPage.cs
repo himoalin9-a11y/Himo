@@ -5,7 +5,10 @@ using Microsoft.Maui.Graphics;
 
 namespace Himo.Views;
 
-/// <summary>Dedicated entry screen for starting a group or private conversation.</summary>
+/// <summary>
+/// Dedicated entry page opened from the floating plus button.
+/// It replaces the platform ActionSheet with two clear, touch-friendly actions.
+/// </summary>
 public sealed class NewConversationPage : ContentPage
 {
     private bool _navigating;
@@ -23,11 +26,14 @@ public sealed class NewConversationPage : ContentPage
     {
         var root = new Grid
         {
-            Padding = new Thickness(18, 12, 18, 22),
+            Padding = new Thickness(18, 12, 18, 20),
             RowDefinitions = new RowDefinitionCollection
             {
                 new(GridLength.Auto),
-                new(GridLength.Star)
+                new(GridLength.Auto),
+                new(GridLength.Auto),
+                new(GridLength.Star),
+                new(GridLength.Auto)
             },
             RowSpacing = 18
         };
@@ -36,98 +42,160 @@ public sealed class NewConversationPage : ContentPage
         var header = new Grid
         {
             HeightRequest = 54,
-            ColumnDefinitions = new ColumnDefinitionCollection { new(48), new(GridLength.Star), new(48) },
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new(48), new(GridLength.Star), new(48)
+            },
             ColumnSpacing = 8
         };
-
-        var back = new ImageButton
+        var back = new Button
         {
-            Source = "himo_theme_p_neon_violet_himo_icon_arrow_back_purple.png",
-            WidthRequest = 42,
-            HeightRequest = 42,
-            Padding = 9,
-            BackgroundColor = Colors.Transparent,
-            Aspect = Aspect.AspectFit
+            Text = "‹",
+            FontSize = 31,
+            Padding = 0,
+            WidthRequest = 44,
+            HeightRequest = 44,
+            CornerRadius = 15,
+            BackgroundColor = Colors.Transparent
         };
+        back.SetDynamicResource(Button.TextColorProperty, "HimoPrimary");
         back.Clicked += BackClicked;
         header.Add(back, 0, 0);
 
+        var heading = new VerticalStackLayout
+        {
+            Spacing = 2,
+            VerticalOptions = LayoutOptions.Center,
+            HorizontalOptions = LayoutOptions.Center
+        };
         var title = new Label
         {
             Text = "إنشاء جديد",
-            FontSize = 22,
+            FontSize = 20,
             FontAttributes = FontAttributes.Bold,
-            VerticalTextAlignment = TextAlignment.Center,
             HorizontalTextAlignment = TextAlignment.Center
         };
         title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
-        header.Add(title, 1, 0);
+        var subtitle = new Label
+        {
+            Text = "اختر ما تريد البدء به",
+            FontSize = 11,
+            HorizontalTextAlignment = TextAlignment.Center
+        };
+        subtitle.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        heading.Add(title);
+        heading.Add(subtitle);
+        header.Add(heading, 1, 0);
         header.Add(new BoxView { Opacity = 0 }, 2, 0);
         root.Add(header, 0, 0);
 
-        var content = new VerticalStackLayout
+        var introContent = new Grid
         {
-            Spacing = 14,
-            VerticalOptions = LayoutOptions.Start,
-            Padding = new Thickness(0, 14, 0, 12)
+            ColumnDefinitions = new ColumnDefinitionCollection { new(48), new(GridLength.Star) },
+            ColumnSpacing = 12
         };
-
-        content.Add(CreateOptionCard(
-            "himo_theme_p_neon_violet_himo_s7_notif_group.png",
-            "إضافة مجموعة",
-            "اجمع أصدقاءك في محادثة واحدة",
-            true,
-            OpenGroupCreationAsync));
-
-        content.Add(CreateOptionCard(
-            "himo_theme_p_neon_violet_himo_s7_notif_message.png",
-            "محادثة جديدة",
-            "ابدأ محادثة خاصة",
-            false,
-            OpenNewChatAsync));
-
-        var scroll = new ScrollView
+        introContent.Add(CreateIntroIcon(), 0, 0);
+        introContent.Add(CreateIntroText(), 1, 0);
+        var intro = new Border
         {
-            Content = content,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Never
+            Padding = new Thickness(16, 15),
+            StrokeThickness = 1,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(20) },
+            Content = introContent
         };
-        root.Add(scroll, 0, 1);
+        intro.SetDynamicResource(BackgroundColorProperty, "HimoSurfaceElevated");
+        intro.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+        root.Add(intro, 0, 1);
+
+        var options = new VerticalStackLayout { Spacing = 12 };
+        options.Add(CreateOptionCard(
+            "👥", "إضافة مجموعة", "اجمع الأشخاص في مساحة واحدة للمحادثة والتواصل.", true,
+            async () => await OpenGroupCreationAsync()));
+        options.Add(CreateOptionCard(
+            "✉", "محادثة جديدة", "ابحث عن شخص وابدأ محادثة خاصة معه.", false,
+            async () => await OpenNewChatAsync()));
+        root.Add(options, 0, 2);
+
+        var hint = new Label
+        {
+            Text = "يمكنك العودة إلى المحادثات في أي وقت من زر الرجوع.",
+            FontSize = 11,
+            HorizontalTextAlignment = TextAlignment.Center,
+            VerticalTextAlignment = TextAlignment.Center
+        };
+        hint.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        root.Add(hint, 0, 4);
+
         Content = root;
     }
 
-    private Border CreateOptionCard(string image, string titleText, string description, bool highlighted, Func<Task> action)
+    private View CreateIntroIcon()
     {
-        var iconSurface = new Border
+        var icon = new Label
         {
-            WidthRequest = 62,
-            HeightRequest = 62,
-            Padding = 13,
-            StrokeThickness = 1,
-            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(19) },
-            Content = new Image { Source = image, Aspect = Aspect.AspectFit }
-        };
-        iconSurface.SetDynamicResource(BackgroundColorProperty, "HimoSoft");
-        iconSurface.SetDynamicResource(Border.StrokeProperty, highlighted ? "HimoAccent" : "HimoBorder");
-
-        var labels = new VerticalStackLayout
-        {
-            Spacing = 5,
-            VerticalOptions = LayoutOptions.Center
-        };
-        var title = new Label
-        {
-            Text = titleText,
-            FontSize = 17,
+            Text = "＋",
+            FontSize = 29,
             FontAttributes = FontAttributes.Bold,
+            HorizontalTextAlignment = TextAlignment.Center,
             VerticalTextAlignment = TextAlignment.Center
         };
-        title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
-        var detail = new Label
+        icon.SetDynamicResource(Label.TextColorProperty, "HimoOnAccent");
+        var circle = new Border
         {
-            Text = description,
-            FontSize = 12,
-            LineBreakMode = LineBreakMode.WordWrap
+            WidthRequest = 46,
+            HeightRequest = 46,
+            StrokeThickness = 0,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(16) },
+            Content = icon,
+            VerticalOptions = LayoutOptions.Center
         };
+        circle.SetDynamicResource(BackgroundColorProperty, "HimoAccent");
+        return circle;
+    }
+
+    private View CreateIntroText()
+    {
+        var stack = new VerticalStackLayout { Spacing = 4, VerticalOptions = LayoutOptions.Center };
+        var title = new Label { Text = "ابدأ تواصلك بطريقتك", FontSize = 14, FontAttributes = FontAttributes.Bold };
+        title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        var body = new Label { Text = "أنشئ مجموعة للأصدقاء أو افتح محادثة مباشرة.", FontSize = 11, LineBreakMode = LineBreakMode.WordWrap };
+        body.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        stack.Add(title);
+        stack.Add(body);
+        return stack;
+    }
+
+    private Border CreateOptionCard(string symbol, string titleText, string description, bool highlighted, Func<Task> action)
+    {
+        var iconLabel = new Label
+        {
+            Text = symbol,
+            FontSize = 25,
+            HorizontalTextAlignment = TextAlignment.Center,
+            VerticalTextAlignment = TextAlignment.Center
+        };
+        iconLabel.SetDynamicResource(Label.TextColorProperty, highlighted ? "HimoOnAccent" : "HimoAccent");
+        var iconBorder = new Border
+        {
+            WidthRequest = 54,
+            HeightRequest = 54,
+            StrokeThickness = highlighted ? 0 : 1,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(17) },
+            Content = iconLabel,
+            VerticalOptions = LayoutOptions.Center
+        };
+        if (highlighted)
+            iconBorder.SetDynamicResource(BackgroundColorProperty, "HimoAccent");
+        else
+        {
+            iconBorder.SetDynamicResource(BackgroundColorProperty, "HimoSurfaceElevated");
+            iconBorder.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+        }
+
+        var labels = new VerticalStackLayout { Spacing = 5, VerticalOptions = LayoutOptions.Center };
+        var title = new Label { Text = titleText, FontSize = 15, FontAttributes = FontAttributes.Bold };
+        title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        var detail = new Label { Text = description, FontSize = 11, LineBreakMode = LineBreakMode.WordWrap };
         detail.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
         labels.Add(title);
         labels.Add(detail);
@@ -135,36 +203,36 @@ public sealed class NewConversationPage : ContentPage
         var arrow = new Label
         {
             Text = "‹",
-            FontSize = 29,
+            FontSize = 28,
+            HorizontalTextAlignment = TextAlignment.Center,
             VerticalTextAlignment = TextAlignment.Center,
-            HorizontalTextAlignment = TextAlignment.Center
+            VerticalOptions = LayoutOptions.Center
         };
         arrow.SetDynamicResource(Label.TextColorProperty, "HimoAccent");
 
-        var row = new Grid
+        var content = new Grid
         {
-            Padding = new Thickness(16, 18),
-            HeightRequest = 112,
-            ColumnDefinitions = new ColumnDefinitionCollection { new(66), new(GridLength.Star), new(24) },
-            ColumnSpacing = 13
+            Padding = new Thickness(14, 14),
+            ColumnDefinitions = new ColumnDefinitionCollection { new(58), new(GridLength.Star), new(24) },
+            ColumnSpacing = 12
         };
-        row.Add(iconSurface, 0, 0);
-        row.Add(labels, 1, 0);
-        row.Add(arrow, 2, 0);
+        content.Add(iconBorder, 0, 0);
+        content.Add(labels, 1, 0);
+        content.Add(arrow, 2, 0);
 
         var card = new Border
         {
-            Content = row,
-            StrokeThickness = highlighted ? 1.5 : 1,
-            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(23) }
+            Content = content,
+            StrokeThickness = highlighted ? 1.4 : 1,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(21) }
         };
-        card.SetDynamicResource(BackgroundColorProperty, "HimoSurfaceElevated");
+        card.SetDynamicResource(BackgroundColorProperty, highlighted ? "HimoSurfaceElevated" : "HimoCard");
         card.SetDynamicResource(Border.StrokeProperty, highlighted ? "HimoAccent" : "HimoBorder");
         card.GestureRecognizers.Add(new TapGestureRecognizer
         {
             Command = new Command(async () => await action())
         });
-        SemanticProperties.SetDescription(card, titleText);
+        SemanticProperties.SetDescription(card, $"{titleText}. {description}");
         return card;
     }
 

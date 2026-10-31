@@ -151,7 +151,10 @@ public partial class ChatPage
 
         try
         {
-            await Navigation.PushAsync(new ConversationInfoPage(_chat, _api, _account, conversation), animated: true);
+            if (conversation.IsGroup)
+                await Navigation.PushAsync(new GroupConversationInfoPage(_chat, _api, _account, conversation), animated: true);
+            else
+                await Navigation.PushAsync(new ConversationInfoPage(_chat, _api, _account, conversation), animated: true);
         }
         catch (Exception ex)
         {

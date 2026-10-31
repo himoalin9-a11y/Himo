@@ -1077,11 +1077,8 @@ public sealed class HimoApiClient
             ?? throw new InvalidOperationException("استجابة الخادم لإنشاء المجموعة غير صالحة.");
     }
 
-    // Compatibility overload for existing call sites that pass only a cancellation token.
     public Task<ConversationDto> CreateGroupAsync(
-        string name,
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken cancellationToken)
+        string name, IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken)
         => CreateGroupAsync(name, userIds, 0, false, false, false, false, cancellationToken);
 
     public async Task<GroupMembersAddedResponse> AddGroupMembersAsync(
@@ -1110,6 +1107,77 @@ public sealed class HimoApiClient
         return await response.Content.ReadFromJsonAsync<GroupMembersAddedResponse>(
             cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException("استجابة الخادم لإضافة أعضاء المجموعة غير صالحة.");
+    }
+
+    public async Task<GroupDetailsDto> GetGroupDetailsAsync(Guid groupId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync($"api/groups/{groupId:D}", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<GroupDetailsDto>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("تعذر قراءة معلومات المجموعة.");
+    }
+
+    public async Task UpdateGroupInfoAsync(Guid groupId, string name, string description, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PutAsJsonAsync($"api/groups/{groupId:D}", new { name, description }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task UploadGroupPhotoAsync(Guid groupId, byte[] imageBytes, string contentType, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(imageBytes);
+        if (imageBytes.Length == 0 || imageBytes.Length > 4 * 1024 * 1024)
+            throw new ArgumentException("حجم الصورة يجب ألا يتجاوز 4 ميغابايت.", nameof(imageBytes));
+        using var response = await _http.PutAsJsonAsync($"api/groups/{groupId:D}/photo", new
+        {
+            base64Data = Convert.ToBase64String(imageBytes), contentType
+        }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task<ProfilePhotoDownload?> GetGroupPhotoAsync(Guid groupId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync($"api/groups/{groupId:D}/photo", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound) return null;
+        await EnsureSuccessAsync(response, cancellationToken);
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        if (bytes.Length == 0 || bytes.Length > 4 * 1024 * 1024) return null;
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
+        return new ProfilePhotoDownload(bytes, contentType);
+    }
+
+    public async Task DeleteGroupPhotoAsync(Guid groupId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.DeleteAsync($"api/groups/{groupId:D}/photo", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task SetGroupMemberAdminAsync(Guid groupId, Guid memberId, bool isAdmin, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PutAsJsonAsync($"api/groups/{groupId:D}/members/{memberId:D}/admin", new { isAdmin }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task RemoveGroupMemberAsync(Guid groupId, Guid memberId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.DeleteAsync($"api/groups/{groupId:D}/members/{memberId:D}", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task<GroupInviteResponse> GetGroupInviteAsync(Guid groupId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync($"api/groups/{groupId:D}/invite", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<GroupInviteResponse>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("تعذر إنشاء رابط دعوة المجموعة.");
+    }
+
+    public async Task<ConversationDto> JoinGroupByInviteAsync(string inviteCode, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync("api/groups/join", new { inviteCode }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<ConversationDto>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("استجابة الانضمام إلى المجموعة غير صالحة.");
     }
 
     public async Task<IReadOnlyList<MessageDto>>
@@ -1581,6 +1649,9 @@ public sealed class HimoApiClient
     }
 
     public sealed record GroupMembersAddedResponse(Guid ConversationId, int AddedCount);
+    public sealed record GroupMemberDto(Guid Id, string Name, bool IsAdmin, bool HasProfilePhoto, long ProfilePhotoVersion, DateTimeOffset JoinedAt, string Status = "", string Username = "");
+    public sealed record GroupDetailsDto(Guid Id, string Name, string Description, string InviteCode, bool HasPhoto, long PhotoVersion, bool CanManage, bool CanShareInviteLink, int DisappearingSeconds, IReadOnlyList<GroupMemberDto> Members);
+    public sealed record GroupInviteResponse(string InviteCode, string Link);
 
     public sealed record ConversationDto(
         Guid Id,

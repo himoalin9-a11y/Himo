@@ -148,7 +148,7 @@ sealed class MongoStore
     {
         EnsureIndexes();
         var user = _users.Find(x => x.Id == GuidText(userId)).FirstOrDefault() ?? throw new InvalidOperationException("المستخدم غير موجود.");
-        return new { userId, email = user.PhoneNumber, name = user.Name, status = user.Status, contactPhoneNumber = user.ContactPhoneNumber, phoneDiscoverable = user.PhoneDiscoverable, hasProfilePhoto = user.ProfilePhoto is { Length: > 0 }, profilePhotoVersion = user.ProfilePhotoVersion, username = user.Username };
+        return new { userId, email = user.PhoneNumber, name = user.Name, status = user.Status, contactPhoneNumber = user.ContactPhoneNumber, phoneDiscoverable = user.PhoneDiscoverable, hasProfilePhoto = user.ProfilePhoto is { Length: > 0 }, username = user.Username, profilePhotoVersion = user.ProfilePhotoVersion };
     }
 
     public (string Email, string Name) GetAccountEmailAndName(Guid userId)
@@ -233,12 +233,7 @@ sealed class MongoStore
         var wanted = normalizedPhoneNumbers.Select(NormalizeContactPhoneDigitsForStore).ToHashSet(StringComparer.Ordinal);
         var users = _users.Find(x => x.Id != GuidText(currentUserId) && x.PhoneDiscoverable && x.ContactPhoneNumber != null).ToList();
         return users.Select(u => new { User = u, Digits = NormalizeContactPhoneDigitsForStore(u.ContactPhoneNumber) })
-            .Where(x => wanted.Contains(x.Digits)).GroupBy(x => x.User.Id).Select(g => new ContactMatchResponse(
-                Guid.Parse(g.First().User.Id),
-                g.First().User.Name,
-                "+" + g.First().Digits,
-                g.First().User.ProfilePhoto is { Length: > 0 },
-                g.First().User.ProfilePhotoVersion))
+            .Where(x => wanted.Contains(x.Digits)).GroupBy(x => x.User.Id).Select(g => new ContactMatchResponse(Guid.Parse(g.First().User.Id), g.First().User.Name, "+" + g.First().Digits, g.First().User.ProfilePhoto is { Length: > 0 }, g.First().User.ProfilePhotoVersion))
             .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase).Take(200).ToList();
     }
 
@@ -488,16 +483,9 @@ sealed class MongoStore
             var conversation = _conversations.Find(x => x.Id == p.ConversationId).FirstOrDefault(); if (conversation is null) continue;
             var state = _userStates.Find(x => x.ConversationId == p.ConversationId && x.UserId == uid).FirstOrDefault(); if (state?.IsDeleted == true) continue;
             var members = _participants.Find(x => x.ConversationId == p.ConversationId).ToList();
-            // A self-chat is a direct conversation with exactly one participant: the owner.
-            // It must be exposed like a normal direct chat so the client can open it and load the user's avatar.
-            var isSelfChat = !conversation.IsGroup && members.Count == 1 && members[0].UserId == uid;
-            var isDirect = !conversation.IsGroup && (members.Count == 2 || isSelfChat);
+            var isDirect = !conversation.IsGroup && members.Count == 2;
             MUser? other = null;
-            if (isSelfChat)
-            {
-                other = _users.Find(x => x.Id == uid).FirstOrDefault();
-            }
-            else if (isDirect)
+            if (isDirect)
             {
                 var otherId = members.FirstOrDefault(x => x.UserId != uid)?.UserId;
                 if (otherId is not null) other = _users.Find(x => x.Id == otherId).FirstOrDefault();
@@ -514,7 +502,7 @@ sealed class MongoStore
                 & Builders<MMessage>.Filter.Ne(x => x.SenderUserId, uid)
                 & Builders<MMessage>.Filter.Gt(x => x.SentAt, lastReadAt);
             var unread = (int)_messages.CountDocuments(unreadFilter);
-            var isBlocked = isDirect && !isSelfChat && other is not null && _blockedUsers.Find(x => (x.BlockerUserId == uid && x.BlockedUserId == other.Id) || (x.BlockerUserId == other.Id && x.BlockedUserId == uid)).FirstOrDefault() is not null;
+            var isBlocked = isDirect && other is not null && _blockedUsers.Find(x => (x.BlockerUserId == uid && x.BlockedUserId == other.Id) || (x.BlockerUserId == other.Id && x.BlockedUserId == uid)).FirstOrDefault() is not null;
             Guid? otherIdParsed = other is not null && Guid.TryParse(other.Id, out var oid) ? oid : null;
             result.Add(new ConversationDto(Guid.Parse(conversation.Id), isDirect && other is not null ? other.Name : conversation.Name, last?.Text ?? string.Empty, ParseTime(conversation.UpdatedAt, now), unread, otherIdParsed, other?.ProfilePhoto is { Length: > 0 }, other?.ProfilePhotoVersion ?? 0L, state?.IsArchived ?? false, state?.IsMuted ?? false, isBlocked, conversation.IsGroup));
         }
@@ -523,27 +511,27 @@ sealed class MongoStore
 
     public IReadOnlyList<UserSearchDto> SearchUsers(string email, Guid currentUserId)
     {
-        EnsureIndexes(); return _users.Find(EqualsCi<MUser>(x => x.PhoneNumber, email) & Builders<MUser>.Filter.Ne(x => x.Id, GuidText(currentUserId))).Limit(20).ToList().Select(x => new UserSearchDto(Guid.Parse(x.Id), x.PhoneNumber, x.Name)).ToArray();
+        EnsureIndexes(); return _users.Find(EqualsCi<MUser>(x => x.PhoneNumber, email) & Builders<MUser>.Filter.Ne(x => x.Id, GuidText(currentUserId))).Limit(20).ToList().Select(x => new UserSearchDto(Guid.Parse(x.Id), x.PhoneNumber, x.Name, x.ProfilePhoto is { Length: > 0 }, x.ProfilePhotoVersion)).ToArray();
     }
 
     public IReadOnlyList<UserSearchDto> SearchUsersByName(string query, Guid currentUserId)
     {
         EnsureIndexes(); query = query?.Trim() ?? string.Empty; if (query.Length < 3 || query.Length > 254) return Array.Empty<UserSearchDto>();
         var rx = new BsonRegularExpression(Regex.Escape(query), "i");
-        return _users.Find(Builders<MUser>.Filter.Ne(x => x.Id, GuidText(currentUserId)) & Builders<MUser>.Filter.Regex(x => x.Name, rx)).Limit(50).ToList().Where(x => !string.IsNullOrWhiteSpace(x.Name)).OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase).Select(x => new UserSearchDto(Guid.Parse(x.Id), string.Empty, x.Name)).ToArray();
+        return _users.Find(Builders<MUser>.Filter.Ne(x => x.Id, GuidText(currentUserId)) & Builders<MUser>.Filter.Regex(x => x.Name, rx)).Limit(50).ToList().Where(x => !string.IsNullOrWhiteSpace(x.Name)).OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase).Select(x => new UserSearchDto(Guid.Parse(x.Id), string.Empty, x.Name, x.ProfilePhoto is { Length: > 0 }, x.ProfilePhotoVersion)).ToArray();
     }
 
     public IReadOnlyList<UserSearchDto> SearchGroupMembers(string? email, string? normalizedPhone, Guid currentUserId)
     {
         EnsureIndexes(); var uid = GuidText(currentUserId);
-        if (!string.IsNullOrWhiteSpace(email)) return _users.Find(EqualsCi<MUser>(x => x.PhoneNumber, email.Trim()) & Builders<MUser>.Filter.Ne(x => x.Id, uid)).Limit(10).ToList().Select(x => new UserSearchDto(Guid.Parse(x.Id), x.PhoneNumber, x.Name)).ToArray();
+        if (!string.IsNullOrWhiteSpace(email)) return _users.Find(EqualsCi<MUser>(x => x.PhoneNumber, email.Trim()) & Builders<MUser>.Filter.Ne(x => x.Id, uid)).Limit(10).ToList().Select(x => new UserSearchDto(Guid.Parse(x.Id), x.PhoneNumber, x.Name, x.ProfilePhoto is { Length: > 0 }, x.ProfilePhotoVersion)).ToArray();
         if (string.IsNullOrWhiteSpace(normalizedPhone)) return Array.Empty<UserSearchDto>();
         var digits = new string(normalizedPhone.Where(char.IsDigit).ToArray()); if (digits.Length is < 7 or > 15) return Array.Empty<UserSearchDto>();
         var local = digits.StartsWith("9665", StringComparison.Ordinal) && digits.Length == 12 ? "0" + digits[3..] : digits;
         var national = digits.StartsWith("966", StringComparison.Ordinal) && digits.Length > 10 ? digits[3..] : digits;
         var wanted = new HashSet<string>(new[] { digits, local, national }, StringComparer.Ordinal);
         return _users.Find(x => x.Id != uid && x.PhoneDiscoverable).ToList().Where(x => wanted.Contains(NormalizeContactPhoneDigitsForStore(x.ContactPhoneNumber)) || wanted.Contains(NormalizeContactPhoneDigitsForStore(x.PhoneNumber)))
-            .Take(10).Select(x => new UserSearchDto(Guid.Parse(x.Id), wanted.Contains(NormalizeContactPhoneDigitsForStore(x.ContactPhoneNumber)) ? x.ContactPhoneNumber ?? x.PhoneNumber : x.PhoneNumber, x.Name)).ToArray();
+            .Take(10).Select(x => new UserSearchDto(Guid.Parse(x.Id), wanted.Contains(NormalizeContactPhoneDigitsForStore(x.ContactPhoneNumber)) ? x.ContactPhoneNumber ?? x.PhoneNumber : x.PhoneNumber, x.Name, x.ProfilePhoto is { Length: > 0 }, x.ProfilePhotoVersion)).ToArray();
     }
 
     private int CountUnread(string conversationId, string userId, DateTimeOffset now)
@@ -564,127 +552,273 @@ sealed class MongoStore
             var uid = GuidText(userId); var now = DateTimeOffset.UtcNow; var timestamp = now.ToString("O");
             if (participantUserId.HasValue)
             {
-                var peer = GuidText(participantUserId.Value);
-                var otherUser = _users.Find(x => x.Id == peer).FirstOrDefault();
-                if (otherUser is null) throw new InvalidOperationException("المستخدم غير موجود.");
-
-                if (participantUserId.Value == userId)
+                if (participantUserId.Value == userId) throw new InvalidOperationException("لا يمكن بدء محادثة مع حسابك.");
+                var peer = GuidText(participantUserId.Value); if (_users.Find(x => x.Id == peer).FirstOrDefault() is null) throw new InvalidOperationException("المستخدم غير موجود.");
+                var directIds = _participants.Find(x => x.UserId == uid).ToList()
+                    .Where(x => _participants.Find(y => y.ConversationId == x.ConversationId && y.UserId == peer).FirstOrDefault() is not null)
+                    .Select(x => _conversations.Find(c => c.Id == x.ConversationId && !c.IsGroup).FirstOrDefault())
+                    .Where(c => c is not null && _participants.CountDocuments(p => p.ConversationId == c!.Id) == 2)
+                    .Cast<MConversation>().OrderByDescending(c => c.UpdatedAt, StringComparer.Ordinal).FirstOrDefault();
+                if (directIds is not null)
                 {
-                    // Reuse the existing one-member self-chat instead of creating duplicates.
-                    var existingSelf = _participants.Find(x => x.UserId == uid).ToList()
-                        .Select(x => _conversations.Find(c => c.Id == x.ConversationId && !c.IsGroup).FirstOrDefault())
-                        .Where(c => c is not null && _participants.CountDocuments(p => p.ConversationId == c!.Id) == 1)
-                        .Cast<MConversation>()
-                        .OrderByDescending(c => c.UpdatedAt, StringComparer.Ordinal)
-                        .FirstOrDefault();
-                    if (existingSelf is not null)
-                    {
-                        var stateId = PairId(Guid.Parse(existingSelf.Id), userId);
-                        var state = _userStates.Find(x => x.Id == stateId).FirstOrDefault()
-                            ?? new MUserState { Id = stateId, ConversationId = existingSelf.Id, UserId = uid };
-                        state.IsDeleted = false;
-                        state.IsArchived = false;
-                        state.UpdatedAt = timestamp;
-                        _userStates.ReplaceOne(x => x.Id == stateId, state, new ReplaceOptions { IsUpsert = true });
-                        return new ConversationDto(Guid.Parse(existingSelf.Id), otherUser.Name, existingSelf.LastMessage,
-                            ParseTime(existingSelf.UpdatedAt, now), CountUnread(existingSelf.Id, uid, now), userId,
-                            otherUser.ProfilePhoto is { Length: > 0 }, otherUser.ProfilePhotoVersion);
-                    }
-                }
-                else
-                {
-                    var directIds = _participants.Find(x => x.UserId == uid).ToList()
-                        .Where(x => _participants.Find(y => y.ConversationId == x.ConversationId && y.UserId == peer).FirstOrDefault() is not null)
-                        .Select(x => _conversations.Find(c => c.Id == x.ConversationId && !c.IsGroup).FirstOrDefault())
-                        .Where(c => c is not null && _participants.CountDocuments(p => p.ConversationId == c!.Id) == 2)
-                        .Cast<MConversation>().OrderByDescending(c => c.UpdatedAt, StringComparer.Ordinal).FirstOrDefault();
-                    if (directIds is not null)
-                    {
-                        var stId = PairId(Guid.Parse(directIds.Id), userId); var st = _userStates.Find(x => x.Id == stId).FirstOrDefault() ?? new MUserState { Id = stId, ConversationId = directIds.Id, UserId = uid };
-                        st.IsDeleted = false; st.IsArchived = false; st.UpdatedAt = timestamp; _userStates.ReplaceOne(x => x.Id == stId, st, new ReplaceOptions { IsUpsert = true });
-                        var unread = CountUnread(directIds.Id, uid, now);
-                        return new ConversationDto(Guid.Parse(directIds.Id), otherUser.Name, directIds.LastMessage, ParseTime(directIds.UpdatedAt, now), unread, participantUserId,
-                            otherUser.ProfilePhoto is { Length: > 0 }, otherUser.ProfilePhotoVersion);
-                    }
+                    var stId = PairId(Guid.Parse(directIds.Id), userId); var st = _userStates.Find(x => x.Id == stId).FirstOrDefault() ?? new MUserState { Id = stId, ConversationId = directIds.Id, UserId = uid };
+                    st.IsDeleted = false; st.IsArchived = false; st.UpdatedAt = timestamp; _userStates.ReplaceOne(x => x.Id == stId, st, new ReplaceOptions { IsUpsert = true });
+                    var other = _users.Find(x => x.Id == peer).FirstOrDefault(); var unread = CountUnread(directIds.Id, uid, now);
+                    return new ConversationDto(Guid.Parse(directIds.Id), other?.Name ?? directIds.Name, directIds.LastMessage, ParseTime(directIds.UpdatedAt, now), unread, participantUserId);
                 }
             }
             var conv = new MConversation { Id = GuidText(Guid.NewGuid()), OwnerUserId = uid, Name = name, LastMessage = string.Empty, UpdatedAt = timestamp, IsGroup = false, DisappearingSeconds = 0 };
             _conversations.InsertOne(conv);
             _participants.InsertOne(new MParticipant { Id = PairId(Guid.Parse(conv.Id), userId), ConversationId = conv.Id, UserId = uid, JoinedAt = timestamp, LastReadAt = timestamp });
-            // In a self-chat, the owner is the only participant; inserting a second
-            // membership for the same user would violate the unique participant index.
-            if (participantUserId.HasValue && participantUserId.Value != userId)
+            if (participantUserId.HasValue)
                 _participants.InsertOne(new MParticipant { Id = PairId(Guid.Parse(conv.Id), participantUserId.Value), ConversationId = conv.Id, UserId = GuidText(participantUserId.Value), JoinedAt = timestamp, LastReadAt = timestamp });
-            var createdSelf = participantUserId == userId;
-            var creator = createdSelf ? _users.Find(x => x.Id == uid).FirstOrDefault() : null;
-            return new ConversationDto(Guid.Parse(conv.Id), createdSelf ? creator?.Name ?? name : name, string.Empty, now, 0,
-                createdSelf ? userId : participantUserId,
-                createdSelf && creator?.ProfilePhoto is { Length: > 0 }, createdSelf ? creator?.ProfilePhotoVersion ?? 0L : 0L);
+            return new ConversationDto(Guid.Parse(conv.Id), name, string.Empty, now, 0, participantUserId);
         }
     }
 
-    public ConversationDto CreateGroup(
-        Guid ownerUserId,
-        string name,
-        IReadOnlyCollection<Guid> memberUserIds,
-        int disappearingSeconds = 0,
-        bool allMembersCanAddMembers = false,
-        bool allMembersCanShareInviteLink = false,
-        bool requireAdminApproval = false,
-        bool adminsOnlyMessages = false)
+    public GroupDetailsDto? GetGroupDetails(Guid conversationId, Guid currentUserId)
     {
         EnsureIndexes();
-        var members = (memberUserIds ?? Array.Empty<Guid>())
-            .Where(id => id != Guid.Empty && id != ownerUserId)
-            .Distinct()
-            .ToArray();
+        var cid = GuidText(conversationId);
+        var uid = GuidText(currentUserId);
+        var group = _conversations.Find(x => x.Id == cid && x.IsGroup).FirstOrDefault();
+        if (group is null) return null;
+        var currentParticipant = _participants.Find(x => x.ConversationId == cid && x.UserId == uid).FirstOrDefault();
+        if (currentParticipant is null) return null;
 
-        if (disappearingSeconds is not (0 or 3600 or 7200 or 86400 or 432000 or 2592000))
-            throw new InvalidOperationException("قيمة مؤقت الاختفاء غير مدعومة.");
-        if (members.Length == 0)
-            throw new InvalidOperationException("أضف عضوًا واحدًا على الأقل قبل إنشاء المجموعة.");
-        if (members.Length > 100)
-            throw new InvalidOperationException("يمكن إضافة 100 عضو كحد أقصى إلى المجموعة.");
+        var inviteCode = EnsureGroupInviteCode(group);
+        var participants = _participants.Find(x => x.ConversationId == cid).ToList();
+        var members = new List<GroupMemberDto>(participants.Count);
+        foreach (var participant in participants)
+        {
+            if (!Guid.TryParse(participant.UserId, out var memberId)) continue;
+            var user = _users.Find(x => x.Id == participant.UserId).FirstOrDefault();
+            if (user is null) continue;
+            var isAdmin = participant.UserId == group.OwnerUserId || participant.IsAdmin;
+            members.Add(new GroupMemberDto(
+                memberId,
+                user.Name,
+                isAdmin,
+                user.ProfilePhoto is { Length: > 0 },
+                user.ProfilePhotoVersion,
+                ParseTime(participant.JoinedAt, DateTimeOffset.UtcNow),
+                user.Status ?? string.Empty,
+                user.Username ?? string.Empty));
+        }
 
+        var currentCanManage = group.OwnerUserId == uid || currentParticipant.IsAdmin;
+        var currentCanShareInvite = currentCanManage || group.AllMembersCanShareInviteLink;
+        return new GroupDetailsDto(
+            conversationId,
+            group.Name,
+            group.Description ?? string.Empty,
+            currentCanShareInvite ? inviteCode : string.Empty,
+            group.GroupPhoto is { Length: > 0 },
+            group.GroupPhotoVersion,
+            currentCanManage,
+            currentCanShareInvite,
+            group.DisappearingSeconds,
+            members.OrderByDescending(x => x.IsAdmin).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase).ToArray());
+    }
+
+    private string EnsureGroupInviteCode(MConversation group)
+    {
+        if (!string.IsNullOrWhiteSpace(group.InviteCode)) return group.InviteCode;
+        var code = Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
+        var result = _conversations.UpdateOne(
+            x => x.Id == group.Id && (x.InviteCode == null || x.InviteCode == string.Empty),
+            Builders<MConversation>.Update.Set(x => x.InviteCode, code));
+        var refreshed = _conversations.Find(x => x.Id == group.Id).FirstOrDefault();
+        return refreshed?.InviteCode ?? code;
+    }
+
+    public string? GetGroupInviteCode(Guid conversationId, Guid currentUserId)
+    {
+        EnsureIndexes();
+        var cid = GuidText(conversationId);
+        var group = _conversations.Find(x => x.Id == cid && x.IsGroup).FirstOrDefault();
+        var participant = _participants.Find(x => x.ConversationId == cid && x.UserId == GuidText(currentUserId)).FirstOrDefault();
+        if (group is null || participant is null) return null;
+        if (!group.AllMembersCanShareInviteLink && !IsGroupAdmin(group, GuidText(currentUserId)))
+            throw new UnauthorizedAccessException("مشاركة رابط الدعوة متاحة للمشرفين فقط.");
+        return EnsureGroupInviteCode(group);
+    }
+
+    public bool UpdateGroupInfo(Guid conversationId, Guid actorUserId, string name, string description)
+    {
+        EnsureIndexes();
+        var cid = GuidText(conversationId);
+        var actor = GuidText(actorUserId);
+        var group = _conversations.Find(x => x.Id == cid && x.IsGroup).FirstOrDefault();
+        if (group is null) return false;
+        if (!IsGroupAdmin(group, actor)) throw new UnauthorizedAccessException("تعديل بيانات المجموعة متاح للمشرفين فقط.");
+        name = (name ?? string.Empty).Trim();
+        description = (description ?? string.Empty).Trim();
+        if (name.Length is < 2 or > 60) throw new InvalidOperationException("اسم المجموعة يجب أن يتراوح بين حرفين و60 حرفًا.");
+        if (description.Length > 500) throw new InvalidOperationException("وصف المجموعة طويل جدًا.");
+        _conversations.UpdateOne(x => x.Id == cid, Builders<MConversation>.Update
+            .Set(x => x.Name, name)
+            .Set(x => x.Description, description)
+            .Set(x => x.UpdatedAt, NowText()));
+        return true;
+    }
+
+    public (byte[]? Data, string ContentType, long Version)? GetGroupPhoto(Guid conversationId, Guid currentUserId)
+    {
+        EnsureIndexes();
+        var cid = GuidText(conversationId);
+        if (_participants.Find(x => x.ConversationId == cid && x.UserId == GuidText(currentUserId)).FirstOrDefault() is null)
+            return null;
+        var group = _conversations.Find(x => x.Id == cid && x.IsGroup).FirstOrDefault();
+        if (group is null) return null;
+        return (group.GroupPhoto, group.GroupPhotoContentType ?? "image/jpeg", group.GroupPhotoVersion);
+    }
+
+    public void UpdateGroupPhoto(Guid conversationId, Guid actorUserId, byte[] data, string contentType)
+    {
+        EnsureIndexes();
+        var cid = GuidText(conversationId);
+        var actor = GuidText(actorUserId);
+        var group = _conversations.Find(x => x.Id == cid && x.IsGroup).FirstOrDefault()
+            ?? throw new InvalidOperationException("المجموعة غير موجودة.");
+        if (!IsGroupAdmin(group, actor)) throw new UnauthorizedAccessException("تغيير صورة المجموعة متاح للمشرفين فقط.");
+        _conversations.UpdateOne(x => x.Id == cid, Builders<MConversation>.Update
+            .Set(x => x.GroupPhoto, data)
+            .Set(x => x.GroupPhotoContentType, contentType)
+            .Inc(x => x.GroupPhotoVersion, 1));
+    }
+
+    public void DeleteGroupPhoto(Guid conversationId, Guid actorUserId)
+    {
+        EnsureIndexes();
+        var cid = GuidText(conversationId);
+        var actor = GuidText(actorUserId);
+        var group = _conversations.Find(x => x.Id == cid && x.IsGroup).FirstOrDefault()
+            ?? throw new InvalidOperationException("المجموعة غير موجودة.");
+        if (!IsGroupAdmin(group, actor)) throw new UnauthorizedAccessException("تغيير صورة المجموعة متاح للمشرفين فقط.");
+        _conversations.UpdateOne(x => x.Id == cid, Builders<MConversation>.Update
+            .Unset(x => x.GroupPhoto)
+            .Unset(x => x.GroupPhotoContentType)
+            .Inc(x => x.GroupPhotoVersion, 1));
+    }
+
+    public bool PromoteGroupMember(Guid conversationId, Guid actorUserId, Guid memberUserId, bool makeAdmin)
+    {
+        EnsureIndexes();
+        var cid = GuidText(conversationId);
+        var actor = GuidText(actorUserId);
+        var target = GuidText(memberUserId);
+        var group = _conversations.Find(x => x.Id == cid && x.IsGroup).FirstOrDefault();
+        if (group is null) return false;
+        if (!IsGroupAdmin(group, actor)) throw new UnauthorizedAccessException("إدارة الأعضاء متاحة للمشرفين فقط.");
+        if (_participants.Find(x => x.ConversationId == cid && x.UserId == target).FirstOrDefault() is null)
+            throw new InvalidOperationException("هذا المستخدم ليس عضوًا في المجموعة.");
+        if (target == group.OwnerUserId && !makeAdmin)
+            throw new InvalidOperationException("لا يمكن إزالة صلاحية مالك المجموعة.");
+        _participants.UpdateOne(x => x.ConversationId == cid && x.UserId == target,
+            Builders<MParticipant>.Update.Set(x => x.IsAdmin, makeAdmin));
+        return true;
+    }
+
+    public bool RemoveGroupMember(Guid conversationId, Guid actorUserId, Guid memberUserId)
+    {
+        EnsureIndexes();
+        var cid = GuidText(conversationId);
+        var actor = GuidText(actorUserId);
+        var target = GuidText(memberUserId);
+        var group = _conversations.Find(x => x.Id == cid && x.IsGroup).FirstOrDefault();
+        if (group is null) return false;
+        if (!IsGroupAdmin(group, actor)) throw new UnauthorizedAccessException("إزالة الأعضاء متاحة للمشرفين فقط.");
+        if (target == group.OwnerUserId) throw new InvalidOperationException("لا يمكن إزالة مالك المجموعة.");
+        var result = _participants.DeleteOne(x => x.ConversationId == cid && x.UserId == target);
+        return result.DeletedCount > 0;
+    }
+
+    public ConversationDto? JoinGroupByInvite(string inviteCode, Guid userId)
+    {
+        EnsureIndexes();
+        inviteCode = (inviteCode ?? string.Empty).Trim();
+        if (inviteCode.Length is < 16 or > 80) return null;
+        var group = _conversations.Find(x => x.IsGroup && x.InviteCode == inviteCode).FirstOrDefault();
+        if (group is null) return null;
+        if (group.RequireAdminApproval)
+            throw new UnauthorizedAccessException("تتطلب هذه المجموعة موافقة المشرف قبل الانضمام.");
+        var uid = GuidText(userId);
+        if (_participants.Find(x => x.ConversationId == group.Id && x.UserId == uid).FirstOrDefault() is null)
+        {
+            var timestamp = NowText();
+            _participants.InsertOne(new MParticipant { Id = PairId(Guid.Parse(group.Id), userId), ConversationId = group.Id, UserId = uid, JoinedAt = timestamp, LastReadAt = timestamp });
+        }
+        return new ConversationDto(Guid.Parse(group.Id), group.Name, group.LastMessage, ParseTime(group.UpdatedAt, DateTimeOffset.UtcNow), 0, isGroup: true);
+    }
+
+    private bool IsGroupAdmin(MConversation group, string userId)
+    {
+        if (group.OwnerUserId == userId) return true;
+        return _participants.Find(x => x.ConversationId == group.Id && x.UserId == userId && x.IsAdmin).FirstOrDefault() is not null;
+    }
+
+    public ConversationDto CreateGroup(
+        Guid ownerUserId, string name, IReadOnlyCollection<Guid> memberUserIds, int disappearingSeconds = 0,
+        bool allMembersCanAddMembers = false, bool allMembersCanShareInviteLink = false,
+        bool requireAdminApproval = false, bool adminsOnlyMessages = false)
+    {
+        EnsureIndexes(); var members = memberUserIds.Where(id => id != Guid.Empty && id != ownerUserId).Distinct().ToArray();
+        if (disappearingSeconds is not (0 or 3600 or 7200 or 86400 or 432000 or 2592000)) throw new InvalidOperationException("قيمة مؤقت الاختفاء غير مدعومة.");
+        if (members.Length == 0) throw new InvalidOperationException("أضف عضوًا واحدًا على الأقل قبل إنشاء المجموعة.");
+        if (members.Length > 100) throw new InvalidOperationException("يمكن إضافة 100 عضو كحد أقصى إلى المجموعة.");
         lock (_sync)
         {
-            var wanted = members.Select(GuidText).ToArray();
-            var actual = _users.CountDocuments(x => wanted.Contains(x.Id));
-            if (actual != members.Length)
-                throw new InvalidOperationException("أحد الأعضاء المحددين غير موجود أو لم يعد متاحًا.");
-
-            var now = DateTimeOffset.UtcNow;
-            var timestamp = now.ToString("O");
-            var group = new MConversation
+            var wanted = members.Select(GuidText).ToArray(); var actual = _users.CountDocuments(x => wanted.Contains(x.Id));
+            if (actual != members.Length) throw new InvalidOperationException("أحد الأعضاء المحددين غير موجود أو لم يعد متاحًا.");
+            var now = DateTimeOffset.UtcNow; var timestamp = now.ToString("O"); var group = new MConversation
             {
-                Id = GuidText(Guid.NewGuid()),
-                OwnerUserId = GuidText(ownerUserId),
-                Name = name.Trim(),
-                LastMessage = string.Empty,
-                UpdatedAt = timestamp,
-                IsGroup = true,
-                DisappearingSeconds = disappearingSeconds,
-                AllMembersCanAddMembers = allMembersCanAddMembers,
-                AllMembersCanShareInviteLink = allMembersCanShareInviteLink,
-                RequireAdminApproval = requireAdminApproval,
+                Id = GuidText(Guid.NewGuid()), OwnerUserId = GuidText(ownerUserId), Name = name.Trim(),
+                LastMessage = string.Empty, UpdatedAt = timestamp, IsGroup = true,
+                DisappearingSeconds = disappearingSeconds, AllMembersCanAddMembers = allMembersCanAddMembers,
+                AllMembersCanShareInviteLink = allMembersCanShareInviteLink, RequireAdminApproval = requireAdminApproval,
                 AdminsOnlyMessages = adminsOnlyMessages
             };
-
             _conversations.InsertOne(group);
-            foreach (var id in new[] { ownerUserId }.Concat(members))
-            {
-                _participants.InsertOne(new MParticipant
-                {
-                    Id = PairId(Guid.Parse(group.Id), id),
-                    ConversationId = group.Id,
-                    UserId = GuidText(id),
-                    JoinedAt = timestamp,
-                    LastReadAt = timestamp
-                });
-            }
-
+            foreach (var id in new[] { ownerUserId }.Concat(members)) _participants.InsertOne(new MParticipant { Id = PairId(Guid.Parse(group.Id), id), ConversationId = group.Id, UserId = GuidText(id), JoinedAt = timestamp, LastReadAt = timestamp, IsAdmin = id == ownerUserId });
             return new ConversationDto(Guid.Parse(group.Id), group.Name, string.Empty, now, 0, isGroup: true);
         }
+    }
+
+    public int AddGroupMembers(Guid conversationId, Guid requesterUserId, IReadOnlyCollection<Guid> memberUserIds)
+    {
+        EnsureIndexes();
+        var group = _conversations.Find(x => x.Id == GuidText(conversationId) && x.IsGroup).FirstOrDefault();
+        if (group is null) throw new InvalidOperationException("المجموعة غير موجودة.");
+        var requester = GuidText(requesterUserId);
+        if (_participants.Find(x => x.ConversationId == group.Id && x.UserId == requester).FirstOrDefault() is null)
+            throw new InvalidOperationException("أنت لست عضوًا في هذه المجموعة.");
+        if (!group.AllMembersCanAddMembers && !IsGroupAdmin(group, requester))
+            throw new UnauthorizedAccessException("إضافة الأعضاء متاحة للمشرف فقط في هذه المجموعة.");
+        var members = (memberUserIds ?? Array.Empty<Guid>()).Where(x => x != Guid.Empty && x != requesterUserId).Distinct().ToArray();
+        if (members.Length == 0) throw new InvalidOperationException("اختر عضوًا واحدًا على الأقل.");
+        if (members.Length > 100) throw new InvalidOperationException("يمكن إضافة 100 عضو كحد أقصى في كل طلب.");
+        var wanted = members.Select(GuidText).ToArray();
+        var found = _users.CountDocuments(x => wanted.Contains(x.Id));
+        if (found != members.Length) throw new InvalidOperationException("أحد الحسابات المحددة غير موجود أو لم يعد متاحًا.");
+        var timestamp = NowText();
+        var added = 0;
+        foreach (var memberId in members)
+        {
+            var uid = GuidText(memberId);
+            if (_participants.Find(x => x.ConversationId == group.Id && x.UserId == uid).FirstOrDefault() is not null) continue;
+            _participants.InsertOne(new MParticipant { Id = PairId(conversationId, memberId), ConversationId = group.Id, UserId = uid, JoinedAt = timestamp, LastReadAt = timestamp });
+            added++;
+        }
+        return added;
+    }
+
+    public bool CanSendGroupMessage(Guid conversationId, Guid userId)
+    {
+        EnsureIndexes();
+        var group = _conversations.Find(x => x.Id == GuidText(conversationId)).FirstOrDefault();
+        if (group is null || !group.IsGroup || !group.AdminsOnlyMessages) return true;
+        return IsGroupAdmin(group, GuidText(userId));
     }
 
     public void ReportConversation(Guid conversationId, Guid userId, string reason)
@@ -732,7 +866,7 @@ sealed class MongoStore
     public int GetDisappearingSeconds(Guid conversationId) { EnsureIndexes(); return _conversations.Find(x => x.Id == GuidText(conversationId)).FirstOrDefault()?.DisappearingSeconds ?? 0; }
     public void SetDisappearingSeconds(Guid conversationId, Guid userId, int seconds)
     {
-        EnsureIndexes(); if (seconds is not (0 or 3600 or 86400 or 432000 or 2592000)) throw new ArgumentOutOfRangeException(nameof(seconds));
+        EnsureIndexes(); if (seconds is not (0 or 3600 or 7200 or 86400 or 432000 or 2592000)) throw new ArgumentOutOfRangeException(nameof(seconds));
         var cid = GuidText(conversationId); var uid = GuidText(userId);
         if (_participants.Find(p => p.ConversationId == cid && p.UserId == uid).FirstOrDefault() is null)
             throw new InvalidOperationException("لم يتم العثور على المحادثة أو لا تملك صلاحية تعديلها.");
@@ -953,8 +1087,8 @@ sealed class MongoStore
 [BsonIgnoreExtraElements] sealed class MEmailChange { [BsonId] public string UserId { get; set; } = ""; public string NewEmail { get; set; } = ""; public string Code { get; set; } = ""; public string ExpiresAt { get; set; } = ""; public int FailedAttempts { get; set; } public string? LastSentAt { get; set; } }
 [BsonIgnoreExtraElements] sealed class MPasswordReset { [BsonId] public string Email { get; set; } = ""; public string Code { get; set; } = ""; public string ExpiresAt { get; set; } = ""; public int FailedAttempts { get; set; } public string? LastSentAt { get; set; } }
 [BsonIgnoreExtraElements] sealed class MSession { [BsonId] public string Token { get; set; } = ""; public string UserId { get; set; } = ""; public string ExpiresAt { get; set; } = ""; }
-[BsonIgnoreExtraElements] sealed class MConversation { [BsonId] public string Id { get; set; } = ""; public string OwnerUserId { get; set; } = ""; public string Name { get; set; } = ""; public string LastMessage { get; set; } = ""; public string UpdatedAt { get; set; } = ""; public bool IsGroup { get; set; } public int DisappearingSeconds { get; set; } public bool AllMembersCanAddMembers { get; set; } public bool AllMembersCanShareInviteLink { get; set; } public bool RequireAdminApproval { get; set; } public bool AdminsOnlyMessages { get; set; } }
-[BsonIgnoreExtraElements] sealed class MParticipant { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string UserId { get; set; } = ""; public string JoinedAt { get; set; } = ""; public string? LastReadAt { get; set; } public string? ClearedBefore { get; set; } }
+[BsonIgnoreExtraElements] sealed class MConversation { [BsonId] public string Id { get; set; } = ""; public string OwnerUserId { get; set; } = ""; public string Name { get; set; } = ""; public string LastMessage { get; set; } = ""; public string UpdatedAt { get; set; } = ""; public bool IsGroup { get; set; } public int DisappearingSeconds { get; set; } public bool AllMembersCanAddMembers { get; set; } public bool AllMembersCanShareInviteLink { get; set; } public bool RequireAdminApproval { get; set; } public bool AdminsOnlyMessages { get; set; } public string? Description { get; set; } public string? InviteCode { get; set; } public byte[]? GroupPhoto { get; set; } public string? GroupPhotoContentType { get; set; } public long GroupPhotoVersion { get; set; } }
+[BsonIgnoreExtraElements] sealed class MParticipant { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string UserId { get; set; } = ""; public string JoinedAt { get; set; } = ""; public string? LastReadAt { get; set; } public string? ClearedBefore { get; set; } public bool IsAdmin { get; set; } }
 [BsonIgnoreExtraElements] sealed class MUserState { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string UserId { get; set; } = ""; public bool IsArchived { get; set; } public bool IsMuted { get; set; } public bool IsDeleted { get; set; } public string UpdatedAt { get; set; } = ""; }
 [BsonIgnoreExtraElements] sealed class MBlockedUser { [BsonId] public string Id { get; set; } = ""; public string BlockerUserId { get; set; } = ""; public string BlockedUserId { get; set; } = ""; public string CreatedAt { get; set; } = ""; }
 [BsonIgnoreExtraElements] sealed class MReport { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string ReporterUserId { get; set; } = ""; public string Reason { get; set; } = ""; public string CreatedAt { get; set; } = ""; }

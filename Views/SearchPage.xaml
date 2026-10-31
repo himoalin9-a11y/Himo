@@ -53,7 +53,7 @@
                 <Image Grid.Column="0" Source="icon_s11_search.png" WidthRequest="20" HeightRequest="20"
                        VerticalOptions="Center" HorizontalOptions="Center" />
                 <Entry x:Name="ContactFilterEntry" Grid.Column="1"
-                       Placeholder="ابحث بالاسم أو الرقم المحلي أو الدولي"
+                       Placeholder="ابحث بالاسم أو البريد أو رقم الهاتف"
                        PlaceholderColor="{DynamicResource HimoTextSecondary}"
                        TextColor="{DynamicResource HimoPrimary}" FontSize="14"
                        BackgroundColor="Transparent" ClearButtonVisibility="WhileEditing"

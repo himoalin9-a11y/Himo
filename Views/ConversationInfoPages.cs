@@ -565,7 +565,7 @@ public sealed class ConversationSharedContentPage : ContentPage
         var list = items.OrderByDescending(x => x.Message.SentAt).ToList();
         // Remote message pages may not carry a local path. Download image thumbnails lazily
         // so images are displayed as images in Storage, Media, and any attachment listing.
-        foreach (var item in list.Where(x => x.Kind == "image"))
+        foreach (var item in list.Where(x => x.Kind == "image").Take(36))
         {
             if (!string.IsNullOrWhiteSpace(item.LocalPath) && File.Exists(item.LocalPath)) continue;
             if (!Guid.TryParse(item.Message.RemoteId, out var attachmentId) || !_api.HasToken) continue;
@@ -615,6 +615,52 @@ public sealed class ConversationSharedContentPage : ContentPage
                     gallery.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
             }
             _itemsHost.Add(gallery);
+        }
+        else if (_tab == "media")
+        {
+            var strip = new HorizontalStackLayout { Spacing = 9, Padding = new Thickness(2, 4) };
+            foreach (var item in list)
+            {
+                var tile = new Border
+                {
+                    WidthRequest = 112,
+                    HeightRequest = 112,
+                    Padding = 0,
+                    StrokeThickness = 1,
+                    StrokeShape = new RoundRectangle { CornerRadius = 13 }
+                };
+                tile.SetDynamicResource(Border.BackgroundColorProperty, "HimoSurface");
+                tile.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+                if (item.Kind == "image" && !string.IsNullOrWhiteSpace(item.LocalPath) && File.Exists(item.LocalPath))
+                {
+                    tile.Content = new Image { Source = ImageSource.FromFile(item.LocalPath), Aspect = Aspect.AspectFill };
+                }
+                else
+                {
+                    var fallback = ConversationInfoPage.MakeLabel(item.Kind switch
+                    {
+                        "video" => "▶",
+                        "audio" => "♫",
+                        _ => "▧"
+                    }, 29, true);
+                    fallback.HorizontalTextAlignment = TextAlignment.Center;
+                    fallback.VerticalTextAlignment = TextAlignment.Center;
+                    tile.Content = fallback;
+                }
+                var tap = new TapGestureRecognizer();
+                tap.Tapped += async (_, _) => await OpenItemAsync(item);
+                tile.GestureRecognizers.Add(tap);
+                strip.Add(tile);
+            }
+            var horizontal = new ScrollView
+            {
+                Orientation = ScrollOrientation.Horizontal,
+                HeightRequest = 124,
+                Content = strip,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Never,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Never
+            };
+            _itemsHost.Add(horizontal);
         }
         else
         {
