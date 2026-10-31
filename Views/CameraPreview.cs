@@ -31,6 +31,7 @@ internal interface ICameraPreviewController
     bool HasFlash { get; }
     bool IsFlashOn { get; }
     float MaxZoomFactor { get; }
+    bool IsFrontCamera { get; }
 }
 
 public sealed class CameraPreview : View
@@ -116,4 +117,5 @@ public sealed class CameraPreview : View
     public bool HasFlash => Controller?.HasFlash == true;
     public bool IsFlashOn => Controller?.IsFlashOn == true;
     public float MaxZoomFactor => Controller?.MaxZoomFactor ?? 1f;
+    public bool IsFrontCamera => Controller?.IsFrontCamera ?? false;
 }

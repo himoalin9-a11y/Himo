@@ -87,6 +87,12 @@ public partial class RegisterPage : ContentPage
         ApplyVerificationState();
     }
 
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this, batchSize: 48);
+    }
+
     private async void PrimaryClicked(object sender, EventArgs e)
     {
         if (_busy || PrimaryButton is null) return;

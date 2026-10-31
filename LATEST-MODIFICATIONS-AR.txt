@@ -1,0 +1,16 @@
+ملخص النسخة المدمجة
+===================
+هذه الحزمة مبنية على مشروع Himo الكامل الذي رفعه المستخدم، مع دمج أحدث التعديلات المتاحة داخل المحادثة:
+- إصلاح جذر تعارض نشاط التشغيل: LauncherIconHomeDefault هو النشاط الأصلي الثابت الذي يستهدفه Visual Studio، وLauncherIconDefault وبقية الخيارات تظل aliases لأيقونات التشغيل.
+- دمج ملفات MainActivity وAndroidManifest.xml وAndroidManifest.Debug.xml وخدمة HimoLauncherIconService المتوافقة مع هذا الترتيب.
+- دمج آخر نسخة من HimoAppearanceManager التي تحتوي على واجهات/دوال السمات المطلوبة وتتجنب أخطاء Color.Value.
+- دمج CallPage.xaml بتخطيط الفيديو الكامل، مع نسخة code-behind التي تحتوي على overload عام لوضع Picture-in-Picture وتحقق من معاملات Android.
+- الاحتفاظ بصورة Resources/AppIcon/appicon.png الأصلية دون تغيير.
+- تحديث ملف Himo.csproj.user ليطابق نشاط التشغيل الثابت.
+
+ملاحظات تحقق مهمة:
+- فُحصت ملفات XAML/XML التي تغيرت وعلاقات معالجات الأحداث ومراجع الأيقونات.
+- لم يُنفذ Rebuild فعلي في هذه البيئة لعدم توفر dotnet/.NET SDK وMAUI Android workload.
+- هذا الأرشيف لا يتضمن مشروع HimoDownload المستقل أو مصدر DownloadService؛ الأرشيف Himo.zip الذي تم رفعه لا يحتوي على هذا المشروع/الصنف. لذلك إذا كانت أخطاء DownloadService صادرة من مشروع منفصل، فستحتاج ملفات مصدر HimoDownload الكاملة لإصلاحها.
+
+لفتح التطبيق، افتح Himo.sln الموجود في هذا المجلد، وليس أي ملف حل قديم أو من نسخة أخرى.

@@ -7,7 +7,7 @@
              FlowDirection="RightToLeft"
              BackgroundColor="{DynamicResource HimoBackground}"
              Shell.NavBarIsVisible="False">
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*"
+    <Grid RowDefinitions="Auto,Auto,Auto,*"
           RowSpacing="0"
           BackgroundColor="{DynamicResource HimoBackground}">
 
@@ -29,7 +29,7 @@
                 <Label Text="جهات الاتصال" FontSize="21" FontAttributes="Bold"
                        TextColor="{DynamicResource HimoPrimary}"
                        HorizontalTextAlignment="Center" />
-                <Label Text="الأسماء المحفوظة على هاتفك" FontSize="12"
+                <Label Text="جهات اتصالك على Himo" FontSize="12"
                        TextColor="{DynamicResource HimoTextSecondary}"
                        HorizontalTextAlignment="Center" />
             </VerticalStackLayout>
@@ -53,7 +53,7 @@
                 <Image Grid.Column="0" Source="icon_s11_search.png" WidthRequest="20" HeightRequest="20"
                        VerticalOptions="Center" HorizontalOptions="Center" />
                 <Entry x:Name="ContactFilterEntry" Grid.Column="1"
-                       Placeholder="البحث بالاسم أو الرقم أو البريد"
+                       Placeholder="ابحث بالاسم أو الرقم المحلي أو الدولي"
                        PlaceholderColor="{DynamicResource HimoTextSecondary}"
                        TextColor="{DynamicResource HimoPrimary}" FontSize="14"
                        BackgroundColor="Transparent" ClearButtonVisibility="WhileEditing"
@@ -73,39 +73,8 @@
                 BorderColor="{DynamicResource HimoBorder}" BorderWidth="1"
                 TextColor="{DynamicResource HimoPrimary}" FontAttributes="Bold" FontSize="13" />
 
-        <!-- Explicit opt-in matching card -->
-        <Border Grid.Row="3" Margin="14,0,14,9" Padding="10,10"
-                BackgroundColor="{DynamicResource HimoSurface}"
-                Stroke="{DynamicResource HimoBorder}" StrokeThickness="1">
-            <Border.StrokeShape><RoundRectangle CornerRadius="17" /></Border.StrokeShape>
-            <Grid ColumnDefinitions="40,*,Auto" ColumnSpacing="9" FlowDirection="LeftToRight">
-                <Border Grid.Column="0" WidthRequest="38" HeightRequest="38"
-                        BackgroundColor="{DynamicResource HimoAvatarSoft}"
-                        Stroke="{DynamicResource HimoBorder}" StrokeThickness="1"
-                        VerticalOptions="Center" HorizontalOptions="Center">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="13" /></Border.StrokeShape>
-                    <Image Source="settings_icon_s11_match.png" WidthRequest="22" HeightRequest="22"
-                           HorizontalOptions="Center" VerticalOptions="Center" />
-                </Border>
-                <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center"
-                                     FlowDirection="RightToLeft">
-                    <Label Text="مطابقة حسابات Himo" FontSize="13.5" FontAttributes="Bold"
-                           TextColor="{DynamicResource HimoPrimary}" LineBreakMode="TailTruncation" MaxLines="1" />
-                    <Label Text="لن تُرسل أرقامك إلا بعد موافقتك" FontSize="10.5"
-                           TextColor="{DynamicResource HimoTextSecondary}" LineBreakMode="TailTruncation" MaxLines="2" />
-                </VerticalStackLayout>
-                <Button x:Name="MatchContactsButton" Grid.Column="2"
-                        Text="مطابقة" Clicked="MatchContactsClicked"
-                        BackgroundColor="{DynamicResource HimoAccent}"
-                        TextColor="{DynamicResource HimoOnAccent}"
-                        FontAttributes="Bold" FontSize="11.5"
-                        Padding="10,0" WidthRequest="91" HeightRequest="39"
-                        CornerRadius="12" VerticalOptions="Center" />
-            </Grid>
-        </Border>
-
         <!-- Results -->
-        <Grid Grid.Row="4" Margin="12,0,12,8" RowDefinitions="Auto,*" RowSpacing="5">
+        <Grid Grid.Row="3" Margin="12,0,12,8" RowDefinitions="Auto,*" RowSpacing="5">
             <Label x:Name="ContactsStatusLabel" Grid.Row="0"
                    Text="جارٍ تحميل جهات الاتصال..." FontSize="11.5"
                    TextColor="{DynamicResource HimoTextSecondary}" Margin="5,1,5,4"
@@ -143,34 +112,39 @@
                                         Stroke="{DynamicResource HimoBorder}" StrokeThickness="1"
                                         VerticalOptions="Center">
                                     <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
-                                    <Label Text="{Binding Initial}" FontSize="17" FontAttributes="Bold"
-                                           TextColor="{DynamicResource HimoAccent}"
-                                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                    <Grid>
+                                        <Image Source="{Binding ProfilePhotoPath}"
+                                               IsVisible="{Binding HasProfilePhotoPath}"
+                                               Aspect="AspectFill" />
+                                        <Label Text="{Binding Initial}"
+                                               IsVisible="{Binding ShowInitial}"
+                                               FontSize="17" FontAttributes="Bold"
+                                               TextColor="{DynamicResource HimoAccent}"
+                                               HorizontalTextAlignment="Center"
+                                               VerticalTextAlignment="Center" />
+                                    </Grid>
                                 </Border>
                                 <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center"
                                                      FlowDirection="RightToLeft">
-                                    <Label Text="{Binding Name}" FontSize="14" FontAttributes="Bold"
+                                    <Label Text="{Binding DisplayName}" FontSize="14" FontAttributes="Bold"
                                            TextColor="{DynamicResource HimoPrimary}"
                                            LineBreakMode="TailTruncation" MaxLines="1" />
                                     <Label Text="{Binding PhoneNumbersDisplay}" FontSize="11.5"
                                            TextColor="{DynamicResource HimoPrimary}"
-                                           LineBreakMode="TailTruncation" MaxLines="1" />
-                                    <Label Text="{Binding EmailAddressesDisplay}" FontSize="10.5"
-                                           TextColor="{DynamicResource HimoTextSecondary}"
                                            LineBreakMode="TailTruncation" MaxLines="1" />
                                     <Label Text="{Binding AccountStatus}" FontSize="10.5"
                                            TextColor="{DynamicResource HimoAccent}"
                                            LineBreakMode="TailTruncation" MaxLines="1" />
                                 </VerticalStackLayout>
                                 <Button Grid.Column="2" Text="{Binding ActionText}"
-                                        IsEnabled="{Binding HasHimoAccount}"
+                                        IsEnabled="{Binding CanPerformAction}"
                                         Clicked="ContactActionClicked"
                                         BackgroundColor="{DynamicResource HimoSurface}"
                                         TextColor="{DynamicResource HimoAccent}"
-                                        BorderColor="{DynamicResource HimoBorder}" BorderWidth="1"
-                                        FontAttributes="Bold" FontSize="10.5"
-                                        Padding="7,0" WidthRequest="94" HeightRequest="35"
-                                        CornerRadius="11" VerticalOptions="Center" />
+                                        BorderColor="{DynamicResource HimoAccent}" BorderWidth="1"
+                                        FontAttributes="Bold" FontSize="11"
+                                        Padding="7,0" WidthRequest="86" HeightRequest="36"
+                                        CornerRadius="12" VerticalOptions="Center" />
                             </Grid>
                         </Border>
                     </DataTemplate>

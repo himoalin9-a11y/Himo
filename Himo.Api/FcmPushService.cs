@@ -103,9 +103,15 @@ sealed class FcmPushService
 
         var data = new Dictionary<string, string>
         {
+            // Chat pushes are data-only so the Android app can always render them
+            // with Himo's own notification icon and a PendingIntent carrying the
+            // conversation ID. A top-level FCM Notification is system-rendered
+            // and cannot reliably use the app's deep-link/call routing.
             ["conversation_id"] = conversationId.ToString("D"),
             ["message_id"] = messageId.ToString("D"),
             ["notification_type"] = "chat_message",
+            ["title"] = string.IsNullOrWhiteSpace(senderName) ? "رسالة جديدة" : senderName,
+            ["body"] = string.IsNullOrWhiteSpace(message) ? "لديك رسالة جديدة" : message,
             ["is_silent_in_foreground"] = "true"
         };
 
@@ -124,22 +130,13 @@ sealed class FcmPushService
 #pragma warning disable CS0618 // FirebaseAdmin currently uses registration tokens here; Fids are a different identifier type.
                         Tokens = batch.ToList(),
 #pragma warning restore CS0618
-                        Notification = new Notification
-                        {
-                            Title = string.IsNullOrWhiteSpace(senderName) ? "رسالة جديدة" : senderName,
-                            Body = string.IsNullOrWhiteSpace(message) ? "لديك رسالة جديدة" : message
-                        },
                         Data = data,
+                        // Keep this a high-priority data message. The Android
+                        // MainApplication callback posts the local notification
+                        // using the Himo icon and conversation PendingIntent.
                         Android = new AndroidConfig
                         {
-                            Priority = Priority.High,
-                            Notification = new AndroidNotification
-                            {
-                                ChannelId = "himo_messages_v5",
-                                Priority = NotificationPriority.HIGH,
-                                DefaultSound = true,
-                                DefaultVibrateTimings = true,
-                            }
+                            Priority = Priority.High
                         }
                     };
 

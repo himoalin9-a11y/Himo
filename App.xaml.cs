@@ -1,4 +1,6 @@
 ﻿using Himo.Services;
+using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using Microsoft.Maui.Controls;
 namespace Himo;
 
@@ -14,11 +16,54 @@ public partial class App : Application
     private DateTime _backgroundedAtUtc;
     private readonly AppLockService _appLock;
     private readonly PushNotificationManager _pushNotifications;
+#if DEBUG
+    private static int _loggedNullReferenceCount;
+
+    private static void LogFirstChanceNullReference(object? sender, FirstChanceExceptionEventArgs args)
+    {
+        if (args.Exception is not NullReferenceException ex)
+            return;
+
+        // FirstChanceException may fire before Exception.StackTrace has been populated.
+        // Capture the live managed stack here so the Output window includes the caller.
+        if (Interlocked.Increment(ref _loggedNullReferenceCount) <= 6)
+        {
+            Debug.WriteLine($"[Himo NullReference Diagnostic] {ex.GetType().FullName}: {ex.Message}");
+            Debug.WriteLine($"[Himo NullReference Diagnostic] TargetSite: {ex.TargetSite}");
+            Debug.WriteLine("[Himo NullReference Diagnostic] Live managed stack at throw time:");
+            Debug.WriteLine(new StackTrace(1, true).ToString());
+            if (!string.IsNullOrWhiteSpace(ex.StackTrace))
+                Debug.WriteLine("[Himo NullReference Diagnostic] Exception stack:\n" + ex.StackTrace);
+        }
+    }
+
+    private static void LogUnhandledException(object? sender, UnhandledExceptionEventArgs args)
+    {
+        Debug.WriteLine("[Himo Unhandled Exception] IsTerminating=" + args.IsTerminating);
+        Debug.WriteLine(args.ExceptionObject?.ToString() ?? "Unknown non-Exception failure");
+    }
+
+    private static void LogUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs args)
+    {
+        Debug.WriteLine("[Himo Unobserved Task Exception]");
+        Debug.WriteLine(args.Exception.ToString());
+    }
+#endif
 
     public App(AccountService account, HimoApiClient api, ChatService chat, INotificationService notifications, AppLockService appLock, PushNotificationManager pushNotifications)
     {
         InitializeComponent();
-        UserAppTheme = Preferences.Default.Get(ThemeKey, true) ? AppTheme.Dark : AppTheme.Light;
+#if DEBUG
+        AppDomain.CurrentDomain.FirstChanceException -= LogFirstChanceNullReference;
+        AppDomain.CurrentDomain.FirstChanceException += LogFirstChanceNullReference;
+        AppDomain.CurrentDomain.UnhandledException -= LogUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += LogUnhandledException;
+        TaskScheduler.UnobservedTaskException -= LogUnobservedTaskException;
+        TaskScheduler.UnobservedTaskException += LogUnobservedTaskException;
+#endif
+        // Do not set UserAppTheme during activity creation. Himo owns explicit palette
+        // resources; native night-mode changes here can trigger AppCompat configuration
+        // queries before the selected launcher component is fully resolved.
         _account = account;
         _api = api;
         _chat = chat;
@@ -27,8 +72,9 @@ public partial class App : Application
         _pushNotifications = pushNotifications;
         _sessionUnlocked = !_appLock.IsEnabled;
         _api.SessionExpired += OnSessionExpired;
-        // Himo owns its palette and sets UserAppTheme explicitly; rebuilding every
-        // resource on RequestedThemeChanged causes unnecessary UI-wide work.
+        // Himo controls its interface through explicit palette resources. Avoid native
+        // RequestedTheme changes during app startup; they can force AppCompat to re-resolve
+        // the launcher component and recreate the first page.
         ApplyThemeResources();
         _ = SynchronizeAccountIdentityAsync();
     }
@@ -127,7 +173,8 @@ public partial class App : Application
     public void SetDarkMode(bool enabled)
     {
         Preferences.Default.Set(ThemeKey, enabled);
-        UserAppTheme = enabled ? AppTheme.Dark : AppTheme.Light;
+        // Himo uses an explicit palette. Avoid changing native Android UiMode during
+        // an active page interaction; the selected mode is applied again on next startup.
         ApplyThemeResources();
     }
 

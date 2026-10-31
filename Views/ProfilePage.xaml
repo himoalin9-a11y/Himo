@@ -77,7 +77,7 @@
                             <HorizontalStackLayout Spacing="6" FlowDirection="RightToLeft"
                                                    HorizontalOptions="Start" Margin="0,2,0,0">
                                 <BoxView WidthRequest="7" HeightRequest="7" CornerRadius="4"
-                                         Color="#20C997" VerticalOptions="Center" />
+                                         Color="{DynamicResource HimoSuccess}" VerticalOptions="Center" />
                                 <Label Text="حسابك على Himo" FontSize="11.5"
                                        TextColor="{DynamicResource HimoTextSecondary}"
                                        VerticalTextAlignment="Center" />
@@ -282,8 +282,8 @@
                 <Button Text="تسجيل الخروج" Clicked="LogoutClicked"
                         HeightRequest="52" CornerRadius="17"
                         BackgroundColor="{DynamicResource HimoSoft}"
-                        BorderColor="#D94B73" BorderWidth="1"
-                        TextColor="#FF5C83" FontSize="15" FontAttributes="Bold" />
+                        BorderColor="{DynamicResource HimoDanger}" BorderWidth="1"
+                        TextColor="{DynamicResource HimoDanger}" FontSize="15" FontAttributes="Bold" />
                 <Label Text="إدارة ملفك الشخصي وإعدادات Himo من مكان واحد"
                        FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}"
                        HorizontalTextAlignment="Center" Margin="3,0,3,2" />

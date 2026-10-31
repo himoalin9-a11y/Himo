@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:models="clr-namespace:Himo.Models"
@@ -62,8 +62,14 @@
                 </Style.Triggers>
             </Style>
 
-            <SolidColorBrush x:Key="SenderBubbleBrush" Color="{DynamicResource HimoBubbleMine}" />
-            <SolidColorBrush x:Key="ReceiverBubbleBrush" Color="{DynamicResource HimoBubbleOther}" />
+            <LinearGradientBrush x:Key="SenderBubbleBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="{DynamicResource HimoBubbleMine}" Offset="0.0" />
+                <GradientStop Color="{DynamicResource HimoAccentDark}" Offset="1.0" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="ReceiverBubbleBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="{DynamicResource HimoBubbleOther}" Offset="0.0" />
+                <GradientStop Color="{DynamicResource HimoCard}" Offset="1.0" />
+            </LinearGradientBrush>
             <SolidColorBrush x:Key="ComposerBrush" Color="{DynamicResource HimoCard}" />
 
             <Style x:Key="ChatMessageBubble" TargetType="Border">

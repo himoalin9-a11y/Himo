@@ -35,6 +35,7 @@ public partial class MediaCapturePreviewPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        _ = Himo.Services.HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this, batchSize: 48);
         // The preview must remain alive while the editor is presented on top of it.
         PreviewImage.Aspect = Aspect.AspectFit;
     }

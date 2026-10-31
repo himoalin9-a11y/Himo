@@ -1,8 +1,12 @@
+using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
+using Himo.Models;
 using Himo.Services;
 using Himo.ViewModels;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.ApplicationModel.Communication;
+using Microsoft.Maui.Storage;
 
 namespace Himo.Views;
 
@@ -16,8 +20,15 @@ public partial class SettingsPage : ContentPage
     private readonly ChatService _chat;
     private readonly INotificationService _notifications;
     private readonly AppLockService _appLock;
+    private readonly HomeViewModel _home;
+    private readonly ObservableCollection<ContactMatchDto> _contactMatches = new();
+    private readonly Dictionary<VisualElement, double> _originalFontSizes = new();
     private bool _initializingAppLockSwitch;
     private bool _initializingNotificationsSwitch;
+    private bool _initializingAppearanceSwitch;
+    private bool _initializingNotificationPreviewSwitch;
+    private bool _contactsSearchBusy;
+    private bool _openingContactConversation;
     private int _accountActionInProgress;
     private static int _accountRouteRegistered;
     private static int _privacyRoutesRegistered;
@@ -39,6 +50,23 @@ public partial class SettingsPage : ContentPage
         _chat = chat;
         _notifications = notifications;
         _appLock = appLock;
+        _home = home;
+        if (ContactMatchesList is not null)
+            ContactMatchesList.ItemsSource = _contactMatches;
+
+        _initializingAppearanceSwitch = true;
+        if (DarkModeSwitch is not null)
+            DarkModeSwitch.IsToggled = HimoAppearanceManager.IsActiveStyleDark;
+        _initializingAppearanceSwitch = false;
+
+        _initializingNotificationPreviewSwitch = true;
+        if (NotificationPreviewSwitch is not null)
+            NotificationPreviewSwitch.IsToggled = Preferences.Default.Get("himo_notification_preview", true);
+        _initializingNotificationPreviewSwitch = false;
+
+        CaptureOriginalFontSizes(this);
+        UpdateFontSizeButtonText(Preferences.Default.Get("himo_settings_font_scale", 1.0));
+
         _initializingNotificationsSwitch = true;
         if (NotificationsSwitch is not null)
             NotificationsSwitch.IsToggled = _notifications.IsEnabled;
@@ -259,11 +287,268 @@ public partial class SettingsPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        // Keep navigation lightweight: the blue icons are defined by the page assets,
-        // so do not rescan the entire visual tree or animate every element on entry.
+        _initializingAppearanceSwitch = true;
+        if (DarkModeSwitch is not null)
+            DarkModeSwitch.IsToggled = HimoAppearanceManager.IsActiveStyleDark;
+        _initializingAppearanceSwitch = false;
+        ApplyFontScale(Preferences.Default.Get("himo_settings_font_scale", 1.0));
+        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this, batchSize: 48);
         UpdateNotificationPermissionStatus();
         UpdateAccountCard();
         _ = RefreshOwnProfilePhotoAsync();
+    }
+
+    private void DarkModeToggled(object? sender, ToggledEventArgs e)
+    {
+        if (_initializingAppearanceSwitch)
+            return;
+
+        HimoAppearanceManager.SetDarkModeEnabled(e.Value);
+        _initializingAppearanceSwitch = true;
+        if (DarkModeSwitch is not null)
+            DarkModeSwitch.IsToggled = HimoAppearanceManager.IsActiveStyleDark;
+        _initializingAppearanceSwitch = false;
+        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this, batchSize: 48);
+        ApplyFontScale(Preferences.Default.Get("himo_settings_font_scale", 1.0));
+    }
+
+    private async void FontSizeRowClicked(object? sender, EventArgs e)
+    {
+        var selected = await DisplayActionSheetAsync("حجم النص في الإعدادات", "إلغاء", null,
+            "صغير · 90%", "متوسط · 100%", "كبير · 115%");
+        var scale = selected switch
+        {
+            "صغير · 90%" => 0.90,
+            "متوسط · 100%" => 1.00,
+            "كبير · 115%" => 1.15,
+            _ => Preferences.Default.Get("himo_settings_font_scale", 1.0)
+        };
+        if (selected is not ("صغير · 90%" or "متوسط · 100%" or "كبير · 115%"))
+            return;
+
+        Preferences.Default.Set("himo_settings_font_scale", scale);
+        UpdateFontSizeButtonText(scale);
+        ApplyFontScale(scale);
+    }
+
+    private void UpdateFontSizeButtonText(double scale)
+    {
+        if (FontSizeValueButton is null)
+            return;
+        FontSizeValueButton.Text = scale < 0.95 ? "صغير" : scale > 1.05 ? "كبير" : "متوسط";
+    }
+
+    private void CaptureOriginalFontSizes(VisualElement element)
+    {
+        var fontSize = GetFontSize(element);
+        if (fontSize is > 0 && double.IsFinite(fontSize.Value))
+            _originalFontSizes.TryAdd(element, fontSize.Value);
+
+        if (element is IVisualTreeElement visualTree)
+        {
+            foreach (var child in visualTree.GetVisualChildren())
+            {
+                if (child is VisualElement visualChild)
+                    CaptureOriginalFontSizes(visualChild);
+            }
+        }
+    }
+
+    private static double? GetFontSize(VisualElement element) => element switch
+    {
+        Label label => label.FontSize,
+        Button button => button.FontSize,
+        Entry entry => entry.FontSize,
+        Editor editor => editor.FontSize,
+        SearchBar searchBar => searchBar.FontSize,
+        Picker picker => picker.FontSize,
+        _ => null
+    };
+
+    private static void SetFontSize(VisualElement element, double fontSize)
+    {
+        switch (element)
+        {
+            case Label label: label.FontSize = fontSize; break;
+            case Button button: button.FontSize = fontSize; break;
+            case Entry entry: entry.FontSize = fontSize; break;
+            case Editor editor: editor.FontSize = fontSize; break;
+            case SearchBar searchBar: searchBar.FontSize = fontSize; break;
+            case Picker picker: picker.FontSize = fontSize; break;
+        }
+    }
+
+    private void ApplyFontScale(double scale)
+    {
+        scale = Math.Clamp(scale, 0.85, 1.20);
+        foreach (var item in _originalFontSizes)
+        {
+            if (item.Key.Handler is not null)
+                SetFontSize(item.Key, Math.Round(item.Value * scale, 1));
+        }
+    }
+
+    private void NotificationPreviewToggled(object? sender, ToggledEventArgs e)
+    {
+        if (_initializingNotificationPreviewSwitch)
+            return;
+        Preferences.Default.Set("himo_notification_preview", e.Value);
+    }
+
+    private async void FindContactsClicked(object? sender, EventArgs e)
+    {
+        ContactsResultsPanel.IsVisible = true;
+        if (_contactsSearchBusy)
+            return;
+
+        await _api.TokenInitialization;
+        if (!_api.HasToken)
+        {
+            ContactsMatchStatusLabel.Text = "سجّل الدخول أولًا للبحث عن أصدقائك.";
+            return;
+        }
+
+        if (!Preferences.Default.Get("himo_contacts_lookup_consent", false))
+        {
+            var consent = await DisplayAlertAsync("الخصوصية وجهات الاتصال",
+                "سيقرأ Himo أرقام جهات اتصالك ويرسل الأرقام اللازمة للمطابقة عبر اتصال آمن. لن يحفظ الخادم دفتر العناوين؛ سيعيد فقط حسابات Himo المطابقة التي سمح أصحابها بالعثور عليهم.",
+                "متابعة", "إلغاء");
+            if (!consent)
+            {
+                ContactsMatchStatusLabel.Text = "لم يبدأ البحث في جهات الاتصال.";
+                return;
+            }
+            Preferences.Default.Set("himo_contacts_lookup_consent", true);
+        }
+
+#if ANDROID
+        try
+        {
+            _contactsSearchBusy = true;
+            FindContactsButton.IsEnabled = false;
+            ContactsLookupProgress.IsVisible = true;
+            ContactsLookupProgress.IsRunning = true;
+            ContactMatchesList.IsVisible = false;
+            ContactsMatchStatusLabel.Text = "جارٍ طلب الإذن وقراءة جهات الاتصال...";
+            _contactMatches.Clear();
+
+            var permission = await Permissions.CheckStatusAsync<Permissions.ContactsRead>();
+            if (permission != PermissionStatus.Granted)
+                permission = await Permissions.RequestAsync<Permissions.ContactsRead>();
+            if (permission != PermissionStatus.Granted)
+            {
+                ContactsMatchStatusLabel.Text = "لم يتم منح إذن جهات الاتصال. فعّل الإذن من إعدادات Android ثم حاول مجددًا.";
+                return;
+            }
+
+            var contacts = await Contacts.Default.GetAllAsync();
+            if (contacts is null)
+            {
+                ContactsMatchStatusLabel.Text = "تعذر قراءة جهات الاتصال من الهاتف.";
+                return;
+            }
+
+            var numbers = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var contact in contacts)
+            {
+                if (contact?.Phones is null)
+                    continue;
+                foreach (var phone in contact.Phones)
+                {
+                    var normalized = NormalizeContactNumber(phone?.PhoneNumber);
+                    if (normalized is not null)
+                        numbers.Add(normalized);
+                    if (numbers.Count >= 5000)
+                        break;
+                }
+                if (numbers.Count >= 5000)
+                    break;
+            }
+
+            if (numbers.Count == 0)
+            {
+                ContactsMatchStatusLabel.Text = "لم نعثر على أرقام هاتف صالحة في جهات اتصالك.";
+                return;
+            }
+
+            var foundMatches = new Dictionary<Guid, ContactMatchDto>();
+            var batches = numbers.Chunk(200).ToArray();
+            for (var index = 0; index < batches.Length; index++)
+            {
+                ContactsMatchStatusLabel.Text = $"جارٍ مطابقة الأرقام... ({index + 1}/{batches.Length})";
+                var batchMatches = await _api.FindUsersByPhoneNumbersAsync(batches[index]);
+                foreach (var match in batchMatches)
+                    foundMatches[match.Id] = match;
+            }
+
+            foreach (var match in foundMatches.Values.OrderBy(x => x.Name, StringComparer.CurrentCulture))
+                _contactMatches.Add(match);
+
+            ContactMatchesList.IsVisible = _contactMatches.Count > 0;
+            ContactsMatchStatusLabel.Text = _contactMatches.Count == 0
+                ? "لم نعثر على حسابات Himo مطابقة. قد لا تكون الأرقام مسجلة أو لم يفعّل أصحابها إمكانية العثور عليهم."
+                : $"عُثر على {_contactMatches.Count} حسابًا. اضغط على حساب لبدء محادثة.";
+        }
+        catch (Exception ex)
+        {
+            ContactsMatchStatusLabel.Text = "تعذر البحث في جهات الاتصال. تحقق من الاتصال ثم حاول مجددًا.";
+            System.Diagnostics.Debug.WriteLine($"[Himo Settings] Contacts lookup failed: {ex}");
+            await DisplayAlertAsync("البحث في جهات الاتصال", ex.Message, "حسنًا");
+        }
+        finally
+        {
+            _contactsSearchBusy = false;
+            FindContactsButton.IsEnabled = true;
+            ContactsLookupProgress.IsRunning = false;
+            ContactsLookupProgress.IsVisible = false;
+        }
+#else
+        ContactsMatchStatusLabel.Text = "البحث في جهات الاتصال متاح حاليًا على Android فقط.";
+        await DisplayAlertAsync("جهات الاتصال", ContactsMatchStatusLabel.Text, "حسنًا");
+#endif
+    }
+
+    private static string? NormalizeContactNumber(string? value)
+    {
+        var digits = PhoneNumberUtils.Normalize(value);
+        if (digits.StartsWith("00", StringComparison.Ordinal))
+            digits = digits[2..];
+        if (digits.Length == 10 && digits.StartsWith("05", StringComparison.Ordinal))
+            digits = "966" + digits[1..];
+        else if (digits.Length == 9 && digits.StartsWith("5", StringComparison.Ordinal))
+            digits = "966" + digits;
+        return digits.Length is >= 7 and <= 15 ? digits : null;
+    }
+
+    private async void ContactMatchSelected(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_openingContactConversation || e.CurrentSelection.FirstOrDefault() is not ContactMatchDto selected)
+            return;
+        if (sender is CollectionView collection)
+            collection.SelectedItem = null;
+
+        _openingContactConversation = true;
+        try
+        {
+            ContactsMatchStatusLabel.Text = "جارٍ تجهيز المحادثة...";
+            var conversation = await _home.CreateConversationWithUserAsync(selected.Name, selected.Id);
+            var routeId = !string.IsNullOrWhiteSpace(conversation.RemoteId)
+                ? conversation.RemoteId
+                : conversation.Id.ToString();
+            if (Shell.Current is { } shell)
+                await shell.GoToAsync($"chat?id={routeId}", false);
+            else
+                await DisplayAlertAsync("المحادثة", "تعذر فتح المحادثة من هذه الصفحة. افتح المحادثة من الواجهة الرئيسية.", "حسنًا");
+        }
+        catch (Exception ex)
+        {
+            ContactsMatchStatusLabel.Text = "تعذر بدء المحادثة.";
+            await DisplayAlertAsync("المحادثة", ex.Message, "حسنًا");
+        }
+        finally
+        {
+            _openingContactConversation = false;
+        }
     }
 
     private void UpdateAccountCard()

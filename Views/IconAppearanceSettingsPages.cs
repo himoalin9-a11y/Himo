@@ -1146,7 +1146,11 @@ public abstract class InterfaceStyleGalleryPage : SettingsHubPageBase
 
         // Apply even when this option was previously selected; another gallery may have changed the global palette.
         HimoAppearanceManager.SetActiveStyle(styleId);
-        HimoAppearanceManager.ApplyToTree(this);
+
+        // Do not synchronously traverse and mutate the entire settings tree from a tap
+        // handler. Some descendants can be detached while the gallery updates its cards;
+        // the batched manager pass yields between chunks and abandons stale generations.
+        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this, batchSize: 12);
 
         foreach (var candidate in _options)
         {

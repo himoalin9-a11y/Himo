@@ -228,7 +228,10 @@ public sealed class ChatBubbleSettingsPage : Himo.Services.LocalizedContentPage
         for (var i = 0; i < Palette.Length; i++)
         {
             var option = Palette[i];
-            var selected = string.Equals(Preferences.Default.Get(startKey, DefaultStart(startKey)), option.Start, StringComparison.OrdinalIgnoreCase)
+            var hasSavedPalette = Preferences.Default.ContainsKey(startKey)
+                && Preferences.Default.ContainsKey(endKey);
+            var selected = hasSavedPalette
+                && string.Equals(Preferences.Default.Get(startKey, DefaultStart(startKey)), option.Start, StringComparison.OrdinalIgnoreCase)
                 && string.Equals(Preferences.Default.Get(endKey, DefaultEnd(endKey)), option.End, StringComparison.OrdinalIgnoreCase);
             var preview = new Border
             {

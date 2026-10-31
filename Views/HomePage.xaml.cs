@@ -1,6 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
-using System.ComponentModel;
 using System.Windows.Input;
 using Himo.Models;
 using Himo.Services;
@@ -17,8 +15,6 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private readonly HimoApiClient _api;
     private readonly ProfileService _profile;
     private readonly CallHistoryService _callHistory;
-    private readonly HimoRealtimeService _realtime;
-    private bool _homePageVisible;
     private readonly ObservableCollection<ContactMatchDto> _phoneMatches = new();
     private readonly ObservableCollection<Conversation> _visibleConversations = new();
     private string _activeConversationFilter = "all";
@@ -35,13 +31,11 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private Conversation? _suppressTapConversation;
     private DateTime _suppressTapUntilUtc = DateTime.MinValue;
     private readonly HashSet<Conversation> _selectedConversations = new();
-    private readonly HashSet<Conversation> _observedConversations = new();
-    private int _conversationRefilterQueued;
 
     public ICommand ConversationTapCommand { get; }
     public ICommand ConversationLongPressCommand { get; }
 
-    public HomePage(HomeViewModel vm, HimoApiClient api, ProfileService profile, CallHistoryService callHistory, HimoRealtimeService realtime)
+    public HomePage(HomeViewModel vm, HimoApiClient api, ProfileService profile, CallHistoryService callHistory)
     {
         // Commands used through x:Reference bindings must exist before InitializeComponent
         // evaluates the Behavior bindings in the conversation-row DataTemplate.
@@ -58,14 +52,9 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         _api = api;
         _profile = profile;
         _callHistory = callHistory;
-        _realtime = realtime;
         BindingContext = vm;
         ConversationsCollection.ItemsSource = _visibleConversations;
         _vm.FilteredConversations.CollectionChanged += FilteredConversationsCollectionChanged;
-        // Local push/SignalR sync can insert or update conversations before the next
-        // HTTP refresh. Keep the filtered/visible list in sync with the cache itself.
-        _vm.Conversations.CollectionChanged += HomeConversationsCollectionChanged;
-        SyncHomeConversationObservers();
         CallsCollection.ItemsSource = _callHistory.Entries;
         PhoneSearchResults.ItemsSource = _phoneMatches;
         DisplayOwnProfilePhoto(_profile.Profile.PhotoPath);
@@ -96,51 +85,6 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         {
             _conversationListRefreshQueued = false;
             RefreshDisplayedConversations();
-        });
-    }
-
-    private void HomeConversationsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        SyncHomeConversationObservers();
-    }
-
-    private void SyncHomeConversationObservers()
-    {
-        var current = _vm.Conversations.ToHashSet();
-        foreach (var stale in _observedConversations.Where(x => !current.Contains(x)).ToList())
-        {
-            stale.PropertyChanged -= HomeConversationPropertyChanged;
-            _observedConversations.Remove(stale);
-        }
-
-        foreach (var item in current)
-        {
-            if (_observedConversations.Add(item))
-                item.PropertyChanged += HomeConversationPropertyChanged;
-        }
-
-        QueueConversationRefilter();
-    }
-
-    private void HomeConversationPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName is nameof(Conversation.Name) or nameof(Conversation.LastMessage) or
-            nameof(Conversation.Time) or nameof(Conversation.UpdatedAt) or nameof(Conversation.UnreadCount) or
-            nameof(Conversation.IsArchived) or nameof(Conversation.IsGroup))
-            QueueConversationRefilter();
-    }
-
-    private void QueueConversationRefilter()
-    {
-        if (Interlocked.Exchange(ref _conversationRefilterQueued, 1) != 0)
-            return;
-
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            Interlocked.Exchange(ref _conversationRefilterQueued, 0);
-            _vm.Filter();
-            RefreshDisplayedConversations();
-            UpdateEmptyState();
         });
     }
 
@@ -385,15 +329,15 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private async void NewConversationClicked(object? sender, EventArgs e)
     {
         if (Shell.Current is null) return;
-        await SwipePageTransition.NavigateAsync(this, "search", SwipeDirection.Left);
+
+        // Open a dedicated, styled page instead of a platform ActionSheet.
+        // The page lets the user choose between creating a group and starting a chat.
+        await Shell.Current.GoToAsync("new-conversation");
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        _homePageVisible = true;
-        _realtime.MessageReceived -= OnHomeRealtimeMessageReceived;
-        _realtime.MessageReceived += OnHomeRealtimeMessageReceived;
         // Do not recolor and rescan the full HomePage tree synchronously before
         // Android has drawn the first frame. This pass is batched by the manager.
         _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this);
@@ -486,43 +430,8 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         StartPolling();
     }
 
-    private void OnHomeRealtimeMessageReceived(object? sender, HimoApiClient.MessageDto message)
-    {
-        if (!_homePageVisible || !_vm.HasServerSession) return;
-        _ = RefreshHomeAfterRealtimeMessageAsync();
-    }
-
-    private async Task RefreshHomeAfterRealtimeMessageAsync()
-    {
-        if (!_homePageVisible) return;
-        // Never drop a message-triggered refresh just because a manual refresh is
-        // running. The old WaitAsync(0) silently discarded precisely these updates.
-        await _refreshGate.WaitAsync();
-        try
-        {
-            if (!_homePageVisible) return;
-            await _vm.RefreshFromServerAsync();
-            if (!_homePageVisible) return;
-            await MainThread.InvokeOnMainThreadAsync(() =>
-            {
-                RefreshDisplayedConversations();
-                UpdateEmptyState();
-            });
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Himo Home] Realtime conversation refresh failed: {ex.Message}");
-        }
-        finally
-        {
-            _refreshGate.Release();
-        }
-    }
-
     protected override void OnDisappearing()
     {
-        _homePageVisible = false;
-        _realtime.MessageReceived -= OnHomeRealtimeMessageReceived;
         StopPolling();
         base.OnDisappearing();
     }
@@ -591,7 +500,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         {
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
                 await RefreshAsync();
             }
             catch (OperationCanceledException)
@@ -629,12 +538,6 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
                 button.IsEnabled = true;
             }
         }
-    }
-
-    private async void CreateGroupClicked(object? sender, EventArgs e)
-    {
-        OverflowMenu.IsVisible = false;
-        await Shell.Current.GoToAsync("CreateGroupPage");
     }
 
     private async void OpenQrScannerClicked(object? sender, EventArgs e)
@@ -800,7 +703,6 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private void UpdateSectionChrome(string section)
     {
         ChatSearchCard.IsVisible = section == "chats";
-        HomeCreateGroupButton.IsVisible = section == "chats" && !_vm.ShowArchived && !_selectionMode;
         OverflowMenu.IsVisible = false;
         Search.Placeholder = _vm.ShowArchived ? "البحث في المحادثات المؤرشفة" : "البحث في محادثاتك";
         ArchiveListButton.Source = _vm.ShowArchived ? "selection_unarchive.png" : "selection_archive.png";
@@ -848,7 +750,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         if (digits.Length is < 7 or > 15)
         {
             PhoneSearchStatusLabel.Text = "أدخل رقم هاتف صحيحًا من 7 إلى 15 رقمًا مع مفتاح الدولة عند الحاجة.";
-            PhoneSearchStatusLabel.TextColor = Color.FromArgb("#FF8AB7");
+            PhoneSearchStatusLabel.TextColor = GetThemeColor("HimoDanger", Color.FromArgb("#FF4678"));
             return;
         }
 
@@ -858,7 +760,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         PhoneSearchButton.Text = "جارٍ البحث...";
         PhoneSearchProgress.IsVisible = true;
         PhoneSearchStatusLabel.Text = "يتم البحث عن الحسابات التي تسمح بالعثور عليها...";
-        PhoneSearchStatusLabel.TextColor = Color.FromArgb("#C59BE8");
+        PhoneSearchStatusLabel.TextColor = GetThemeColor("HimoAccent", Color.FromArgb("#A12AFF"));
         _phoneMatches.Clear();
 
         try
@@ -932,7 +834,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
             FindContactsButton.IsEnabled = false;
             FindContactsButton.Text = "جارٍ قراءة الأسماء...";
             PhoneSearchProgress.IsVisible = true;
-            PhoneSearchStatusLabel.TextColor = Color.FromArgb("#C59BE8");
+            PhoneSearchStatusLabel.TextColor = GetThemeColor("HimoAccent", Color.FromArgb("#A12AFF"));
             PhoneSearchStatusLabel.Text = "جارٍ طلب الإذن وقراءة جهات الاتصال...";
             _phoneMatches.Clear();
 

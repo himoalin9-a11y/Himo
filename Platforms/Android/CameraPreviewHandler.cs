@@ -153,6 +153,7 @@ public sealed class CameraPreviewHandler :
         public bool HasFlash => false;
         public bool IsFlashOn => false;
         public float MaxZoomFactor => 1f;
+        public bool IsFrontCamera => false;
 
         public Task StartAsync(
             CancellationToken cancellationToken = default) =>

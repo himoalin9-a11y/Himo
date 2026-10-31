@@ -41,11 +41,6 @@
 
   <!-- Explicit Debug configuration: Visual Studio can attach the Android debugger. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
-    <!-- Use the debug manifest that removes launcher filters from icon aliases.
-         This makes Visual Studio launch the stable LauncherIconDefault activity,
-         rather than a LauncherIconHomeDefault alias that may be disabled by icon switching. -->
-    <AndroidManifest>Platforms\Android\AndroidManifest.Debug.xml</AndroidManifest>
-    <AndroidLaunchActivity>com.companyname.himo.LauncherIconDefault</AndroidLaunchActivity>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>Embedded</DebugType>
     <Optimize>false</Optimize>
@@ -54,8 +49,7 @@
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
-    <AndroidLaunchActivity>com.companyname.himo.LauncherIconDefault</AndroidLaunchActivity>
-    <AfterGenerateAndroidManifest>$(AfterGenerateAndroidManifest);HimoStripDebugLauncherAliases</AfterGenerateAndroidManifest>
+    <AndroidLaunchActivity>com.companyname.himo.LauncherIconHomeDefault</AndroidLaunchActivity>
   </PropertyGroup>
 
   <!-- Explicit Release configuration: also keep symbols so launching/debugging Release does not fail. -->
@@ -133,19 +127,6 @@
   <Target Name="ValidateHimoWebRtcAar" BeforeTargets="ResolveAndroidLibraryInputs" Condition="'$(TargetFramework)' == 'net10.0-android36.0'">
     <Error Condition="!Exists('Platforms\Android\Jars\libwebrtc.aar')" Text="Himo WebRTC AAR staging file is missing. Run Tools\Install-WebRTC16KB.ps1 before building the Android project." />
     <Error Condition="!Exists('$(NuGetPackageRoot)fswebrtc.bindings.maui.android\0.9.3.15\lib\net10.0-android36.0\libwebrtc.aar')" Text="The FsWebRTC NuGet cache AAR is missing. Run Tools\Install-WebRTC16KB.ps1 before building; the package-cache AAR is the single packaged AAR." />
-  </Target>
-
-
-  <!--
-    Older builds used LauncherIconDefault as a launcher alias and could persist it as disabled.
-    It is now the stable native MainActivity component, so re-enable it after deployment before VS starts debugging.
-    Ignore adb failures here so this helper never blocks normal builds on machines without a connected device.
-  -->
-  
-
-  <!-- Debug-only fix: normalize activity-alias launcher filters after MAUI manifest merging. -->
-  <Target Name="HimoStripDebugLauncherAliases" Condition=" '$(Configuration)' == 'Debug' and '$(TargetFramework)' == 'net10.0-android36.0' and '$(DesignTimeBuild)' != 'true' ">
-    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\Tools\Himo-StripDebugLauncherAliases.ps1&quot; -ManifestPath &quot;$(MSBuildProjectDirectory)\$(IntermediateOutputPath)android\AndroidManifest.xml&quot;" />
   </Target>
 
 </Project>

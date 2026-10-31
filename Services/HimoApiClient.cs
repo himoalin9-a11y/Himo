@@ -311,7 +311,7 @@ public sealed class HimoApiClient
         catch (HttpRequestException)
         {
             const string productionUrl =
-                "https://himo-3buh.onrender.com/";
+                "https://himo-api.onrender.com/";
 
             if (!string.Equals(
                     BaseUrl.TrimEnd('/'),
@@ -330,7 +330,7 @@ public sealed class HimoApiClient
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             const string productionUrl =
-                "https://himo-3buh.onrender.com/";
+                "https://himo-api.onrender.com/";
 
             if (!string.Equals(
                     BaseUrl.TrimEnd('/'),
@@ -1037,6 +1037,11 @@ public sealed class HimoApiClient
         CreateGroupAsync(
             string name,
             IReadOnlyCollection<Guid> userIds,
+            int disappearingSeconds = 0,
+            bool allMembersCanAddMembers = false,
+            bool allMembersCanShareInviteLink = false,
+            bool requireAdminApproval = false,
+            bool adminsOnlyMessages = false,
             CancellationToken cancellationToken = default)
     {
         name = name?.Trim() ?? string.Empty;
@@ -1054,7 +1059,16 @@ public sealed class HimoApiClient
 
         using var response = await _http.PostAsJsonAsync(
             "api/groups",
-            new { name, userIds = members },
+            new
+            {
+                name,
+                userIds = members,
+                disappearingSeconds,
+                allMembersCanAddMembers,
+                allMembersCanShareInviteLink,
+                requireAdminApproval,
+                adminsOnlyMessages
+            },
             cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
 
@@ -1062,6 +1076,13 @@ public sealed class HimoApiClient
             cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException("استجابة الخادم لإنشاء المجموعة غير صالحة.");
     }
+
+    // Compatibility overload for existing call sites that pass only a cancellation token.
+    public Task<ConversationDto> CreateGroupAsync(
+        string name,
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken cancellationToken)
+        => CreateGroupAsync(name, userIds, 0, false, false, false, false, cancellationToken);
 
     public async Task<GroupMembersAddedResponse> AddGroupMembersAsync(
         Guid groupId,
@@ -1479,14 +1500,21 @@ public sealed class HimoApiClient
     private static string GetBaseUrl()
     {
         const string productionUrl =
-            "https://himo-3buh.onrender.com/";
+            "https://himo-api.onrender.com/";
 
         var saved =
             Preferences.Default
                 .Get(BaseUrlKey, string.Empty)
                 .Trim();
 
-        if (string.IsNullOrWhiteSpace(saved))
+        // Migrate the URL stored by previous app builds. Preferences survive
+        // updates/reinstalls in some upgrade scenarios, so changing the default
+        // URL alone does not fix devices that already saved the old Render URL.
+        if (string.IsNullOrWhiteSpace(saved) ||
+            string.Equals(
+                saved.TrimEnd('/'),
+                "https://himo-3buh.onrender.com",
+                StringComparison.OrdinalIgnoreCase))
         {
             Preferences.Default.Set(
                 BaseUrlKey,
@@ -1603,7 +1631,8 @@ public sealed class HimoApiClient
         bool? HasProfilePhoto = null,
         string? ContactPhoneNumber = null,
         bool PhoneDiscoverable = false,
-        string? Username = null);
+        string? Username = null,
+        long ProfilePhotoVersion = 0);
 
     public sealed record UsernameUpdateResponse(string Username);
 

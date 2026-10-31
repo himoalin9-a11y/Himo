@@ -148,15 +148,20 @@ public sealed class CallService : ICallService, IDisposable
 
     public async Task StartAsync(CallRequest request, CancellationToken cancellationToken = default)
     {
-        var operationVersion = Interlocked.Increment(ref _operationVersion);
         var callId = request.CallId == Guid.Empty ? Guid.NewGuid() : request.CallId;
         request = request with { CallId = callId };
-        CancelCallTimeout();
 
         var inviteAttempted = false;
         CallState? outgoingState = null;
 
         await _remoteAudioGate.WaitAsync(cancellationToken);
+        if (Volatile.Read(ref _ending) != 0 || _current is not null)
+        {
+            _remoteAudioGate.Release();
+            throw new InvalidOperationException("توجد مكالمة نشطة أو ما زالت قيد الإنهاء. حاول مرة أخرى بعد لحظة.");
+        }
+        var operationVersion = Interlocked.Increment(ref _operationVersion);
+        CancelCallTimeout();
         var startupGate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         Interlocked.Exchange(ref _outgoingWebRtcStartup, startupGate)?.TrySetResult(false);
         try
@@ -312,6 +317,27 @@ public sealed class CallService : ICallService, IDisposable
 
             try
             {
+                // Send Accept as soon as Android has selected the call audio route.
+                // Both peers can then initialize WebRTC in parallel instead of making
+                // the caller wait for the answerer's complete native initialization.
+                var acceptSignalSent = false;
+                try
+                {
+                    await _realtime.SendCallSignalAsync(
+                        current.ConversationId,
+                        CallSignalType.Accept.ToString(),
+                        CallSignalEnvelope.Serialize(current.CallId, current.Mode),
+                        cancellationToken);
+                    acceptSignalSent = true;
+                }
+                catch (Exception signalEx)
+                {
+                    // Keep initializing local media; retry Accept once the peer connection
+                    // is ready rather than failing the user's answer because SignalR blinked.
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[Himo CallService] Early Accept signal deferred: {signalEx.Message}");
+                }
+
                 await _webRtc.StartAsync(current.Mode, cancellationToken);
                 if (operationVersion != Volatile.Read(ref _operationVersion) ||
                     Volatile.Read(ref _ending) != 0 || _current?.CallId != current.CallId)
@@ -320,11 +346,14 @@ public sealed class CallService : ICallService, IDisposable
                     return;
                 }
                 RaiseState();
-                await _realtime.SendCallSignalAsync(
-                    current.ConversationId,
-                    CallSignalType.Accept.ToString(),
-                    CallSignalEnvelope.Serialize(current.CallId, current.Mode),
-                    cancellationToken);
+                if (!acceptSignalSent)
+                {
+                    await _realtime.SendCallSignalAsync(
+                        current.ConversationId,
+                        CallSignalType.Accept.ToString(),
+                        CallSignalEnvelope.Serialize(current.CallId, current.Mode),
+                        cancellationToken);
+                }
             }
             catch
             {
@@ -347,17 +376,23 @@ public sealed class CallService : ICallService, IDisposable
         Interlocked.Increment(ref _operationVersion);
         if (Interlocked.Exchange(ref _ending, 1) != 0) return;
         var state = _current;
-        if (state is null) return;
+        if (state is null)
+        {
+            Volatile.Write(ref _ending, 0);
+            return;
+        }
 
         _lifecycle = CallLifecycleState.Disconnecting;
         _outgoingWebRtcStartup?.TrySetResult(false);
         CancelCallTimeout();
-        // The local media path is closed FIRST. Signaling is only a best-effort
-        // notification after teardown, so a broken hub can never block the UI.
-        await StopCallResourcesQuietlyAsync();
-        Clear();
+        // Tell the remote side immediately while local audio and WebRTC shut down
+        // concurrently. A slow native dispose must not leave the other phone ringing.
+        var signalTask = SendCallSignalBestEffortAsync(state, CallSignalType.Reject, cancellationToken);
+        var cleanupTask = StopCallResourcesQuietlyAsync();
+        await Task.WhenAll(signalTask, cleanupTask);
+        if (_current?.CallId == state.CallId) Clear();
         _lifecycle = CallLifecycleState.Ended;
-        await SendCallSignalBestEffortAsync(state, CallSignalType.Reject, cancellationToken);
+        Volatile.Write(ref _ending, 0);
     }
 
     public async Task EndAsync(CancellationToken cancellationToken = default)
@@ -365,18 +400,26 @@ public sealed class CallService : ICallService, IDisposable
         Interlocked.Increment(ref _operationVersion);
         if (Interlocked.Exchange(ref _ending, 1) != 0) return;
         var state = _current;
+        if (state is null)
+        {
+            Volatile.Write(ref _ending, 0);
+            return;
+        }
 
         _lifecycle = CallLifecycleState.Disconnecting;
         _outgoingWebRtcStartup?.TrySetResult(false);
         CancelCallTimeout();
-        // Exact teardown order: stop local media -> stop WebRTC -> clear UI state ->
-        // best-effort End signal. The signal is never allowed to hold navigation.
-        await StopCallResourcesQuietlyAsync();
-        Clear();
+        // Signal end and release native resources in parallel. The UI no longer
+        // waits for either operation before navigating back to the conversation.
+        var signalTask = state is null
+            ? Task.CompletedTask
+            : SendCallSignalBestEffortAsync(state, CallSignalType.End, cancellationToken);
+        var cleanupTask = StopCallResourcesQuietlyAsync();
+        await Task.WhenAll(signalTask, cleanupTask);
+        if (state is not null && _current?.CallId == state.CallId) Clear();
+        else if (state is null) Clear();
         _lifecycle = CallLifecycleState.Ended;
-
-        if (state is not null)
-            await SendCallSignalBestEffortAsync(state, CallSignalType.End, cancellationToken);
+        Volatile.Write(ref _ending, 0);
     }
 
     public async Task TerminateFromRemoteAsync(Guid callId, CancellationToken cancellationToken = default)
@@ -396,6 +439,7 @@ public sealed class CallService : ICallService, IDisposable
         if (_current?.CallId == callId)
             Clear();
         _lifecycle = CallLifecycleState.Ended;
+        Volatile.Write(ref _ending, 0);
     }
 
     public async Task SetMutedAsync(bool muted, CancellationToken cancellationToken = default)
@@ -565,6 +609,7 @@ public sealed class CallService : ICallService, IDisposable
                     _outgoingWebRtcStartup?.TrySetResult(false);
                     await ClearAsync();
                     _lifecycle = CallLifecycleState.Ended;
+                    Volatile.Write(ref _ending, 0);
                 }
             }
         }
@@ -615,12 +660,26 @@ public sealed class CallService : ICallService, IDisposable
 
     private async Task StopCallResourcesQuietlyAsync()
     {
-        try { await _media.StopAsync(CancellationToken.None); } catch (Exception ex)
+        // Audio routing and WebRTC dispose are independent paths. Run them together
+        // so teardown time is bounded by the slower operation, not their sum.
+        var mediaCleanup = StopMediaQuietlyAsync();
+        var webRtcCleanup = StopWebRtcQuietlyAsync();
+        await Task.WhenAll(mediaCleanup, webRtcCleanup);
+    }
+
+    private async Task StopMediaQuietlyAsync()
+    {
+        try { await _media.StopAsync(CancellationToken.None); }
+        catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo CallService] Media cleanup failed: {ex}");
         }
+    }
 
-        try { await _webRtc.StopAsync(CancellationToken.None); } catch (Exception ex)
+    private async Task StopWebRtcQuietlyAsync()
+    {
+        try { await _webRtc.StopAsync(CancellationToken.None); }
+        catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo CallService] WebRTC cleanup failed: {ex}");
         }

@@ -26,6 +26,7 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(QrScannerPage), QrScannerFactory);
         Routing.RegisterRoute(nameof(ShareAccountPage), ShareAccountFactory);
         Routing.RegisterRoute("search", typeof(SearchPage));
+        Routing.RegisterRoute("new-conversation", typeof(NewConversationPage));
         Routing.RegisterRoute("CreateGroupPage", new CreateGroupPageRouteFactory());
         Routing.RegisterRoute("icons-appearance", typeof(IconsAppearanceSettingsPage));
         Routing.RegisterRoute("icon-selection", typeof(IconSelectionSettingsPage));
@@ -39,6 +40,7 @@ public partial class AppShell : Shell
     public AppShell()
     {
         InitializeComponent();
+        Navigated += OnShellNavigated;
         _services = Application.Current?.Handler?.MauiContext?.Services
             ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق.");
 
@@ -52,6 +54,17 @@ public partial class AppShell : Shell
         // going through the welcome-page timer. Yield long enough for the first
         // home frame to render before warming the destination pages.
         _ = PrewarmAccountPagesAfterFirstFrameAsync();
+    }
+
+    private void OnShellNavigated(object? sender, ShellNavigatedEventArgs e)
+    {
+        var page = CurrentPage;
+        if (page is null || page is ChatPage or CallPage)
+            return;
+
+        // All normal app pages receive the active palette and icon family on route
+        // changes. ChatPage/CallPage have their own optimized, state-aware styling.
+        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(page, batchSize: 48);
     }
 
     /// <summary>

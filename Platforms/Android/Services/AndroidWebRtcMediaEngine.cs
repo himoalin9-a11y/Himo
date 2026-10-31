@@ -1986,10 +1986,89 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             var videoSender = InvokeRequired(_peerConnection, "AddTrack", _videoTrack);
             System.Diagnostics.Debug.WriteLine(
                 $"[Himo WebRTC] Local video sender registered: sender={videoSender.GetType().Name}; track={_videoTrack.GetType().Name}; mode={mode}.");
+            ConfigureVideoSenderQuality(videoSender);
         }
         else if (mode == CallMode.Video)
         {
             throw new InvalidOperationException("Video call mode is active, but no local VideoTrack exists to send.");
+        }
+    }
+
+    // The local preview can look sharp while the remote peer receives a heavily
+    // quantized stream. Apply an explicit sender bitrate ceiling to the video
+    // encoding, without changing capture, audio, signaling, or renderer behavior.
+    private static void ConfigureVideoSenderQuality(object videoSender)
+    {
+        const int maxVideoBitrateBps = 2_500_000;
+
+        try
+        {
+            var parameters = InvokeRequired(videoSender, "GetParameters");
+            var encodings = GetRequiredPropertyValue(
+                parameters,
+                "Encodings",
+                "GetEncodings");
+
+            if (encodings is not System.Collections.IEnumerable encodingItems)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "[Himo WebRTC] Video sender quality: RTP encodings collection is unavailable.");
+                return;
+            }
+
+            var configured = 0;
+            foreach (var encoding in encodingItems)
+            {
+                if (encoding is null)
+                    continue;
+
+                var encodingType = encoding.GetType();
+                var bitrateProperty = encodingType.GetProperties(
+                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                    .FirstOrDefault(p =>
+                        string.Equals(p.Name, "MaxBitrateBps", StringComparison.OrdinalIgnoreCase) &&
+                        p.SetMethod is not null);
+
+                if (bitrateProperty is not null)
+                {
+                    var targetType = Nullable.GetUnderlyingType(bitrateProperty.PropertyType)
+                        ?? bitrateProperty.PropertyType;
+                    bitrateProperty.SetValue(encoding, Convert.ChangeType(maxVideoBitrateBps, targetType));
+                    configured++;
+                    continue;
+                }
+
+                var bitrateField = encodingType.GetFields(
+                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                    .FirstOrDefault(f =>
+                        string.Equals(f.Name, "MaxBitrateBps", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(f.Name, "maxBitrateBps", StringComparison.OrdinalIgnoreCase));
+
+                if (bitrateField is not null && !bitrateField.IsInitOnly)
+                {
+                    var targetType = Nullable.GetUnderlyingType(bitrateField.FieldType)
+                        ?? bitrateField.FieldType;
+                    bitrateField.SetValue(encoding, Convert.ChangeType(maxVideoBitrateBps, targetType));
+                    configured++;
+                }
+            }
+
+            if (configured == 0)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "[Himo WebRTC] Video sender quality: MaxBitrateBps is not writable in this binding.");
+                return;
+            }
+
+            var applied = InvokeRequired(videoSender, "SetParameters", parameters);
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo WebRTC] Video sender quality: configured {configured} encoding(s), max bitrate={maxVideoBitrateBps} bps; SetParameters={applied}.");
+        }
+        catch (Exception ex)
+        {
+            // Quality tuning must never prevent a call from connecting.
+            System.Diagnostics.Debug.WriteLine(
+                $"[Himo WebRTC] Video sender quality configuration was skipped: {ex.GetBaseException().Message}");
         }
     }
 

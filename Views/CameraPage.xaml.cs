@@ -1,4 +1,5 @@
-using System.Globalization;
+﻿using System.Globalization;
+using System.Collections.ObjectModel;
 using Himo.Platforms.Android;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
@@ -24,10 +25,13 @@ public partial class CameraPage : ContentPage
     private TimeSpan _pausedDuration;
     private bool _recordingPaused;
     private bool _editorOpen;
+    private bool _captureInProgress;
+    private bool _videoNoteMode;
+    private readonly ObservableCollection<RecentCameraCapture> _recentCaptures = new();
 
-    private Color ThemeAccent => GetThemeColor("HimoAccent", "#6C2BD9");
-    private static Color CameraIdleColor => Color.FromArgb("#3DFFFFFF");
-    private static Color CameraChipIdleColor => Color.FromArgb("#333333");
+    private Color ThemeAccent => GetThemeColor("HimoAccent", "#5148FF");
+    private static Color CameraIdleColor => Color.FromArgb("#66000000");
+    private Color CameraChipIdleColor => GetThemeColor("HimoSoft", "#292929");
     private static Color RecordingColor => Color.FromArgb("#D92D20");
 
     private Color GetThemeColor(string key, string fallback)
@@ -47,6 +51,7 @@ public partial class CameraPage : ContentPage
         InitializeComponent();
         Himo.Services.AppLocalization.AttachToPage(this);
         _mode = initialMode;
+        RecentStrip.ItemsSource = _recentCaptures;
         UpdateModeUi();
     }
 
@@ -67,6 +72,7 @@ public partial class CameraPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        Himo.Services.HimoAppearanceManager.ApplyThemedIconSourcesToTree(this);
 
         // While the photo editor is shown above this page, do not restart the
         // camera when the modal stack returns. The capture flow will either
@@ -75,6 +81,7 @@ public partial class CameraPage : ContentPage
         if (_editorOpen || _closing)
             return;
 
+        RefreshRecentCaptures();
         await StartCameraAsync();
     }
 
@@ -96,9 +103,14 @@ public partial class CameraPage : ContentPage
                 return;
             }
 
+            // Size the preview to the available viewport before opening Camera1,
+            // so Android selects a preview stream that fills the screen area.
+            Camera.SetPreviewAspectRatio(GetPreviewAspectRatio());
             await Camera.StartAsync();
-            await Camera.SetFilterAsync(_selectedFilter.ToString());
-            UpdateCameraControls();
+            await Camera.SetFilterAsync(_mode == CameraCaptureMode.Photo
+                ? _selectedFilter.ToString()
+                : HimoPhotoFilter.Natural.ToString());
+            UpdateModeUi();
         }
         catch (Exception ex)
         {
@@ -135,39 +147,70 @@ public partial class CameraPage : ContentPage
         base.OnDisappearing();
     }
 
-    private void PhotoModeClicked(object? sender, EventArgs e)
+    private async void PhotoModeClicked(object? sender, EventArgs e)
     {
-        if (_recording)
+        if (_recording || _captureInProgress)
             return;
 
         _mode = CameraCaptureMode.Photo;
-        _photoTimerSeconds = 0;
+        _videoNoteMode = false;
         UpdateModeUi();
+        await Camera.SetFilterAsync(_selectedFilter.ToString());
         Camera.SetPreviewAspectRatio(GetPreviewAspectRatio());
+        UpdateFilterUi();
     }
 
-    private void VideoModeClicked(object? sender, EventArgs e)
+    private async void VideoModeClicked(object? sender, EventArgs e)
     {
-        if (_recording)
+        if (_recording || _captureInProgress)
             return;
 
         _mode = CameraCaptureMode.Video;
+        _videoNoteMode = false;
         _filterPanelVisible = false;
+        FilterPanel.IsVisible = false;
         UpdateModeUi();
+        // Filters are photo-oriented in this screen. Keep video color natural and
+        // restore the selected photo treatment if the user switches back to Photo.
+        await Camera.SetFilterAsync(HimoPhotoFilter.Natural.ToString());
         Camera.SetPreviewAspectRatio(GetPreviewAspectRatio());
+        UpdateLiveFilterOverlay();
+    }
+
+    private async void VideoNoteModeClicked(object? sender, EventArgs e)
+    {
+        if (_recording || _captureInProgress)
+            return;
+
+        _mode = CameraCaptureMode.Video;
+        _videoNoteMode = true;
+        _filterPanelVisible = false;
+        FilterPanel.IsVisible = false;
+        UpdateModeUi();
+        await Camera.SetFilterAsync(HimoPhotoFilter.Natural.ToString());
+        Camera.SetPreviewAspectRatio(GetPreviewAspectRatio());
+        UpdateLiveFilterOverlay();
     }
 
     private async void CaptureClicked(object? sender, EventArgs e)
     {
+        if (_captureInProgress || _closing)
+            return;
+
+        _captureInProgress = true;
         CaptureButton.IsEnabled = false;
+        UpdateModeUi();
 
         try
         {
             if (_mode == CameraCaptureMode.Photo)
             {
                 await RunPhotoCountdownAsync();
+                StatusBorder.IsVisible = true;
+                StatusLabel.Text = "جارٍ التقاط الصورة…";
 
                 var result = await Camera.CapturePhotoAsync();
+                StatusBorder.IsVisible = false;
                 if (result is not null && File.Exists(result.FilePath))
                 {
                     if (_selectedFilter != HimoPhotoFilter.Natural)
@@ -235,6 +278,7 @@ public partial class CameraPage : ContentPage
             if ((DateTimeOffset.UtcNow - _recordingStartedAt).TotalMilliseconds < 800)
                 await Task.Delay(250);
 
+            StatusLabel.Text = "جارٍ حفظ الفيديو…";
             var videoResult = await Camera.StopRecordingAsync();
             _recording = false;
             _recordingPaused = false;
@@ -260,7 +304,10 @@ public partial class CameraPage : ContentPage
         }
         finally
         {
-            CaptureButton.IsEnabled = true;
+            _captureInProgress = false;
+            CaptureButton.IsEnabled = !_closing;
+            if (!_closing)
+                UpdateModeUi();
         }
     }
 
@@ -336,12 +383,12 @@ public partial class CameraPage : ContentPage
 
     private void FilterToggleClicked(object? sender, EventArgs e)
     {
-        if (_recording || _mode != CameraCaptureMode.Photo)
+        if (_recording || _captureInProgress || _mode != CameraCaptureMode.Photo)
             return;
 
         _filterPanelVisible = !_filterPanelVisible;
         FilterPanel.IsVisible = _filterPanelVisible;
-        FilterToggleButton.Text = "فلاتر";
+        FilterToggleButton.Text = string.Empty;
         FilterToggleButton.BackgroundColor = _filterPanelVisible || _selectedFilter != HimoPhotoFilter.Natural
             ? ThemeAccent
             : CameraIdleColor;
@@ -349,7 +396,7 @@ public partial class CameraPage : ContentPage
 
     private async void FilterSelectedClicked(object? sender, EventArgs e)
     {
-        if (_recording || _mode != CameraCaptureMode.Photo || sender is not Button button)
+        if (_recording || _captureInProgress || _mode != CameraCaptureMode.Photo || sender is not Button button)
             return;
 
         if (!Enum.TryParse(
@@ -363,21 +410,21 @@ public partial class CameraPage : ContentPage
         _selectedFilter = filter;
         _filterPanelVisible = false;
         FilterPanel.IsVisible = false;
-        FilterToggleButton.Text = "فلاتر";
+        FilterToggleButton.Text = string.Empty;
         FilterToggleButton.BackgroundColor = _selectedFilter == HimoPhotoFilter.Natural
             ? CameraIdleColor
             : ThemeAccent;
 
         await Camera.SetFilterAsync(_selectedFilter.ToString());
         UpdateLiveFilterOverlay();
-        FilterToggleButton.Text = "فلاتر";
+        FilterToggleButton.Text = string.Empty;
 
         UpdateFilterUi();
     }
 
     private void TimerClicked(object? sender, EventArgs e)
     {
-        if (_recording || _mode != CameraCaptureMode.Photo)
+        if (_recording || _captureInProgress || _mode != CameraCaptureMode.Photo)
             return;
 
         _photoTimerSeconds = _photoTimerSeconds switch
@@ -387,7 +434,7 @@ public partial class CameraPage : ContentPage
             _ => 0
         };
 
-        TimerButton.Text = $"مؤقت {_photoTimerSeconds}s";
+        TimerButton.Text = _photoTimerSeconds == 0 ? "0s" : $"{_photoTimerSeconds}s";
         TimerButton.BackgroundColor =
             _photoTimerSeconds > 0
                 ? ThemeAccent
@@ -396,7 +443,7 @@ public partial class CameraPage : ContentPage
 
     private async void FlashClicked(object? sender, EventArgs e)
     {
-        if (!Camera.HasFlash || _recording)
+        if (!Camera.HasFlash || _recording || _captureInProgress)
             return;
 
         try
@@ -422,25 +469,28 @@ public partial class CameraPage : ContentPage
 
     private async void FocusClicked(object? sender, EventArgs e)
     {
-        if (_recording)
+        if (_recording || _captureInProgress)
             return;
 
         try
         {
+            FocusButton.Opacity = 0.55;
             await Camera.FocusAsync();
-            FocusButton.Text = "تم";
-            await Task.Delay(450);
-            FocusButton.Text = "تركيز";
+            await Task.Delay(220);
         }
         catch
         {
-            FocusButton.Text = "تركيز";
+            // A few camera devices do not expose a focus mode; keep the UI responsive.
+        }
+        finally
+        {
+            FocusButton.Opacity = FocusButton.IsEnabled ? 1 : 0.45;
         }
     }
 
     private async void ZoomClicked(object? sender, EventArgs e)
     {
-        if (_recording || sender is not Button button)
+        if (_recording || _captureInProgress || sender is not Button button)
             return;
 
         if (!float.TryParse(
@@ -461,7 +511,7 @@ public partial class CameraPage : ContentPage
 
     private async void SwitchCameraClicked(object? sender, EventArgs e)
     {
-        if (_recording)
+        if (_recording || _captureInProgress)
             return;
 
         try
@@ -470,8 +520,11 @@ public partial class CameraPage : ContentPage
             _flashOn = Camera.IsFlashOn;
             _zoomFactor = 1f;
             await Camera.SetZoomAsync(1f);
-            UpdateCameraControls();
-            UpdateZoomUi();
+            Camera.SetPreviewAspectRatio(GetPreviewAspectRatio());
+            await Camera.SetFilterAsync(_mode == CameraCaptureMode.Photo
+                ? _selectedFilter.ToString()
+                : HimoPhotoFilter.Natural.ToString());
+            UpdateModeUi();
         }
         catch (Exception ex)
         {
@@ -479,6 +532,144 @@ public partial class CameraPage : ContentPage
                 Himo.Services.AppLocalization.TranslateSourceText("الكاميرا"),
                 $"تعذر تبديل الكاميرا: {ex.Message}",
                 Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+        }
+    }
+
+    private async void GalleryClicked(object? sender, EventArgs e)
+    {
+        if (_recording || _captureInProgress || _closing)
+            return;
+
+        try
+        {
+            // PickPhotosAsync is the current MAUI API. Only the first image is used here.
+            var pickedPhotos = await Microsoft.Maui.Media.MediaPicker.Default.PickPhotosAsync(
+                new Microsoft.Maui.Media.MediaPickerOptions { Title = "اختيار صورة" });
+            var picked = pickedPhotos?.FirstOrDefault();
+            if (picked is null)
+                return;
+
+            var extension = Path.GetExtension(picked.FileName);
+            if (string.IsNullOrWhiteSpace(extension) || extension.Length > 8)
+                extension = ".jpg";
+            var localPath = Path.Combine(
+                Microsoft.Maui.Storage.FileSystem.CacheDirectory,
+                $"Himo_gallery_{DateTimeOffset.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}{extension}");
+
+            await using (var source = await picked.OpenReadAsync())
+            await using (var destination = File.Create(localPath))
+                await source.CopyToAsync(destination);
+
+            var contentType = string.IsNullOrWhiteSpace(picked.ContentType)
+                ? "image/jpeg"
+                : picked.ContentType!;
+            await OpenMediaInEditorAsync(new CameraCaptureResult(
+                localPath,
+                Path.GetFileName(picked.FileName),
+                contentType));
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync(
+                Himo.Services.AppLocalization.TranslateSourceText("المعرض"),
+                $"تعذر فتح الصورة: {ex.Message}",
+                Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+        }
+    }
+
+    private async void RecentCaptureSelected(object? sender, SelectionChangedEventArgs e)
+    {
+        if (RecentStrip is not null)
+            RecentStrip.SelectedItem = null;
+        if (e.CurrentSelection.FirstOrDefault() is not RecentCameraCapture selected)
+            return;
+        if (!File.Exists(selected.FilePath) || _recording || _captureInProgress || _closing)
+            return;
+
+        await OpenMediaInEditorAsync(new CameraCaptureResult(
+            selected.FilePath,
+            selected.FileName,
+            selected.ContentType));
+    }
+
+    private async Task OpenMediaInEditorAsync(CameraCaptureResult capture)
+    {
+        if (_recording || _captureInProgress || _closing)
+            return;
+
+        _captureInProgress = true;
+        UpdateModeUi();
+        try
+        {
+            await Camera.StopAsync();
+            _editorOpen = true;
+            MediaEditorCaptureResult? edited;
+            try
+            {
+                edited = await MediaEditorPage.EditCameraCaptureAsync(capture);
+            }
+            finally
+            {
+                _editorOpen = false;
+            }
+
+            _captureInProgress = false;
+            if (edited is not null)
+                await CloseAsync(edited);
+            else
+                await StartCameraAsync();
+        }
+        catch (Exception ex)
+        {
+            _captureInProgress = false;
+            await DisplayAlertAsync(
+                Himo.Services.AppLocalization.TranslateSourceText("المعرض"),
+                $"تعذر فتح الملف المحدد: {ex.Message}",
+                Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await StartCameraAsync();
+        }
+        finally
+        {
+            if (!_closing)
+            {
+                _captureInProgress = false;
+                UpdateModeUi();
+            }
+        }
+    }
+
+    private void RefreshRecentCaptures()
+    {
+        try
+        {
+            var cache = Microsoft.Maui.Storage.FileSystem.CacheDirectory;
+            var files = Directory.EnumerateFiles(cache, "Himo_*")
+                .Select(path => new FileInfo(path))
+                .Where(file => file.Exists &&
+                    (file.Name.StartsWith("Himo_photo_", StringComparison.OrdinalIgnoreCase) &&
+                     file.Extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                     file.Name.StartsWith("Himo_video_", StringComparison.OrdinalIgnoreCase) &&
+                     file.Extension.Equals(".mp4", StringComparison.OrdinalIgnoreCase)))
+                .OrderByDescending(file => file.LastWriteTimeUtc)
+                .Take(5)
+                .ToList();
+
+            _recentCaptures.Clear();
+            foreach (var file in files)
+            {
+                var isVideo = file.Extension.Equals(".mp4", StringComparison.OrdinalIgnoreCase);
+                _recentCaptures.Add(new RecentCameraCapture(
+                    file.FullName,
+                    file.Name,
+                    isVideo ? "video/mp4" : "image/jpeg",
+                    isVideo));
+            }
+            RecentStripHost.IsVisible = _recentCaptures.Count > 0;
+        }
+        catch
+        {
+            _recentCaptures.Clear();
+            RecentStripHost.IsVisible = false;
         }
     }
 
@@ -525,42 +716,54 @@ public partial class CameraPage : ContentPage
     private void UpdateModeUi()
     {
         var photo = _mode == CameraCaptureMode.Photo;
+        var idle = !_recording && !_captureInProgress;
+        var selectedMode = GetThemeColor("HimoSoft", "#242424");
+        var idleMode = Colors.Transparent;
 
-        PhotoModeButton.BackgroundColor = photo
-            ? ThemeAccent
-            : CameraChipIdleColor;
+        PhotoModeButton.BackgroundColor = photo ? selectedMode : idleMode;
+        VideoModeButton.BackgroundColor = !photo && !_videoNoteMode ? selectedMode : idleMode;
+        VideoNoteModeButton.BackgroundColor = !photo && _videoNoteMode ? selectedMode : idleMode;
+        PhotoModeButton.IsEnabled = idle;
+        VideoModeButton.IsEnabled = idle;
+        VideoNoteModeButton.IsEnabled = idle;
+        PhotoModeButton.Opacity = idle ? 1 : 0.55;
+        VideoModeButton.Opacity = idle ? 1 : 0.55;
+        VideoNoteModeButton.Opacity = idle ? 1 : 0.55;
 
-        VideoModeButton.BackgroundColor = photo
-            ? CameraChipIdleColor
-            : ThemeAccent;
-
-        TimerButton.IsEnabled = photo && !_recording;
+        TimerButton.IsEnabled = photo && idle;
         TimerButton.Opacity = TimerButton.IsEnabled ? 1 : 0.45;
+        SwitchCameraButton.IsVisible = !_recording;
+        SwitchCameraButton.IsEnabled = idle;
+        SwitchCameraButton.Opacity = idle ? 1 : 0.42;
+        PauseResumeButton.IsVisible = _recording && !photo;
+        PauseResumeButton.IsEnabled = _recording && !_captureInProgress;
+        PauseResumeButton.Opacity = PauseResumeButton.IsEnabled ? 1 : 0.45;
+        PauseResumeButton.ImageSource = ImageSource.FromFile(
+            _recordingPaused ? "himo_icon_chat_play_white.png" : "himo_cam_pause_white.png");
+        // ImageSource is changed dynamically as recording pauses/resumes, so reapply
+        // icon-only theming after assigning it. Camera preview pixels/background are untouched.
+        Himo.Services.HimoAppearanceManager.ApplyThemedIconSource(PauseResumeButton);
+        PauseResumeButton.BackgroundColor = _recordingPaused ? ThemeAccent : GetThemeColor("HimoCard", "#292929");
+        GridButton.IsEnabled = idle;
+        GridButton.Opacity = idle ? 1 : 0.45;
+        FocusButton.IsEnabled = idle;
+        FocusButton.Opacity = idle ? 1 : 0.45;
 
         CameraHintLabel.Text = photo
-            ? "صورة عالية الجودة"
-            : "فيديو + صوت";
+            ? "صورة"
+            : _videoNoteMode ? "ملاحظة فيديو" : "فيديو";
 
         CaptureButton.Text = _recording ? "■" : string.Empty;
-        CaptureButton.ImageSource = _recording
-            ? null
-            : ImageSource.FromFile(photo ? "himo_cam_shutter.png" : "himo_cam_video.png");
-
+        CaptureButton.ImageSource = null;
+        CaptureButton.TextColor = Colors.White;
         CaptureButton.BackgroundColor = _recording
             ? RecordingColor
-            : ThemeAccent;
+            : Color.FromArgb("#FFFFFF");
+        CaptureButton.IsEnabled = !_captureInProgress && !_closing;
 
         StatusBorder.IsVisible = _recording;
-        PauseResumeButton.IsVisible = _recording && !photo;
-        PauseResumeButton.IsEnabled = _recording;
-        PauseResumeButton.Text = string.Empty;
-        PauseResumeButton.ImageSource = ImageSource.FromFile(
-            _recordingPaused ? "himo_cam_play.png" : "himo_cam_pause.png");
-        PauseResumeButton.BackgroundColor = _recordingPaused
-            ? ThemeAccent
-            : CameraChipIdleColor;
-        FilterToggleButton.IsEnabled = photo && !_recording;
-        FilterToggleButton.Text = "فلاتر";
+        FilterToggleButton.IsEnabled = photo && idle;
+        FilterToggleButton.Text = string.Empty;
         FilterToggleButton.Opacity = FilterToggleButton.IsEnabled ? 1 : 0.45;
         if (!FilterToggleButton.IsEnabled)
         {
@@ -586,22 +789,31 @@ public partial class CameraPage : ContentPage
     private void UpdateFilterUi()
     {
         var selected = ThemeAccent;
-        var normal = Color.FromArgb("#252525");
+        var normal = GetThemeColor("HimoCard", "#101827");
+        var selectedText = GetThemeColor("HimoOnAccent", "#FFFFFF");
+        var normalText = GetThemeColor("HimoPrimary", "#FFFFFF");
 
-        FilterNaturalButton.BackgroundColor = _selectedFilter == HimoPhotoFilter.Natural ? selected : normal;
-        FilterVividButton.BackgroundColor = _selectedFilter == HimoPhotoFilter.Vivid ? selected : normal;
-        FilterWarmButton.BackgroundColor = _selectedFilter == HimoPhotoFilter.Warm ? selected : normal;
-        FilterCoolButton.BackgroundColor = _selectedFilter == HimoPhotoFilter.Cool ? selected : normal;
-        FilterMonoButton.BackgroundColor = _selectedFilter == HimoPhotoFilter.Mono ? selected : normal;
-        FilterSepiaButton.BackgroundColor = _selectedFilter == HimoPhotoFilter.Sepia ? selected : normal;
-        FilterBeautyNaturalButton.BackgroundColor = _selectedFilter == HimoPhotoFilter.BeautyNatural ? selected : normal;
-        FilterBeautySoftButton.BackgroundColor = _selectedFilter == HimoPhotoFilter.BeautySoft ? selected : normal;
-        FilterBeautyGlowButton.BackgroundColor = _selectedFilter == HimoPhotoFilter.BeautyGlow ? selected : normal;
-        FilterBeautyMakeupSoftButton.BackgroundColor = _selectedFilter == HimoPhotoFilter.BeautyMakeupSoft ? selected : normal;
-        FilterBeautyMakeupButton.BackgroundColor = _selectedFilter == HimoPhotoFilter.BeautyMakeup ? selected : normal;
-        FilterClearSkinButton.BackgroundColor = _selectedFilter == HimoPhotoFilter.ClearSkin ? selected : normal;
+        ApplyFilterButtonStyle(FilterNaturalButton, _selectedFilter == HimoPhotoFilter.Natural, selected, normal, selectedText, normalText);
+        ApplyFilterButtonStyle(FilterVividButton, _selectedFilter == HimoPhotoFilter.Vivid, selected, normal, selectedText, normalText);
+        ApplyFilterButtonStyle(FilterWarmButton, _selectedFilter == HimoPhotoFilter.Warm, selected, normal, selectedText, normalText);
+        ApplyFilterButtonStyle(FilterCoolButton, _selectedFilter == HimoPhotoFilter.Cool, selected, normal, selectedText, normalText);
+        ApplyFilterButtonStyle(FilterMonoButton, _selectedFilter == HimoPhotoFilter.Mono, selected, normal, selectedText, normalText);
+        ApplyFilterButtonStyle(FilterSepiaButton, _selectedFilter == HimoPhotoFilter.Sepia, selected, normal, selectedText, normalText);
+        ApplyFilterButtonStyle(FilterBeautyNaturalButton, _selectedFilter == HimoPhotoFilter.BeautyNatural, selected, normal, selectedText, normalText);
+        ApplyFilterButtonStyle(FilterBeautySoftButton, _selectedFilter == HimoPhotoFilter.BeautySoft, selected, normal, selectedText, normalText);
+        ApplyFilterButtonStyle(FilterBeautyGlowButton, _selectedFilter == HimoPhotoFilter.BeautyGlow, selected, normal, selectedText, normalText);
+        ApplyFilterButtonStyle(FilterBeautyMakeupSoftButton, _selectedFilter == HimoPhotoFilter.BeautyMakeupSoft, selected, normal, selectedText, normalText);
+        ApplyFilterButtonStyle(FilterBeautyMakeupButton, _selectedFilter == HimoPhotoFilter.BeautyMakeup, selected, normal, selectedText, normalText);
+        ApplyFilterButtonStyle(FilterClearSkinButton, _selectedFilter == HimoPhotoFilter.ClearSkin, selected, normal, selectedText, normalText);
 
         UpdateLiveFilterOverlay();
+    }
+
+    private static void ApplyFilterButtonStyle(
+        Button button, bool selected, Color accent, Color idle, Color selectedText, Color normalText)
+    {
+        button.BackgroundColor = selected ? accent : idle;
+        button.TextColor = selected ? selectedText : normalText;
     }
 
     private void UpdateLiveFilterOverlay()
@@ -627,11 +839,11 @@ public partial class CameraPage : ContentPage
 
         FilterPreviewOverlay.BackgroundColor = overlay.Item1;
         FilterPreviewOverlay.Opacity = overlay.Item2;
-        FilterPreviewOverlay.IsVisible = overlay.Item2 > 0 && !_recording;
+        FilterPreviewOverlay.IsVisible = overlay.Item2 > 0 && !_recording && _mode == CameraCaptureMode.Photo;
 
         if (BeautyPreviewOverlay is not null)
         {
-            BeautyPreviewOverlay.IsVisible = IsBeautyFilter(_selectedFilter) && !_recording;
+            BeautyPreviewOverlay.IsVisible = IsBeautyFilter(_selectedFilter) && !_recording && _mode == CameraCaptureMode.Photo;
             BeautyPreviewOverlay.Opacity = _selectedFilter switch
             {
                 HimoPhotoFilter.BeautyNatural => 0.025,
@@ -647,31 +859,49 @@ public partial class CameraPage : ContentPage
 
     private float GetPreviewAspectRatio()
     {
-        var ratio = Camera.PhotoAspectRatio;
-        if (ratio > 0.1f && ratio < 10f)
-            return ratio;
+        // The live preview should fill the camera viewport like the native camera UI.
+        // Use the actual XAML viewport, not the still-photo sensor ratio; the latter
+        // often forces a 4:3 rectangle with black space above and below.
+        var viewWidth = Camera.Width;
+        var viewHeight = Camera.Height;
+        if (viewWidth > 1 && viewHeight > 1)
+        {
+            var viewportRatio = (float)(viewWidth / viewHeight);
+            if (viewportRatio > 0.1f && viewportRatio < 10f)
+                return viewportRatio;
+        }
 
         var display = DeviceDisplay.Current.MainDisplayInfo;
-        return display.Height >= display.Width ? 3f / 4f : 4f / 3f;
+        var displayRatio = display.Height > 0
+            ? (float)(display.Width / display.Height)
+            : 9f / 16f;
+        return displayRatio > 0.1f && displayRatio < 10f ? displayRatio : 9f / 16f;
     }
 
     private void UpdateCameraControls()
     {
-        FlashButton.IsEnabled = Camera.HasFlash && !_recording;
+        FlashButton.IsEnabled = Camera.HasFlash && !_recording && !_captureInProgress;
         FlashButton.Opacity = FlashButton.IsEnabled ? 1 : 0.45;
         _flashOn = Camera.IsFlashOn;
-        FlashButton.Text = "فلاش";
+        FlashButton.Text = string.Empty;
         FlashButton.BackgroundColor = _flashOn
             ? ThemeAccent
             : CameraIdleColor;
+        SwitchCameraButton.IsVisible = !_recording;
+        SwitchCameraButton.IsEnabled = !_recording && !_captureInProgress;
+        SwitchCameraButton.Opacity = SwitchCameraButton.IsEnabled ? 1 : 0.42;
     }
 
     private void UpdateZoomUi()
     {
         var max = Math.Max(1f, Camera.MaxZoomFactor);
-        Zoom1Button.IsEnabled = max >= 1f;
-        Zoom2Button.IsEnabled = max >= 2f;
-        Zoom4Button.IsEnabled = max >= 4f;
+        var zoomAllowed = !_recording && !_captureInProgress;
+        Zoom1Button.IsEnabled = zoomAllowed && max >= 1f;
+        Zoom2Button.IsEnabled = zoomAllowed && max >= 2f;
+        Zoom4Button.IsEnabled = zoomAllowed && max >= 4f;
+        Zoom1Button.Opacity = Zoom1Button.IsEnabled ? 1 : 0.45;
+        Zoom2Button.Opacity = Zoom2Button.IsEnabled ? 1 : 0.45;
+        Zoom4Button.Opacity = Zoom4Button.IsEnabled ? 1 : 0.45;
 
         Zoom1Button.BackgroundColor = Math.Abs(_zoomFactor - 1f) < 0.05f
             ? ThemeAccent
@@ -685,4 +915,14 @@ public partial class CameraPage : ContentPage
             ? ThemeAccent
             : Color.FromArgb("#66000000");
     }
+}
+
+
+public sealed record RecentCameraCapture(
+    string FilePath,
+    string FileName,
+    string ContentType,
+    bool IsVideo)
+{
+    public ImageSource ThumbnailSource => ImageSource.FromFile(IsVideo ? "himo_cam_video_white.png" : FilePath);
 }

@@ -57,8 +57,16 @@
       </intent-filter>
     </activity>
 
+    <!-- Permanent explicit launch component for Visual Studio. It is intentionally not a launcher icon and is never managed by the icon picker. -->
     <activity-alias
       android:name="com.companyname.himo.LauncherIconHomeDefault"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="true"
+      android:exported="true" />
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconHome"
       android:targetActivity="com.companyname.himo.LauncherIconDefault"
       android:theme="@style/Maui.SplashTheme"
       android:enabled="true"
@@ -75,6 +83,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_original"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -85,6 +97,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_sapphire"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -95,6 +111,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_azure"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -105,6 +125,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_cyan"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -115,6 +139,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_turquoise"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -125,6 +153,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_emerald"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -135,6 +167,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_green"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -145,6 +181,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_lime"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -155,6 +195,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_gold"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -165,6 +209,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_amber"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -175,6 +223,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_orange"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -185,6 +237,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_ruby"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -195,6 +251,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_rose"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -205,6 +265,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_magenta"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -215,6 +279,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_system_indigo"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -225,6 +293,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_purple"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -235,6 +307,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_sapphire"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -245,6 +321,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_rose"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -255,6 +335,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_gold"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -265,6 +349,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_turquoise"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -275,6 +363,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_ruby"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -285,6 +377,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_silver"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -295,6 +391,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_night"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -305,6 +405,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_holographic"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -315,6 +419,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_emerald"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -325,6 +433,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_icecyan"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -335,6 +447,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_amber"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -345,6 +461,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_indigo"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -355,6 +475,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_lime"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -365,6 +489,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_glass_magenta"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -375,6 +503,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_01"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -385,6 +517,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_02"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -395,6 +531,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_03"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -405,6 +545,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_04"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -415,6 +559,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_05"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -425,6 +573,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_06"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -435,6 +587,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_07"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -445,6 +601,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_08"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -455,6 +615,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_09"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -465,6 +629,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_10"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -475,6 +643,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_11"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -485,6 +657,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_12"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -495,6 +671,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_13"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -505,6 +685,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_14"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -515,6 +699,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_15"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -525,6 +713,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_16"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -535,6 +727,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_17"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -545,6 +741,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_18"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -555,6 +755,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_19"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -565,6 +769,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_20"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -575,6 +783,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_21"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -585,6 +797,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_22"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -595,6 +811,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_23"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -605,6 +825,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_24"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
 
     <activity-alias
@@ -615,6 +839,10 @@
       android:exported="true"
       android:icon="@drawable/himo_launcher_professional_25"
       android:label="Himo">
+          <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity-alias>
   </application>
 </manifest>

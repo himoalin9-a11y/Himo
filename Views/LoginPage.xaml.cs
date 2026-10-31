@@ -34,6 +34,7 @@ public partial class LoginPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this, batchSize: 48);
         // Restore the login page after the registration modal has flipped away.
         RotationY = 0;
         TranslationX = 0;

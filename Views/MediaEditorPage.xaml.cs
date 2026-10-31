@@ -168,6 +168,7 @@ public partial class MediaEditorPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this, batchSize: 48);
 
         try
         {
@@ -689,7 +690,7 @@ public partial class MediaEditorPage : ContentPage
     {
         // Source is theme-qualified so the icon updates immediately even when
         // crop mode changes while this modal editor is already open.
-        CropButton.Source = ImageSource.FromFile($"himo_theme_{HimoAppearanceManager.ActiveStyleId}_{iconFile}");
+        CropButton.Source = ImageSource.FromFile($"himo_theme_{HimoAppearanceManager.ActiveIconStyleId}_{iconFile}");
     }
 
     private void UpdateAnnotationButtons()
@@ -873,6 +874,33 @@ public partial class MediaEditorPage : ContentPage
         if (hex.Length == 6)
             hex = "FF" + hex;
         return uint.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out argb);
+    }
+
+    private async void CropAcceptClicked(object? sender, EventArgs e)
+    {
+        if (!_manualCropMode)
+            return;
+
+        // CropModeClicked is an async-void UI event handler and cannot be awaited.
+        CropModeClicked(sender, e);
+    }
+
+    private void CropCancelClicked(object? sender, EventArgs e)
+    {
+        if (!_manualCropMode)
+            return;
+
+        // Leave crop mode without applying the current selection. Keep the original
+        // working image and return to the normal photo-editing controls.
+        _manualCropMode = false;
+        _manualCrop = null;
+        _cropTouchMode = CropTouchMode.None;
+        CropOverlay.IsVisible = false;
+        AnnotationLayer.InputTransparent = false;
+        PreviewImage.Aspect = Aspect.AspectFit;
+        SetCropButtonIcon("himo_pro_ui_mediaeditor_crop.png");
+        SubtitleLabel.Text = "تم إلغاء القص. يمكنك متابعة تعديل الصورة.";
+        SetAnnotationMode(null);
     }
 
     private async void CropModeClicked(object? sender, EventArgs e)
@@ -1360,19 +1388,14 @@ public partial class MediaEditorPage : ContentPage
         var selectedWidth = Math.Max(1d, Math.Round(sourceWidth * widthNorm));
         var selectedHeight = Math.Max(1d, Math.Round(sourceHeight * heightNorm));
 
-        const double maxDimension = 2400d;
-        var scale = Math.Max(selectedWidth, selectedHeight) > maxDimension
-            ? maxDimension / Math.Max(selectedWidth, selectedHeight)
-            : 1d;
-
-        var expectedWidth = Math.Max(1d, Math.Round(selectedWidth * scale));
-        var expectedHeight = Math.Max(1d, Math.Round(selectedHeight * scale));
+        // Do not impose an artificial maximum output dimension. The cropped
+        // image should keep the full pixel dimensions of the selected source area.
+        var expectedWidth = Math.Max(1d, Math.Round(selectedWidth));
+        var expectedHeight = Math.Max(1d, Math.Round(selectedHeight));
         var outputSize = await Task.Run(() => PhotoEditProcessor.GetImageSize(outputPath));
 
-        // The processor crops before its optional 2400px resize. Therefore the
-        // output pixel dimensions are deterministic for the selected region.
-        // This catches the exact failure we are guarding against: sending the
-        // original image while the crop UI only moved on screen.
+        // Verify that the selected crop was applied without downscaling it due
+        // to an arbitrary dimension limit.
         var widthError = Math.Abs(outputSize.Width - expectedWidth) / expectedWidth;
         var heightError = Math.Abs(outputSize.Height - expectedHeight) / expectedHeight;
         if (widthError > 0.01d || heightError > 0.01d)

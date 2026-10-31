@@ -108,6 +108,30 @@ public sealed class WebRtcNegotiationCoordinator : IDisposable
 
     private void OnCallEnded(object? sender, EventArgs e) => Stop();
 
+    private async Task<bool> WaitForPeerConnectionReadyAsync(CallState expectedCall)
+    {
+        // When Accept is signaled before native startup completes, the caller can send
+        // its first Offer/ICE immediately. Hold those packets briefly rather than
+        // dropping them and forcing a long retry/reconnection.
+        for (var attempt = 0; attempt < 200; attempt++)
+        {
+            var current = _calls.Current;
+            if (current is null || current.CallId != expectedCall.CallId ||
+                current.ConversationId != expectedCall.ConversationId)
+                return false;
+
+            if (_webRtc.IsStarted)
+                return true;
+
+            await Task.Delay(25).ConfigureAwait(false);
+        }
+
+        System.Diagnostics.Debug.WriteLine(
+            $"[Himo WebRTC] PeerConnection was not ready in time for initial Offer/ICE; " +
+            $"callId={expectedCall.CallId:D}; conversation={expectedCall.ConversationId:D}");
+        return false;
+    }
+
     private async void OnIncomingSignal(object? sender, CallSignalMessage signal)
     {
         var current = _calls.Current;
@@ -172,6 +196,14 @@ public sealed class WebRtcNegotiationCoordinator : IDisposable
 
         try
         {
+            var isInitialOffer = signal.Type.Equals(CallSignalType.Offer.ToString(), StringComparison.OrdinalIgnoreCase);
+            var isInitialIce = signal.Type.Equals(CallSignalType.IceCandidate.ToString(), StringComparison.OrdinalIgnoreCase);
+            if ((isInitialOffer || isInitialIce) && !_webRtc.IsStarted)
+            {
+                if (!await WaitForPeerConnectionReadyAsync(current).ConfigureAwait(false))
+                    return;
+            }
+
             if (signal.Type.Equals(CallSignalType.Accept.ToString(), StringComparison.OrdinalIgnoreCase))
             {
                 // The caller creates SDP only after the callee has accepted.

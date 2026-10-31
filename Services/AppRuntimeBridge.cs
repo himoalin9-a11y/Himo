@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 
 namespace Himo.Services;
 
@@ -14,8 +14,26 @@ public static class AppRuntimeBridge
     public static void SetDarkMode(bool enabled)
     {
         Preferences.Default.Set("himo_dark_mode", enabled);
-        if (Application.Current is not null)
-            Application.Current.UserAppTheme = enabled ? AppTheme.Dark : AppTheme.Light;
+        // Keep the runtime toggle preference-only. App applies its own color resources
+        // immediately; switching MAUI UserAppTheme mid-interaction can recreate Android
+        // native handlers and interrupt the current settings page.
+        var app = Application.Current;
+        if (app is null) return;
+
+        try
+        {
+            var method = app.GetType().GetMethod(
+                "SetDarkMode",
+                BindingFlags.Instance | BindingFlags.Public,
+                binder: null,
+                types: new[] { typeof(bool) },
+                modifiers: null);
+            method?.Invoke(app, new object[] { enabled });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"App dark-mode resource update skipped: {ex}");
+        }
     }
 
     public static void MarkSessionUnlocked()

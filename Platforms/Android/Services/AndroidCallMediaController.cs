@@ -51,7 +51,9 @@ public sealed class AndroidCallMediaController : ICallMediaController, IDisposab
     public Task SetMutedAsync(bool muted, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        _audioManager.MicrophoneMute = muted;
+        // Do not toggle AudioManager.MicrophoneMute globally during a WebRTC call.
+        // The media engine toggles the local WebRTC audio track; globally muting the
+        // device microphone can interrupt OEM audio processing/AEC and other routes.
         return Task.CompletedTask;
     }
 

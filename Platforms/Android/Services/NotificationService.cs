@@ -6,7 +6,7 @@ public sealed class NotificationService : INotificationService
 {
     public const string MessageChannelId = "himo_messages_v5";
     // Versioned because Android does not allow changing sound/audio attributes on an existing channel.
-    public const string CallsChannelId = "himo_calls_v4";
+    public const string CallsChannelId = "himo_calls_v5";
     private const string ChannelName = "رسائل Himo";
     private const string ChannelDescription = "إشعارات الرسائل الجديدة في Himo";
     private const string CallsChannelName = "المكالمات الواردة";
@@ -173,13 +173,22 @@ public sealed class NotificationService : INotificationService
                 builder.SetSmallIcon(Resource.Drawable.himo_notification);
                 builder.SetContentTitle(title);
                 builder.SetContentText(body);
+                builder.SetStyle(new global::AndroidX.Core.App.NotificationCompat.BigTextStyle().BigText(body));
+                builder.SetSubText("Himo • مكالمة واردة");
+                builder.SetWhen(Java.Lang.JavaSystem.CurrentTimeMillis());
+                builder.SetShowWhen(true);
                 builder.SetCategory(global::AndroidX.Core.App.NotificationCompat.CategoryCall);
                 builder.SetPriority(global::AndroidX.Core.App.NotificationCompat.PriorityMax);
                 builder.SetVisibility(global::AndroidX.Core.App.NotificationCompat.VisibilityPublic);
                 builder.SetOngoing(true);
                 builder.SetAutoCancel(false);
-                builder.SetOnlyAlertOnce(false);
+                // FCM may redeliver the same high-priority data push. Alert only once
+                // for this CallId, and let the same 45-second call timeout remove stale alerts.
+                builder.SetOnlyAlertOnce(true);
+                builder.SetTimeoutAfter(45_000);
                 builder.SetContentIntent(pendingIntent);
+                // With full-screen access, show the incoming call surface over the lock screen;
+                // otherwise Android retains this as a high-priority heads-up/tray notification.
                 builder.SetFullScreenIntent(pendingIntent, true);
                 builder.SetVibrate(new long[] { 0, 500, 300, 500 });
                 notificationManager?.Notify(notificationId, builder.Build());
@@ -369,7 +378,8 @@ public sealed class NotificationService : INotificationService
                                 ? notification?.GetType().GetProperty("ChannelId")?.GetValue(notification) as string
                                 : null;
                             var oldCallTag = (tag ?? string.Empty).StartsWith("himo-call-", StringComparison.OrdinalIgnoreCase);
-                            if (oldCallTag || string.Equals(channelId, "himo_calls_v3", StringComparison.OrdinalIgnoreCase) ||
+                            if (oldCallTag || string.Equals(channelId, "himo_calls_v4", StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(channelId, "himo_calls_v3", StringComparison.OrdinalIgnoreCase) ||
                                 string.Equals(channelId, "himo_calls_v2", StringComparison.OrdinalIgnoreCase) ||
                                 string.Equals(channelId, "himo_calls_v1", StringComparison.OrdinalIgnoreCase))
                                 compat?.Cancel(tag, id);
@@ -384,6 +394,7 @@ public sealed class NotificationService : INotificationService
 
             if (OperatingSystem.IsAndroidVersionAtLeast(26) && platformManager is not null)
             {
+                try { platformManager.DeleteNotificationChannel("himo_calls_v4"); } catch { }
                 try { platformManager.DeleteNotificationChannel("himo_calls_v3"); } catch { }
                 try { platformManager.DeleteNotificationChannel("himo_calls_v2"); } catch { }
                 try { platformManager.DeleteNotificationChannel("himo_calls_v1"); } catch { }

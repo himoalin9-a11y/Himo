@@ -776,9 +776,15 @@ webApp.MapPost("/api/groups", (HttpRequest http, CreateGroupRequest request, Mon
     if (memberIds.Length > 100)
         return Results.BadRequest(new { message = "يمكن إضافة 100 عضو كحد أقصى إلى المجموعة." });
 
+    if (request.DisappearingSeconds is not (0 or 3600 or 7200 or 86400 or 432000 or 2592000))
+        return Results.BadRequest(new { message = "قيمة مؤقت الاختفاء غير مدعومة." });
+
     try
     {
-        var group = store.CreateGroup(session.UserId, name, memberIds);
+        var group = store.CreateGroup(
+            session.UserId, name, memberIds, request.DisappearingSeconds,
+            request.AllMembersCanAddMembers, request.AllMembersCanShareInviteLink,
+            request.RequireAdminApproval, request.AdminsOnlyMessages);
         return Results.Created($"/api/conversations/{group.Id}", group);
     }
     catch (InvalidOperationException ex)
@@ -1375,10 +1381,17 @@ record EmailChangeRequest(string? Email);
 record VerifyEmailChangeRequest(string? Email, string? Code);
 record UpdateContactPhoneRequest(string? ContactPhoneNumber, bool PhoneDiscoverable);
 record ContactLookupRequest(string[]? PhoneNumbers);
-record ContactMatchResponse(Guid Id, string Name, string MatchedPhoneNumber);
+record ContactMatchResponse(Guid Id, string Name, string MatchedPhoneNumber, bool HasProfilePhoto = false, long ProfilePhotoVersion = 0);
 record ProfilePhotoUploadRequest(string? Base64Data, string? ContentType);
 record CreateConversationRequest(string? Name, Guid? UserId);
-record CreateGroupRequest(string? Name, Guid[]? UserIds);
+record CreateGroupRequest(
+    string? Name,
+    Guid[]? UserIds,
+    int DisappearingSeconds = 0,
+    bool AllMembersCanAddMembers = false,
+    bool AllMembersCanShareInviteLink = false,
+    bool RequireAdminApproval = false,
+    bool AdminsOnlyMessages = false);
 record CallSignalMessage(Guid ConversationId, Guid SenderUserId, string Type, string? Payload);
 record SendMessageRequest(string? Text, string? ClientMessageId, Guid? ReplyToMessageId);
 record ReportConversationRequest(string? Reason);

@@ -729,6 +729,7 @@ public sealed class DisappearingMessagesPage : ContentPage
         var body = new VerticalStackLayout { Spacing = 9, Padding = new Thickness(0, 15) };
         body.Add(ConversationInfoPage.MakeCard(new VerticalStackLayout { Padding = 14, Spacing = 6, Children = { ConversationInfoPage.MakeLabel("بعد كم تختفي الرسائل؟", 16, true), _status } }));
         AddOption(body, 3600, "ساعة", "تختفي الرسائل بعد ساعة من إرسالها");
+        AddOption(body, 7200, "ساعتان", "تختفي الرسائل بعد ساعتين من إرسالها");
         AddOption(body, 86400, "24 ساعة", "تختفي الرسائل بعد يوم");
         AddOption(body, 432000, "5 أيام", "تختفي الرسائل بعد خمسة أيام");
         AddOption(body, 2592000, "30 يومًا", "تختفي الرسائل بعد ثلاثين يومًا");

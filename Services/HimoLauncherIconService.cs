@@ -1,4 +1,4 @@
-using Microsoft.Maui.Storage;
+﻿using Microsoft.Maui.Storage;
 
 namespace Himo.Services;
 
@@ -9,7 +9,7 @@ public static class HimoLauncherIconService
 {
     private const string ActiveAliasPreference = "Himo.ActiveLauncherAlias";
     private const string PendingAliasCleanupPreference = "Himo.LauncherIconCleanupPending";
-    private const string DefaultAliasName = "LauncherIconHomeDefault";
+    private const string DefaultAliasName = "LauncherIconHome";
     public const string SelectedVariantPreference = "Himo.LauncherIconVariant";
 
     private static readonly IReadOnlyDictionary<string, string> AliasByFileName =
@@ -192,6 +192,11 @@ public static class HimoLauncherIconService
                 ?? throw new InvalidOperationException("تعذر الوصول إلى مدير حزم Android.");
 
             var activeAlias = Preferences.Default.Get(ActiveAliasPreference, DefaultAliasName);
+            // Older app versions used HomeDefault for the visible default icon. It is now
+            // a permanent, non-visible debug launch alias, so migrate old saved state.
+            if (string.Equals(activeAlias, "LauncherIconHomeDefault", StringComparison.Ordinal))
+                activeAlias = DefaultAliasName;
+
             var allAliases = AliasByFileName.Values
                 .Append(DefaultAliasName)
                 .Distinct(StringComparer.Ordinal)

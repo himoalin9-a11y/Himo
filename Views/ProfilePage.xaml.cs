@@ -39,8 +39,7 @@ public partial class ProfilePage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        // Keep navigation lightweight: the blue icons are defined by the page assets,
-        // so do not rescan the entire visual tree or animate every element on entry.
+        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this, batchSize: 48);
         LoadProfile();
     }
 

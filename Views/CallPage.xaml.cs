@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 using Himo.Models;
 using Microsoft.Maui.Controls.Shapes;
 #if ANDROID
@@ -46,6 +46,9 @@ public partial class CallPage : ContentPage
     private bool _remoteAccepted;
     private bool _callChromeVisible = true;
     private bool _isPictureInPicture;
+    private bool _localPreviewDocked;
+    private double _localPreviewPanStartX;
+    private double _localPreviewPanStartY;
     private string _peerName = "جهة اتصال";
 
     public string ConversationId
@@ -132,23 +135,27 @@ public partial class CallPage : ContentPage
 
     // Runtime call-state changes replace ImageButton.Source, so use the active theme
     // variant directly instead of falling back to a generic-colored PNG.
+    // The call controls use a dedicated, consistent white icon family on the dark IMO bar.
+    // This is a presentation-only resource mapping; call state and event handlers are unchanged.
     private static string ThemedCallIcon(string fileName)
     {
-        var styleId = HimoAppearanceManager.ActiveStyleId;
-        var supportedStyle = styleId is
-            "d_classic" or "d_sky" or "d_light" or "d_graphite" or "d_mint" or "d_rose" or
-            "p_royal_gold" or "p_electric_blue" or "p_neon_violet" or "p_emerald" or
-            "p_ruby" or "p_silver" or "p_aurora" or "p_rose_gold";
-
-        if (!supportedStyle)
-            styleId = "d_classic";
-
-        return $"himo_theme_{styleId}_{fileName}";
+        return fileName switch
+        {
+            "himo_call_mic.png" => "imo_call_mic.png",
+            "himo_call_mic_off.png" => "imo_call_mic_off.png",
+            "himo_call_speaker.png" => "imo_call_speaker.png",
+            "himo_call_speaker_off.png" => "imo_call_speaker_off.png",
+            "himo_call_camera.png" => "imo_call_camera.png",
+            "himo_call_camera_off.png" => "imo_call_camera_off.png",
+            "himo_cam_switch.png" => "imo_call_switch_camera.png",
+            _ => "imo_call_more.png"
+        };
     }
 
     public CallPage(ICallService calls, HimoRealtimeService realtime, WebRtcNegotiationCoordinator negotiation, ChatService chat, HimoApiClient api, INotificationService notifications)
     {
         InitializeComponent();
+        AudioAvatarBackgroundImage.HandlerChanged += AudioAvatarBackgroundImageHandlerChanged;
         Himo.Services.AppLocalization.AttachToPage(this);
         _calls = calls;
         _realtime = realtime;
@@ -290,6 +297,9 @@ public partial class CallPage : ContentPage
         var hasPhoto = !string.IsNullOrWhiteSpace(path) && File.Exists(path);
         var source = hasPhoto ? ImageSource.FromFile(path!) : null;
 
+        AudioAvatarBackgroundImage.Source = source;
+        AudioAvatarBackgroundImage.IsVisible = hasPhoto;
+
         ProfilePhotoImage.Source = source;
         ProfilePhotoImage.IsVisible = hasPhoto;
         InitialLabel.IsVisible = !hasPhoto;
@@ -346,17 +356,27 @@ public partial class CallPage : ContentPage
 
         if (connected)
         {
-            LocalVideoContainer.WidthRequest = 104;
-            LocalVideoContainer.HeightRequest = 150;
-            LocalVideoContainer.HorizontalOptions = LayoutOptions.Start;
+            if (!_localPreviewDocked)
+            {
+                LocalVideoContainer.TranslationX = 0;
+                LocalVideoContainer.TranslationY = 0;
+                _localPreviewDocked = true;
+            }
+
+            LocalVideoContainer.WidthRequest = 100;
+            LocalVideoContainer.HeightRequest = 140;
+            LocalVideoContainer.HorizontalOptions = LayoutOptions.End;
             LocalVideoContainer.VerticalOptions = LayoutOptions.Start;
-            LocalVideoContainer.Margin = new Thickness(14, 82, 0, 0);
-            LocalVideoContainer.StrokeThickness = 1;
-            LocalVideoContainer.Stroke = new SolidColorBrush(Color.FromArgb("#80FFFFFF"));
-            LocalVideoContainer.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(17) };
+            LocalVideoContainer.Margin = new Thickness(0, 84, 14, 0);
+            LocalVideoContainer.StrokeThickness = 2;
+            LocalVideoContainer.Stroke = new SolidColorBrush(Color.FromArgb("#FFFFFFFF"));
+            LocalVideoContainer.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(12) };
         }
         else
         {
+            _localPreviewDocked = false;
+            LocalVideoContainer.TranslationX = 0;
+            LocalVideoContainer.TranslationY = 0;
             LocalVideoContainer.WidthRequest = -1;
             LocalVideoContainer.HeightRequest = -1;
             LocalVideoContainer.HorizontalOptions = LayoutOptions.Fill;
@@ -367,25 +387,92 @@ public partial class CallPage : ContentPage
         }
     }
 
+    // Visual-only drag handling for the local video thumbnail. It does not touch the media pipeline.
+    private void LocalPreviewPanUpdated(object? sender, PanUpdatedEventArgs e)
+    {
+        if (sender is not VisualElement preview || preview.Parent is not VisualElement canvas || !_localPreviewDocked)
+            return;
+
+        if (e.StatusType == GestureStatus.Started)
+        {
+            _localPreviewPanStartX = preview.TranslationX;
+            _localPreviewPanStartY = preview.TranslationY;
+            return;
+        }
+
+        if (e.StatusType != GestureStatus.Running || canvas.Width <= 0 || canvas.Height <= 0)
+            return;
+
+        var desiredX = _localPreviewPanStartX + e.TotalX;
+        var desiredY = _localPreviewPanStartY + e.TotalY;
+        var minX = 10d - preview.X;
+        var maxX = canvas.Width - preview.Width - 10d - preview.X;
+        var minY = 12d - preview.Y;
+        var maxY = canvas.Height - preview.Height - 12d - preview.Y;
+
+        preview.TranslationX = Math.Clamp(desiredX, minX, Math.Max(minX, maxX));
+        preview.TranslationY = Math.Clamp(desiredY, minY, Math.Max(minY, maxY));
+    }
+
+    private void AudioAvatarBackgroundImageHandlerChanged(object? sender, EventArgs e)
+    {
+#if ANDROID
+        try
+        {
+            if (AudioAvatarBackgroundImage.Handler?.PlatformView is global::Android.Widget.ImageView nativeImage &&
+                global::Android.OS.Build.VERSION.SdkInt >= global::Android.OS.BuildVersionCodes.S)
+            {
+                nativeImage.SetRenderEffect(
+                    global::Android.Graphics.RenderEffect.CreateBlurEffect(
+                        28f, 28f, global::Android.Graphics.Shader.TileMode.Clamp));
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Avatar backdrop blur unavailable: {ex.Message}");
+        }
+#endif
+    }
+
+    private async void CallButtonPressed(object? sender, EventArgs e)
+    {
+        if (sender is not VisualElement button) return;
+        try { await button.ScaleTo(0.9, 70, Easing.CubicOut); }
+        catch { /* A disposed visual during navigation needs no further animation. */ }
+    }
+
+    private async void CallButtonReleased(object? sender, EventArgs e)
+    {
+        if (sender is not VisualElement button) return;
+        try { await button.ScaleTo(1, 90, Easing.CubicOut); }
+        catch { /* A disposed visual during navigation needs no further animation. */ }
+    }
+
     private void UpdateCallControlLayout()
     {
         var isVideo = _mode == CallMode.Video;
         ControlButtonGrid.ColumnDefinitions.Clear();
-        var columnCount = isVideo ? 4 : 3;
-        for (var i = 0; i < columnCount; i++)
+        for (var i = 0; i < 5; i++)
             ControlButtonGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
 
-        Grid.SetColumn(EndControl, 0);
-        Grid.SetColumn(CameraControl, 1);
-        Grid.SetColumn(SwitchCameraControl, 2);
-        Grid.SetColumn(SpeakerControl, 1);
-        Grid.SetColumn(MuteControl, isVideo ? 3 : 2);
+        // Fixed IMO button order: Mute, Switch Camera, End, Speaker, More.
+        Grid.SetColumn(MuteControl, 0);
+        Grid.SetColumn(SwitchCameraControl, 1);
+        Grid.SetColumn(EndControl, 2);
+        Grid.SetColumn(SpeakerControl, 3);
+        Grid.SetColumn(MoreControl, 4);
 
-        CameraControl.IsVisible = isVideo;
-        SwitchCameraControl.IsVisible = isVideo;
-        SpeakerControl.IsVisible = !isVideo;
+        MuteControl.IsVisible = true;
+        SwitchCameraControl.IsVisible = true;
+        EndControl.IsVisible = true;
+        SpeakerControl.IsVisible = true;
+        MoreControl.IsVisible = true;
+
+        // The camera on/off button remains on the floating local preview, not in the five-button bar.
+        CameraControl.IsVisible = false;
         CameraButton.IsEnabled = isVideo && _calls.Current is not null;
         SwitchCameraButton.IsEnabled = isVideo && _calls.Current is not null && _cameraEnabled;
+        SwitchCameraButton.Opacity = isVideo ? 1 : 0.42;
     }
 
     private void UpdateCallPresentation(bool connected)
@@ -394,7 +481,9 @@ public partial class CallPage : ContentPage
         var incomingRinging = _incoming && !_incomingAnswered && !connected;
         var showVideoScene = isVideo && (!_incoming || _incomingAnswered || connected);
 
+        AudioBackground.IsVisible = !isVideo;
         VideoSurface.IsVisible = showVideoScene;
+        CallTapCatcher.IsVisible = !isVideo;
         IncomingVideoPanel.IsVisible = isVideo && incomingRinging;
         ProfilePanel.IsVisible = !isVideo;
         VideoWaitingOverlay.IsVisible = false;

@@ -274,7 +274,7 @@ internal sealed class AndroidCameraController : Java.Lang.Object, ICameraPreview
             recorder.SetAudioEncodingBitRate(128_000);
             recorder.SetAudioEncoder(AudioEncoder.Aac);
 
-            recorder.SetOrientationHint(GetDisplayOrientation());
+            recorder.SetOrientationHint(GetVideoOrientationHint());
             recorder.SetPreviewDisplay(surface);
             recorder.Prepare();
             recorder.Start();
@@ -539,10 +539,13 @@ internal sealed class AndroidCameraController : Java.Lang.Object, ICameraPreview
 
         var target = _cameraId == front ? back : front;
         if (target < 0)
-            target = FindAnyCameraId();
+        {
+            var missing = _cameraId == front ? "الخلفية" : "الأمامية";
+            throw new InvalidOperationException($"لا توجد كاميرا {missing} متاحة على هذا الجهاز.");
+        }
 
-        if (target < 0 || target == _cameraId)
-            return;
+        if (target == _cameraId)
+            throw new InvalidOperationException("تعذر تحديد كاميرا مختلفة للتبديل إليها.");
 
         _flashOn = false;
         _hasFlash = false;
@@ -557,7 +560,11 @@ internal sealed class AndroidCameraController : Java.Lang.Object, ICameraPreview
         _surfaceReady = _surfaceHolder.Surface?.IsValid == true || _surfaceReady;
 
         if (_started && _surfaceReady)
+        {
             OpenCamera();
+            if (_camera is null)
+                throw new InvalidOperationException("تعذر فتح الكاميرا بعد التبديل. أغلق الكاميرا ثم حاول مرة أخرى.");
+        }
     }
 
     public void SurfaceCreated(ASurfaceHolder holder)
@@ -1048,6 +1055,31 @@ internal sealed class AndroidCameraController : Java.Lang.Object, ICameraPreview
         }
 
         return (info.Orientation - rotation + 360) % 360;
+    }
+
+    private int GetVideoOrientationHint()
+    {
+        var info = new ACamera.CameraInfo();
+        ACamera.GetCameraInfo(_cameraId, info);
+
+        var rotation = 0;
+        if (Platform.CurrentActivity?.WindowManager?.DefaultDisplay is ADisplay display)
+        {
+            rotation = display.Rotation switch
+            {
+                ASurfaceOrientation.Rotation0 => 0,
+                ASurfaceOrientation.Rotation90 => 90,
+                ASurfaceOrientation.Rotation180 => 180,
+                ASurfaceOrientation.Rotation270 => 270,
+                _ => 0
+            };
+        }
+
+        // MediaRecorder orientation metadata must use sensor/display orientation,
+        // not the mirrored display orientation used by the front-camera preview.
+        return info.Facing == ACameraFacing.Front
+            ? (info.Orientation + rotation) % 360
+            : (info.Orientation - rotation + 360) % 360;
     }
 
     private int GetCaptureJpegRotation()

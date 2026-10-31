@@ -1,4 +1,4 @@
-using Microsoft.Maui;
+﻿using Microsoft.Maui;
 using Microsoft.Maui.Platform;
 using Plugin.Firebase.CloudMessaging;
 
@@ -9,11 +9,7 @@ namespace Himo;
     Theme = "@style/Maui.SplashTheme",
     // This stable native component is never toggled; icon aliases target it, and Visual Studio can always launch it.
     // Keep MainActivity non-launchable directly; visible launcher icons remain activity-alias entries.
-#if DEBUG
-    MainLauncher = true,
-#else
-    MainLauncher = false,
-#endif
+MainLauncher = false,
     Exported = true,
     ResizeableActivity = true,
     SupportsPictureInPicture = true,
@@ -68,14 +64,13 @@ public class MainActivity : MauiAppCompatActivity
         // running both navigation retries was one source of stacked call screens.
         ClearPendingConversation();
         _pendingCallConversationId = conversationId;
-        var normalizedMode = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio";
-        _pendingCallMode = normalizedMode;
+        _pendingCallMode = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio";
         _pendingCallId = Guid.TryParse(callId, out var parsedCallId) && parsedCallId != Guid.Empty
             ? parsedCallId.ToString("D")
             : null;
 
         Preferences.Default.Set(PendingCallConversationPreferenceKey, conversationId);
-        Preferences.Default.Set(PendingCallModePreferenceKey, normalizedMode);
+        Preferences.Default.Set(PendingCallModePreferenceKey, _pendingCallMode);
         if (_pendingCallId is not null)
             Preferences.Default.Set(PendingCallIdPreferenceKey, _pendingCallId);
         else
@@ -245,6 +240,7 @@ public class MainActivity : MauiAppCompatActivity
         // some cold starts while the framework and persisted session were loading.
         SetLaunchWindowBackground();
         base.OnCreate(savedInstanceState);
+        EnsureVisualStudioLaunchAliasEnabled();
         SetLaunchWindowBackground();
         ApplyImmersiveFullscreen();
         try { FirebaseCloudMessagingImplementation.OnNewIntent(Intent); } catch { }
@@ -264,23 +260,8 @@ public class MainActivity : MauiAppCompatActivity
     {
         try
         {
-            // Android 11+ uses WindowInsetsController; SystemUiFlags is retained only
-            // as a compatibility path for older Android versions.
-            if (OperatingSystem.IsAndroidVersionAtLeast(30))
-            {
-                var controller = Window?.InsetsController;
-                if (controller is null) return;
-                controller.Hide(
-                    global::Android.Views.WindowInsets.Type.StatusBars() |
-                    global::Android.Views.WindowInsets.Type.NavigationBars());
-                controller.SystemBarsBehavior = (int)
-                    global::Android.Views.WindowInsetsControllerBehavior.ShowTransientBarsBySwipe;
-                return;
-            }
-
             var decor = Window?.DecorView;
             if (decor is null) return;
-#pragma warning disable CA1422 // Required compatibility path for Android versions below API 30.
             decor.SystemUiFlags =
                 global::Android.Views.SystemUiFlags.LayoutStable |
                 global::Android.Views.SystemUiFlags.LayoutHideNavigation |
@@ -288,11 +269,35 @@ public class MainActivity : MauiAppCompatActivity
                 global::Android.Views.SystemUiFlags.HideNavigation |
                 global::Android.Views.SystemUiFlags.Fullscreen |
                 global::Android.Views.SystemUiFlags.ImmersiveSticky;
-#pragma warning restore CA1422
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo fullscreen] {ex.Message}");
+        }
+    }
+
+
+    private void EnsureVisualStudioLaunchAliasEnabled()
+    {
+        try
+        {
+            var context = Android.App.Application.Context;
+            var packageName = context.PackageName;
+            var packageManager = context.PackageManager;
+            if (string.IsNullOrWhiteSpace(packageName) || packageManager is null)
+                return;
+
+            var launchAlias = new Android.Content.ComponentName(
+                packageName,
+                $"{packageName}.LauncherIconHomeDefault");
+            packageManager.SetComponentEnabledSetting(
+                launchAlias,
+                Android.Content.PM.ComponentEnabledState.Enabled,
+                Android.Content.PM.ComponentEnableOption.DontKillApp);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo Debug Launch] Could not enable persistent launch alias: {ex.Message}");
         }
     }
 
@@ -301,14 +306,13 @@ public class MainActivity : MauiAppCompatActivity
         try
         {
             var background = global::Android.Graphics.Color.ParseColor("#10071A");
-            var window = Window;
-            if (window is null) return;
-            window.SetBackgroundDrawable(new global::Android.Graphics.Drawables.ColorDrawable(background));
+            if (Window is null) return;
+            Window.SetBackgroundDrawable(new global::Android.Graphics.Drawables.ColorDrawable(background));
 #pragma warning disable CA1422 // Android 15+ controls these bars through edge-to-edge APIs; retain compatibility with earlier Android versions.
-            window.SetStatusBarColor(background);
-            window.SetNavigationBarColor(global::Android.Graphics.Color.ParseColor("#10071A"));
+            Window.SetStatusBarColor(background);
+            Window.SetNavigationBarColor(global::Android.Graphics.Color.ParseColor("#10071A"));
 #pragma warning restore CA1422
-            window.DecorView?.SetBackgroundColor(background);
+            Window.DecorView?.SetBackgroundColor(background);
         }
         catch (Exception ex)
         {

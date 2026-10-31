@@ -41,24 +41,10 @@
 
     <Grid RowDefinitions="Auto,Auto,*,Auto" BackgroundColor="{DynamicResource HimoBackground}">
         <!-- Clean surface: use palette colors without decorative glow layers. -->
-<!-- Centered welcome header: group action on the left and a larger profile button on the right. -->
+<!-- Compact welcome header with the profile button on the right. -->
         <Grid x:Name="HomeHeader" Grid.Row="0" Padding="15,7,15,7"
-              ColumnDefinitions="*,Auto,Auto" FlowDirection="LeftToRight">
-            <Border x:Name="HomeCreateGroupButton" Grid.Column="0" Padding="8,6"
-                    HeightRequest="42" MinimumWidthRequest="102"
-                    BackgroundColor="{DynamicResource HimoSurface}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.1"
-                    HorizontalOptions="Start" VerticalOptions="Center">
-                <Border.StrokeShape><RoundRectangle CornerRadius="17" /></Border.StrokeShape>
-                <HorizontalStackLayout Spacing="5" VerticalOptions="Center" FlowDirection="RightToLeft">
-                    <Image Source="home_plus_neon.png" WidthRequest="17" HeightRequest="17"
-                           VerticalOptions="Center" />
-                    <Label Text="مجموعة جديدة" FontSize="11.5" FontAttributes="Bold"
-                           TextColor="{DynamicResource HimoPrimary}" VerticalTextAlignment="Center" />
-                </HorizontalStackLayout>
-                <Border.GestureRecognizers><TapGestureRecognizer Tapped="CreateGroupClicked" /></Border.GestureRecognizers>
-            </Border>
-
-            <VerticalStackLayout Grid.Column="1" HorizontalOptions="End"
+              ColumnDefinitions="*,Auto" FlowDirection="LeftToRight">
+            <VerticalStackLayout Grid.Column="0" HorizontalOptions="End"
                                  VerticalOptions="Center" Spacing="2" FlowDirection="RightToLeft">
                 <Label Text="مرحبًا بعودتك" FontSize="16.5" FontAttributes="Bold"
                        TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="End" />
@@ -66,7 +52,7 @@
                        HorizontalTextAlignment="End" />
             </VerticalStackLayout>
 
-            <Border Grid.Column="2" WidthRequest="50" HeightRequest="50"
+            <Border Grid.Column="1" WidthRequest="50" HeightRequest="50"
                     BackgroundColor="{DynamicResource HimoSurface}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.6"
                     HorizontalOptions="End" VerticalOptions="Center">
                 <Border.StrokeShape><RoundRectangle CornerRadius="25" /></Border.StrokeShape>

@@ -57,8 +57,16 @@
       </intent-filter>
     </activity>
 
+    <!-- Permanent explicit launch component for Visual Studio. It is intentionally not a launcher icon and is never managed by the icon picker. -->
     <activity-alias
       android:name="com.companyname.himo.LauncherIconHomeDefault"
+      android:targetActivity="com.companyname.himo.LauncherIconDefault"
+      android:theme="@style/Maui.SplashTheme"
+      android:enabled="true"
+      android:exported="true" />
+
+    <activity-alias
+      android:name="com.companyname.himo.LauncherIconHome"
       android:targetActivity="com.companyname.himo.LauncherIconDefault"
       android:theme="@style/Maui.SplashTheme"
       android:enabled="true"

@@ -252,12 +252,14 @@ public sealed class PushNotificationManager
                 parsedConversationId == Guid.Empty)
                 return;
 
-            var title = string.IsNullOrWhiteSpace(notification.Title)
-                ? "رسالة جديدة"
-                : notification.Title;
-            var body = string.IsNullOrWhiteSpace(notification.Body)
-                ? "لديك رسالة جديدة"
-                : notification.Body;
+            notification.Data.TryGetValue("title", out var dataTitle);
+            notification.Data.TryGetValue("body", out var dataBody);
+            var title = !string.IsNullOrWhiteSpace(notification.Title)
+                ? notification.Title
+                : !string.IsNullOrWhiteSpace(dataTitle) ? dataTitle : "رسالة جديدة";
+            var body = !string.IsNullOrWhiteSpace(notification.Body)
+                ? notification.Body
+                : !string.IsNullOrWhiteSpace(dataBody) ? dataBody : "لديك رسالة جديدة";
             var isActiveConversation = IsActiveConversation(conversationId);
 
             // FCM can be the only delivery path if SignalR is reconnecting. Do not

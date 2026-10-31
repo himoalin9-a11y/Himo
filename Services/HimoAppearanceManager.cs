@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
@@ -55,17 +55,65 @@ public static class HimoAppearanceManager
         "himo_login_icon_", "himo_login_eye_", "himo_signup_icon_", "himo_storage_icon_", "himo_download_"
     };
 
+    // Preserve truly semantic delete/end-call art; ordinary white controls continue to use
+    // their palette-specific variants so they remain legible as the interface changes theme.
     private static readonly HashSet<string> FixedMeaningIcons = new(StringComparer.OrdinalIgnoreCase)
     {
         "settings_icon_delete.png", "selection_delete.png", "himo_ui_delete.png",
-        "himo_icon_call_end.png", "himo_phase1_icon_call_end.png", "himo_call_end.png",
-        "himo_ui_play_white.png", "himo_ui_pause_white.png", "himo_ui_close_white.png", "himo_download_white.png",
-        "himo_icon_arrow_back_white.png"
+        "himo_icon_call_end.png", "himo_phase1_icon_call_end.png", "himo_call_end.png"
+    };
+
+    // Two white source icons have no exported themed variant with the same filename.
+    // Map them to their existing palette-aware siblings so MAUI never receives a missing
+    // ImageSource (which renders as a completely invisible symbol).
+    private static readonly Dictionary<string, string> ThemedIconFallbacks = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["himo_icon_chat_play_white.png"] = "himo_icon_chat_play.png",
+        ["himo_pro_ui_himo_ui_gallery_white.png"] = "himo_pro_ui_himo_ui_gallery.png"
     };
 
     // Keep the app's original dark-purple feel on clean installs, while making the
     // selected theme available to the gallery before the user opens settings.
     public static string ActiveStyleId => Preferences.Default.Get(ActiveStylePreference, "p_neon_violet");
+
+    public static bool IsActiveStyleDark =>
+        Palettes.TryGetValue(ActiveStyleId, out var palette) && palette.IsDark;
+
+    /// <summary>Switch between a light/dark counterpart while preserving the closest accent family.</summary>
+    public static void SetDarkModeEnabled(bool enabled)
+    {
+        var current = ActiveStyleId;
+        var target = enabled
+            ? current switch
+            {
+                "d_classic" => "p_neon_violet",
+                "d_sky" => "p_electric_blue",
+                "d_light" or "d_graphite" => "p_silver",
+                "d_mint" => "p_emerald",
+                "d_rose" => "p_ruby",
+                "d_login" => "d_login",
+                _ => current
+            }
+            : current switch
+            {
+                "p_royal_gold" => "d_classic",
+                "p_electric_blue" => "d_sky",
+                "p_neon_violet" => "d_classic",
+                "p_emerald" => "d_mint",
+                "p_ruby" => "d_rose",
+                "p_silver" => "d_graphite",
+                "p_aurora" => "d_sky",
+                "p_rose_gold" => "d_rose",
+                "d_login" => "d_classic",
+                _ => current
+            };
+
+        if (!Palettes.ContainsKey(target))
+            target = enabled ? "p_neon_violet" : "d_classic";
+
+        SetActiveStyle(target);
+        Preferences.Default.Set("himo_dark_mode", IsActiveStyleDark);
+    }
 
     /// <summary>Called after the app's baseline resources are initialized.</summary>
     public static void ApplyStoredPalette(ResourceDictionary resources)
@@ -75,12 +123,10 @@ public static class HimoAppearanceManager
         {
             ApplyPalette(resources, palette);
             Preferences.Default.Set("himo_dark_mode", palette.IsDark);
-            if (Application.Current is { } app)
-            {
-                var requestedTheme = palette.IsDark ? AppTheme.Dark : AppTheme.Light;
-                if (app.UserAppTheme != requestedTheme)
-                    app.UserAppTheme = requestedTheme;
-            }
+            // Himo themes are applied through explicit palette resources. Do not change
+            // Application.UserAppTheme here: on Android this calls AppCompat's native
+            // configuration path while the activity/component may still be starting,
+            // which can recreate the activity and interrupt the current page.
         }
     }
 
@@ -99,9 +145,9 @@ public static class HimoAppearanceManager
                 return;
 
             Preferences.Default.Set("himo_dark_mode", palette.IsDark);
-            var requestedTheme = palette.IsDark ? AppTheme.Dark : AppTheme.Light;
-            if (app.UserAppTheme != requestedTheme)
-                app.UserAppTheme = requestedTheme;
+            // Apply the full Himo palette without toggling MAUI's native night mode.
+            // Switching UserAppTheme during a live Android interaction can invoke
+            // AppCompatDelegate configuration changes and drop the active page.
             ApplyPalette(app.Resources, palette);
             // Do not rescan every page during the theme mutation. The page that
             // owns the picker is refreshed by its caller; the rest refresh on navigation.
@@ -129,8 +175,11 @@ public static class HimoAppearanceManager
             else if (page is NavigationPage navigationPage)
                 page = navigationPage.CurrentPage;
 
+            // Updating hundreds of Image/ImageButton sources synchronously can block
+            // Android's UI thread and make a theme/icon switch look like an app exit.
+            // The batched pass checks that the page is still active between batches.
             if (page is not null)
-                ApplyToTree(page, styleId, palette);
+                _ = ApplyToTreeAfterFirstFrameAsync(page, batchSize: 16);
         }
     }
 
@@ -140,6 +189,30 @@ public static class HimoAppearanceManager
         var styleId = ActiveStyleId;
         if (Palettes.TryGetValue(styleId, out var palette))
             ApplyToTree(root, styleId, palette);
+    }
+
+    /// <summary>
+    /// Applies only palette-aware image sources, without recoloring the page's controls.
+    /// This is used by live camera surfaces where changing capture-control backgrounds
+    /// must not alter the camera preview itself.
+    /// </summary>
+    public static void ApplyThemedIconSourcesToTree(VisualElement root)
+    {
+        if (root is null)
+            return;
+
+        var iconStyleId = ResolveIconStyleId(ActiveStyleId);
+        foreach (var view in EnumerateVisualTree(root))
+            ApplyIconSource(view, iconStyleId);
+    }
+
+    /// <summary>Refreshes a single icon after its ImageSource is changed at runtime.</summary>
+    public static void ApplyThemedIconSource(VisualElement view)
+    {
+        if (view is null)
+            return;
+
+        ApplyIconSource(view, ResolveIconStyleId(ActiveStyleId));
     }
 
     /// <summary>
@@ -302,7 +375,8 @@ public static class HimoAppearanceManager
     private static string? GetImageSourceKey(VisualElement view) => view switch
     {
         Image image when image.Source is FileImageSource file => "Image:" + file.File,
-        ImageButton imageButton when imageButton.Source is FileImageSource file => "Button:" + file.File,
+        ImageButton imageButton when imageButton.Source is FileImageSource file => "ImageButton:" + file.File,
+        Button button when button.ImageSource is FileImageSource file => "Button:" + file.File,
         _ => null
     };
 
@@ -406,19 +480,103 @@ public static class HimoAppearanceManager
 
         if (!original.MaximumTrackColor.IsResourceBound && original.MaximumTrackColor.Value is { } maximum && view is Slider slider2)
             slider2.MaximumTrackColor = MapColor(maximum, ColorRole.Stroke, palette);
+
+        // Improve text contrast only when the mapped foreground is too close to its
+        // nearest opaque background; leave icon assets and layout untouched.
+        EnsureReadableForeground(view, palette);
     }
 
-    // Keep every UI icon consistently electric blue, regardless of the selected
-    // background/accent theme. This only changes icon image assets; it does not
-    // change the selected palette, text colors, or page backgrounds.
-    private const string UiIconStyleId = "p_electric_blue";
+    private static void EnsureReadableForeground(VisualElement view, Palette palette)
+    {
+        if (view is not Label && view is not Button)
+            return;
+
+        var foreground = GetTextColor(view);
+        var background = FindNearestOpaqueBackground(view);
+        if (foreground is null || background is null || ContrastRatio(foreground, background) >= 4.5)
+            return;
+
+        // These are text colors only; select the one with the best contrast for the
+        // actual background instead of blindly reusing the active accent color.
+        var candidates = new[] { palette.Foreground, palette.Muted, Colors.White, Colors.Black };
+        var best = candidates[0];
+        var bestContrast = ContrastRatio(best, background);
+        for (var i = 1; i < candidates.Length; i++)
+        {
+            var contrast = ContrastRatio(candidates[i], background);
+            if (contrast > bestContrast)
+            {
+                best = candidates[i];
+                bestContrast = contrast;
+            }
+        }
+
+        SetTextColor(view, best);
+    }
+
+    private static Color? FindNearestOpaqueBackground(VisualElement view)
+    {
+        Element? current = view;
+        while (current is not null)
+        {
+            if (current is VisualElement visual)
+            {
+                var backgroundColor = visual.BackgroundColor;
+                if (backgroundColor is Color solidColor && solidColor.Alpha >= 0.92f)
+                    return solidColor;
+
+                // SolidColorBrush.Color can be null while MAUI is constructing or
+                // restyling a view. Never dereference it before checking the value.
+                if (visual.Background is SolidColorBrush solidBrush &&
+                    solidBrush.Color is { } brushColor && brushColor.Alpha >= 0.92f)
+                    return brushColor;
+            }
+
+            current = current.Parent;
+        }
+
+        return null;
+    }
+
+    private static double ContrastRatio(Color foreground, Color background)
+    {
+        var first = RelativeLuminanceForContrast(foreground);
+        var second = RelativeLuminanceForContrast(background);
+        var lighter = Math.Max(first, second);
+        var darker = Math.Min(first, second);
+        return (lighter + 0.05) / (darker + 0.05);
+    }
+
+    private static double RelativeLuminanceForContrast(Color color)
+    {
+        static double Linearize(float channel) => channel <= 0.04045f
+            ? channel / 12.92
+            : Math.Pow((channel + 0.055) / 1.055, 2.4);
+
+        return 0.2126 * Linearize(color.Red) +
+               0.7152 * Linearize(color.Green) +
+               0.0722 * Linearize(color.Blue);
+    }
+
+    // Use the active style for the in-app icon artwork. The previous implementation
+    // forced every UI icon to p_electric_blue, so changing a theme appeared to work
+    // on the cards but never changed the icons. The login-matching style has no
+    // dedicated icon export, so it deliberately reuses the neon-violet icon set.
+    /// <summary>The palette that has a matching generated icon set for the active interface.</summary>
+    public static string ActiveIconStyleId => ResolveIconStyleId(ActiveStyleId);
+
+    private static string ResolveIconStyleId(string styleId) =>
+        string.Equals(styleId, "d_login", StringComparison.Ordinal) ? "p_neon_violet" : styleId;
 
     private static void ApplyIconSource(VisualElement view, string styleId)
     {
-        if (view is Image image && TryGetThemedSource(image.Source, UiIconStyleId, out var imageSource))
+        var iconStyleId = ResolveIconStyleId(styleId);
+        if (view is Image image && TryGetThemedSource(image.Source, iconStyleId, out var imageSource))
             image.Source = imageSource;
-        else if (view is ImageButton imageButton && TryGetThemedSource(imageButton.Source, UiIconStyleId, out var buttonSource))
-            imageButton.Source = buttonSource;
+        else if (view is ImageButton imageButton && TryGetThemedSource(imageButton.Source, iconStyleId, out var imageButtonSource))
+            imageButton.Source = imageButtonSource;
+        else if (view is Button button && TryGetThemedSource(button.ImageSource, iconStyleId, out var buttonSource))
+            button.ImageSource = buttonSource;
     }
 
     private static bool TryGetThemedSource(ImageSource? source, string styleId, out ImageSource themedSource)
@@ -442,6 +600,9 @@ public static class HimoAppearanceManager
             }
         }
 
+        if (ThemedIconFallbacks.TryGetValue(file, out var fallbackFile))
+            file = fallbackFile;
+
         if (!ShouldThemeIcon(file))
             return false;
         themedSource = ImageSource.FromFile($"himo_theme_{styleId}_{file}");
@@ -450,6 +611,11 @@ public static class HimoAppearanceManager
 
     private static bool ShouldThemeIcon(string file)
     {
+        // Keep semantic white/red controls unchanged; these assets are intentionally
+        // high-contrast and do not have generated per-palette variants.
+        if (FixedMeaningIcons.Contains(file))
+            return false;
+
         if (file.StartsWith("himo_professional_icon_", StringComparison.OrdinalIgnoreCase) ||
             file.StartsWith("himo_system_icon_", StringComparison.OrdinalIgnoreCase) ||
             file.StartsWith("himo_glass_icon_", StringComparison.OrdinalIgnoreCase))

@@ -1,4 +1,4 @@
-using Microsoft.Maui.Graphics;
+﻿using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Dispatching;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Networking;
@@ -1773,12 +1773,27 @@ public partial class ChatPage : ContentPage
 
     private void ApplySavedChatBubbleColors()
     {
-        var outgoingStart = SafePreferenceColor(ChatBubbleSettingsPage.OutgoingStartKey, "#D34DFF");
-        var outgoingEnd = SafePreferenceColor(ChatBubbleSettingsPage.OutgoingEndKey, "#6814C7");
-        var incomingStart = SafePreferenceColor(ChatBubbleSettingsPage.IncomingStartKey, "#2F1946");
-        var incomingEnd = SafePreferenceColor(ChatBubbleSettingsPage.IncomingEndKey, "#1A0D29");
-        ApplyGradientColors("SenderBubbleBrush", outgoingStart, outgoingEnd);
-        ApplyGradientColors("ReceiverBubbleBrush", incomingStart, incomingEnd);
+        // If the user has not explicitly customized a side, keep the brush's dynamic
+        // theme colors. Previously hard-coded purple fallbacks overrode every app theme.
+        var preferences = Preferences.Default;
+        var hasOutgoingChoice = preferences.ContainsKey(ChatBubbleSettingsPage.OutgoingStartKey)
+            && preferences.ContainsKey(ChatBubbleSettingsPage.OutgoingEndKey);
+        var hasIncomingChoice = preferences.ContainsKey(ChatBubbleSettingsPage.IncomingStartKey)
+            && preferences.ContainsKey(ChatBubbleSettingsPage.IncomingEndKey);
+
+        if (hasOutgoingChoice)
+        {
+            var outgoingStart = SafePreferenceColor(ChatBubbleSettingsPage.OutgoingStartKey, "#D34DFF");
+            var outgoingEnd = SafePreferenceColor(ChatBubbleSettingsPage.OutgoingEndKey, "#6814C7");
+            ApplyGradientColors("SenderBubbleBrush", outgoingStart, outgoingEnd);
+        }
+
+        if (hasIncomingChoice)
+        {
+            var incomingStart = SafePreferenceColor(ChatBubbleSettingsPage.IncomingStartKey, "#2F1946");
+            var incomingEnd = SafePreferenceColor(ChatBubbleSettingsPage.IncomingEndKey, "#1A0D29");
+            ApplyGradientColors("ReceiverBubbleBrush", incomingStart, incomingEnd);
+        }
     }
 
     private static Color SafePreferenceColor(string key, string defaultValue)

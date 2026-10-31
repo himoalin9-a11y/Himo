@@ -3,61 +3,75 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:Himo.Views"
              x:Class="Himo.Views.CallPage"
-             FlowDirection="RightToLeft"
+             FlowDirection="LeftToRight"
              Shell.NavBarIsVisible="False"
              Padding="0"
-             BackgroundColor="#070A12">
+             BackgroundColor="#05070B">
 
     <ContentPage.Resources>
         <Style x:Key="IncomingActionButton" TargetType="ImageButton">
-            <Setter Property="WidthRequest" Value="70" />
-            <Setter Property="HeightRequest" Value="70" />
-            <Setter Property="MinimumWidthRequest" Value="70" />
-            <Setter Property="MinimumHeightRequest" Value="70" />
-            <Setter Property="CornerRadius" Value="35" />
-            <Setter Property="Padding" Value="21" />
+            <Setter Property="WidthRequest" Value="68" />
+            <Setter Property="HeightRequest" Value="68" />
+            <Setter Property="MinimumWidthRequest" Value="68" />
+            <Setter Property="MinimumHeightRequest" Value="68" />
+            <Setter Property="CornerRadius" Value="34" />
+            <Setter Property="Padding" Value="20" />
             <Setter Property="BorderWidth" Value="0" />
             <Setter Property="Aspect" Value="AspectFit" />
         </Style>
-        <Style x:Key="CallControlButton" TargetType="ImageButton">
-            <Setter Property="WidthRequest" Value="58" />
-            <Setter Property="HeightRequest" Value="58" />
-            <Setter Property="MinimumWidthRequest" Value="58" />
-            <Setter Property="MinimumHeightRequest" Value="58" />
-            <Setter Property="CornerRadius" Value="29" />
-            <Setter Property="Padding" Value="16" />
-            <Setter Property="BackgroundColor" Value="#3BFFFFFF" />
-            <Setter Property="BorderColor" Value="#4DFFFFFF" />
-            <Setter Property="BorderWidth" Value="1" />
+
+        <Style x:Key="ImoCallControlButton" TargetType="ImageButton">
+            <Setter Property="WidthRequest" Value="56" />
+            <Setter Property="HeightRequest" Value="56" />
+            <Setter Property="MinimumWidthRequest" Value="56" />
+            <Setter Property="MinimumHeightRequest" Value="56" />
+            <Setter Property="CornerRadius" Value="28" />
+            <Setter Property="Padding" Value="14" />
+            <Setter Property="BackgroundColor" Value="#33FFFFFF" />
+            <Setter Property="BorderWidth" Value="0" />
             <Setter Property="Aspect" Value="AspectFit" />
         </Style>
-        <Style x:Key="CallControlLabel" TargetType="Label">
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="TextColor" Value="#FFFFFF" />
-            <Setter Property="HorizontalTextAlignment" Value="Center" />
-            <Setter Property="VerticalTextAlignment" Value="Center" />
-            <Setter Property="LineBreakMode" Value="TailTruncation" />
-            <Setter Property="MaxLines" Value="1" />
+
+        <Style x:Key="ImoEndCallButton" TargetType="ImageButton">
+            <Setter Property="WidthRequest" Value="64" />
+            <Setter Property="HeightRequest" Value="64" />
+            <Setter Property="MinimumWidthRequest" Value="64" />
+            <Setter Property="MinimumHeightRequest" Value="64" />
+            <Setter Property="CornerRadius" Value="32" />
+            <Setter Property="Padding" Value="18" />
+            <Setter Property="BackgroundColor" Value="#F44336" />
+            <Setter Property="BorderWidth" Value="0" />
+            <Setter Property="Aspect" Value="AspectFit" />
+        </Style>
+
+        <Style x:Key="HiddenCallLabel" TargetType="Label">
+            <Setter Property="IsVisible" Value="False" />
+            <Setter Property="HeightRequest" Value="0" />
+            <Setter Property="FontSize" Value="1" />
         </Style>
     </ContentPage.Resources>
 
-    <Grid x:Name="CallRoot" BackgroundColor="#070A12">
-        <!-- Audio calls use a clean dark gradient while video fills the complete screen. -->
-        <Grid x:Name="AudioBackground">
-            <Grid.Background>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="0.9,1">
-                    <GradientStop Color="#07111F" Offset="0.0" />
-                    <GradientStop Color="#17243A" Offset="0.58" />
-                    <GradientStop Color="#271A31" Offset="1.0" />
-                </LinearGradientBrush>
-            </Grid.Background>
-            <Ellipse WidthRequest="310" HeightRequest="310" Fill="#0CFFFFFF"
-                     HorizontalOptions="Center" VerticalOptions="Center" />
+    <Grid x:Name="CallRoot" BackgroundColor="#05070B">
+        <!-- Voice-call backdrop: the other participant's photo is blurred by Android RenderEffect. -->
+        <Grid x:Name="AudioBackground" IsVisible="True">
+            <Image x:Name="AudioAvatarBackgroundImage" Aspect="AspectFill"
+                   Opacity="0.62" IsVisible="False" />
+            <Grid>
+                <Grid.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0.15,1">
+                        <GradientStop Color="#99000000" Offset="0" />
+                        <GradientStop Color="#55000000" Offset="0.50" />
+                        <GradientStop Color="#D9000000" Offset="1" />
+                    </LinearGradientBrush>
+                </Grid.Background>
+            </Grid>
         </Grid>
 
-        <!-- Video scene: the local front-camera preview fills the screen while dialing.
-             Once connected, the remote video fills the screen and the local preview floats in a corner. -->
+        <!-- Video call: remote renderer fills the screen. Local camera floats over it after connection. -->
         <Grid x:Name="VideoSurface" IsVisible="False" BackgroundColor="#05070B">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Tapped="CallSurfaceTapped" />
+            </Grid.GestureRecognizers>
             <local:WebRtcRendererView x:Name="RemoteVideoHost" IsVisible="False" BackgroundColor="#05070B" />
 
             <Border x:Name="LocalVideoContainer" FlowDirection="LeftToRight"
@@ -66,36 +80,47 @@
                 <Border.StrokeShape>
                     <RoundRectangle CornerRadius="0" />
                 </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <PanGestureRecognizer PanUpdated="LocalPreviewPanUpdated" />
+                </Border.GestureRecognizers>
                 <Grid BackgroundColor="#080C14">
                     <local:WebRtcRendererView x:Name="LocalVideoHost" BackgroundColor="#080C14" />
 
-                    <!-- A camera-off state uses the signed-in user's own profile image, not the peer's avatar. -->
-                    <Grid x:Name="LocalCameraOffOverlay" IsVisible="False" BackgroundColor="#101827">
+                    <Grid x:Name="LocalCameraOffOverlay" IsVisible="False" InputTransparent="True" BackgroundColor="#101827">
                         <Grid.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                                 <GradientStop Color="#121D2D" Offset="0" />
                                 <GradientStop Color="#080B14" Offset="1" />
                             </LinearGradientBrush>
                         </Grid.Background>
-                        <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="14">
-                            <Border WidthRequest="136" HeightRequest="136" Padding="0"
-                                    BackgroundColor="#202B3D" Stroke="#7DFFFFFF" StrokeThickness="1">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="68" /></Border.StrokeShape>
+                        <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="12">
+                            <Border WidthRequest="72" HeightRequest="72" Padding="0"
+                                    BackgroundColor="#202B3D" Stroke="#BFFFFFFF" StrokeThickness="2">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="36" /></Border.StrokeShape>
                                 <Grid>
                                     <Image x:Name="LocalProfilePhotoImage" Aspect="AspectFill" IsVisible="False" />
-                                    <Label x:Name="LocalProfileInitialLabel" Text="H" FontSize="48"
+                                    <Label x:Name="LocalProfileInitialLabel" Text="H" FontSize="30"
                                            FontAttributes="Bold" TextColor="#FFFFFF"
                                            HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                                 </Grid>
                             </Border>
-                            <Label Text="الكاميرا متوقفة" FontSize="14" TextColor="#E5EAF2"
+                            <Label Text="الكاميرا متوقفة" FontSize="12" TextColor="#FFFFFF"
                                    HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                     </Grid>
+
+                    <!-- Camera on/off stays available without adding a sixth bottom-bar button. -->
+                    <ImageButton x:Name="CameraButton" Source="imo_call_camera.png"
+                                 WidthRequest="40" HeightRequest="40" MinimumWidthRequest="40"
+                                 MinimumHeightRequest="40" Padding="10" CornerRadius="20"
+                                 BackgroundColor="#55000000" BorderColor="#66FFFFFF" BorderWidth="1"
+                                 HorizontalOptions="Start" VerticalOptions="End" Margin="8"
+                                 Clicked="ToggleCameraClicked" Pressed="CallButtonPressed"
+                                 Released="CallButtonReleased"
+                                 SemanticProperties.Description="تشغيل أو إيقاف الكاميرا" />
                 </Grid>
             </Border>
 
-            <!-- Kept for a no-video/slow-render fallback. The code-behind hides it after attaching the renderers. -->
             <VerticalStackLayout x:Name="VideoWaitingOverlay" IsVisible="False"
                                  HorizontalOptions="Center" VerticalOptions="Center"
                                  Spacing="12" InputTransparent="True">
@@ -112,21 +137,19 @@
             </VerticalStackLayout>
         </Grid>
 
-        <!-- Incoming video calls show identity/actions before answer. Camera capture is not started before consent. -->
-        <Grid x:Name="IncomingVideoPanel" IsVisible="False" BackgroundColor="#0A1020">
+        <!-- Incoming video call identity screen. -->
+        <Grid x:Name="IncomingVideoPanel" IsVisible="False" BackgroundColor="#090D15">
             <Grid.Background>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="0.9,1">
-                    <GradientStop Color="#101E34" Offset="0" />
-                    <GradientStop Color="#101322" Offset="0.55" />
-                    <GradientStop Color="#25182A" Offset="1" />
+                    <GradientStop Color="#152034" Offset="0" />
+                    <GradientStop Color="#10121D" Offset="0.55" />
+                    <GradientStop Color="#21151D" Offset="1" />
                 </LinearGradientBrush>
             </Grid.Background>
-            <Ellipse WidthRequest="360" HeightRequest="360" Fill="#10FFFFFF"
-                     HorizontalOptions="Center" VerticalOptions="Center" />
-            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="14">
-                <Border WidthRequest="152" HeightRequest="152" Padding="0"
-                        BackgroundColor="#1A2940" Stroke="#70FFFFFF" StrokeThickness="1">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="76" /></Border.StrokeShape>
+            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="16">
+                <Border WidthRequest="160" HeightRequest="160" Padding="3"
+                        BackgroundColor="#FFFFFF" Stroke="#FFFFFF" StrokeThickness="1">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="80" /></Border.StrokeShape>
                     <Grid>
                         <Image x:Name="IncomingPeerPhotoImage" Aspect="AspectFill" IsVisible="False" />
                         <Label x:Name="IncomingPeerInitialLabel" Text="H" FontSize="52"
@@ -134,175 +157,172 @@
                                HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                     </Grid>
                 </Border>
-                <Label Text="مكالمة فيديو واردة" FontSize="15" TextColor="#D9E2EF"
+                <Label Text="مكالمة فيديو واردة" FontSize="15" TextColor="#E8EDF5"
                        HorizontalTextAlignment="Center" />
             </VerticalStackLayout>
         </Grid>
 
-        <!-- Audio call avatar is centered; the caller name and elapsed time stay at the top. -->
-        <VerticalStackLayout x:Name="ProfilePanel" IsVisible="True"
-                             HorizontalOptions="Center" VerticalOptions="Center"
-                             Spacing="12" Padding="24,0">
-            <Grid WidthRequest="184" HeightRequest="184">
-                <Ellipse WidthRequest="184" HeightRequest="184" Fill="#13FFFFFF"
-                         Stroke="#3FFFFFFF" StrokeThickness="1" />
-                <Border WidthRequest="148" HeightRequest="148" Padding="0"
-                        BackgroundColor="#233047" Stroke="#65FFFFFF" StrokeThickness="1"
-                        HorizontalOptions="Center" VerticalOptions="Center">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="74" /></Border.StrokeShape>
-                    <Grid>
-                        <Image x:Name="ProfilePhotoImage" Aspect="AspectFill" IsVisible="False" />
-                        <Label x:Name="InitialLabel" Text="H" FontSize="48" FontAttributes="Bold"
-                               TextColor="#FFFFFF" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
-                    </Grid>
-                </Border>
-                <Border WidthRequest="40" HeightRequest="40" HorizontalOptions="End" VerticalOptions="End"
-                        BackgroundColor="#24354E" Stroke="#60FFFFFF" StrokeThickness="1" Padding="10">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
-                    <Image x:Name="CallModeIcon" Source="himo_icon_chat_voice_call.png" Aspect="AspectFit" />
-                </Border>
-            </Grid>
-        </VerticalStackLayout>
+        <!-- Voice-call avatar: 160dp image with a 3dp white ring. -->
+        <Grid x:Name="ProfilePanel" IsVisible="True"
+              HorizontalOptions="Center" VerticalOptions="Center"
+              WidthRequest="170" HeightRequest="170">
+            <Border WidthRequest="166" HeightRequest="166" Padding="3"
+                    HorizontalOptions="Center" VerticalOptions="Center"
+                    BackgroundColor="#FFFFFF" Stroke="#FFFFFF" StrokeThickness="3">
+                <Border.StrokeShape><RoundRectangle CornerRadius="83" /></Border.StrokeShape>
+                <Grid BackgroundColor="#253248">
+                    <Image x:Name="ProfilePhotoImage" Aspect="AspectFill" IsVisible="False" />
+                    <Label x:Name="InitialLabel" Text="H" FontSize="52" FontAttributes="Bold"
+                           TextColor="#FFFFFF" HorizontalTextAlignment="Center"
+                           VerticalTextAlignment="Center" />
+                </Grid>
+            </Border>
+        </Grid>
 
-        <!-- Any tap on the call canvas toggles the chrome. Buttons are layered above this catcher. -->
+        <!-- Tap empty space to hide/show the call header and controls. -->
         <Grid x:Name="CallTapCatcher" BackgroundColor="Transparent">
             <Grid.GestureRecognizers>
                 <TapGestureRecognizer Tapped="CallSurfaceTapped" />
             </Grid.GestureRecognizers>
         </Grid>
 
-        <!-- Centered identity/timer. The small arrow button enters Android Picture-in-Picture without ending the call. -->
-        <Grid x:Name="CallHeader" ColumnDefinitions="48,*,48" HeightRequest="66"
-              HorizontalOptions="Fill" VerticalOptions="Start" Margin="12,12,12,0"
+        <!-- Centered name and timer at the top. -->
+        <Grid x:Name="CallHeader" ColumnDefinitions="48,*,48" HeightRequest="76"
+              HorizontalOptions="Fill" VerticalOptions="Start" Margin="8,24,8,0"
               FlowDirection="LeftToRight">
-            <BoxView Grid.Column="0" WidthRequest="48" Opacity="0" />
+            <BoxView Grid.Column="0" WidthRequest="44" Opacity="0" />
             <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" VerticalOptions="Center"
                                  Spacing="3" InputTransparent="True">
                 <Label x:Name="NameLabel" Text="جهة اتصال" FontSize="20" FontAttributes="Bold"
-                       TextColor="#FFFFFF" HorizontalTextAlignment="Center" />
-                <Label x:Name="StatusLabel" Text="جاري تجهيز الاتصال..." FontSize="12"
-                       TextColor="#E2E8F0" HorizontalTextAlignment="Center" />
-                <Label x:Name="VideoCallNameLabel" Text="جهة اتصال" FontSize="19"
-                       FontAttributes="Bold" TextColor="#FFFFFF" IsVisible="False"
+                       FontFamily="Roboto" TextColor="#FFFFFF" HorizontalTextAlignment="Center" />
+                <Label x:Name="StatusLabel" Text="جاري تجهيز الاتصال..." FontSize="14"
+                       FontFamily="Roboto" TextColor="#FFFFFF" HorizontalTextAlignment="Center" />
+                <Label x:Name="VideoCallNameLabel" Text="جهة اتصال" FontSize="20"
+                       FontAttributes="Bold" FontFamily="Roboto" TextColor="#FFFFFF" IsVisible="False"
                        HorizontalTextAlignment="Center" />
-                <Label x:Name="VideoStatusLabel" Text="جاري الاتصال..." FontSize="12"
-                       TextColor="#E2E8F0" IsVisible="False" HorizontalTextAlignment="Center" />
+                <Label x:Name="VideoStatusLabel" Text="جاري الاتصال..." FontSize="14"
+                       FontFamily="Roboto" TextColor="#FFFFFF" IsVisible="False"
+                       HorizontalTextAlignment="Center" />
             </VerticalStackLayout>
             <Button x:Name="MinimizeCallButton" Grid.Column="2" Text="↙↗"
-                    WidthRequest="44" HeightRequest="44" Padding="0"
-                    BackgroundColor="#66101828" TextColor="#FFFFFF" FontSize="18"
-                    BorderWidth="1" BorderColor="#55FFFFFF" CornerRadius="22"
+                    WidthRequest="42" HeightRequest="42" Padding="0"
+                    BackgroundColor="#44000000" TextColor="#FFFFFF" FontSize="17"
+                    BorderWidth="1" BorderColor="#55FFFFFF" CornerRadius="21"
                     Clicked="MinimizeCallClicked" IsVisible="False"
                     SemanticProperties.Description="تصغير المكالمة مع استمرار الاتصال" />
         </Grid>
 
-        <!-- Incoming screen: accept and reject are deliberately always visible while ringing. -->
+        <!-- Incoming call actions. -->
         <Border x:Name="IncomingActions" IsVisible="False"
-                HorizontalOptions="Fill" VerticalOptions="End" Margin="18,0,18,30"
-                Padding="0" BackgroundColor="Transparent"
-                StrokeThickness="0">
-            <Border.StrokeShape><RoundRectangle CornerRadius="30" /></Border.StrokeShape>
-            <VerticalStackLayout Spacing="10">
-                <Grid x:Name="IncomingButtonGrid" ColumnDefinitions="*,*" ColumnSpacing="42"
-                      HorizontalOptions="Center" FlowDirection="LeftToRight">
-                    <VerticalStackLayout Grid.Column="0" Spacing="8" HorizontalOptions="Center">
-                        <ImageButton x:Name="AnswerIncomingButton" Source="call_phone_white.png"
-                                     Style="{StaticResource IncomingActionButton}"
-                                     BackgroundColor="#18BF68" Clicked="AcceptIncomingClicked"
-                                     SemanticProperties.Description="قبول المكالمة" />
-                        <Label Text="قبول" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF"
-                               HorizontalTextAlignment="Center" />
-                    </VerticalStackLayout>
-                    <VerticalStackLayout Grid.Column="1" Spacing="8" HorizontalOptions="Center">
-                        <ImageButton x:Name="RejectIncomingButton" Source="call_end_white.png"
-                                     Style="{StaticResource IncomingActionButton}"
-                                     BackgroundColor="#E94F63" Clicked="RejectIncomingClicked"
-                                     SemanticProperties.Description="رفض المكالمة" />
-                        <Label Text="رفض" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF"
-                               HorizontalTextAlignment="Center" />
-                    </VerticalStackLayout>
-                </Grid>
-            </VerticalStackLayout>
+                HorizontalOptions="Fill" VerticalOptions="End" Margin="24,0,24,36"
+                Padding="16,18" BackgroundColor="#22000000" Stroke="#22FFFFFF" StrokeThickness="1">
+            <Border.StrokeShape><RoundRectangle CornerRadius="28" /></Border.StrokeShape>
+            <Grid x:Name="IncomingButtonGrid" ColumnDefinitions="*,*" ColumnSpacing="52" HorizontalOptions="Center"
+                  FlowDirection="LeftToRight">
+                <VerticalStackLayout Grid.Column="0" Spacing="8" HorizontalOptions="Center">
+                    <ImageButton x:Name="AnswerIncomingButton" Source="imo_call_accept.png"
+                                 Style="{StaticResource IncomingActionButton}"
+                                 BackgroundColor="#00C853" Clicked="AcceptIncomingClicked"
+                                 Pressed="CallButtonPressed" Released="CallButtonReleased"
+                                 SemanticProperties.Description="قبول المكالمة" />
+                    <Label Text="قبول" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF"
+                           HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+                <VerticalStackLayout Grid.Column="1" Spacing="8" HorizontalOptions="Center">
+                    <ImageButton x:Name="RejectIncomingButton" Source="imo_call_end.png"
+                                 Style="{StaticResource IncomingActionButton}"
+                                 BackgroundColor="#F44336" Clicked="RejectIncomingClicked"
+                                 Pressed="CallButtonPressed" Released="CallButtonReleased"
+                                 SemanticProperties.Description="رفض المكالمة" />
+                    <Label Text="رفض" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF"
+                           HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Grid>
         </Border>
 
-        <!-- Audio-only ringing panel. Video callers see their live camera preview behind the same hang-up control. -->
+        <!-- Outgoing audio call while waiting for the other participant. -->
         <Border x:Name="OutgoingActions" IsVisible="False"
-                HorizontalOptions="Fill" VerticalOptions="End" Margin="18,0,18,28"
-                Padding="18,15" BackgroundColor="#B30A101B"
-                Stroke="#35FFFFFF" StrokeThickness="1">
-            <Border.StrokeShape><RoundRectangle CornerRadius="28" /></Border.StrokeShape>
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18" FlowDirection="LeftToRight">
-                <VerticalStackLayout Grid.Column="0" Spacing="7" VerticalOptions="Center" FlowDirection="RightToLeft">
+                HorizontalOptions="Fill" VerticalOptions="End" Margin="18,0,18,104"
+                Padding="16,14" BackgroundColor="#33000000" Stroke="#22FFFFFF" StrokeThickness="1">
+            <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16" FlowDirection="LeftToRight">
+                <VerticalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center" FlowDirection="RightToLeft">
                     <HorizontalStackLayout Spacing="8" VerticalOptions="Center" FlowDirection="RightToLeft">
-                        <ActivityIndicator IsRunning="True" Color="#5FE1C5" WidthRequest="18" HeightRequest="18" />
+                        <ActivityIndicator IsRunning="True" Color="#00C853" WidthRequest="18" HeightRequest="18" />
                         <Label x:Name="WaitingCallTitle" Text="جاري الاتصال بالطرف الآخر"
                                FontSize="14" FontAttributes="Bold" TextColor="#FFFFFF" />
                     </HorizontalStackLayout>
                     <Label x:Name="WaitingCallSubtitle" Text="بانتظار رد الطرف الآخر..."
-                           FontSize="12" TextColor="#D0D8E6" />
+                           FontSize="12" TextColor="#D0D7E2" />
                 </VerticalStackLayout>
-                <ImageButton Grid.Column="1" Source="call_end_white.png" WidthRequest="62" HeightRequest="62"
-                             MinimumWidthRequest="62" MinimumHeightRequest="62" Padding="18"
-                             BackgroundColor="#E94F63" BorderWidth="0" CornerRadius="31"
-                             Aspect="AspectFit" Clicked="EndClicked"
-                             SemanticProperties.Description="إلغاء الاتصال" VerticalOptions="Center" />
+                <ImageButton Grid.Column="1" Source="imo_call_end.png" WidthRequest="58" HeightRequest="58"
+                             MinimumWidthRequest="58" MinimumHeightRequest="58" Padding="17"
+                             BackgroundColor="#F44336" BorderWidth="0" CornerRadius="29"
+                             Aspect="AspectFit" Clicked="EndClicked" Pressed="CallButtonPressed"
+                             Released="CallButtonReleased" VerticalOptions="Center"
+                             SemanticProperties.Description="إلغاء الاتصال" />
             </Grid>
         </Border>
 
-        <!-- A minimal toolbar. Video: hang up / camera on-off / switch camera / mic. Audio: hang up / speaker / mic. -->
+        <!-- IMO-style 5-button control bar: Mute / Switch / End / Speaker / More. -->
         <Border x:Name="CallControls" IsVisible="False"
-                HorizontalOptions="Fill" VerticalOptions="End" Margin="6,0,6,24"
-                Padding="0" BackgroundColor="Transparent"
-                StrokeThickness="0">
-            <Border.StrokeShape><RoundRectangle CornerRadius="28" /></Border.StrokeShape>
-            <Grid x:Name="ControlButtonGrid" ColumnDefinitions="*,*,*,*" ColumnSpacing="4"
+                HorizontalOptions="Fill" VerticalOptions="End" HeightRequest="80"
+                Margin="0" Padding="8,0" BackgroundColor="#1A000000" StrokeThickness="0">
+            <Border.StrokeShape><RoundRectangle CornerRadius="24,24,0,0" /></Border.StrokeShape>
+            <Grid x:Name="ControlButtonGrid"
+                  ColumnDefinitions="*,*,*,*,*" ColumnSpacing="0"
+                  HorizontalOptions="Fill" VerticalOptions="Fill"
                   FlowDirection="LeftToRight">
-                <VerticalStackLayout x:Name="EndControl" Grid.Column="0" Spacing="7" HorizontalOptions="Center">
-                    <ImageButton x:Name="ActiveEndButton" Source="call_end_white.png"
-                                 WidthRequest="62" HeightRequest="62" MinimumWidthRequest="62"
-                                 MinimumHeightRequest="62" Padding="18" BackgroundColor="#E94F63"
-                                 BorderWidth="0" CornerRadius="31" Aspect="AspectFit" Clicked="EndClicked"
-                                 SemanticProperties.Description="إنهاء المكالمة" />
-                    <Label Text="إنهاء الاتصال" Style="{StaticResource CallControlLabel}" FontAttributes="Bold" />
-                </VerticalStackLayout>
-
-                <VerticalStackLayout x:Name="CameraControl" Grid.Column="1" Spacing="7" HorizontalOptions="Center">
-                    <ImageButton x:Name="CameraButton" Source="himo_call_camera.png"
-                                 Style="{StaticResource CallControlButton}" Clicked="ToggleCameraClicked"
-                                 SemanticProperties.Description="تشغيل أو إيقاف الكاميرا" />
-                    <Label x:Name="CameraActionLabel" Text="إغلاق الكاميرا" Style="{StaticResource CallControlLabel}" />
-                </VerticalStackLayout>
-
-                <VerticalStackLayout x:Name="SwitchCameraControl" Grid.Column="2" Spacing="7" HorizontalOptions="Center">
-                    <ImageButton x:Name="SwitchCameraButton" Source="himo_cam_switch.png"
-                                 Style="{StaticResource CallControlButton}" Clicked="SwitchCameraClicked"
-                                 SemanticProperties.Description="تبديل الكاميرا الأمامية والخلفية" />
-                    <Label x:Name="SwitchCameraActionLabel" Text="تبديل الكاميرا" Style="{StaticResource CallControlLabel}" />
-                </VerticalStackLayout>
-
-                <VerticalStackLayout x:Name="SpeakerControl" Grid.Column="1" Spacing="7" HorizontalOptions="Center">
-                    <ImageButton x:Name="SpeakerButton" Source="himo_call_speaker_off.png"
-                                 Style="{StaticResource CallControlButton}" Clicked="ToggleSpeakerClicked"
-                                 SemanticProperties.Description="تشغيل أو إيقاف مكبر الصوت" />
-                    <Label x:Name="SpeakerActionLabel" Text="سماعة الأذن" Style="{StaticResource CallControlLabel}" />
-                </VerticalStackLayout>
-
-                <VerticalStackLayout x:Name="MuteControl" Grid.Column="3" Spacing="7" HorizontalOptions="Center">
-                    <ImageButton x:Name="MuteButton" Source="himo_call_mic.png"
-                                 Style="{StaticResource CallControlButton}" Clicked="ToggleMuteClicked"
+                <Grid x:Name="MuteControl" Grid.Column="0" HorizontalOptions="Center" VerticalOptions="Center">
+                    <ImageButton x:Name="MuteButton" Source="imo_call_mic.png"
+                                 Style="{StaticResource ImoCallControlButton}" Clicked="ToggleMuteClicked"
+                                 Pressed="CallButtonPressed" Released="CallButtonReleased"
                                  SemanticProperties.Description="فتح أو كتم الميكروفون" />
-                    <Label x:Name="MuteActionLabel" Text="المايك مفتوح" Style="{StaticResource CallControlLabel}" />
-                </VerticalStackLayout>
+                </Grid>
+
+                <Grid x:Name="SwitchCameraControl" Grid.Column="1" HorizontalOptions="Center" VerticalOptions="Center">
+                    <ImageButton x:Name="SwitchCameraButton" Source="imo_call_switch_camera.png"
+                                 Style="{StaticResource ImoCallControlButton}" Clicked="SwitchCameraClicked"
+                                 Pressed="CallButtonPressed" Released="CallButtonReleased"
+                                 SemanticProperties.Description="تبديل الكاميرا الأمامية والخلفية" />
+                </Grid>
+
+                <Grid x:Name="EndControl" Grid.Column="2" HorizontalOptions="Center" VerticalOptions="Center">
+                    <ImageButton x:Name="ActiveEndButton" Source="imo_call_end.png"
+                                 Style="{StaticResource ImoEndCallButton}" Clicked="EndClicked"
+                                 Pressed="CallButtonPressed" Released="CallButtonReleased"
+                                 SemanticProperties.Description="إنهاء المكالمة" />
+                </Grid>
+
+                <Grid x:Name="SpeakerControl" Grid.Column="3" HorizontalOptions="Center" VerticalOptions="Center">
+                    <ImageButton x:Name="SpeakerButton" Source="imo_call_speaker_off.png"
+                                 Style="{StaticResource ImoCallControlButton}" Clicked="ToggleSpeakerClicked"
+                                 Pressed="CallButtonPressed" Released="CallButtonReleased"
+                                 SemanticProperties.Description="تشغيل أو إيقاف مكبر الصوت" />
+                </Grid>
+
+                <Grid x:Name="MoreControl" Grid.Column="4" HorizontalOptions="Center" VerticalOptions="Center">
+                    <ImageButton x:Name="MoreActionButton" Source="imo_call_more.png"
+                                 Style="{StaticResource ImoCallControlButton}" Clicked="MoreClicked"
+                                 Pressed="CallButtonPressed" Released="CallButtonReleased"
+                                 SemanticProperties.Description="المزيد من خيارات المكالمة" />
+                </Grid>
             </Grid>
         </Border>
 
-        <!-- Retain legacy controls in the visual tree because existing call-state code still updates their state.
-             They are never displayed; the visible bar above is the simplified production toolbar. -->
+        <!-- Hidden compatibility controls: the existing call-state code still updates these names. -->
         <Grid IsVisible="False" WidthRequest="0" HeightRequest="0" Opacity="0">
             <Label x:Name="ModeLabel" Text="مكالمة فيديو" />
-            <ImageButton x:Name="RemoteAudioButton" Source="himo_call_speaker_off.png" />
+            <Image x:Name="CallModeIcon" Source="himo_icon_chat_voice_call.png" />
+            <VerticalStackLayout x:Name="CameraControl" IsVisible="False">
+                <Label x:Name="CameraActionLabel" Text="إغلاق الكاميرا" />
+            </VerticalStackLayout>
+            <Label x:Name="SwitchCameraActionLabel" Text="تبديل الكاميرا" />
+            <Label x:Name="SpeakerActionLabel" Text="مكبر الصوت" />
+            <Label x:Name="MuteActionLabel" Text="المايك مفتوح" />
+            <ImageButton x:Name="RemoteAudioButton" Source="imo_call_speaker_off.png" />
             <Label x:Name="RemoteAudioActionLabel" Text="الصوت الوارد" />
-            <ImageButton x:Name="MoreButton" Source="himo_call_more.png" />
+            <ImageButton x:Name="MoreButton" Source="imo_call_more.png" />
             <Label x:Name="MoreActionLabel" Text="المزيد" />
         </Grid>
     </Grid>

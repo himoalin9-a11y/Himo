@@ -18,7 +18,7 @@
             <!-- Professional crop overlay: the image remains fixed while the crop model moves independently. -->
             <Grid x:Name="CropOverlay"
                   IsVisible="False"
-                  ZIndex="400"
+                  ZIndex="600"
                   InputTransparent="False"
                   BackgroundColor="Transparent"
                   HorizontalOptions="Fill"
@@ -29,6 +29,41 @@
                               ZIndex="0"
                               HorizontalOptions="Fill"
                               VerticalOptions="Fill" />
+                <!-- Keep crop actions at the bottom, above the caption/send bar. -->
+                <Grid ZIndex="20"
+                      VerticalOptions="End"
+                      HorizontalOptions="Fill"
+                      Margin="0,0,0,94"
+                      Padding="16,10,16,16"
+                      ColumnDefinitions="Auto,*,Auto"
+                      InputTransparent="False">
+                    <Button Grid.Column="0"
+                            Text="✕"
+                            Clicked="CropCancelClicked"
+                            WidthRequest="48"
+                            HeightRequest="48"
+                            CornerRadius="24"
+                            Padding="0"
+                            FontSize="24"
+                            TextColor="White"
+                            BackgroundColor="#CC30343B"
+                            BorderColor="#66FFFFFF"
+                            BorderWidth="1"
+                            SemanticProperties.Description="إلغاء القص والعودة لتعديل الصورة" />
+                    <Button Grid.Column="2"
+                            Text="✓"
+                            Clicked="CropAcceptClicked"
+                            WidthRequest="48"
+                            HeightRequest="48"
+                            CornerRadius="24"
+                            Padding="0"
+                            FontSize="26"
+                            FontAttributes="Bold"
+                            TextColor="White"
+                            BackgroundColor="{DynamicResource HimoAccent}"
+                            BorderWidth="0"
+                            SemanticProperties.Description="تأكيد القص" />
+                </Grid>
             </Grid>
 
             <Border x:Name="VideoPreviewBadge"

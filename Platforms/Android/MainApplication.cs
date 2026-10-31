@@ -31,38 +31,45 @@ public class MainApplication : MauiApplication
 
     private static void ConfigureFcmLocalNotificationAction()
     {
-        // Plugin.Firebase's FirebaseMessagingService also runs when Android starts
-        // the app process for a data-only FCM message. The callback is configured
-        // here (Application lifetime), so it does not depend on MainActivity having
-        // been created yet. Call invites become call-category full-screen intents;
-        // terminal call states remove the same notification by call ID.
+        // This callback runs from the Firebase messaging service, including when
+        // Android starts the app process for a background/data message. It must
+        // handle both call invites and ordinary chat messages; otherwise a message
+        // with conversation_id but without call_type is silently discarded.
         FirebaseCloudMessagingImplementation.ShowLocalNotificationAction = notification =>
         {
             try
             {
-                // The Firebase callback may be invoked without a notification object.
-                // Cache nullable fields safely before processing the optional data map.
                 var notificationTitle = notification?.Title;
                 var notificationBody = notification?.Body;
                 var data = notification?.Data;
-                if (data is not null && data.TryGetValue("call_type", out var callType))
-                {
-                    data.TryGetValue("conversation_id", out var conversationId);
-                    data.TryGetValue("call_id", out var callId);
-                    data.TryGetValue("call_mode", out var callMode);
-                    data.TryGetValue("caller_name", out var callerName);
-                    var service = new Platforms.Android.Services.NotificationService();
+                if (data is null)
+                    return;
 
+                data.TryGetValue("conversation_id", out var conversationId);
+                data.TryGetValue("call_type", out var callType);
+                data.TryGetValue("call_id", out var callId);
+                data.TryGetValue("call_mode", out var callMode);
+                data.TryGetValue("caller_name", out var callerName);
+
+                var service = new Platforms.Android.Services.NotificationService();
+
+                if (!string.IsNullOrWhiteSpace(callType))
+                {
                     if (string.Equals(callType, "invite", StringComparison.OrdinalIgnoreCase))
                     {
-                        // The foreground notification event routes to CallPage. Only
-                        // create a full-screen system notification when app is backgrounded.
-                        if (MainActivity.IsAppForeground) return;
-                        _ = service.ShowIncomingCallAsync(
-                            string.IsNullOrWhiteSpace(callerName) ? notificationTitle ?? "مكالمة واردة" : callerName,
-                            conversationId ?? string.Empty,
-                            callMode ?? "audio",
-                            callId ?? string.Empty);
+                        // The foreground notification manager routes invites directly
+                        // to CallPage. Background invites need a real Android call
+                        // notification with its own full-screen/content PendingIntent.
+                        if (!MainActivity.IsAppForeground)
+                        {
+                            _ = service.ShowIncomingCallAsync(
+                                string.IsNullOrWhiteSpace(callerName)
+                                    ? notificationTitle ?? "مكالمة واردة"
+                                    : callerName,
+                                conversationId ?? string.Empty,
+                                callMode ?? "audio",
+                                callId ?? string.Empty);
+                        }
                     }
                     else if (string.Equals(callType, "answering", StringComparison.OrdinalIgnoreCase) ||
                              string.Equals(callType, "accept", StringComparison.OrdinalIgnoreCase))
@@ -80,16 +87,33 @@ public class MainApplication : MauiApplication
                         Platforms.Android.Services.NotificationService.NotifyIncomingCallTerminatedByPush(
                             conversationId ?? string.Empty, callId ?? string.Empty);
                     }
-                    else if (!string.IsNullOrWhiteSpace(conversationId))
-                    {
-                        _ = service.ShowMessageAsync(
-                            notificationTitle ?? "رسالة جديدة", notificationBody ?? "لديك رسالة جديدة", conversationId);
-                    }
+
+                    // Never convert call-state messages into chat notifications.
                     return;
                 }
 
-                // Generic message pushes are handled by the existing foreground
-                // manager / system tray. Don't manufacture an unrouteable notification.
+                // Ordinary messages do not have call_type. Plugin.Firebase's
+                // custom local-notification callback replaces its default handling,
+                // so explicitly post a Himo notification when the app is backgrounded.
+                if (MainActivity.IsAppForeground ||
+                    string.IsNullOrWhiteSpace(conversationId) ||
+                    !Guid.TryParse(conversationId, out var parsedConversationId) ||
+                    parsedConversationId == Guid.Empty)
+                    return;
+
+                data.TryGetValue("title", out var dataTitle);
+                data.TryGetValue("body", out var dataBody);
+
+                var title = !string.IsNullOrWhiteSpace(notificationTitle)
+                    ? notificationTitle
+                    : !string.IsNullOrWhiteSpace(dataTitle) ? dataTitle : "رسالة جديدة";
+                var body = !string.IsNullOrWhiteSpace(notificationBody)
+                    ? notificationBody
+                    : !string.IsNullOrWhiteSpace(dataBody) ? dataBody : "لديك رسالة جديدة";
+
+                _ = service.ShowMessageAsync(title, body, parsedConversationId.ToString("D"));
+                System.Diagnostics.Debug.WriteLine(
+                    $"[Himo Push] Background message notification posted. ConversationId={parsedConversationId:D}");
             }
             catch (Exception ex)
             {

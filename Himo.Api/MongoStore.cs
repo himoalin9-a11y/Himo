@@ -148,7 +148,7 @@ sealed class MongoStore
     {
         EnsureIndexes();
         var user = _users.Find(x => x.Id == GuidText(userId)).FirstOrDefault() ?? throw new InvalidOperationException("المستخدم غير موجود.");
-        return new { userId, email = user.PhoneNumber, name = user.Name, status = user.Status, contactPhoneNumber = user.ContactPhoneNumber, phoneDiscoverable = user.PhoneDiscoverable, hasProfilePhoto = user.ProfilePhoto is { Length: > 0 }, username = user.Username };
+        return new { userId, email = user.PhoneNumber, name = user.Name, status = user.Status, contactPhoneNumber = user.ContactPhoneNumber, phoneDiscoverable = user.PhoneDiscoverable, hasProfilePhoto = user.ProfilePhoto is { Length: > 0 }, profilePhotoVersion = user.ProfilePhotoVersion, username = user.Username };
     }
 
     public (string Email, string Name) GetAccountEmailAndName(Guid userId)
@@ -233,7 +233,12 @@ sealed class MongoStore
         var wanted = normalizedPhoneNumbers.Select(NormalizeContactPhoneDigitsForStore).ToHashSet(StringComparer.Ordinal);
         var users = _users.Find(x => x.Id != GuidText(currentUserId) && x.PhoneDiscoverable && x.ContactPhoneNumber != null).ToList();
         return users.Select(u => new { User = u, Digits = NormalizeContactPhoneDigitsForStore(u.ContactPhoneNumber) })
-            .Where(x => wanted.Contains(x.Digits)).GroupBy(x => x.User.Id).Select(g => new ContactMatchResponse(Guid.Parse(g.First().User.Id), g.First().User.Name, "+" + g.First().Digits))
+            .Where(x => wanted.Contains(x.Digits)).GroupBy(x => x.User.Id).Select(g => new ContactMatchResponse(
+                Guid.Parse(g.First().User.Id),
+                g.First().User.Name,
+                "+" + g.First().Digits,
+                g.First().User.ProfilePhoto is { Length: > 0 },
+                g.First().User.ProfilePhotoVersion))
             .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase).Take(200).ToList();
     }
 
@@ -483,9 +488,16 @@ sealed class MongoStore
             var conversation = _conversations.Find(x => x.Id == p.ConversationId).FirstOrDefault(); if (conversation is null) continue;
             var state = _userStates.Find(x => x.ConversationId == p.ConversationId && x.UserId == uid).FirstOrDefault(); if (state?.IsDeleted == true) continue;
             var members = _participants.Find(x => x.ConversationId == p.ConversationId).ToList();
-            var isDirect = !conversation.IsGroup && members.Count == 2;
+            // A self-chat is a direct conversation with exactly one participant: the owner.
+            // It must be exposed like a normal direct chat so the client can open it and load the user's avatar.
+            var isSelfChat = !conversation.IsGroup && members.Count == 1 && members[0].UserId == uid;
+            var isDirect = !conversation.IsGroup && (members.Count == 2 || isSelfChat);
             MUser? other = null;
-            if (isDirect)
+            if (isSelfChat)
+            {
+                other = _users.Find(x => x.Id == uid).FirstOrDefault();
+            }
+            else if (isDirect)
             {
                 var otherId = members.FirstOrDefault(x => x.UserId != uid)?.UserId;
                 if (otherId is not null) other = _users.Find(x => x.Id == otherId).FirstOrDefault();
@@ -502,7 +514,7 @@ sealed class MongoStore
                 & Builders<MMessage>.Filter.Ne(x => x.SenderUserId, uid)
                 & Builders<MMessage>.Filter.Gt(x => x.SentAt, lastReadAt);
             var unread = (int)_messages.CountDocuments(unreadFilter);
-            var isBlocked = isDirect && other is not null && _blockedUsers.Find(x => (x.BlockerUserId == uid && x.BlockedUserId == other.Id) || (x.BlockerUserId == other.Id && x.BlockedUserId == uid)).FirstOrDefault() is not null;
+            var isBlocked = isDirect && !isSelfChat && other is not null && _blockedUsers.Find(x => (x.BlockerUserId == uid && x.BlockedUserId == other.Id) || (x.BlockerUserId == other.Id && x.BlockedUserId == uid)).FirstOrDefault() is not null;
             Guid? otherIdParsed = other is not null && Guid.TryParse(other.Id, out var oid) ? oid : null;
             result.Add(new ConversationDto(Guid.Parse(conversation.Id), isDirect && other is not null ? other.Name : conversation.Name, last?.Text ?? string.Empty, ParseTime(conversation.UpdatedAt, now), unread, otherIdParsed, other?.ProfilePhoto is { Length: > 0 }, other?.ProfilePhotoVersion ?? 0L, state?.IsArchived ?? false, state?.IsMuted ?? false, isBlocked, conversation.IsGroup));
         }
@@ -552,42 +564,125 @@ sealed class MongoStore
             var uid = GuidText(userId); var now = DateTimeOffset.UtcNow; var timestamp = now.ToString("O");
             if (participantUserId.HasValue)
             {
-                if (participantUserId.Value == userId) throw new InvalidOperationException("لا يمكن بدء محادثة مع حسابك.");
-                var peer = GuidText(participantUserId.Value); if (_users.Find(x => x.Id == peer).FirstOrDefault() is null) throw new InvalidOperationException("المستخدم غير موجود.");
-                var directIds = _participants.Find(x => x.UserId == uid).ToList()
-                    .Where(x => _participants.Find(y => y.ConversationId == x.ConversationId && y.UserId == peer).FirstOrDefault() is not null)
-                    .Select(x => _conversations.Find(c => c.Id == x.ConversationId && !c.IsGroup).FirstOrDefault())
-                    .Where(c => c is not null && _participants.CountDocuments(p => p.ConversationId == c!.Id) == 2)
-                    .Cast<MConversation>().OrderByDescending(c => c.UpdatedAt, StringComparer.Ordinal).FirstOrDefault();
-                if (directIds is not null)
+                var peer = GuidText(participantUserId.Value);
+                var otherUser = _users.Find(x => x.Id == peer).FirstOrDefault();
+                if (otherUser is null) throw new InvalidOperationException("المستخدم غير موجود.");
+
+                if (participantUserId.Value == userId)
                 {
-                    var stId = PairId(Guid.Parse(directIds.Id), userId); var st = _userStates.Find(x => x.Id == stId).FirstOrDefault() ?? new MUserState { Id = stId, ConversationId = directIds.Id, UserId = uid };
-                    st.IsDeleted = false; st.IsArchived = false; st.UpdatedAt = timestamp; _userStates.ReplaceOne(x => x.Id == stId, st, new ReplaceOptions { IsUpsert = true });
-                    var other = _users.Find(x => x.Id == peer).FirstOrDefault(); var unread = CountUnread(directIds.Id, uid, now);
-                    return new ConversationDto(Guid.Parse(directIds.Id), other?.Name ?? directIds.Name, directIds.LastMessage, ParseTime(directIds.UpdatedAt, now), unread, participantUserId);
+                    // Reuse the existing one-member self-chat instead of creating duplicates.
+                    var existingSelf = _participants.Find(x => x.UserId == uid).ToList()
+                        .Select(x => _conversations.Find(c => c.Id == x.ConversationId && !c.IsGroup).FirstOrDefault())
+                        .Where(c => c is not null && _participants.CountDocuments(p => p.ConversationId == c!.Id) == 1)
+                        .Cast<MConversation>()
+                        .OrderByDescending(c => c.UpdatedAt, StringComparer.Ordinal)
+                        .FirstOrDefault();
+                    if (existingSelf is not null)
+                    {
+                        var stateId = PairId(Guid.Parse(existingSelf.Id), userId);
+                        var state = _userStates.Find(x => x.Id == stateId).FirstOrDefault()
+                            ?? new MUserState { Id = stateId, ConversationId = existingSelf.Id, UserId = uid };
+                        state.IsDeleted = false;
+                        state.IsArchived = false;
+                        state.UpdatedAt = timestamp;
+                        _userStates.ReplaceOne(x => x.Id == stateId, state, new ReplaceOptions { IsUpsert = true });
+                        return new ConversationDto(Guid.Parse(existingSelf.Id), otherUser.Name, existingSelf.LastMessage,
+                            ParseTime(existingSelf.UpdatedAt, now), CountUnread(existingSelf.Id, uid, now), userId,
+                            otherUser.ProfilePhoto is { Length: > 0 }, otherUser.ProfilePhotoVersion);
+                    }
+                }
+                else
+                {
+                    var directIds = _participants.Find(x => x.UserId == uid).ToList()
+                        .Where(x => _participants.Find(y => y.ConversationId == x.ConversationId && y.UserId == peer).FirstOrDefault() is not null)
+                        .Select(x => _conversations.Find(c => c.Id == x.ConversationId && !c.IsGroup).FirstOrDefault())
+                        .Where(c => c is not null && _participants.CountDocuments(p => p.ConversationId == c!.Id) == 2)
+                        .Cast<MConversation>().OrderByDescending(c => c.UpdatedAt, StringComparer.Ordinal).FirstOrDefault();
+                    if (directIds is not null)
+                    {
+                        var stId = PairId(Guid.Parse(directIds.Id), userId); var st = _userStates.Find(x => x.Id == stId).FirstOrDefault() ?? new MUserState { Id = stId, ConversationId = directIds.Id, UserId = uid };
+                        st.IsDeleted = false; st.IsArchived = false; st.UpdatedAt = timestamp; _userStates.ReplaceOne(x => x.Id == stId, st, new ReplaceOptions { IsUpsert = true });
+                        var unread = CountUnread(directIds.Id, uid, now);
+                        return new ConversationDto(Guid.Parse(directIds.Id), otherUser.Name, directIds.LastMessage, ParseTime(directIds.UpdatedAt, now), unread, participantUserId,
+                            otherUser.ProfilePhoto is { Length: > 0 }, otherUser.ProfilePhotoVersion);
+                    }
                 }
             }
             var conv = new MConversation { Id = GuidText(Guid.NewGuid()), OwnerUserId = uid, Name = name, LastMessage = string.Empty, UpdatedAt = timestamp, IsGroup = false, DisappearingSeconds = 0 };
             _conversations.InsertOne(conv);
             _participants.InsertOne(new MParticipant { Id = PairId(Guid.Parse(conv.Id), userId), ConversationId = conv.Id, UserId = uid, JoinedAt = timestamp, LastReadAt = timestamp });
-            if (participantUserId.HasValue)
+            // In a self-chat, the owner is the only participant; inserting a second
+            // membership for the same user would violate the unique participant index.
+            if (participantUserId.HasValue && participantUserId.Value != userId)
                 _participants.InsertOne(new MParticipant { Id = PairId(Guid.Parse(conv.Id), participantUserId.Value), ConversationId = conv.Id, UserId = GuidText(participantUserId.Value), JoinedAt = timestamp, LastReadAt = timestamp });
-            return new ConversationDto(Guid.Parse(conv.Id), name, string.Empty, now, 0, participantUserId);
+            var createdSelf = participantUserId == userId;
+            var creator = createdSelf ? _users.Find(x => x.Id == uid).FirstOrDefault() : null;
+            return new ConversationDto(Guid.Parse(conv.Id), createdSelf ? creator?.Name ?? name : name, string.Empty, now, 0,
+                createdSelf ? userId : participantUserId,
+                createdSelf && creator?.ProfilePhoto is { Length: > 0 }, createdSelf ? creator?.ProfilePhotoVersion ?? 0L : 0L);
         }
     }
 
-    public ConversationDto CreateGroup(Guid ownerUserId, string name, IReadOnlyCollection<Guid> memberUserIds)
+    public ConversationDto CreateGroup(
+        Guid ownerUserId,
+        string name,
+        IReadOnlyCollection<Guid> memberUserIds,
+        int disappearingSeconds = 0,
+        bool allMembersCanAddMembers = false,
+        bool allMembersCanShareInviteLink = false,
+        bool requireAdminApproval = false,
+        bool adminsOnlyMessages = false)
     {
-        EnsureIndexes(); var members = memberUserIds.Where(id => id != Guid.Empty && id != ownerUserId).Distinct().ToArray();
-        if (members.Length == 0) throw new InvalidOperationException("أضف عضوًا واحدًا على الأقل قبل إنشاء المجموعة.");
-        if (members.Length > 100) throw new InvalidOperationException("يمكن إضافة 100 عضو كحد أقصى إلى المجموعة.");
+        EnsureIndexes();
+        var members = (memberUserIds ?? Array.Empty<Guid>())
+            .Where(id => id != Guid.Empty && id != ownerUserId)
+            .Distinct()
+            .ToArray();
+
+        if (disappearingSeconds is not (0 or 3600 or 7200 or 86400 or 432000 or 2592000))
+            throw new InvalidOperationException("قيمة مؤقت الاختفاء غير مدعومة.");
+        if (members.Length == 0)
+            throw new InvalidOperationException("أضف عضوًا واحدًا على الأقل قبل إنشاء المجموعة.");
+        if (members.Length > 100)
+            throw new InvalidOperationException("يمكن إضافة 100 عضو كحد أقصى إلى المجموعة.");
+
         lock (_sync)
         {
-            var wanted = members.Select(GuidText).ToArray(); var actual = _users.CountDocuments(x => wanted.Contains(x.Id));
-            if (actual != members.Length) throw new InvalidOperationException("أحد الأعضاء المحددين غير موجود أو لم يعد متاحًا.");
-            var now = DateTimeOffset.UtcNow; var timestamp = now.ToString("O"); var group = new MConversation { Id = GuidText(Guid.NewGuid()), OwnerUserId = GuidText(ownerUserId), Name = name.Trim(), LastMessage = string.Empty, UpdatedAt = timestamp, IsGroup = true, DisappearingSeconds = 0 };
+            var wanted = members.Select(GuidText).ToArray();
+            var actual = _users.CountDocuments(x => wanted.Contains(x.Id));
+            if (actual != members.Length)
+                throw new InvalidOperationException("أحد الأعضاء المحددين غير موجود أو لم يعد متاحًا.");
+
+            var now = DateTimeOffset.UtcNow;
+            var timestamp = now.ToString("O");
+            var group = new MConversation
+            {
+                Id = GuidText(Guid.NewGuid()),
+                OwnerUserId = GuidText(ownerUserId),
+                Name = name.Trim(),
+                LastMessage = string.Empty,
+                UpdatedAt = timestamp,
+                IsGroup = true,
+                DisappearingSeconds = disappearingSeconds,
+                AllMembersCanAddMembers = allMembersCanAddMembers,
+                AllMembersCanShareInviteLink = allMembersCanShareInviteLink,
+                RequireAdminApproval = requireAdminApproval,
+                AdminsOnlyMessages = adminsOnlyMessages
+            };
+
             _conversations.InsertOne(group);
-            foreach (var id in new[] { ownerUserId }.Concat(members)) _participants.InsertOne(new MParticipant { Id = PairId(Guid.Parse(group.Id), id), ConversationId = group.Id, UserId = GuidText(id), JoinedAt = timestamp, LastReadAt = timestamp });
+            foreach (var id in new[] { ownerUserId }.Concat(members))
+            {
+                _participants.InsertOne(new MParticipant
+                {
+                    Id = PairId(Guid.Parse(group.Id), id),
+                    ConversationId = group.Id,
+                    UserId = GuidText(id),
+                    JoinedAt = timestamp,
+                    LastReadAt = timestamp
+                });
+            }
+
             return new ConversationDto(Guid.Parse(group.Id), group.Name, string.Empty, now, 0, isGroup: true);
         }
     }
@@ -858,7 +953,7 @@ sealed class MongoStore
 [BsonIgnoreExtraElements] sealed class MEmailChange { [BsonId] public string UserId { get; set; } = ""; public string NewEmail { get; set; } = ""; public string Code { get; set; } = ""; public string ExpiresAt { get; set; } = ""; public int FailedAttempts { get; set; } public string? LastSentAt { get; set; } }
 [BsonIgnoreExtraElements] sealed class MPasswordReset { [BsonId] public string Email { get; set; } = ""; public string Code { get; set; } = ""; public string ExpiresAt { get; set; } = ""; public int FailedAttempts { get; set; } public string? LastSentAt { get; set; } }
 [BsonIgnoreExtraElements] sealed class MSession { [BsonId] public string Token { get; set; } = ""; public string UserId { get; set; } = ""; public string ExpiresAt { get; set; } = ""; }
-[BsonIgnoreExtraElements] sealed class MConversation { [BsonId] public string Id { get; set; } = ""; public string OwnerUserId { get; set; } = ""; public string Name { get; set; } = ""; public string LastMessage { get; set; } = ""; public string UpdatedAt { get; set; } = ""; public bool IsGroup { get; set; } public int DisappearingSeconds { get; set; } }
+[BsonIgnoreExtraElements] sealed class MConversation { [BsonId] public string Id { get; set; } = ""; public string OwnerUserId { get; set; } = ""; public string Name { get; set; } = ""; public string LastMessage { get; set; } = ""; public string UpdatedAt { get; set; } = ""; public bool IsGroup { get; set; } public int DisappearingSeconds { get; set; } public bool AllMembersCanAddMembers { get; set; } public bool AllMembersCanShareInviteLink { get; set; } public bool RequireAdminApproval { get; set; } public bool AdminsOnlyMessages { get; set; } }
 [BsonIgnoreExtraElements] sealed class MParticipant { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string UserId { get; set; } = ""; public string JoinedAt { get; set; } = ""; public string? LastReadAt { get; set; } public string? ClearedBefore { get; set; } }
 [BsonIgnoreExtraElements] sealed class MUserState { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string UserId { get; set; } = ""; public bool IsArchived { get; set; } public bool IsMuted { get; set; } public bool IsDeleted { get; set; } public string UpdatedAt { get; set; } = ""; }
 [BsonIgnoreExtraElements] sealed class MBlockedUser { [BsonId] public string Id { get; set; } = ""; public string BlockerUserId { get; set; } = ""; public string BlockedUserId { get; set; } = ""; public string CreatedAt { get; set; } = ""; }
