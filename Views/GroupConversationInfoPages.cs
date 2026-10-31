@@ -19,16 +19,14 @@ public sealed class GroupConversationInfoPage : ContentPage
     private readonly Label _name = new() { FontSize = 23, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Center };
     private readonly Label _memberCount = new() { FontSize = 13, HorizontalTextAlignment = TextAlignment.Center };
     private readonly Label _description = new() { FontSize = 14, HorizontalTextAlignment = TextAlignment.Center, LineBreakMode = LineBreakMode.WordWrap };
-    private readonly Label _inviteLink = new() { FontSize = 11.5, LineBreakMode = LineBreakMode.CharacterWrap, MaxLines = 3, FlowDirection = FlowDirection.LeftToRight };
-    private Border? _inviteCard;
     private Button? _editPhotoButton;
     private readonly ActivityIndicator _busy = new() { IsVisible = false, IsRunning = false };
     private HimoApiClient.GroupDetailsDto? _details;
     private string? _groupPhotoPath;
-    private readonly HorizontalStackLayout _mediaStrip = new() { Spacing = 9, Padding = new Thickness(0, 4) };
-    private readonly Label _mediaSummary = new() { FontSize = 11.5, Text = "جار تحميل الوسائط..." };
-    private bool _mediaLoaded;
     private bool _working;
+    private bool _detailsLoaded;
+    private bool _reloadDetailsWhenAppearing;
+    private bool _loadingGroup;
 
     public GroupConversationInfoPage(ChatService chat, HimoApiClient api, AccountService account, Conversation conversation)
     {
@@ -109,29 +107,16 @@ public sealed class GroupConversationInfoPage : ContentPage
         profile.Add(_description);
         body.Add(profile);
 
-        var inviteCard = new VerticalStackLayout { Padding = 14, Spacing = 10 };
-        var inviteHeader = new Grid { ColumnDefinitions = new ColumnDefinitionCollection { new(GridLength.Star), new(44) }, ColumnSpacing = 8 };
-        inviteHeader.Add(MakeLabel("رابط المجموعة", 15, true), 0, 0);
-        var qrButton = MakeIconButton("▦");
-        qrButton.Clicked += OpenQrClicked;
-        inviteHeader.Add(qrButton, 1, 0);
-        inviteCard.Add(inviteHeader);
-        _inviteLink.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
-        inviteCard.Add(_inviteLink);
-        var inviteActions = new Grid { ColumnDefinitions = new ColumnDefinitionCollection { new(GridLength.Star), new(GridLength.Auto) }, ColumnSpacing = 8 };
-        var copy = MakePrimaryButton("نسخ الرابط", 44);
-        copy.Clicked += CopyInviteClicked;
-        inviteActions.Add(copy, 0, 0);
-        var share = MakeSecondaryButton("مشاركة", 44);
-        share.Clicked += ShareInviteClicked;
-        inviteActions.Add(share, 1, 0);
-        inviteCard.Add(inviteActions);
-        _inviteCard = ConversationInfoPage.MakeCard(inviteCard);
-        body.Add(_inviteCard);
 
-        body.Add(BuildSectionRow("الأعضاء", "♙", async () => await Navigation.PushAsync(new GroupMembersPage(_api, _account, _conversation, _details))));
-        body.Add(BuildMediaSection());
-        body.Add(BuildSectionRow("الإعدادات", "⚙", async () => await Navigation.PushAsync(new GroupNotificationSettingsPage(_api, _conversation))));
+        body.Add(BuildSectionRow("الأعضاء", "♙", async () =>
+        {
+            _reloadDetailsWhenAppearing = true;
+            await Navigation.PushAsync(new GroupMembersPage(_chat, _api, _account, _conversation, _details));
+        }));
+        body.Add(BuildSectionRow("الوسائط", "▧", async () =>
+            await Navigation.PushAsync(new ConversationSharedContentPage(_chat, _api, _account, _conversation, "media", lightweightGroupMode: true))));
+        body.Add(BuildSectionRow("الإعدادات", "⚙", async () =>
+            await Navigation.PushAsync(new GroupNotificationSettingsPage(_api, _conversation))));
 
         _busy.Color = Color.FromArgb("#B16CF0");
         _busy.HorizontalOptions = LayoutOptions.Center;
@@ -168,154 +153,53 @@ public sealed class GroupConversationInfoPage : ContentPage
         return card;
     }
 
-    private View BuildMediaSection()
-    {
-        var body = new VerticalStackLayout { Padding = 14, Spacing = 10 };
-        var heading = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitionCollection { new(GridLength.Star), new(GridLength.Auto) },
-            ColumnSpacing = 8
-        };
-        heading.Add(MakeLabel("الوسائط", 16, true), 0, 0);
-        var viewAll = MakeSecondaryButton("عرض الكل", 36);
-        viewAll.Clicked += async (_, _) => await Navigation.PushAsync(
-            new ConversationSharedContentPage(_chat, _api, _account, _conversation, "media"));
-        heading.Add(viewAll, 1, 0);
-        body.Add(heading);
-
-        _mediaSummary.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
-        body.Add(_mediaSummary);
-        var strip = new ScrollView
-        {
-            Orientation = ScrollOrientation.Horizontal,
-            HeightRequest = 94,
-            Content = _mediaStrip,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Never,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Never
-        };
-        body.Add(strip);
-        var card = ConversationInfoPage.MakeCard(body);
-        var tap = new TapGestureRecognizer();
-        tap.Tapped += async (_, _) => await Navigation.PushAsync(
-            new ConversationSharedContentPage(_chat, _api, _account, _conversation, "media"));
-        card.GestureRecognizers.Add(tap);
-        return card;
-    }
-
-    private async Task LoadMediaPreviewAsync()
-    {
-        if (_mediaLoaded || _groupId == Guid.Empty || !_api.HasToken) return;
-        _mediaLoaded = true;
-        try
-        {
-            var messages = await _api.GetMessagesAsync(_groupId, limit: 60);
-            var attachments = messages
-                .Where(x => !string.IsNullOrWhiteSpace(x.AttachmentFileName))
-                .OrderByDescending(x => x.SentAt)
-                .Take(12)
-                .ToList();
-
-            var imageCount = attachments.Count(x => (x.AttachmentContentType ?? string.Empty).StartsWith("image/", StringComparison.OrdinalIgnoreCase));
-            var videoCount = attachments.Count(x => (x.AttachmentContentType ?? string.Empty).StartsWith("video/", StringComparison.OrdinalIgnoreCase));
-            var fileCount = attachments.Count - imageCount - videoCount;
-            await MainThread.InvokeOnMainThreadAsync(() =>
-            {
-                _mediaSummary.Text = attachments.Count == 0
-                    ? "لا توجد وسائط بعد"
-                    : $"{imageCount} صور · {videoCount} فيديو · {fileCount} ملفات";
-                _mediaStrip.Children.Clear();
-            });
-
-            foreach (var item in attachments.AsEnumerable().Reverse())
-            {
-                var contentType = item.AttachmentContentType ?? string.Empty;
-                var isImage = contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
-                var isVideo = contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase);
-                var tile = new Border
-                {
-                    WidthRequest = 76,
-                    HeightRequest = 76,
-                    Padding = 0,
-                    StrokeThickness = 1,
-                    StrokeShape = new RoundRectangle { CornerRadius = 12 }
-                };
-                tile.SetDynamicResource(Border.BackgroundColorProperty, "HimoSurface");
-                tile.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
-                var fallback = MakeLabel(isImage ? "▧" : isVideo ? "▶" : "▤", 22, true);
-                fallback.HorizontalTextAlignment = TextAlignment.Center;
-                fallback.VerticalTextAlignment = TextAlignment.Center;
-                tile.Content = fallback;
-
-                string? localPath = null;
-                if (isImage)
-                {
-                    try
-                    {
-                        localPath = await _api.DownloadAttachmentAsync(item.Id, item.AttachmentFileName ?? "image");
-                        if (!string.IsNullOrWhiteSpace(localPath) && File.Exists(localPath))
-                        {
-                            var path = localPath;
-                            await MainThread.InvokeOnMainThreadAsync(() =>
-                                tile.Content = new Image { Source = ImageSource.FromFile(path), Aspect = Aspect.AspectFill });
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[Himo Group Media] Thumbnail: {ex.Message}");
-                    }
-                }
-
-                var capturedPath = localPath;
-                var tap = new TapGestureRecognizer();
-                tap.Tapped += async (_, _) =>
-                {
-                    if (isImage && !string.IsNullOrWhiteSpace(capturedPath) && File.Exists(capturedPath))
-                        await Navigation.PushAsync(new GroupImagePreviewPage(capturedPath, item.AttachmentFileName ?? "صورة"));
-                    else
-                        await Navigation.PushAsync(new ConversationSharedContentPage(_chat, _api, _account, _conversation,
-                            isImage || isVideo ? "media" : "documents"));
-                };
-                tile.GestureRecognizers.Add(tap);
-                await MainThread.InvokeOnMainThreadAsync(() => _mediaStrip.Children.Add(tile));
-            }
-        }
-        catch (Exception ex)
-        {
-            _mediaLoaded = false;
-            await MainThread.InvokeOnMainThreadAsync(() =>
-                _mediaSummary.Text = "تعذر تحميل الوسائط");
-            System.Diagnostics.Debug.WriteLine($"[Himo Group Media] Preview load: {ex.Message}");
-        }
-    }
-
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        if (_detailsLoaded && !_reloadDetailsWhenAppearing) return;
+        _reloadDetailsWhenAppearing = false;
         await LoadGroupAsync();
     }
 
     private async Task LoadGroupAsync()
     {
-        if (_groupId == Guid.Empty || !_api.HasToken) return;
+        if (_loadingGroup || _groupId == Guid.Empty || !_api.HasToken) return;
+        _loadingGroup = true;
         _busy.IsVisible = _busy.IsRunning = true;
         try
         {
-            _details = await _api.GetGroupDetailsAsync(_groupId);
-            _name.Text = _details.Name;
-            _conversation.Name = _details.Name;
-            _memberCount.Text = $"مجموعة · {_details.Members.Count} أعضاء";
-            _description.Text = string.IsNullOrWhiteSpace(_details.Description) ? "إضافة وصف للمجموعة" : _details.Description;
-            if (_editPhotoButton is not null) _editPhotoButton.IsVisible = _details.CanManage;
-            _inviteLink.Text = string.IsNullOrWhiteSpace(_details.InviteCode) ? string.Empty : $"himo://group/{_groupId:D}?invite={_details.InviteCode}";
-            if (_inviteCard is not null) _inviteCard.IsVisible = _details.CanShareInviteLink;
-            await LoadGroupPhotoAsync(_details.HasPhoto, _details.PhotoVersion);
-            _ = LoadMediaPreviewAsync();
+            var details = await _api.GetGroupDetailsAsync(_groupId);
+            _details = details;
+            _detailsLoaded = true;
+            _name.Text = details.Name;
+            _conversation.Name = details.Name;
+            _memberCount.Text = $"مجموعة · {details.Members.Count} أعضاء";
+            _description.Text = string.IsNullOrWhiteSpace(details.Description) ? "إضافة وصف للمجموعة" : details.Description;
+            if (_editPhotoButton is not null) _editPhotoButton.IsVisible = details.CanManage;
+
+            // Keep the page interactive: download the group image after the core
+            // group details are rendered instead of holding the navigation transition.
+            if (details.HasPhoto)
+                _ = LoadGroupPhotoInBackgroundAsync(details.HasPhoto, details.PhotoVersion);
+            else
+                await LoadGroupPhotoAsync(false, details.PhotoVersion);
         }
         catch (Exception ex)
         {
+            _detailsLoaded = false;
             await DisplayAlertAsync("معلومات المجموعة", ex.Message, "حسنًا");
         }
-        finally { _busy.IsRunning = _busy.IsVisible = false; }
+        finally
+        {
+            _busy.IsRunning = _busy.IsVisible = false;
+            _loadingGroup = false;
+        }
+    }
+
+    private async Task LoadGroupPhotoInBackgroundAsync(bool hasPhoto, long version)
+    {
+        try { await LoadGroupPhotoAsync(hasPhoto, version); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo Group] Photo load: {ex.Message}"); }
     }
 
     private async Task LoadGroupPhotoAsync(bool hasPhoto, long version)
@@ -357,16 +241,19 @@ public sealed class GroupConversationInfoPage : ContentPage
 
     private async void MoreClicked(object? sender, EventArgs e)
     {
-        if (_working) return;
-        var options = _details?.CanManage == true
-            ? (_details.HasPhoto
-                ? new[] { "تعديل الاسم", "تعديل الوصف", "تغيير الصورة", "إزالة الصورة" }
-                : new[] { "تعديل الاسم", "تعديل الوصف", "إضافة صورة" })
-            : _details?.CanShareInviteLink == true
-                ? new[] { "عرض رمز QR", "نسخ رابط المجموعة" }
-                : Array.Empty<string>();
-        if (options.Length == 0) return;
-        var selected = await DisplayActionSheetAsync("المجموعة", "إلغاء", null, options);
+        if (_working || _details is null) return;
+        var options = new List<string>();
+        if (_details.CanManage)
+        {
+            options.Add("تعديل الاسم");
+            options.Add("تعديل الوصف");
+            options.Add(_details.HasPhoto ? "تغيير الصورة" : "إضافة صورة");
+            if (_details.HasPhoto) options.Add("إزالة الصورة");
+        }
+        if (_details.CanShareInviteLink) options.Add("مشاركة");
+        if (options.Count == 0) return;
+
+        var selected = await DisplayActionSheetAsync("المجموعة", "إلغاء", null, options.ToArray());
         switch (selected)
         {
             case "تعديل الاسم": await EditNameAsync(); break;
@@ -374,10 +261,18 @@ public sealed class GroupConversationInfoPage : ContentPage
             case "تغيير الصورة":
             case "إضافة صورة": await ChangePhotoAsync(); break;
             case "إزالة الصورة": await DeletePhotoAsync(); break;
-            case "عرض رمز QR": await OpenQrAsync(); break;
-            case "نسخ رابط المجموعة": await CopyInviteAsync(); break;
+            case "مشاركة":
+                if (_details is not null)
+                {
+                    var link = BuildGroupInviteLink(_groupId, _details.InviteCode);
+                    await Navigation.PushAsync(new GroupSharePage(link, _conversation.Name));
+                }
+                break;
         }
     }
+
+    internal static string BuildGroupInviteLink(Guid groupId, string inviteCode) =>
+        $"himo://group/{groupId:D}?invite={Uri.EscapeDataString(inviteCode ?? string.Empty)}";
 
     private async Task EditNameAsync()
     {
@@ -405,8 +300,6 @@ public sealed class GroupConversationInfoPage : ContentPage
             _name.Text = name; _conversation.Name = name;
             _details = await _api.GetGroupDetailsAsync(_groupId);
             _memberCount.Text = $"مجموعة · {_details.Members.Count} أعضاء";
-            if (_inviteCard is not null) _inviteCard.IsVisible = _details.CanShareInviteLink;
-            _inviteLink.Text = string.IsNullOrWhiteSpace(_details.InviteCode) ? string.Empty : $"himo://group/{_groupId:D}?invite={_details.InviteCode}";
             _description.Text = string.IsNullOrWhiteSpace(_details.Description) ? "إضافة وصف للمجموعة" : _details.Description;
             return true;
         }
@@ -472,28 +365,6 @@ public sealed class GroupConversationInfoPage : ContentPage
         }
 
         if (_details?.CanManage == true) await ChangePhotoAsync();
-    }
-
-    private async void OpenQrClicked(object? sender, EventArgs e) => await OpenQrAsync();
-    private async Task OpenQrAsync()
-    {
-        if (_details is null) return;
-        await Navigation.PushAsync(new GroupInviteQrPage($"himo://group/{_groupId:D}?invite={Uri.EscapeDataString(_details.InviteCode)}", _conversation.Name));
-    }
-
-    private async void CopyInviteClicked(object? sender, EventArgs e) => await CopyInviteAsync();
-    private async Task CopyInviteAsync()
-    {
-        if (_details is null) return;
-        try { await Clipboard.Default.SetTextAsync($"himo://group/{_groupId:D}?invite={Uri.EscapeDataString(_details.InviteCode)}"); await DisplayAlertAsync("رابط المجموعة", "تم نسخ رابط المجموعة.", "حسنًا"); }
-        catch (Exception ex) { await DisplayAlertAsync("تعذر النسخ", ex.Message, "حسنًا"); }
-    }
-
-    private async void ShareInviteClicked(object? sender, EventArgs e)
-    {
-        if (_details is null) return;
-        try { await Share.Default.RequestAsync(new ShareTextRequest { Title = "دعوة إلى مجموعة Himo", Text = $"انضم إلى مجموعة {_conversation.Name} على Himo:\nhimo://group/{_groupId:D}?invite={Uri.EscapeDataString(_details.InviteCode)}" }); }
-        catch (Exception ex) { await DisplayAlertAsync("تعذرت المشاركة", ex.Message, "حسنًا"); }
     }
 
     internal static Button MakeBack()
@@ -698,51 +569,223 @@ internal static class GroupPageLabelExtensions
     }
 }
 
-/// <summary>Virtualized group members list with admin-only management actions.</summary>
+/// <summary>Virtualized group members list with lazy loading and admin actions.</summary>
 public sealed class GroupMembersPage : ContentPage
 {
+    private readonly ChatService _chat;
     private readonly HimoApiClient _api;
     private readonly AccountService _account;
     private readonly Conversation _conversation;
     private HimoApiClient.GroupDetailsDto? _details;
-    private readonly CollectionView _members = new() { SelectionMode = SelectionMode.None, ItemsLayout = new LinearItemsLayout(ItemsLayoutOrientation.Vertical), VerticalScrollBarVisibility = ScrollBarVisibility.Never };
-    private readonly ActivityIndicator _busy = new() { IsRunning = true, IsVisible = true };
-
-    public GroupMembersPage(HimoApiClient api, AccountService account, Conversation conversation, HimoApiClient.GroupDetailsDto? initial)
+    private readonly CollectionView _members = new()
     {
-        _api = api; _account = account; _conversation = conversation; _details = initial;
+        SelectionMode = SelectionMode.None,
+        ItemsLayout = new LinearItemsLayout(ItemsLayoutOrientation.Vertical),
+        VerticalScrollBarVisibility = ScrollBarVisibility.Never
+    };
+    private readonly ActivityIndicator _busy = new() { IsRunning = false, IsVisible = false };
+    private readonly Label _summary = new();
+    private Button? _addButton;
+    private bool _loaded;
+    private bool _loading;
+    private bool _needsRefresh;
+
+    public GroupMembersPage(ChatService chat, HimoApiClient api, AccountService account,
+        Conversation conversation, HimoApiClient.GroupDetailsDto? initial)
+    {
+        _chat = chat;
+        _api = api;
+        _account = account;
+        _conversation = conversation;
+        _details = initial;
         Title = "الأعضاء";
+        FlowDirection = FlowDirection.RightToLeft;
         Shell.SetNavBarIsVisible(this, false);
         BuildPage();
+        if (initial is not null)
+        {
+            _members.ItemsSource = initial.Members;
+            _summary.Text = $"{initial.Members.Count} أعضاء";
+            _loaded = true;
+            _busy.IsVisible = false;
+        }
         AppLocalization.AttachToPage(this);
     }
 
     private void BuildPage()
     {
-        var root = new Grid { RowDefinitions = new RowDefinitionCollection { new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Star) } };
+        var root = new Grid
+        {
+            RowDefinitions = new RowDefinitionCollection
+            {
+                new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Star), new(GridLength.Auto)
+            }
+        };
         root.SetDynamicResource(BackgroundColorProperty, "HimoBackground");
-        var header = new Grid { Padding = new Thickness(16, 10), ColumnDefinitions = new ColumnDefinitionCollection { new(44), new(GridLength.Star), new(44) } };
+        var header = new Grid
+        {
+            Padding = new Thickness(16, 10),
+            ColumnDefinitions = new ColumnDefinitionCollection { new(44), new(GridLength.Star), new(44) }
+        };
         var back = GroupConversationInfoPage.MakeBack();
         back.Clicked += async (_, _) => await Navigation.PopAsync();
         header.Add(back, 0, 0);
-        var title = new Label { Text = "أعضاء المجموعة", FontSize = 19, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Center };
+        var title = new Label
+        {
+            Text = "أعضاء المجموعة", FontSize = 19, FontAttributes = FontAttributes.Bold,
+            HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center
+        };
         title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
         header.Add(title, 1, 0);
-        header.Add(new BoxView { Opacity = 0 }, 2, 0);
+        _addButton = GroupConversationInfoPage.MakeBack();
+        _addButton.Text = "+";
+        _addButton.FontSize = 25;
+        _addButton.IsVisible = _details?.CanManage == true;
+        _addButton.Clicked += AddMembersClicked;
+        header.Add(_addButton, 2, 0);
         root.Add(header, 0, 0);
-        var summary = new Label { Text = "", FontSize = 12, Margin = new Thickness(20, 0, 20, 10) };
-        summary.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
-        summary.BindingContext = this;
-        root.Add(summary, 0, 1);
+
+        _summary.FontSize = 12;
+        _summary.Margin = new Thickness(20, 0, 20, 10);
+        _summary.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        root.Add(_summary, 0, 1);
+
         _members.ItemTemplate = new DataTemplate(CreateMemberRow);
         root.Add(_members, 0, 2);
-        var busyOverlay = new Grid { IsVisible = true, InputTransparent = true, HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center };
-        _busy.Color = Color.FromArgb("#B16CF0"); busyOverlay.Add(_busy); root.Add(busyOverlay, 0, 2);
+        var busyOverlay = new Grid
+        {
+            IsVisible = false, InputTransparent = true,
+            HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center
+        };
+        _busy.Color = Color.FromArgb("#B16CF0");
+        busyOverlay.Add(_busy);
+        root.Add(busyOverlay, 0, 2);
+
+        // Conversation actions stay below the member list and are available to
+        // every participant. Clearing is per-user; leaving removes membership.
+        var actions = new VerticalStackLayout
+        {
+            Padding = new Thickness(16, 8, 16, 18),
+            Spacing = 9
+        };
+        actions.Add(BuildMemberActionRow("⌫", "مسح محتوى الدردشة", false, ClearGroupChatClicked));
+        actions.Add(BuildMemberActionRow("↪", "الخروج من المجموعة", true, LeaveGroupClicked));
+        root.Add(actions, 0, 3);
         Content = root;
-        _summary = summary;
     }
 
-    private Label _summary = new();
+    private Border BuildMemberActionRow(string glyph, string title, bool danger, EventHandler handler)
+    {
+        var color = danger ? Color.FromArgb("#D95768") : Color.FromArgb("#C27B35");
+        var grid = new Grid
+        {
+            Padding = new Thickness(14, 12),
+            ColumnDefinitions = new ColumnDefinitionCollection { new(42), new(GridLength.Star), new(20) },
+            ColumnSpacing = 11,
+            MinimumHeightRequest = 58
+        };
+        var icon = new Border
+        {
+            WidthRequest = 38,
+            HeightRequest = 38,
+            Padding = 0,
+            StrokeThickness = 0,
+            StrokeShape = new RoundRectangle { CornerRadius = 12 },
+            BackgroundColor = color.WithAlpha(0.13f),
+            Content = new Label
+            {
+                Text = glyph,
+                FontSize = 20,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = color,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center
+            }
+        };
+        grid.Add(icon, 0, 0);
+        grid.Add(new Label
+        {
+            Text = title,
+            FontSize = 14,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = color,
+            VerticalTextAlignment = TextAlignment.Center
+        }, 1, 0);
+        var arrow = new Label { Text = "‹", FontSize = 23, TextColor = color, VerticalTextAlignment = TextAlignment.Center };
+        grid.Add(arrow, 2, 0);
+
+        var card = ConversationInfoPage.MakeCard(grid);
+        card.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(() => handler(this, EventArgs.Empty)) });
+        return card;
+    }
+
+    private bool _groupActionBusy;
+
+    private async void ClearGroupChatClicked(object? sender, EventArgs e)
+    {
+        if (_groupActionBusy) return;
+        var confirmed = await DisplayAlertAsync(
+            "مسح محتوى الدردشة",
+            "سيتم مسح الرسائل من حسابك فقط، ولن تُحذف من حسابات بقية أعضاء المجموعة. هل تريد المتابعة؟",
+            "مسح المحتوى", "إلغاء");
+        if (!confirmed) return;
+
+        _groupActionBusy = true;
+        try
+        {
+            if (!Guid.TryParse(_conversation.RemoteId, out var groupId) || groupId == Guid.Empty)
+                throw new InvalidOperationException("معرّف المجموعة غير صالح.");
+
+            await _api.ClearConversationContentAsync(groupId);
+            _chat.ClearConversationMessages(_conversation.Id);
+            await DisplayAlertAsync("تم المسح", "تم مسح محتوى الدردشة من حسابك.", "حسنًا");
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("تعذر مسح المحتوى", ex.Message, "حسنًا");
+        }
+        finally { _groupActionBusy = false; }
+    }
+
+    private async void LeaveGroupClicked(object? sender, EventArgs e)
+    {
+        if (_groupActionBusy) return;
+        var confirmed = await DisplayAlertAsync(
+            "الخروج من المجموعة",
+            "بعد الخروج لن تصلك رسائل المجموعة ولن تظهر في قائمة محادثاتك. هل تريد الخروج؟",
+            "الخروج", "إلغاء");
+        if (!confirmed) return;
+
+        _groupActionBusy = true;
+        try
+        {
+            if (!Guid.TryParse(_conversation.RemoteId, out var groupId) || groupId == Guid.Empty)
+                throw new InvalidOperationException("معرّف المجموعة غير صالح.");
+
+            await _api.LeaveGroupAsync(groupId);
+            _chat.RemoveConversation(_conversation.Id);
+
+            // The group chat is no longer accessible. Return to the conversations
+            // home rather than popping back into the now-inaccessible group chat.
+            try
+            {
+                if (Shell.Current is not null)
+                    await Shell.Current.GoToAsync("//HomePage", false);
+                else
+                    await Navigation.PopToRootAsync(false);
+            }
+            catch (Exception navigationException)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo Group] Left group but navigation fallback failed: {navigationException.Message}");
+                try { await Navigation.PopToRootAsync(false); } catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            _groupActionBusy = false;
+            await DisplayAlertAsync("تعذر الخروج من المجموعة", ex.Message, "حسنًا");
+        }
+    }
 
     private View CreateMemberRow()
     {
@@ -754,33 +797,60 @@ public sealed class GroupMembersPage : ContentPage
             MinimumHeightRequest = 76
         };
         var avatar = new Grid { WidthRequest = 52, HeightRequest = 52 };
-        var border = new Border { WidthRequest = 50, HeightRequest = 50, StrokeThickness = 1, Padding = 0, StrokeShape = new Ellipse() };
+        var border = new Border
+        {
+            WidthRequest = 50, HeightRequest = 50, StrokeThickness = 1, Padding = 0,
+            StrokeShape = new Ellipse()
+        };
         border.SetDynamicResource(Border.BackgroundColorProperty, "HimoSoft");
         border.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
-        var initial = new Label { FontSize = 18, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center };
+        var initial = new Label
+        {
+            FontSize = 18, FontAttributes = FontAttributes.Bold,
+            HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center
+        };
         initial.SetDynamicResource(Label.TextColorProperty, "HimoAccent");
-        var photo = new Image { Aspect = Aspect.AspectFill, WidthRequest = 50, HeightRequest = 50, IsVisible = false, Clip = new EllipseGeometry { Center = new Point(25, 25), RadiusX = 25, RadiusY = 25 } };
-        border.Content = new Grid(); ((Grid)border.Content).Add(initial); ((Grid)border.Content).Add(photo); avatar.Add(border);
+        var photo = new Image
+        {
+            Aspect = Aspect.AspectFill, WidthRequest = 50, HeightRequest = 50, IsVisible = false,
+            Clip = new EllipseGeometry { Center = new Point(25, 25), RadiusX = 25, RadiusY = 25 }
+        };
+        var avatarContent = new Grid();
+        avatarContent.Add(initial);
+        avatarContent.Add(photo);
+        border.Content = avatarContent;
+        avatar.Add(border);
         row.Add(avatar, 0, 0);
+
         var labels = new VerticalStackLayout { Spacing = 3, VerticalOptions = LayoutOptions.Center };
         var name = new Label { FontSize = 15, FontAttributes = FontAttributes.Bold };
         name.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
-        var role = new Label { Text = "مشرف", FontSize = 11, IsVisible = false };
+        var role = new Label { Text = "مشرف المجموعة", FontSize = 11, IsVisible = false };
         role.SetDynamicResource(Label.TextColorProperty, "HimoAccent");
-        labels.Add(name); labels.Add(role); row.Add(labels, 1, 0);
+        labels.Add(name);
+        labels.Add(role);
+        row.Add(labels, 1, 0);
         var chevron = new Label { Text = "‹", FontSize = 24, VerticalTextAlignment = TextAlignment.Center };
-        chevron.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary"); row.Add(chevron, 2, 0);
+        chevron.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        row.Add(chevron, 2, 0);
+
         row.BindingContextChanged += (_, _) =>
         {
             if (row.BindingContext is not HimoApiClient.GroupMemberDto member) return;
             name.Text = member.Name;
             role.IsVisible = member.IsAdmin;
             initial.Text = string.IsNullOrWhiteSpace(member.Name) ? "؟" : member.Name.Trim()[0].ToString();
-            photo.IsVisible = false; photo.Source = null;
+            photo.IsVisible = false;
+            photo.Source = null;
+            initial.IsVisible = true;
             if (member.HasProfilePhoto) _ = LoadMemberAvatarAsync(member, photo, initial, row);
         };
         var tap = new TapGestureRecognizer();
-        tap.Tapped += async (_, _) => { if (row.BindingContext is HimoApiClient.GroupMemberDto member) await MemberTappedAsync(member); };
+        tap.Tapped += async (_, _) =>
+        {
+            if (row.BindingContext is HimoApiClient.GroupMemberDto member)
+                await MemberTappedAsync(member);
+        };
         row.GestureRecognizers.Add(tap);
         var divider = new BoxView { HeightRequest = 1, Opacity = 0.12, HorizontalOptions = LayoutOptions.Fill };
         divider.SetDynamicResource(BackgroundColorProperty, "HimoTextSecondary");
@@ -796,7 +866,9 @@ public sealed class GroupMembersPage : ContentPage
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 if (row.BindingContext is not HimoApiClient.GroupMemberDto current || current.Id != member.Id) return;
-                image.Source = ImageSource.FromFile(path); image.IsVisible = true; initial.IsVisible = false;
+                image.Source = ImageSource.FromFile(path);
+                image.IsVisible = true;
+                initial.IsVisible = false;
             });
         }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo Group] Member photo load: {ex.Message}"); }
@@ -805,14 +877,39 @@ public sealed class GroupMembersPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        if (_loaded && !_needsRefresh) return;
+        await RefreshMembersAsync();
+    }
+
+    private async void AddMembersClicked(object? sender, EventArgs e)
+    {
+        if (_details?.CanManage != true || _loading) return;
+        _needsRefresh = true;
+        await Navigation.PushAsync(new GroupAddMembersPage(
+            _chat, _api, _account, _conversation, _details,
+            () => _needsRefresh = true));
+    }
+
+    private async Task RefreshMembersAsync()
+    {
+        if (_loading) return;
+        _loading = true;
+        _busy.IsVisible = _busy.IsRunning = true;
         try
         {
             _details = await _api.GetGroupDetailsAsync(Guid.Parse(_conversation.RemoteId!));
             _members.ItemsSource = _details.Members;
             _summary.Text = $"{_details.Members.Count} أعضاء";
+            if (_addButton is not null) _addButton.IsVisible = _details.CanManage;
+            _loaded = true;
+            _needsRefresh = false;
         }
         catch (Exception ex) { await DisplayAlertAsync("الأعضاء", ex.Message, "حسنًا"); }
-        finally { _busy.IsVisible = _busy.IsRunning = false; }
+        finally
+        {
+            _busy.IsVisible = _busy.IsRunning = false;
+            _loading = false;
+        }
     }
 
     private async Task MemberTappedAsync(HimoApiClient.GroupMemberDto member)
@@ -825,12 +922,14 @@ public sealed class GroupMembersPage : ContentPage
                 "مراسلة " + member.Name,
                 member.IsAdmin ? "إلغاء تعيينه كمشرف" : "تعيين كمشرف",
                 "إزالة " + member.Name);
-            if (action == "مراسلة " + member.Name) await OpenDirectAsync(member, null);
+            if (action == "مراسلة " + member.Name)
+                await OpenDirectAsync(member, null);
             else if (action == "تعيين كمشرف" || action == "إلغاء تعيينه كمشرف")
             {
                 try
                 {
                     await _api.SetGroupMemberAdminAsync(Guid.Parse(_conversation.RemoteId!), member.Id, !member.IsAdmin);
+                    _needsRefresh = true;
                     await RefreshMembersAsync();
                 }
                 catch (Exception ex) { await DisplayAlertAsync("إدارة المشرفين", ex.Message, "حسنًا"); }
@@ -838,7 +937,12 @@ public sealed class GroupMembersPage : ContentPage
             else if (action == "إزالة " + member.Name)
             {
                 if (!await DisplayAlertAsync("إزالة عضو", $"هل تريد إزالة {member.Name} من المجموعة؟", "إزالة", "إلغاء")) return;
-                try { await _api.RemoveGroupMemberAsync(Guid.Parse(_conversation.RemoteId!), member.Id); await RefreshMembersAsync(); }
+                try
+                {
+                    await _api.RemoveGroupMemberAsync(Guid.Parse(_conversation.RemoteId!), member.Id);
+                    _needsRefresh = true;
+                    await RefreshMembersAsync();
+                }
                 catch (Exception ex) { await DisplayAlertAsync("إزالة عضو", ex.Message, "حسنًا"); }
             }
             return;
@@ -846,22 +950,34 @@ public sealed class GroupMembersPage : ContentPage
         await ShowProfileSheetAsync(member);
     }
 
-    private async Task RefreshMembersAsync()
-    {
-        _details = await _api.GetGroupDetailsAsync(Guid.Parse(_conversation.RemoteId!));
-        _members.ItemsSource = _details.Members;
-        _summary.Text = $"{_details.Members.Count} أعضاء";
-    }
-
     private async Task ShowProfileSheetAsync(HimoApiClient.GroupMemberDto member)
     {
-        var path = await ProfilePhotoCache.GetPathAsync(_api, member.Id, member.HasProfilePhoto, member.ProfilePhotoVersion);
-        var sheet = new GroupMemberProfileSheetPage(member, path,
+        // Show the sheet immediately; photo download is deferred and must not delay navigation.
+        var sheet = new GroupMemberProfileSheetPage(member, null,
             async () => { await Navigation.PopModalAsync(); await OpenDirectAsync(member, null); },
             async mode => { await Navigation.PopModalAsync(); await OpenDirectAsync(member, mode); },
-            async () => { await Navigation.PopModalAsync(); await Navigation.PushAsync(new GroupMemberInfoPage(member, path)); },
-            async () => { if (!string.IsNullOrWhiteSpace(path) && File.Exists(path)) await Navigation.PushModalAsync(new GroupImagePreviewPage(path, member.Name)); });
+            async () =>
+            {
+                await Navigation.PopModalAsync();
+                var path = await ProfilePhotoCache.GetPathAsync(_api, member.Id, member.HasProfilePhoto, member.ProfilePhotoVersion);
+                await Navigation.PushAsync(new GroupMemberInfoPage(member, path));
+            },
+            async () =>
+            {
+                var path = await ProfilePhotoCache.GetPathAsync(_api, member.Id, member.HasProfilePhoto, member.ProfilePhotoVersion);
+                if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                    await Navigation.PushModalAsync(new GroupImagePreviewPage(path, member.Name));
+            });
         await Navigation.PushModalAsync(sheet);
+        if (member.HasProfilePhoto)
+        {
+            _ = Task.Run(async () =>
+            {
+                var path = await ProfilePhotoCache.GetPathAsync(_api, member.Id, member.HasProfilePhoto, member.ProfilePhotoVersion);
+                if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                    await MainThread.InvokeOnMainThreadAsync(() => sheet.SetPhoto(path));
+            });
+        }
     }
 
     private async Task OpenDirectAsync(HimoApiClient.GroupMemberDto member, string? callMode)
@@ -872,7 +988,9 @@ public sealed class GroupMembersPage : ContentPage
             var id = direct.Id.ToString("D");
             if (Shell.Current is not null)
             {
-                var route = callMode is null ? $"chat?id={Uri.EscapeDataString(id)}" : $"CallPage?id={Uri.EscapeDataString(id)}&mode={callMode}";
+                var route = callMode is null
+                    ? $"chat?id={Uri.EscapeDataString(id)}"
+                    : $"CallPage?id={Uri.EscapeDataString(id)}&mode={callMode}";
                 await Shell.Current.GoToAsync(route, false);
             }
         }
@@ -880,9 +998,417 @@ public sealed class GroupMembersPage : ContentPage
     }
 }
 
+/// <summary>Choose group members from existing direct conversations or Himo contacts.</summary>
+public sealed class GroupAddMembersPage : ContentPage
+{
+    private readonly ChatService _chat;
+    private readonly HimoApiClient _api;
+    private readonly AccountService _account;
+    private readonly Action _markParentForRefresh;
+    private readonly Guid _groupId;
+    private readonly HashSet<Guid> _existingIds;
+    private List<AddMemberPerson> _items = new();
+    private readonly Dictionary<Guid, AddMemberPerson> _selected = new();
+    private readonly List<AddMemberPerson> _conversationPeople = new();
+    private readonly CollectionView _list = new() { SelectionMode = SelectionMode.None, VerticalScrollBarVisibility = ScrollBarVisibility.Never };
+    private readonly SearchBar _search = new() { Placeholder = "ابحث بالاسم أو الرقم أو البريد", CancelButtonColor = Color.FromArgb("#B16CF0") };
+    private readonly Label _empty = new() { HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, FontSize = 13 };
+    private readonly Label _selectedCount = new() { FontSize = 12, VerticalTextAlignment = TextAlignment.Center };
+    private readonly Button _addButton = new() { Text = "إضافة", HeightRequest = 48, CornerRadius = 15, FontAttributes = FontAttributes.Bold, TextColor = Colors.White, IsEnabled = false };
+    private readonly ActivityIndicator _busy = new() { IsRunning = false, IsVisible = false };
+    private Button? _conversationsTab;
+    private Button? _contactsTab;
+    private CancellationTokenSource? _searchCts;
+    private bool _contactsActive;
+    private bool _submitting;
+    private int _searchVersion;
+
+    public GroupAddMembersPage(ChatService chat, HimoApiClient api, AccountService account,
+        Conversation conversation, HimoApiClient.GroupDetailsDto details, Action markParentForRefresh)
+    {
+        _chat = chat;
+        _api = api;
+        _account = account;
+        _markParentForRefresh = markParentForRefresh;
+        _groupId = Guid.Parse(conversation.RemoteId!);
+        _existingIds = details.Members.Select(x => x.Id).ToHashSet();
+        Title = "إضافة أعضاء";
+        FlowDirection = FlowDirection.RightToLeft;
+        Shell.SetNavBarIsVisible(this, false);
+        BuildPage();
+        BuildConversationItems();
+        ShowConversationItems();
+        AppLocalization.AttachToPage(this);
+    }
+
+    private void BuildPage()
+    {
+        var root = new Grid
+        {
+            RowDefinitions = new RowDefinitionCollection
+            {
+                new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Star), new(GridLength.Auto)
+            }
+        };
+        root.SetDynamicResource(BackgroundColorProperty, "HimoBackground");
+
+        var header = new Grid { Padding = new Thickness(16, 10), ColumnDefinitions = new ColumnDefinitionCollection { new(44), new(GridLength.Star), new(44) } };
+        var back = GroupConversationInfoPage.MakeBack();
+        back.Clicked += async (_, _) => await Navigation.PopAsync();
+        header.Add(back, 0, 0);
+        var title = new Label { Text = "إضافة أعضاء", FontSize = 19, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center };
+        title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        header.Add(title, 1, 0);
+        header.Add(new BoxView { Opacity = 0 }, 2, 0);
+        root.Add(header, 0, 0);
+
+        var tabs = new Grid { Padding = new Thickness(16, 6), ColumnDefinitions = new ColumnDefinitionCollection { new(GridLength.Star), new(GridLength.Star) }, ColumnSpacing = 10 };
+        _conversationsTab = TabButton("المحادثات", active: true);
+        _contactsTab = TabButton("جهات الاتصال", active: false);
+        _conversationsTab.Clicked += (_, _) => SwitchTab(false);
+        _contactsTab.Clicked += async (_, _) => await SwitchTabAsync(true);
+        tabs.Add(_conversationsTab, 0, 0);
+        tabs.Add(_contactsTab, 1, 0);
+        root.Add(tabs, 0, 1);
+
+        _search.Margin = new Thickness(16, 4, 16, 8);
+        _search.TextChanged += SearchTextChanged;
+        _search.SearchButtonPressed += async (_, _) => await SearchContactsAsync(_search.Text, CancellationToken.None);
+        _search.SetDynamicResource(SearchBar.TextColorProperty, "HimoPrimary");
+        _search.SetDynamicResource(SearchBar.PlaceholderColorProperty, "HimoTextSecondary");
+        root.Add(ConversationInfoPage.MakeCard(_search), 0, 2);
+
+        _empty.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        var listArea = new Grid();
+        _list.ItemTemplate = new DataTemplate(CreateSelectablePersonRow);
+        _list.ItemsSource = _items;
+        listArea.Add(_list);
+        var overlay = new Grid { InputTransparent = true, HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center };
+        _busy.Color = Color.FromArgb("#B16CF0");
+        overlay.Add(_busy);
+        listArea.Add(overlay);
+        var emptyOverlay = new Grid { InputTransparent = true, Padding = new Thickness(28) };
+        emptyOverlay.Add(_empty);
+        listArea.Add(emptyOverlay);
+        root.Add(listArea, 0, 3);
+
+        var footer = new Grid { Padding = new Thickness(16, 10, 16, 18), ColumnDefinitions = new ColumnDefinitionCollection { new(GridLength.Star), new(130) }, ColumnSpacing = 12 };
+        _selectedCount.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        _selectedCount.Text = "لم يتم اختيار أعضاء";
+        footer.Add(_selectedCount, 0, 0);
+        _addButton.SetDynamicResource(Button.BackgroundColorProperty, "HimoAccent");
+        _addButton.Clicked += AddSelectedClicked;
+        footer.Add(_addButton, 1, 0);
+        root.Add(footer, 0, 4);
+
+        Content = root;
+    }
+
+    private Button TabButton(string text, bool active)
+    {
+        var button = new Button { Text = text, HeightRequest = 43, CornerRadius = 14, FontSize = 13, FontAttributes = FontAttributes.Bold };
+        ApplyTabStyle(button, active);
+        return button;
+    }
+
+    private static void ApplyTabStyle(Button button, bool active)
+    {
+        button.BackgroundColor = active ? Color.FromArgb("#B16CF0") : Colors.Transparent;
+        button.TextColor = active ? Colors.White : Color.FromArgb("#B16CF0");
+        button.BorderColor = Color.FromArgb("#5B4678");
+        button.BorderWidth = active ? 0 : 1;
+    }
+
+    private void BuildConversationItems()
+    {
+        var self = _account.CurrentAccount?.UserId ?? Guid.Empty;
+        foreach (var item in _chat.Conversations.Where(x => !x.IsGroup && x.OtherParticipantUserId.HasValue)
+                     .GroupBy(x => x.OtherParticipantUserId!.Value)
+                     .Select(g => g.OrderByDescending(x => x.UpdatedAt).First())
+                     .Where(x => !_existingIds.Contains(x.OtherParticipantUserId!.Value) && x.OtherParticipantUserId != self)
+                     .OrderByDescending(x => x.UpdatedAt))
+        {
+            _conversationPeople.Add(new AddMemberPerson
+            {
+                Id = item.OtherParticipantUserId!.Value,
+                Name = item.Name,
+                Subtitle = item.LastMessage,
+                PhotoPath = item.ProfilePhotoPath,
+                HasPhoto = item.HasRemoteProfilePhoto,
+                PhotoVersion = item.ProfilePhotoVersion
+            });
+        }
+    }
+
+    private void SwitchTab(bool contacts)
+    {
+        Interlocked.Increment(ref _searchVersion);
+        _contactsActive = contacts;
+        ApplyTabStyle(_conversationsTab!, !contacts);
+        ApplyTabStyle(_contactsTab!, contacts);
+        _searchCts?.Cancel();
+        if (contacts)
+        {
+            _items = new List<AddMemberPerson>();
+            _list.ItemsSource = _items;
+            _empty.Text = "ابحث عن اسم أو رقم أو بريد إلكتروني";
+            _empty.IsVisible = true;
+            if (!string.IsNullOrWhiteSpace(_search.Text)) _ = SearchContactsAsync(_search.Text, CancellationToken.None);
+        }
+        else ShowConversationItems();
+    }
+
+    private Task SwitchTabAsync(bool contacts)
+    {
+        SwitchTab(contacts);
+        return Task.CompletedTask;
+    }
+
+    private void ShowConversationItems()
+    {
+        _contactsActive = false;
+        ApplyTabStyle(_conversationsTab!, true);
+        ApplyTabStyle(_contactsTab!, false);
+        var query = (_search.Text ?? string.Empty).Trim();
+        var filtered = string.IsNullOrWhiteSpace(query)
+            ? _conversationPeople
+            : _conversationPeople.Where(x => Contains(x.Name, query) || Contains(x.Subtitle, query)).ToList();
+        ReplaceVisibleItems(filtered);
+        _empty.Text = filtered.Count == 0 ? "لا توجد محادثات أخرى" : string.Empty;
+        _empty.IsVisible = filtered.Count == 0;
+    }
+
+    private void SearchTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_contactsActive)
+        {
+            _searchCts?.Cancel();
+            _searchCts?.Dispose();
+            _searchCts = new CancellationTokenSource();
+            _ = DebouncedContactSearchAsync(e.NewTextValue, _searchCts.Token);
+        }
+        else ShowConversationItems();
+    }
+
+    private async Task DebouncedContactSearchAsync(string? query, CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(380, token);
+            await SearchContactsAsync(query, token);
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task SearchContactsAsync(string? rawQuery, CancellationToken cancellationToken)
+    {
+        if (!_contactsActive) return;
+        var requestVersion = Interlocked.Increment(ref _searchVersion);
+        var query = (rawQuery ?? string.Empty).Trim();
+        if (query.Length < 3)
+        {
+            _items = new List<AddMemberPerson>();
+            _list.ItemsSource = _items;
+            _empty.Text = query.Length == 0 ? "ابحث عن اسم أو رقم أو بريد إلكتروني" : "أدخل 3 أحرف أو أرقام على الأقل";
+            _empty.IsVisible = true;
+            _busy.IsVisible = _busy.IsRunning = false;
+            return;
+        }
+
+        _busy.IsVisible = _busy.IsRunning = true;
+        _empty.IsVisible = false;
+        try
+        {
+            var results = await _api.SearchGroupMembersAsync(query, cancellationToken);
+            if (cancellationToken.IsCancellationRequested || requestVersion != Volatile.Read(ref _searchVersion)) return;
+            var currentId = _account.CurrentAccount?.UserId ?? Guid.Empty;
+            var people = results
+                .Where(x => x.Id != Guid.Empty && x.Id != currentId && !_existingIds.Contains(x.Id))
+                .GroupBy(x => x.Id).Select(g => g.First())
+                .Select(x => new AddMemberPerson
+                {
+                    Id = x.Id, Name = x.Name, Subtitle = x.Email,
+                    HasPhoto = x.HasProfilePhoto, PhotoVersion = x.ProfilePhotoVersion
+                })
+                .ToList();
+            ReplaceVisibleItems(people);
+            _empty.Text = people.Count == 0 ? "لا توجد نتائج" : string.Empty;
+            _empty.IsVisible = people.Count == 0;
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            if (requestVersion == Volatile.Read(ref _searchVersion))
+            {
+                _empty.Text = ex.Message;
+                _empty.IsVisible = true;
+            }
+        }
+        finally
+        {
+            if (requestVersion == Volatile.Read(ref _searchVersion))
+                _busy.IsVisible = _busy.IsRunning = false;
+        }
+    }
+
+    private void ReplaceVisibleItems(IEnumerable<AddMemberPerson> people)
+    {
+        var replacement = people.ToList();
+        foreach (var item in replacement)
+            if (_selected.TryGetValue(item.Id, out var selected)) item.IsSelected = selected.IsSelected;
+        _items = replacement;
+        _list.ItemsSource = _items;
+    }
+
+    private View CreateSelectablePersonRow()
+    {
+        var row = new Grid
+        {
+            Padding = new Thickness(16, 9),
+            ColumnDefinitions = new ColumnDefinitionCollection { new(52), new(GridLength.Star), new(42) },
+            ColumnSpacing = 12,
+            MinimumHeightRequest = 72
+        };
+        var avatar = new Grid { WidthRequest = 48, HeightRequest = 48 };
+        var fallback = new Label { FontSize = 17, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center };
+        fallback.SetDynamicResource(Label.TextColorProperty, "HimoAccent");
+        var photo = new Image
+        {
+            WidthRequest = 48, HeightRequest = 48, Aspect = Aspect.AspectFill, IsVisible = false,
+            Clip = new EllipseGeometry { Center = new Point(24, 24), RadiusX = 24, RadiusY = 24 }
+        };
+        var avatarBorder = new Border { WidthRequest = 48, HeightRequest = 48, Padding = 0, StrokeThickness = 1, StrokeShape = new Ellipse() };
+        avatarBorder.SetDynamicResource(Border.BackgroundColorProperty, "HimoSoft");
+        avatarBorder.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+        var avatarContent = new Grid(); avatarContent.Add(fallback); avatarContent.Add(photo); avatarBorder.Content = avatarContent; avatar.Add(avatarBorder);
+        row.Add(avatar, 0, 0);
+        var labels = new VerticalStackLayout { Spacing = 3, VerticalOptions = LayoutOptions.Center };
+        var name = new Label { FontSize = 14, FontAttributes = FontAttributes.Bold }; name.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        var subtitle = new Label { FontSize = 11, LineBreakMode = LineBreakMode.TailTruncation }; subtitle.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        labels.Add(name); labels.Add(subtitle); row.Add(labels, 1, 0);
+        var select = new Button { WidthRequest = 36, HeightRequest = 36, Padding = 0, CornerRadius = 18, FontSize = 17 };
+        row.Add(select, 2, 0);
+
+        void Sync(AddMemberPerson person)
+        {
+            name.Text = person.Name;
+            subtitle.Text = person.Subtitle;
+            fallback.Text = string.IsNullOrWhiteSpace(person.Name) ? "؟" : person.Name.Trim()[0].ToString();
+            photo.IsVisible = false; photo.Source = null; fallback.IsVisible = true;
+            if (!string.IsNullOrWhiteSpace(person.PhotoPath) && File.Exists(person.PhotoPath))
+            {
+                photo.Source = ImageSource.FromFile(person.PhotoPath); photo.IsVisible = true; fallback.IsVisible = false;
+            }
+            else if (person.HasPhoto) _ = LoadSelectableAvatarAsync(person, photo, fallback, row);
+            select.Text = person.IsSelected ? "✓" : "○";
+            select.BackgroundColor = person.IsSelected ? Color.FromArgb("#B16CF0") : Colors.Transparent;
+            select.TextColor = person.IsSelected ? Colors.White : Color.FromArgb("#B16CF0");
+            select.BorderColor = Color.FromArgb("#775C91"); select.BorderWidth = 1;
+        }
+
+        row.BindingContextChanged += (_, _) =>
+        {
+            if (row.BindingContext is AddMemberPerson person) Sync(person);
+        };
+        void Toggle()
+        {
+            if (row.BindingContext is not AddMemberPerson person) return;
+            person.IsSelected = !person.IsSelected;
+            if (person.IsSelected) _selected[person.Id] = person; else _selected.Remove(person.Id);
+            Sync(person);
+            UpdateSelectionFooter();
+        }
+        var tap = new TapGestureRecognizer(); tap.Tapped += (_, _) => Toggle(); row.GestureRecognizers.Add(tap);
+        select.Clicked += (_, _) => Toggle();
+        var divider = new BoxView { HeightRequest = 1, Opacity = 0.12 }; divider.SetDynamicResource(BackgroundColorProperty, "HimoTextSecondary");
+        return new VerticalStackLayout { Spacing = 0, Children = { row, divider } };
+    }
+
+    private async Task LoadSelectableAvatarAsync(AddMemberPerson person, Image image, Label fallback, View row)
+    {
+        try
+        {
+            var path = await ProfilePhotoCache.GetPathAsync(_api, person.Id, person.HasPhoto, person.PhotoVersion);
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                if (row.BindingContext is not AddMemberPerson current || current.Id != person.Id) return;
+                image.Source = ImageSource.FromFile(path); image.IsVisible = true; fallback.IsVisible = false;
+            });
+        }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo Group] Add-member avatar: {ex.Message}"); }
+    }
+
+    private void UpdateSelectionFooter()
+    {
+        var count = _selected.Count;
+        _selectedCount.Text = count == 0 ? "لم يتم اختيار أعضاء" : $"تم اختيار {count} أعضاء";
+        _addButton.IsEnabled = count > 0 && !_submitting;
+        _addButton.Text = count > 0 ? $"إضافة ({count})" : "إضافة";
+    }
+
+    private async void AddSelectedClicked(object? sender, EventArgs e)
+    {
+        if (_submitting || _selected.Count == 0) return;
+        _submitting = true;
+        _addButton.IsEnabled = false;
+        _addButton.Text = "جارٍ الإضافة...";
+        try
+        {
+            var result = await _api.AddGroupMembersAsync(_groupId, _selected.Keys.ToArray());
+            _markParentForRefresh();
+            await DisplayAlertAsync("أعضاء المجموعة", result.AddedCount > 0 ? $"تمت إضافة {result.AddedCount} أعضاء." : "الأشخاص المحددون أعضاء بالفعل.", "حسنًا");
+            await Navigation.PopAsync();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("تعذرت إضافة الأعضاء", ex.Message, "حسنًا");
+        }
+        finally
+        {
+            _submitting = false;
+            UpdateSelectionFooter();
+        }
+    }
+
+    private static bool Contains(string? source, string query) =>
+        !string.IsNullOrWhiteSpace(source) && source.Contains(query, StringComparison.OrdinalIgnoreCase);
+
+    protected override void OnDisappearing()
+    {
+        Interlocked.Increment(ref _searchVersion);
+        _searchCts?.Cancel();
+        _searchCts?.Dispose();
+        _searchCts = null;
+        base.OnDisappearing();
+    }
+
+    private sealed class AddMemberPerson
+    {
+        public Guid Id { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public string Subtitle { get; init; } = string.Empty;
+        public bool HasPhoto { get; init; }
+        public long PhotoVersion { get; init; }
+        public string? PhotoPath { get; init; }
+        public bool IsSelected { get; set; }
+    }
+}
+
 /// <summary>Half-screen member quick profile sheet.</summary>
 public sealed class GroupMemberProfileSheetPage : ContentPage
 {
+    private readonly Image _avatar = new() { WidthRequest = 96, HeightRequest = 96, Aspect = Aspect.AspectFill, HorizontalOptions = LayoutOptions.Center, IsVisible = false };
+    private readonly Label _avatarFallback = new() { FontSize = 34, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center };
+
+    public void SetPhoto(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+        _avatar.Source = ImageSource.FromFile(path);
+        _avatar.IsVisible = true;
+        _avatarFallback.IsVisible = false;
+    }
+
     public GroupMemberProfileSheetPage(HimoApiClient.GroupMemberDto member, string? photoPath, Func<Task> message, Func<string, Task> call, Func<Task> info, Func<Task> openPhoto)
     {
         BackgroundColor = Color.FromArgb("#B9000715");
@@ -895,26 +1421,13 @@ public sealed class GroupMemberProfileSheetPage : ContentPage
         panel.SetDynamicResource(BackgroundColorProperty, "HimoBackground");
         var drag = new Border { WidthRequest = 42, HeightRequest = 4, StrokeThickness = 0, HorizontalOptions = LayoutOptions.Center };
         drag.SetDynamicResource(BackgroundColorProperty, "HimoBorder"); panel.Add(drag);
-        var avatarFallback = new Label
-        {
-            Text = string.IsNullOrWhiteSpace(member.Name) ? "؟" : member.Name.Trim()[0].ToString(),
-            FontSize = 34,
-            FontAttributes = FontAttributes.Bold,
-            HorizontalTextAlignment = TextAlignment.Center,
-            VerticalTextAlignment = TextAlignment.Center
-        };
-        avatarFallback.SetDynamicResource(Label.TextColorProperty, "HimoAccent");
-        var avatar = new Image { WidthRequest = 96, HeightRequest = 96, Aspect = Aspect.AspectFill, HorizontalOptions = LayoutOptions.Center, IsVisible = false };
-        if (!string.IsNullOrWhiteSpace(photoPath) && File.Exists(photoPath))
-        {
-            avatar.Source = ImageSource.FromFile(photoPath);
-            avatar.IsVisible = true;
-            avatarFallback.IsVisible = false;
-        }
-        avatar.Clip = new EllipseGeometry { Center = new Point(48, 48), RadiusX = 48, RadiusY = 48 };
+        _avatarFallback.Text = string.IsNullOrWhiteSpace(member.Name) ? "؟" : member.Name.Trim()[0].ToString();
+        _avatarFallback.SetDynamicResource(Label.TextColorProperty, "HimoAccent");
+        if (!string.IsNullOrWhiteSpace(photoPath) && File.Exists(photoPath)) SetPhoto(photoPath);
+        _avatar.Clip = new EllipseGeometry { Center = new Point(48, 48), RadiusX = 48, RadiusY = 48 };
         var avatarContent = new Grid();
-        avatarContent.Add(avatarFallback);
-        avatarContent.Add(avatar);
+        avatarContent.Add(_avatarFallback);
+        avatarContent.Add(_avatar);
         var avatarBorder = new Border { WidthRequest = 100, HeightRequest = 100, Padding = 2, StrokeThickness = 1, StrokeShape = new Ellipse(), HorizontalOptions = LayoutOptions.Center, Content = avatarContent };
         avatarBorder.SetDynamicResource(Border.StrokeProperty, "HimoAccent"); avatarBorder.SetDynamicResource(Border.BackgroundColorProperty, "HimoCard");
         var avatarTap = new TapGestureRecognizer(); avatarTap.Tapped += async (_, _) => await openPhoto(); avatarBorder.GestureRecognizers.Add(avatarTap);
@@ -1093,9 +1606,111 @@ public sealed class GroupInviteQrPage : ContentPage
         var qr = new ZXing.Net.Maui.Controls.BarcodeGeneratorView { Format = ZXing.Net.Maui.BarcodeFormat.QrCode, Value = link, WidthRequest = 250, HeightRequest = 250, HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center, BackgroundColor = Colors.White, ForegroundColor = Color.FromArgb("#160A2C") };
         var frame = new Border { WidthRequest = 270, HeightRequest = 270, Padding = 10, BackgroundColor = Colors.White, StrokeThickness = 0, StrokeShape = new RoundRectangle { CornerRadius = 22 }, HorizontalOptions = LayoutOptions.Center, Content = qr };
         root.Add(frame);
-        var copy = new Button { Text = "نسخ الرابط", HeightRequest = 48, CornerRadius = 14, FontAttributes = FontAttributes.Bold, TextColor = Colors.White }; copy.SetDynamicResource(Button.BackgroundColorProperty, "HimoAccent");
-        copy.Clicked += async (_, _) => { await Clipboard.Default.SetTextAsync(link); await DisplayAlertAsync("رابط المجموعة", "تم نسخ رابط الدعوة.", "حسنًا"); };
-        root.Add(copy); Content = root;
+        Content = root;
+    }
+}
+
+/// <summary>Share hub for the group's invite QR and copyable invite link.</summary>
+public sealed class GroupSharePage : ContentPage
+{
+    public GroupSharePage(string link, string groupName)
+    {
+        Title = "مشاركة";
+        Shell.SetNavBarIsVisible(this, false);
+        FlowDirection = FlowDirection.RightToLeft;
+        var root = new Grid { RowDefinitions = new RowDefinitionCollection { new(GridLength.Auto), new(GridLength.Star) } };
+        root.SetDynamicResource(BackgroundColorProperty, "HimoBackground");
+        var header = new Grid { Padding = new Thickness(16, 10), ColumnDefinitions = new ColumnDefinitionCollection { new(44), new(GridLength.Star), new(44) } };
+        var back = GroupConversationInfoPage.MakeBack();
+        back.Clicked += async (_, _) => await Navigation.PopAsync();
+        header.Add(back, 0, 0);
+        var title = new Label { Text = "مشاركة", FontSize = 19, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center };
+        title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        header.Add(title, 1, 0);
+        header.Add(new BoxView { Opacity = 0 }, 2, 0);
+        root.Add(header, 0, 0);
+
+        var body = new VerticalStackLayout { Padding = new Thickness(18, 18, 18, 24), Spacing = 14, VerticalOptions = LayoutOptions.Start };
+        var group = new Label { Text = groupName, FontSize = 16, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Center, Margin = new Thickness(0, 0, 0, 10) };
+        group.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        body.Add(group);
+        body.Add(BuildShareOption("▦", "رمز QR", "عرض الرمز للمسح", async () =>
+            await Navigation.PushAsync(new GroupInviteQrPage(link, groupName))));
+        body.Add(BuildShareOption("↗", "رابط المجموعة", "عرض الرابط ونسخه", async () =>
+            await Navigation.PushAsync(new GroupInviteLinkPage(link, groupName))));
+        root.Add(new ScrollView { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Never }, 0, 1);
+        Content = root;
+        AppLocalization.AttachToPage(this);
+    }
+
+    private static View BuildShareOption(string glyph, string title, string subtitle, Func<Task> action)
+    {
+        var grid = new Grid
+        {
+            Padding = new Thickness(15, 14),
+            ColumnDefinitions = new ColumnDefinitionCollection { new(50), new(GridLength.Star), new(22) },
+            ColumnSpacing = 12
+        };
+        var icon = new Border { WidthRequest = 46, HeightRequest = 46, StrokeThickness = 1, Padding = 0, StrokeShape = new RoundRectangle { CornerRadius = 14 } };
+        icon.SetDynamicResource(Border.BackgroundColorProperty, "HimoSoft");
+        icon.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+        var iconLabel = new Label { Text = glyph, FontSize = 23, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center };
+        iconLabel.SetDynamicResource(Label.TextColorProperty, "HimoAccent");
+        icon.Content = iconLabel;
+        grid.Add(icon, 0, 0);
+        var labels = new VerticalStackLayout { Spacing = 3, VerticalOptions = LayoutOptions.Center };
+        var name = new Label { Text = title, FontSize = 15, FontAttributes = FontAttributes.Bold };
+        name.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        var hint = new Label { Text = subtitle, FontSize = 11 };
+        hint.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        labels.Add(name); labels.Add(hint); grid.Add(labels, 1, 0);
+        var arrow = new Label { Text = "‹", FontSize = 25, VerticalTextAlignment = TextAlignment.Center };
+        arrow.SetDynamicResource(Label.TextColorProperty, "HimoAccent");
+        grid.Add(arrow, 2, 0);
+        var card = ConversationInfoPage.MakeCard(grid);
+        var tap = new TapGestureRecognizer(); tap.Tapped += async (_, _) => await action(); card.GestureRecognizers.Add(tap);
+        return card;
+    }
+}
+
+/// <summary>Invite-link details with a dedicated copy control.</summary>
+public sealed class GroupInviteLinkPage : ContentPage
+{
+    public GroupInviteLinkPage(string link, string groupName)
+    {
+        Title = "رابط المجموعة";
+        Shell.SetNavBarIsVisible(this, false);
+        FlowDirection = FlowDirection.RightToLeft;
+        var root = new Grid { RowDefinitions = new RowDefinitionCollection { new(GridLength.Auto), new(GridLength.Star) } };
+        root.SetDynamicResource(BackgroundColorProperty, "HimoBackground");
+        var header = new Grid { Padding = new Thickness(16, 10), ColumnDefinitions = new ColumnDefinitionCollection { new(44), new(GridLength.Star), new(44) } };
+        var back = GroupConversationInfoPage.MakeBack(); back.Clicked += async (_, _) => await Navigation.PopAsync(); header.Add(back, 0, 0);
+        var title = new Label { Text = "رابط المجموعة", FontSize = 19, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center };
+        title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary"); header.Add(title, 1, 0);
+        header.Add(new BoxView { Opacity = 0 }, 2, 0); root.Add(header, 0, 0);
+
+        var body = new VerticalStackLayout { Padding = new Thickness(20, 28), Spacing = 16, VerticalOptions = LayoutOptions.Start };
+        var group = new Label { Text = groupName, FontSize = 16, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Center };
+        group.SetDynamicResource(Label.TextColorProperty, "HimoPrimary"); body.Add(group);
+        var linkLabel = new Label { Text = link, FontSize = 13, LineBreakMode = LineBreakMode.WordWrap, FlowDirection = FlowDirection.LeftToRight, HorizontalTextAlignment = TextAlignment.Start };
+        linkLabel.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        var linkCard = ConversationInfoPage.MakeCard(new VerticalStackLayout { Padding = 15, Spacing = 10, Children = { linkLabel } });
+        body.Add(linkCard);
+        var copyButton = new Button { Text = "⧉  نسخ الرابط", HeightRequest = 50, CornerRadius = 15, FontAttributes = FontAttributes.Bold, TextColor = Colors.White };
+        copyButton.SetDynamicResource(Button.BackgroundColorProperty, "HimoAccent");
+        copyButton.Clicked += async (_, _) =>
+        {
+            try
+            {
+                await Clipboard.Default.SetTextAsync(link);
+                await DisplayAlertAsync("رابط المجموعة", "تم نسخ الرابط.", "حسنًا");
+            }
+            catch (Exception ex) { await DisplayAlertAsync("تعذر النسخ", ex.Message, "حسنًا"); }
+        };
+        body.Add(copyButton);
+        root.Add(new ScrollView { Content = body }, 0, 1);
+        Content = root;
+        AppLocalization.AttachToPage(this);
     }
 }
 

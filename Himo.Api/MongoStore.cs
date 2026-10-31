@@ -734,6 +734,51 @@ sealed class MongoStore
         return result.DeletedCount > 0;
     }
 
+    public bool LeaveGroup(Guid conversationId, Guid userId)
+    {
+        EnsureIndexes();
+        var cid = GuidText(conversationId);
+        var uid = GuidText(userId);
+
+        lock (_sync)
+        {
+            var group = _conversations.Find(x => x.Id == cid && x.IsGroup).FirstOrDefault();
+            if (group is null) return false;
+
+            var current = _participants.Find(x => x.ConversationId == cid && x.UserId == uid).FirstOrDefault();
+            if (current is null) return false;
+
+            if (string.Equals(group.OwnerUserId, uid, StringComparison.OrdinalIgnoreCase))
+            {
+                var remaining = _participants.Find(x => x.ConversationId == cid && x.UserId != uid)
+                    .ToList()
+                    .OrderByDescending(x => x.IsAdmin)
+                    .ThenBy(x => x.JoinedAt, StringComparer.Ordinal)
+                    .ToList();
+
+                if (remaining.Count == 0)
+                    throw new InvalidOperationException("أنت آخر عضو في المجموعة. أضف عضوًا آخر قبل الخروج حتى لا تبقى المجموعة بلا مشرف.");
+
+                var nextOwner = remaining[0];
+                var ownerUpdate = _conversations.UpdateOne(
+                    x => x.Id == cid && x.OwnerUserId == uid,
+                    Builders<MConversation>.Update.Set(x => x.OwnerUserId, nextOwner.UserId).Set(x => x.UpdatedAt, NowText()));
+                if (ownerUpdate.MatchedCount == 0)
+                    throw new InvalidOperationException("تعذر نقل ملكية المجموعة. حاول مرة أخرى.");
+
+                if (!nextOwner.IsAdmin)
+                {
+                    _participants.UpdateOne(
+                        x => x.ConversationId == cid && x.UserId == nextOwner.UserId,
+                        Builders<MParticipant>.Update.Set(x => x.IsAdmin, true));
+                }
+            }
+
+            var result = _participants.DeleteOne(x => x.ConversationId == cid && x.UserId == uid);
+            return result.DeletedCount > 0;
+        }
+    }
+
     public ConversationDto? JoinGroupByInvite(string inviteCode, Guid userId)
     {
         EnsureIndexes();

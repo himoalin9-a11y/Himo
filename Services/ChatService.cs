@@ -135,6 +135,25 @@ public sealed class ChatService
         NotifyConversationsChanged();
     }
 
+    public bool RemoveConversation(int conversationId)
+    {
+        EnsureLoaded();
+        var removed = false;
+        lock (_sync)
+        {
+            var conversation = Conversations.FirstOrDefault(x => x.Id == conversationId);
+            if (conversation is null) return false;
+
+            Conversations.Remove(conversation);
+            _messages.Remove(conversationId);
+            Save();
+            removed = true;
+        }
+
+        if (removed) NotifyConversationsChanged();
+        return removed;
+    }
+
     public int PurgeExpiredMessages(int conversationId, DateTime? now = null)
     {
         EnsureLoaded();

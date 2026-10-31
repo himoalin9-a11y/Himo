@@ -898,6 +898,20 @@ webApp.MapDelete("/api/groups/{id:guid}/members/{memberId:guid}", (Guid id, Guid
     catch (InvalidOperationException ex) { return Results.BadRequest(new { message = ex.Message }); }
 });
 
+webApp.MapDelete("/api/groups/{id:guid}/leave", (Guid id, HttpRequest http, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    try
+    {
+        if (!store.LeaveGroup(id, session.UserId)) return Results.NotFound();
+        return Results.NoContent();
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 webApp.MapGet("/api/groups/{id:guid}/invite", (Guid id, HttpRequest http, MongoStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();

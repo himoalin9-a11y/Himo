@@ -1164,6 +1164,15 @@ public sealed class HimoApiClient
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
+    public async Task LeaveGroupAsync(Guid groupId, CancellationToken cancellationToken = default)
+    {
+        if (groupId == Guid.Empty)
+            throw new ArgumentException("معرّف المجموعة غير صالح.", nameof(groupId));
+
+        using var response = await _http.DeleteAsync($"api/groups/{groupId:D}/leave", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
     public async Task<GroupInviteResponse> GetGroupInviteAsync(Guid groupId, CancellationToken cancellationToken = default)
     {
         using var response = await _http.GetAsync($"api/groups/{groupId:D}/invite", cancellationToken);

@@ -1,11 +1,6 @@
 namespace Himo.Models;
 
-public sealed record UserSearchDto(
-    Guid Id,
-    string Email,
-    string Name,
-    bool HasProfilePhoto = false,
-    long ProfilePhotoVersion = 0)
+public sealed record UserSearchDto(Guid Id, string Email, string Name, bool HasProfilePhoto = false, long ProfilePhotoVersion = 0)
 {
     public string Initial => GetInitial(Name);
 

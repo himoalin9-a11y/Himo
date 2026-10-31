@@ -405,6 +405,7 @@ public sealed class ConversationSharedContentPage : ContentPage
     private readonly AccountService _account;
     private readonly Conversation _conversation;
     private readonly bool _storageMode;
+    private readonly bool _lightweightGroupMode;
     private readonly string _key;
     private readonly Grid _root = new();
     private readonly VerticalStackLayout _itemsHost = new() { Spacing = 9, Padding = new Thickness(14, 8, 14, 24) };
@@ -413,9 +414,9 @@ public sealed class ConversationSharedContentPage : ContentPage
     private List<ChatMessage> _messages = new();
     private IReadOnlyList<SharedContentItem> _visibleItems = Array.Empty<SharedContentItem>();
 
-    public ConversationSharedContentPage(ChatService chat, HimoApiClient api, AccountService account, Conversation conversation, string initialTab = "media", bool storageMode = false)
+    public ConversationSharedContentPage(ChatService chat, HimoApiClient api, AccountService account, Conversation conversation, string initialTab = "media", bool storageMode = false, bool lightweightGroupMode = false)
     {
-        _chat = chat; _api = api; _account = account; _conversation = conversation; _key = ConversationFeatureStore.ConversationKey(conversation); _storageMode = storageMode;
+        _chat = chat; _api = api; _account = account; _conversation = conversation; _key = ConversationFeatureStore.ConversationKey(conversation); _storageMode = storageMode; _lightweightGroupMode = lightweightGroupMode;
         _tab = storageMode ? "media" : NormalizeTab(initialTab);
         Title = storageMode ? "إدارة مساحة التخزين" : "الوسائط والروابط والمستندات";
         BuildPage();
@@ -464,7 +465,9 @@ public sealed class ConversationSharedContentPage : ContentPage
         base.OnAppearing();
         _itemsHost.Children.Clear();
         _itemsHost.Add(new ActivityIndicator { IsRunning = true, IsVisible = true, HorizontalOptions = LayoutOptions.Center, Margin = new Thickness(20) });
-        _messages = await LoadAllMessagesAsync(_chat, _api, _account, _conversation);
+        _messages = _lightweightGroupMode
+            ? await LoadRecentMessagesAsync(_chat, _api, _account, _conversation, 60)
+            : await LoadAllMessagesAsync(_chat, _api, _account, _conversation);
         _itemsHost.Children.Clear();
         if (_storageMode)
         {
@@ -539,6 +542,51 @@ public sealed class ConversationSharedContentPage : ContentPage
         }
     }
 
+    private static async Task<List<ChatMessage>> LoadRecentMessagesAsync(
+        ChatService chat, HimoApiClient api, AccountService account, Conversation conversation, int limit)
+    {
+        var local = chat.GetRecentMessages(conversation.Id, limit);
+        if (!Guid.TryParse(conversation.RemoteId, out var remoteId) || !api.HasToken)
+            return local.OrderBy(x => x.SentAt).ToList();
+
+        try
+        {
+            var page = await api.GetMessagesAsync(remoteId, limit: limit);
+            var myId = account.CurrentAccount?.UserId ?? Guid.Empty;
+            var byId = new Dictionary<string, ChatMessage>(StringComparer.OrdinalIgnoreCase);
+            foreach (var dto in page)
+            {
+                var id = dto.Id.ToString("D");
+                byId[id] = new ChatMessage
+                {
+                    Id = 0, RemoteId = id, ConversationId = conversation.Id, Text = dto.Text,
+                    SentAt = dto.SentAt.LocalDateTime, IsMine = myId != Guid.Empty && dto.SenderUserId == myId,
+                    AttachmentFileName = dto.AttachmentFileName, AttachmentContentType = dto.AttachmentContentType,
+                    AttachmentSize = dto.AttachmentSize, DeliveryStatus = dto.Status,
+                    ReplyToRemoteId = dto.ReplyToMessageId?.ToString("D"), ReplyToText = dto.ReplyToText,
+                    IsEdited = dto.IsEdited, IsDeleted = dto.IsDeleted, ExpiresAt = dto.ExpiresAt?.LocalDateTime
+                };
+            }
+            foreach (var message in local)
+            {
+                if (!string.IsNullOrWhiteSpace(message.RemoteId) && byId.TryGetValue(message.RemoteId, out var remote))
+                {
+                    if (string.IsNullOrWhiteSpace(remote.AttachmentLocalPath))
+                        remote.AttachmentLocalPath = message.AttachmentLocalPath;
+                }
+                else if (string.IsNullOrWhiteSpace(message.RemoteId))
+                {
+                    byId["local:" + message.Id] = message;
+                }
+            }
+            return byId.Values.OrderBy(x => x.SentAt).ToList();
+        }
+        catch
+        {
+            return local.OrderBy(x => x.SentAt).ToList();
+        }
+    }
+
     private async Task RenderItemsAsync()
     {
         _itemsHost.Children.Clear();
@@ -565,7 +613,9 @@ public sealed class ConversationSharedContentPage : ContentPage
         var list = items.OrderByDescending(x => x.Message.SentAt).ToList();
         // Remote message pages may not carry a local path. Download image thumbnails lazily
         // so images are displayed as images in Storage, Media, and any attachment listing.
-        foreach (var item in list.Where(x => x.Kind == "image").Take(36))
+        var imageItemsToDownload = list.Where(x => x.Kind == "image");
+        if (_lightweightGroupMode) imageItemsToDownload = imageItemsToDownload.Take(12);
+        foreach (var item in imageItemsToDownload)
         {
             if (!string.IsNullOrWhiteSpace(item.LocalPath) && File.Exists(item.LocalPath)) continue;
             if (!Guid.TryParse(item.Message.RemoteId, out var attachmentId) || !_api.HasToken) continue;
@@ -615,52 +665,6 @@ public sealed class ConversationSharedContentPage : ContentPage
                     gallery.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
             }
             _itemsHost.Add(gallery);
-        }
-        else if (_tab == "media")
-        {
-            var strip = new HorizontalStackLayout { Spacing = 9, Padding = new Thickness(2, 4) };
-            foreach (var item in list)
-            {
-                var tile = new Border
-                {
-                    WidthRequest = 112,
-                    HeightRequest = 112,
-                    Padding = 0,
-                    StrokeThickness = 1,
-                    StrokeShape = new RoundRectangle { CornerRadius = 13 }
-                };
-                tile.SetDynamicResource(Border.BackgroundColorProperty, "HimoSurface");
-                tile.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
-                if (item.Kind == "image" && !string.IsNullOrWhiteSpace(item.LocalPath) && File.Exists(item.LocalPath))
-                {
-                    tile.Content = new Image { Source = ImageSource.FromFile(item.LocalPath), Aspect = Aspect.AspectFill };
-                }
-                else
-                {
-                    var fallback = ConversationInfoPage.MakeLabel(item.Kind switch
-                    {
-                        "video" => "▶",
-                        "audio" => "♫",
-                        _ => "▧"
-                    }, 29, true);
-                    fallback.HorizontalTextAlignment = TextAlignment.Center;
-                    fallback.VerticalTextAlignment = TextAlignment.Center;
-                    tile.Content = fallback;
-                }
-                var tap = new TapGestureRecognizer();
-                tap.Tapped += async (_, _) => await OpenItemAsync(item);
-                tile.GestureRecognizers.Add(tap);
-                strip.Add(tile);
-            }
-            var horizontal = new ScrollView
-            {
-                Orientation = ScrollOrientation.Horizontal,
-                HeightRequest = 124,
-                Content = strip,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Never,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Never
-            };
-            _itemsHost.Add(horizontal);
         }
         else
         {
@@ -775,7 +779,6 @@ public sealed class DisappearingMessagesPage : ContentPage
         var body = new VerticalStackLayout { Spacing = 9, Padding = new Thickness(0, 15) };
         body.Add(ConversationInfoPage.MakeCard(new VerticalStackLayout { Padding = 14, Spacing = 6, Children = { ConversationInfoPage.MakeLabel("بعد كم تختفي الرسائل؟", 16, true), _status } }));
         AddOption(body, 3600, "ساعة", "تختفي الرسائل بعد ساعة من إرسالها");
-        AddOption(body, 7200, "ساعتان", "تختفي الرسائل بعد ساعتين من إرسالها");
         AddOption(body, 86400, "24 ساعة", "تختفي الرسائل بعد يوم");
         AddOption(body, 432000, "5 أيام", "تختفي الرسائل بعد خمسة أيام");
         AddOption(body, 2592000, "30 يومًا", "تختفي الرسائل بعد ثلاثين يومًا");
