@@ -37,7 +37,15 @@ public static class AppLocalization
     /// <summary>Loads the saved culture before the first application page is shown.</summary>
     public static void InitializeFromPreferences()
     {
-        var stored = Preferences.Default.Get(PreferenceKey, "ar");
+        var stored = Preferences.Default.Get(PreferenceKey, string.Empty);
+        if (string.IsNullOrWhiteSpace(stored))
+        {
+            // Migrate the two-language preference written by the earlier language patch.
+            // This keeps an already selected English/Arabic setting instead of resetting it.
+            stored = Preferences.Default.Get("Himo.AppLanguageCode", "ar");
+            Preferences.Default.Set(PreferenceKey, NormalizeCultureCode(stored));
+        }
+
         ApplyCulture(NormalizeCultureCode(stored));
     }
 
@@ -58,16 +66,18 @@ public static class AppLocalization
                 if (window.Page is not Page page) continue;
                 page.FlowDirection = PreferredFlowDirection;
                 if (page is Shell shell)
-                    ApplyToShell(shell);
-                ApplyToPage(page);
+                {
+                    shell.FlowDirection = PreferredFlowDirection;
+                    ApplyToShellTitlesOnly(shell);
+                    if (shell.CurrentPage is { } shellPage)
+                        _ = ApplyToPageInBatchesAsync(shellPage, batchSize: 64, skipCollectionViewContents: true);
+                }
+                else
+                {
+                    _ = ApplyToPageInBatchesAsync(page, batchSize: 64, skipCollectionViewContents: true);
+                }
             }
 
-            if (Shell.Current is { } currentShell)
-            {
-                ApplyToShell(currentShell);
-                if (currentShell.CurrentPage is { } currentPage)
-                    ApplyToPage(currentPage);
-            }
         });
     }
 
@@ -87,9 +97,11 @@ public static class AppLocalization
         if (!AttachedPages.TryGetValue(page, out _))
         {
             AttachedPages.Add(page, new AttachedPageState());
-            page.Appearing += (_, _) => ApplyToPage(page);
+            page.Appearing += (_, _) =>
+                _ = ApplyToPageInBatchesAsync(page, batchSize: 64, skipCollectionViewContents: true);
         }
-        ApplyToPage(page);
+
+        _ = ApplyToPageInBatchesAsync(page, batchSize: 64, skipCollectionViewContents: true);
     }
 
     public static void ApplyToShell(Shell shell)
@@ -260,9 +272,9 @@ public static class AppLocalization
                     TranslateProperty(toolbarItem, nameof(ToolbarItem.Text), toolbarItem.Text, value => toolbarItem.Text = value);
                 break;
             case Label label:
-                // Do not rewrite labels that display message/contact/list content; the
-                // surrounding item template can contain arbitrary user-provided text.
-                if (allowLabelText)
+                // Do not rewrite virtualized list content or labels explicitly marked
+                // as user-supplied (for example a public profile name/status).
+                if (allowLabelText && !string.Equals(label.AutomationId, "Himo.UserSuppliedText", StringComparison.Ordinal))
                 {
                     TranslateProperty(label, nameof(Label.Text), label.Text, value => label.Text = value);
                     if (label.FormattedText is { } formatted)

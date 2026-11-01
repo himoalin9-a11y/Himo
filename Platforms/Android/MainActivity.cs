@@ -1,6 +1,10 @@
-﻿using Microsoft.Maui;
+using Microsoft.Maui;
+using Microsoft.Maui.Controls;
 using Microsoft.Maui.Platform;
 using Plugin.Firebase.CloudMessaging;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui.Storage;
+using Himo.Services;
 
 namespace Himo;
 
@@ -28,6 +32,9 @@ public class MainActivity : MauiAppCompatActivity
     private static string? _pendingCallId;
     private static int _navigationInProgress;
     private static int _callNavigationInProgress;
+    private static int _appLinkNavigationInProgress;
+    private static int _appLinkRetryScheduled;
+    private static string? _pendingAppLink;
     private static int _isAppForeground;
     public static bool IsAppForeground => Volatile.Read(ref _isAppForeground) != 0;
     // A cold-start notification and the SignalR Invite may arrive for the same
@@ -37,6 +44,7 @@ public class MainActivity : MauiAppCompatActivity
     private const string PendingCallConversationPreferenceKey = "himo_pending_call_conversation_id";
     private const string PendingCallModePreferenceKey = "himo_pending_call_mode";
     private const string PendingCallIdPreferenceKey = "himo_pending_call_id";
+    private const string PendingAppLinkPreferenceKey = "himo_pending_app_link_v1";
     private const string FullScreenIntentPromptPreferenceKey = "himo_full_screen_intent_prompted_v1";
     private static int _fullScreenIntentPromptInProgress;
 
@@ -108,7 +116,10 @@ public class MainActivity : MauiAppCompatActivity
         // Do not show an incoming-call UI over other apps. Route the saved invite only after Himo opens.
         RestorePendingCall();
         TryNavigateToPendingCall();
+        RestorePendingAppLink();
+        TryNavigateToPendingAppLink();
         SchedulePendingCallNavigation();
+        SchedulePendingAppLinkNavigation();
 
         try
         {
@@ -244,6 +255,7 @@ public class MainActivity : MauiAppCompatActivity
         SetLaunchWindowBackground();
         ApplyImmersiveFullscreen();
         try { FirebaseCloudMessagingImplementation.OnNewIntent(Intent); } catch { }
+        CaptureAppLinkIntent(Intent);
         CreateNotificationChannel();
 
         CaptureNotificationIntent(Intent);
@@ -251,8 +263,10 @@ public class MainActivity : MauiAppCompatActivity
         RestorePendingCall();
         TryNavigateToPendingCall();
         TryNavigateToPendingConversation();
+        TryNavigateToPendingAppLink();
         SchedulePendingCallNavigation();
         SchedulePendingConversationNavigation();
+        SchedulePendingAppLinkNavigation();
     }
 
 
@@ -260,15 +274,17 @@ public class MainActivity : MauiAppCompatActivity
     {
         try
         {
-            var decor = Window?.DecorView;
-            if (decor is null) return;
-            decor.SystemUiFlags =
-                global::Android.Views.SystemUiFlags.LayoutStable |
-                global::Android.Views.SystemUiFlags.LayoutHideNavigation |
-                global::Android.Views.SystemUiFlags.LayoutFullscreen |
-                global::Android.Views.SystemUiFlags.HideNavigation |
-                global::Android.Views.SystemUiFlags.Fullscreen |
-                global::Android.Views.SystemUiFlags.ImmersiveSticky;
+            var window = Window;
+            var decorView = window?.DecorView;
+            if (window is null || decorView is null)
+                return;
+
+            // Use AndroidX compatibility APIs rather than the deprecated View.SystemUiFlags.
+            // The compat controller preserves the immersive, swipe-to-reveal behavior on
+            // older Android releases and delegates to WindowInsetsController on API 30+.
+            var controller = new global::AndroidX.Core.View.WindowInsetsControllerCompat(window, decorView);
+            controller.Hide(global::AndroidX.Core.View.WindowInsetsCompat.Type.SystemBars());
+            controller.SystemBarsBehavior = 2; // BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
         catch (Exception ex)
         {
@@ -326,12 +342,15 @@ public class MainActivity : MauiAppCompatActivity
         if (intent is null) return;
         Intent = intent;
         try { FirebaseCloudMessagingImplementation.OnNewIntent(intent); } catch { }
+        CaptureAppLinkIntent(intent);
 
         CaptureNotificationIntent(intent);
         RestorePendingConversation();
         RestorePendingCall();
         TryNavigateToPendingCall();
         TryNavigateToPendingConversation();
+        TryNavigateToPendingAppLink();
+        SchedulePendingAppLinkNavigation();
     }
 
     public static void TryNavigateToPendingCall()
@@ -435,6 +454,150 @@ public class MainActivity : MauiAppCompatActivity
         });
     }
 
+
+    private static void CaptureAppLinkIntent(global::Android.Content.Intent? intent)
+    {
+        if (intent is null || !string.Equals(intent.Action, global::Android.Content.Intent.ActionView, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var rawLink = intent.DataString ?? intent.Data?.ToString();
+        if (!HimoAppLinkRouter.IsSupportedLink(rawLink)) return;
+
+        _pendingAppLink = rawLink;
+        Preferences.Default.Set(PendingAppLinkPreferenceKey, rawLink!);
+
+        // A tapped share link is the user's latest navigation intent. Do not let
+        // an older push-notification destination open on top of this destination.
+        ClearPendingConversation();
+        ClearPendingCall();
+    }
+
+    private static void RestorePendingAppLink()
+    {
+        if (string.IsNullOrWhiteSpace(_pendingAppLink))
+            _pendingAppLink = Preferences.Default.Get(PendingAppLinkPreferenceKey, string.Empty);
+    }
+
+    private static void ClearPendingAppLink(string? expectedLink = null)
+    {
+        if (!string.IsNullOrWhiteSpace(expectedLink) &&
+            !string.Equals(_pendingAppLink, expectedLink, StringComparison.Ordinal))
+            return;
+
+        _pendingAppLink = null;
+        Preferences.Default.Remove(PendingAppLinkPreferenceKey);
+    }
+
+    public static void TryNavigateToPendingAppLink()
+    {
+        RestorePendingAppLink();
+        if (string.IsNullOrWhiteSpace(_pendingAppLink)) return;
+
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            if (Interlocked.Exchange(ref _appLinkNavigationInProgress, 1) != 0) return;
+            var rawLink = _pendingAppLink;
+            try
+            {
+                rawLink = _pendingAppLink ?? Preferences.Default.Get(PendingAppLinkPreferenceKey, string.Empty);
+                if (string.IsNullOrWhiteSpace(rawLink)) return;
+
+                var shell = Shell.Current;
+                var services = global::Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services;
+                if (shell is null || services is null) return;
+
+                var api = services.GetRequiredService<HimoApiClient>();
+                try { await api.TokenInitialization; }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo AppLink] Token initialization: {ex.Message}"); }
+                // Keep the link pending while the user is on the sign-in screen.
+                // AppShell retries it after a successful login.
+                if (!api.HasToken) return;
+
+                if (Uri.TryCreate(rawLink, UriKind.Absolute, out var incomingUri) &&
+                    incomingUri.Host.Equals("group", StringComparison.OrdinalIgnoreCase))
+                {
+                    var currentPage = shell.CurrentPage;
+                    if (currentPage is null) return;
+                    var accepted = await currentPage.DisplayAlertAsync(
+                        AppLocalization.T("OpenSharedGroupTitle"),
+                        AppLocalization.T("OpenSharedGroupPrompt"),
+                        AppLocalization.T("OpenSharedGroupAction"),
+                        AppLocalization.T("Cancel"));
+                    if (!accepted)
+                    {
+                        ClearPendingAppLink(rawLink);
+                        return;
+                    }
+                }
+
+                var destination = await HimoAppLinkRouter.ResolveAsync(rawLink, services);
+                switch (destination.Kind)
+                {
+                    case HimoAppLinkTargetKind.OwnProfile:
+                        await shell.GoToAsync("profile");
+                        break;
+
+                    case HimoAppLinkTargetKind.PublicProfile:
+                        var displayName = string.IsNullOrWhiteSpace(destination.DisplayName)
+                            ? "مستخدم Himo"
+                            : destination.DisplayName!;
+                        var profileRoute = $"shared-profile?userId={destination.TargetId:D}&name={Uri.EscapeDataString(displayName)}";
+                        await shell.GoToAsync(profileRoute);
+                        break;
+
+                    case HimoAppLinkTargetKind.Conversation:
+                        await shell.GoToAsync($"chat?id={Uri.EscapeDataString(destination.TargetId.ToString("D"))}");
+                        break;
+
+                    default:
+                        throw new InvalidOperationException("نوع رابط Himo غير مدعوم.");
+                }
+                ClearPendingAppLink(rawLink);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo AppLink] Open failed: {ex}");
+                try
+                {
+                    var page = Shell.Current?.CurrentPage;
+                    if (page is not null)
+                        await page.DisplayAlertAsync(
+                            AppLocalization.T("LinkOpenFailed"),
+                            AppLocalization.TranslateSourceText(ex.Message),
+                            AppLocalization.T("OK"));
+                }
+                catch { }
+                ClearPendingAppLink(rawLink);
+            }
+            finally
+            {
+                Volatile.Write(ref _appLinkNavigationInProgress, 0);
+            }
+        });
+    }
+
+    private static void SchedulePendingAppLinkNavigation()
+    {
+        if (Interlocked.Exchange(ref _appLinkRetryScheduled, 1) != 0) return;
+
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            try
+            {
+                for (var attempt = 0; attempt < 20; attempt++)
+                {
+                    RestorePendingAppLink();
+                    if (string.IsNullOrWhiteSpace(_pendingAppLink)) break;
+                    await Task.Delay(attempt == 0 ? 350 : 500);
+                    TryNavigateToPendingAppLink();
+                }
+            }
+            finally
+            {
+                Volatile.Write(ref _appLinkRetryScheduled, 0);
+            }
+        });
+    }
 
     private static void RestorePendingCall()
     {

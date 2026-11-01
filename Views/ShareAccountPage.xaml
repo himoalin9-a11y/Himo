@@ -22,8 +22,6 @@
                                      VerticalOptions="Center" FlowDirection="RightToLeft">
                     <Label Text="مشاركة الحساب" FontSize="21" FontAttributes="Bold"
                            TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" />
-                    <Label Text="شارك حسابك بالطريقة التي تناسبك" FontSize="12"
-                           TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
                 <BoxView Grid.Column="2" WidthRequest="42" HeightRequest="42" Opacity="0" />
             </Grid>
@@ -38,8 +36,6 @@
                         <VerticalStackLayout Grid.Column="0" Spacing="4" VerticalOptions="Center" FlowDirection="RightToLeft">
                             <Label Text="رمز QR الخاص بي" FontSize="16" FontAttributes="Bold"
                                    TextColor="{DynamicResource HimoPrimary}" />
-                            <Label Text="عرض رمز حسابك ليتمكن الآخرون من مسحه" FontSize="12"
-                                   TextColor="{DynamicResource HimoTextSecondary}" />
                         </VerticalStackLayout>
                         <Border Grid.Column="1" WidthRequest="48" HeightRequest="48" BackgroundColor="{DynamicResource HimoSoft}"
                                 Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" HorizontalOptions="End" VerticalOptions="Center">
@@ -55,8 +51,6 @@
                         Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="16">
                     <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
                     <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
-                        <Label Text="امسح الرمز للوصول إلى حسابي على Himo" FontSize="13"
-                               TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
                         <Border BackgroundColor="#FFFFFF" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1"
                                 Padding="8" WidthRequest="220" HeightRequest="220">
                             <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
@@ -82,8 +76,6 @@
                         <VerticalStackLayout Grid.Column="0" Spacing="4" VerticalOptions="Center" FlowDirection="RightToLeft">
                             <Label Text="مشاركة رابط الحساب" FontSize="16" FontAttributes="Bold"
                                    TextColor="{DynamicResource HimoPrimary}" />
-                            <Label Text="إرسال رابط ملفك الشخصي إلى الآخرين" FontSize="12"
-                                   TextColor="{DynamicResource HimoTextSecondary}" />
                         </VerticalStackLayout>
                         <Border Grid.Column="1" WidthRequest="48" HeightRequest="48" BackgroundColor="{DynamicResource HimoSoft}"
                                 Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" HorizontalOptions="End" VerticalOptions="Center">
@@ -102,8 +94,6 @@
                         <VerticalStackLayout Grid.Column="0" Spacing="4" VerticalOptions="Center" FlowDirection="RightToLeft">
                             <Label Text="نسخ رابط الحساب" FontSize="16" FontAttributes="Bold"
                                    TextColor="{DynamicResource HimoPrimary}" />
-                            <Label Text="نسخ رابط ملفك الشخصي إلى الحافظة" FontSize="12"
-                                   TextColor="{DynamicResource HimoTextSecondary}" />
                         </VerticalStackLayout>
                         <Border Grid.Column="1" WidthRequest="48" HeightRequest="48" BackgroundColor="{DynamicResource HimoSoft}"
                                 Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" HorizontalOptions="End" VerticalOptions="Center">

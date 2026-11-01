@@ -87,6 +87,36 @@ public sealed class HimoApiClient
     public string BaseUrl =>
         _http.BaseAddress?.ToString() ?? string.Empty;
 
+    /// <summary>Builds a tappable HTTPS link for sharing a Himo public profile in messaging apps.</summary>
+    public string CreatePublicProfileShareLink(Guid userId)
+    {
+        if (userId == Guid.Empty)
+            throw new ArgumentException("معرّف الحساب غير صالح.", nameof(userId));
+        return BuildPublicShareUrl($"join/user/{userId:D}");
+    }
+
+    /// <summary>Builds a tappable HTTPS link for sharing a group invite in messaging apps.</summary>
+    public string CreateGroupInviteShareLink(Guid groupId, string inviteCode)
+    {
+        if (groupId == Guid.Empty)
+            throw new ArgumentException("معرّف المجموعة غير صالح.", nameof(groupId));
+        if (string.IsNullOrWhiteSpace(inviteCode) || inviteCode.Length is < 16 or > 80)
+            throw new ArgumentException("رمز دعوة المجموعة غير صالح.", nameof(inviteCode));
+        return BuildPublicShareUrl($"join/group/{groupId:D}?invite={Uri.EscapeDataString(inviteCode)}");
+    }
+
+    private string BuildPublicShareUrl(string relativePath)
+    {
+        if (!Uri.TryCreate(BaseUrl, UriKind.Absolute, out var baseUri) ||
+            !string.Equals(baseUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("عنوان خادم Himo الآمن غير مضبوط.");
+
+        var normalizedBase = baseUri.AbsoluteUri.EndsWith("/", StringComparison.Ordinal)
+            ? baseUri
+            : new Uri(baseUri.AbsoluteUri + "/", UriKind.Absolute);
+        return new Uri(normalizedBase, relativePath).ToString();
+    }
+
     public bool HasToken =>
         !string.IsNullOrWhiteSpace(GetAccessToken());
 
@@ -504,6 +534,22 @@ public sealed class HimoApiClient
                 cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException(
                 "استجابة الملف الشخصي غير صالحة.");
+    }
+
+    public async Task<PublicUserProfileResponse> GetPublicUserProfileAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        if (userId == Guid.Empty)
+            throw new ArgumentException("معرّف المستخدم غير صالح.", nameof(userId));
+
+        using var response = await _http.GetAsync(
+            $"api/users/{userId:D}/profile",
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<PublicUserProfileResponse>(
+            cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("استجابة الملف الشخصي العام غير صالحة.");
     }
 
     public async Task<UserProfileResponse> UpdateMyProfileAsync(
@@ -1199,15 +1245,35 @@ public sealed class HimoApiClient
 
     public async Task<GroupInviteResponse> GetGroupInviteAsync(Guid groupId, CancellationToken cancellationToken = default)
     {
+        if (groupId == Guid.Empty)
+            throw new ArgumentException("معرّف المجموعة غير صالح.", nameof(groupId));
+
         using var response = await _http.GetAsync($"api/groups/{groupId:D}/invite", cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
-        return await response.Content.ReadFromJsonAsync<GroupInviteResponse>(cancellationToken: cancellationToken)
+        var invite = await response.Content.ReadFromJsonAsync<GroupInviteResponse>(cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException("تعذر إنشاء رابط دعوة المجموعة.");
+
+        // Always share a normal HTTPS URL. WhatsApp and similar apps can tap it;
+        // the web landing page then offers an Android intent to open Himo.
+        var shareLink = CreateGroupInviteShareLink(groupId, invite.InviteCode);
+        return invite with { Link = shareLink };
     }
 
-    public async Task<ConversationDto> JoinGroupByInviteAsync(string inviteCode, CancellationToken cancellationToken = default)
+    public Task<ConversationDto> JoinGroupByInviteAsync(string inviteCode, CancellationToken cancellationToken = default)
+        => JoinGroupByInviteAsync(inviteCode, expectedGroupId: null, cancellationToken: cancellationToken);
+
+    public async Task<ConversationDto> JoinGroupByInviteAsync(
+        string inviteCode,
+        Guid? expectedGroupId,
+        CancellationToken cancellationToken = default)
     {
-        using var response = await _http.PostAsJsonAsync("api/groups/join", new { inviteCode }, cancellationToken);
+        if (expectedGroupId == Guid.Empty)
+            throw new ArgumentException("معرّف المجموعة غير صالح.", nameof(expectedGroupId));
+
+        using var response = await _http.PostAsJsonAsync(
+            "api/groups/join",
+            new { inviteCode, expectedGroupId },
+            cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<ConversationDto>(cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException("استجابة الانضمام إلى المجموعة غير صالحة.");
@@ -1726,6 +1792,13 @@ public sealed class HimoApiClient
         Guid UserId,
         string Email,
         string Name);
+
+    public sealed record PublicUserProfileResponse(
+        Guid UserId,
+        string Name,
+        string Status,
+        bool HasProfilePhoto,
+        long ProfilePhotoVersion = 0);
 
     public sealed record UserProfileResponse(
         Guid UserId,

@@ -12,6 +12,16 @@ namespace Himo.Views;
 
 public partial class SettingsPage : ContentPage
 {
+    private static readonly (string Code, string ResourceKey)[] LanguageOptions =
+    {
+        ("ar", "LanguageArabic"),
+        ("en", "LanguageEnglish"),
+        ("fr", "LanguageFrench"),
+        ("tr", "LanguageTurkish"),
+        ("ur", "LanguageUrdu"),
+        ("es", "LanguageSpanish"),
+        ("id", "LanguageIndonesian")
+    };
 
     private readonly HimoApiClient _api;
     private readonly AccountService _account;
@@ -34,6 +44,7 @@ public partial class SettingsPage : ContentPage
     public SettingsPage(HimoApiClient api, AccountService account, ProfileService profile, ChatService chat, INotificationService notifications, AppLockService appLock, HomeViewModel home)
     {
         InitializeComponent();
+        UpdateLanguageSelectorUi();
         RegisterPrivacyRoutes();
         _api = api;
         _profile = profile;
@@ -44,7 +55,10 @@ public partial class SettingsPage : ContentPage
         if (SettingsAccountNameLabel is not null)
             SettingsAccountNameLabel.Text = string.IsNullOrWhiteSpace(currentAccountName) ? "حسابك في Himo" : currentAccountName;
         if (SettingsAccountEmailLabel is not null)
-            SettingsAccountEmailLabel.Text = string.IsNullOrWhiteSpace(currentAccountEmail) ? "إدارة حسابك وتفضيلاتك" : currentAccountEmail;
+        {
+            SettingsAccountEmailLabel.Text = currentAccountEmail ?? string.Empty;
+            SettingsAccountEmailLabel.IsVisible = !string.IsNullOrWhiteSpace(currentAccountEmail);
+        }
         _chat = chat;
         _notifications = notifications;
         _appLock = appLock;
@@ -282,6 +296,8 @@ public partial class SettingsPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        UpdateLanguageSelectorUi();
+        AppLocalization.AttachToPage(this);
         _initializingAppearanceSwitch = true;
         if (DarkModeSwitch is not null)
             DarkModeSwitch.IsToggled = HimoAppearanceManager.IsActiveStyleDark;
@@ -291,6 +307,49 @@ public partial class SettingsPage : ContentPage
         UpdateNotificationPermissionStatus();
         UpdateAccountCard();
         _ = RefreshOwnProfilePhotoAsync();
+    }
+
+    private void UpdateLanguageSelectorUi()
+    {
+        if (SettingsRoot is not null)
+            SettingsRoot.FlowDirection = AppLocalization.PreferredFlowDirection;
+
+        var option = LanguageOptions.FirstOrDefault(item => item.Code == AppLocalization.CurrentLanguageCode);
+        if (LanguageValueLabel is not null)
+            LanguageValueLabel.Text = AppLocalization.T(string.IsNullOrWhiteSpace(option.ResourceKey) ? "LanguageArabic" : option.ResourceKey);
+    }
+
+    private async void LanguageRowTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            await UiMotion.PressAsync(sender as VisualElement);
+            var localizedOptions = LanguageOptions
+                .Select(option => (option.Code, option.ResourceKey, Label: AppLocalization.T(option.ResourceKey)))
+                .ToArray();
+            var cancel = AppLocalization.T("Cancel");
+            var selected = await DisplayActionSheetAsync(
+                AppLocalization.T("LanguageTitle"),
+                cancel,
+                null,
+                localizedOptions.Select(option => option.Label).ToArray());
+
+            var chosen = localizedOptions.FirstOrDefault(option =>
+                string.Equals(option.Label, selected, StringComparison.Ordinal));
+            if (string.IsNullOrWhiteSpace(chosen.Code))
+                return;
+
+            AppLocalization.SetLanguage(chosen.Code);
+            UpdateLanguageSelectorUi();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo Language] Selection failed: {ex}");
+            await DisplayAlertAsync(
+                AppLocalization.TranslateSourceText("اللغة"),
+                AppLocalization.TranslateSourceText("تعذر تطبيق اللغة المختارة.") + " " + ex.Message,
+                AppLocalization.TranslateSourceText("حسنًا"));
+        }
     }
 
     private void DarkModeToggled(object? sender, ToggledEventArgs e)
@@ -554,7 +613,10 @@ public partial class SettingsPage : ContentPage
         if (SettingsAccountNameLabel is not null)
             SettingsAccountNameLabel.Text = string.IsNullOrWhiteSpace(currentName) ? "حسابك في Himo" : currentName;
         if (SettingsAccountEmailLabel is not null)
-            SettingsAccountEmailLabel.Text = string.IsNullOrWhiteSpace(currentEmail) ? "إدارة حسابك وتفضيلاتك" : currentEmail;
+        {
+            SettingsAccountEmailLabel.Text = currentEmail ?? string.Empty;
+            SettingsAccountEmailLabel.IsVisible = !string.IsNullOrWhiteSpace(currentEmail);
+        }
         DisplayOwnProfilePhoto(_profile.Profile.PhotoPath);
     }
 

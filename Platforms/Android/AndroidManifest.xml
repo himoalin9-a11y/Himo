@@ -55,6 +55,12 @@
         <category android:name="android.intent.category.BROWSABLE" />
         <data android:scheme="himo" android:host="user" />
       </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="himo" android:host="group" />
+      </intent-filter>
     </activity>
 
     <!-- Permanent explicit launch component for Visual Studio. It is intentionally not a launcher icon and is never managed by the icon picker. -->

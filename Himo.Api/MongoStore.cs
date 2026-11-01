@@ -151,6 +151,24 @@ sealed class MongoStore
         return new { userId, email = user.PhoneNumber, name = user.Name, status = user.Status, contactPhoneNumber = user.ContactPhoneNumber, phoneDiscoverable = user.PhoneDiscoverable, hasProfilePhoto = user.ProfilePhoto is { Length: > 0 }, username = user.Username, profilePhotoVersion = user.ProfilePhotoVersion };
     }
 
+    public object GetPublicProfile(Guid userId)
+    {
+        EnsureIndexes();
+        var user = _users.Find(x => x.Id == GuidText(userId)).FirstOrDefault()
+            ?? throw new InvalidOperationException("المستخدم غير موجود.");
+
+        // A share link exposes only the public identity fields. Never return the
+        // account email, phone number, or phone-discovery/privacy settings here.
+        return new
+        {
+            userId,
+            name = user.Name,
+            status = user.Status,
+            hasProfilePhoto = user.ProfilePhoto is { Length: > 0 },
+            profilePhotoVersion = user.ProfilePhotoVersion
+        };
+    }
+
     public (string Email, string Name) GetAccountEmailAndName(Guid userId)
     {
         EnsureIndexes();
@@ -821,13 +839,19 @@ sealed class MongoStore
         }
     }
 
-    public ConversationDto? JoinGroupByInvite(string inviteCode, Guid userId)
+    public ConversationDto? JoinGroupByInvite(string inviteCode, Guid userId, Guid? expectedGroupId = null)
     {
         EnsureIndexes();
         inviteCode = (inviteCode ?? string.Empty).Trim();
-        if (inviteCode.Length is < 16 or > 80) return null;
+        if (inviteCode.Length is < 16 or > 80 || expectedGroupId == Guid.Empty) return null;
         var group = _conversations.Find(x => x.IsGroup && x.InviteCode == inviteCode).FirstOrDefault();
         if (group is null) return null;
+
+        // Validate the ID embedded in the shared URI before creating membership.
+        // This prevents a valid invite code from being paired with a different group ID.
+        if (expectedGroupId.HasValue &&
+            (!Guid.TryParse(group.Id, out var actualGroupId) || actualGroupId != expectedGroupId.Value))
+            return null;
         if (group.RequireAdminApproval)
             throw new UnauthorizedAccessException("تتطلب هذه المجموعة موافقة المشرف قبل الانضمام.");
         var uid = GuidText(userId);

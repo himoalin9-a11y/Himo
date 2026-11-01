@@ -1,5 +1,6 @@
 using Himo.Views;
 using Himo.Services;
+using Himo.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
@@ -10,6 +11,7 @@ public partial class AppShell : Shell
 {
     private static readonly SettingsPageRouteFactory SettingsFactory = new();
     private static readonly ProfilePageRouteFactory ProfileFactory = new();
+    private static readonly SharedProfilePageRouteFactory SharedProfileFactory = new();
     private static readonly QrScannerPageRouteFactory QrScannerFactory = new();
     private static readonly ShareAccountPageRouteFactory ShareAccountFactory = new();
     private readonly IServiceProvider _services;
@@ -21,12 +23,12 @@ public partial class AppShell : Shell
         Routing.RegisterRoute("CallPage", new CallPageRouteFactory());
         Routing.RegisterRoute("settings", SettingsFactory);
         Routing.RegisterRoute("profile", ProfileFactory);
+        Routing.RegisterRoute("shared-profile", SharedProfileFactory);
         Routing.RegisterRoute("qr-scanner", QrScannerFactory);
         Routing.RegisterRoute("share-account", ShareAccountFactory);
         Routing.RegisterRoute(nameof(QrScannerPage), QrScannerFactory);
         Routing.RegisterRoute(nameof(ShareAccountPage), ShareAccountFactory);
         Routing.RegisterRoute("search", typeof(SearchPage));
-        Routing.RegisterRoute("new-conversation", typeof(NewConversationPage));
         Routing.RegisterRoute("CreateGroupPage", new CreateGroupPageRouteFactory());
         Routing.RegisterRoute("icons-appearance", typeof(IconsAppearanceSettingsPage));
         Routing.RegisterRoute("icon-selection", typeof(IconSelectionSettingsPage));
@@ -49,7 +51,14 @@ public partial class AppShell : Shell
         SettingsFactory.ResetCache();
         ProfileFactory.ResetCache();
 
-        HomeContent.Content = _services.GetRequiredService<HomePage>();
+        var homePage = _services.GetRequiredService<HomePage>();
+        HomeContent.Content = homePage;
+        AppLocalization.AttachToPage(homePage);
+#if ANDROID
+        // A shared Himo profile/group link may have launched the app before Shell
+        // existed. Process it now, after routes and the home page are registered.
+        global::Himo.MainActivity.TryNavigateToPendingAppLink();
+#endif
         // Also cover the sign-in and app-unlock flows that enter AppShell without
         // going through the welcome-page timer. Yield long enough for the first
         // home frame to render before warming the destination pages.
@@ -59,7 +68,13 @@ public partial class AppShell : Shell
     private void OnShellNavigated(object? sender, ShellNavigatedEventArgs e)
     {
         var page = CurrentPage;
-        if (page is null || page is ChatPage or CallPage)
+        if (page is null)
+            return;
+
+        // Localize each page as it enters the navigation stack. CollectionView cells
+        // are skipped so message/contact/user content is never rewritten.
+        AppLocalization.AttachToPage(page);
+        if (page is ChatPage or CallPage)
             return;
 
         // All normal app pages receive the active palette and icon family on route
@@ -218,6 +233,23 @@ internal sealed class ProfilePageRouteFactory : RouteFactory
 
     private static bool IsInNavigationStack(Page page) =>
         Shell.Current?.Navigation?.NavigationStack.Any(item => ReferenceEquals(item, page)) == true;
+}
+
+internal sealed class SharedProfilePageRouteFactory : RouteFactory
+{
+    public override Element GetOrCreate()
+    {
+        var services = Application.Current?.Handler?.MauiContext?.Services
+            ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق.");
+        return new SharedProfilePage(
+            services.GetRequiredService<HimoApiClient>(),
+            services.GetRequiredService<HomeViewModel>());
+    }
+
+    public override Element GetOrCreate(IServiceProvider services) =>
+        new SharedProfilePage(
+            services.GetRequiredService<HimoApiClient>(),
+            services.GetRequiredService<HomeViewModel>());
 }
 
 internal sealed class CreateGroupPageRouteFactory : RouteFactory

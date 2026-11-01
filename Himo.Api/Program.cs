@@ -143,6 +143,118 @@ webApp.UseExceptionHandler(errorApp =>
 
 webApp.MapGet("/", () => Results.Ok(new { status = "ok", service = "Himo.Api", message = "Himo API is running", health = "/health" }));
 
+// WhatsApp and many other messaging clients reliably recognize HTTPS links,
+// but may not treat custom schemes (himo://) as tappable links. This landing
+// page converts an HTTPS tap into an explicit Android intent to open Himo.
+webApp.MapGet("/join/group/{id:guid}", (Guid id, HttpRequest request) =>
+{
+    var invite = request.Query["invite"].ToString().Trim();
+    if (id == Guid.Empty || invite.Length is < 16 or > 80)
+    {
+        return Results.Content(
+            "<!doctype html><html lang=\"ar\" dir=\"rtl\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>رابط غير صالح</title><body style=\"font-family:Arial,sans-serif;background:#090d22;color:#fff;text-align:center;padding:48px 20px\"><h2>رابط دعوة المجموعة غير صالح</h2><p>اطلب من مشرف المجموعة إرسال رابط جديد.</p></body></html>",
+            "text/html; charset=utf-8",
+            statusCode: StatusCodes.Status400BadRequest);
+    }
+
+    var encodedInvite = Uri.EscapeDataString(invite);
+    var appLink = $"himo://group/{id:D}?invite={encodedInvite}";
+    var intentLink = $"intent://group/{id:D}?invite={encodedInvite}#Intent;scheme=himo;package=com.companyname.himo;end";
+    var safeAppLink = System.Net.WebUtility.HtmlEncode(appLink);
+    var safeIntentLink = System.Net.WebUtility.HtmlEncode(intentLink);
+
+    var html = $$"""
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="no-referrer">
+  <title>دعوة مجموعة Himo</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 15% 10%,#28145d 0,transparent 38%),#080d22;color:#f7f5ff;font-family:Arial,sans-serif}
+    main{width:min(440px,100%);padding:34px 24px;border:1px solid #47317d;border-radius:28px;background:rgba(16,20,52,.94);text-align:center;box-shadow:0 20px 70px #0008}
+    .logo{width:66px;height:66px;margin:0 auto 20px;display:grid;place-items:center;border-radius:21px;background:linear-gradient(135deg,#9b55ff,#5734d2);font-size:32px;font-weight:800}
+    h1{font-size:24px;margin:0 0 12px}p{color:#c4c8e2;line-height:1.8;margin:0 0 25px}
+    a{display:block;text-decoration:none;border-radius:16px;padding:16px 18px;background:linear-gradient(100deg,#9b55ff,#6544e8);color:white;font-weight:700;font-size:17px}
+    .direct{margin-top:15px;background:transparent;border:1px solid #62528e;color:#d9ccff;font-size:14px}
+    small{display:block;margin-top:22px;color:#969fca;line-height:1.7}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="logo">H</div>
+    <h1>دعوة للانضمام إلى مجموعة</h1>
+    <p>اضغط على الزر أدناه لفتح المجموعة في تطبيق Himo، ثم أكّد الانضمام من داخل التطبيق.</p>
+    <a href="{{safeIntentLink}}">فتح المجموعة في Himo</a>
+    <a class="direct" href="{{safeAppLink}}">فتح الرابط مباشرة</a>
+    <small>إذا لم يفتح التطبيق، تأكد من تثبيت Himo على جهازك ثم جرّب مرة أخرى.</small>
+  </main>
+</body>
+</html>
+""";
+
+    return Results.Content(html, "text/html; charset=utf-8");
+});
+
+// Public-profile share landing page. WhatsApp opens this ordinary HTTPS page;
+// the explicit button then invokes the app's already-registered himo://user route.
+// The user ID is public routing data only; profile details remain behind the app API.
+webApp.MapGet("/join/user/{id:guid}", (Guid id) =>
+{
+    if (id == Guid.Empty)
+    {
+        return Results.Content(
+            "<!doctype html><html lang=\"ar\" dir=\"rtl\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>رابط غير صالح</title><body style=\"font-family:Arial,sans-serif;background:#090d22;color:#fff;text-align:center;padding:48px 20px\"><h2>رابط الملف الشخصي غير صالح</h2><p>اطلب من صاحب الحساب إرسال رابط جديد.</p></body></html>",
+            "text/html; charset=utf-8",
+            statusCode: StatusCodes.Status400BadRequest);
+    }
+
+    var appLink = $"himo://user/{id:D}";
+    var intentLink = $"intent://user/{id:D}#Intent;scheme=himo;package=com.companyname.himo;end";
+    var safeAppLink = System.Net.WebUtility.HtmlEncode(appLink);
+    var safeIntentLink = System.Net.WebUtility.HtmlEncode(intentLink);
+
+    var html = $$"""
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="no-referrer">
+  <meta property="og:title" content="ملف شخصي على Himo">
+  <meta property="og:description" content="افتح الملف الشخصي وتواصل عبر تطبيق Himo.">
+  <title>ملف شخصي على Himo</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 15% 10%,#28145d 0,transparent 38%),#080d22;color:#f7f5ff;font-family:Arial,sans-serif}
+    main{width:min(440px,100%);padding:34px 24px;border:1px solid #47317d;border-radius:28px;background:rgba(16,20,52,.94);text-align:center;box-shadow:0 20px 70px #0008}
+    .logo{width:66px;height:66px;margin:0 auto 20px;display:grid;place-items:center;border-radius:21px;background:linear-gradient(135deg,#9b55ff,#5734d2);font-size:32px;font-weight:800}
+    h1{font-size:24px;margin:0 0 12px}p{color:#c4c8e2;line-height:1.8;margin:0 0 25px}
+    a{display:block;text-decoration:none;border-radius:16px;padding:16px 18px;background:linear-gradient(100deg,#9b55ff,#6544e8);color:white;font-weight:700;font-size:17px}
+    .direct{margin-top:15px;background:transparent;border:1px solid #62528e;color:#d9ccff;font-size:14px}
+    small{display:block;margin-top:22px;color:#969fca;line-height:1.7}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="logo">H</div>
+    <h1>ملف شخصي على Himo</h1>
+    <p>تمت مشاركة ملف شخصي معك. افتح تطبيق Himo لعرض الملف والتواصل مع صاحبه.</p>
+    <a href="{{safeIntentLink}}">فتح الملف الشخصي في Himo</a>
+    <a class="direct" href="{{safeAppLink}}">فتح الرابط مباشرة</a>
+    <small>إذا لم يفتح التطبيق، تأكد من تثبيت Himo على جهازك ثم جرّب مرة أخرى.</small>
+  </main>
+</body>
+</html>
+""";
+
+    return Results.Content(html, "text/html; charset=utf-8");
+});
+
 webApp.MapGet("/health", () =>
 {
     // Dependency-free liveness endpoint for Render.
@@ -384,6 +496,14 @@ webApp.MapGet("/api/me", (HttpRequest http, MongoStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
     return Results.Ok(store.GetProfile(session.UserId));
+});
+
+// Profile links reveal only public fields and require an authenticated Himo session.
+webApp.MapGet("/api/users/{id:guid}/profile", (Guid id, HttpRequest http, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    try { return Results.Ok(store.GetPublicProfile(id)); }
+    catch (InvalidOperationException) { return Results.NotFound(); }
 });
 
 webApp.MapDelete("/api/me", (HttpRequest http, MongoStore store) =>
@@ -933,13 +1053,23 @@ webApp.MapDelete("/api/groups/{id:guid}/leave", (Guid id, HttpRequest http, Mong
     }
 });
 
-webApp.MapGet("/api/groups/{id:guid}/invite", (Guid id, HttpRequest http, MongoStore store) =>
+webApp.MapGet("/api/groups/{id:guid}/invite", (Guid id, HttpRequest http, MongoStore store, IConfiguration configuration) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
     try
     {
         var invite = store.GetGroupInviteCode(id, session.UserId);
-        return invite is null ? Results.NotFound() : Results.Ok(new { inviteCode = invite, link = $"himo://group/{id:D}?invite={Uri.EscapeDataString(invite)}" });
+        if (invite is null) return Results.NotFound();
+
+        // Configure HIMO_PUBLIC_BASE_URL only when the public API hostname changes.
+        // This defaults to the production API address currently used by Himo clients.
+        var publicBaseUrl = (configuration["HIMO_PUBLIC_BASE_URL"] ?? "https://himo-api.onrender.com").Trim().TrimEnd('/');
+        if (!Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var publicBaseUri) ||
+            !string.Equals(publicBaseUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            return Results.Problem(statusCode: StatusCodes.Status500InternalServerError, title: "تعذر إنشاء رابط آمن للمجموعة.");
+
+        var link = $"{publicBaseUri.GetLeftPart(UriPartial.Authority)}/join/group/{id:D}?invite={Uri.EscapeDataString(invite)}";
+        return Results.Ok(new { inviteCode = invite, link });
     }
     catch (UnauthorizedAccessException ex) { return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "غير مسموح", detail: ex.Message); }
 });
@@ -949,7 +1079,10 @@ webApp.MapPost("/api/groups/join", (HttpRequest http, JoinGroupByInviteRequest r
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
     try
     {
-        var conversation = store.JoinGroupByInvite(request.InviteCode ?? string.Empty, session.UserId);
+        var conversation = store.JoinGroupByInvite(
+            request.InviteCode ?? string.Empty,
+            session.UserId,
+            request.ExpectedGroupId);
         return conversation is null ? Results.NotFound() : Results.Ok(conversation);
     }
     catch (UnauthorizedAccessException ex) { return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "يتطلب موافقة المشرف", detail: ex.Message); }
@@ -1551,7 +1684,7 @@ record CreateConversationRequest(string? Name, Guid? UserId);
 record UpdateGroupInfoRequest(string? Name, string? Description);
 record GroupPhotoUploadRequest(string? Base64Data, string? ContentType);
 record SetGroupMemberAdminRequest(bool IsAdmin);
-record JoinGroupByInviteRequest(string? InviteCode);
+record JoinGroupByInviteRequest(string? InviteCode, Guid? ExpectedGroupId = null);
 record GroupMemberDto(Guid Id, string Name, bool IsAdmin, bool HasProfilePhoto, long ProfilePhotoVersion, DateTimeOffset JoinedAt, string Status = "", string Username = "");
 record GroupDetailsDto(Guid Id, string Name, string Description, string InviteCode, bool HasPhoto, long PhotoVersion, bool CanManage, bool CanShareInviteLink, int DisappearingSeconds, IReadOnlyList<GroupMemberDto> Members);
 record CreateGroupRequest(string? Name, Guid[]? UserIds, int DisappearingSeconds = 0, bool AllMembersCanAddMembers = false, bool AllMembersCanShareInviteLink = false, bool RequireAdminApproval = false, bool AdminsOnlyMessages = false);

@@ -135,21 +135,18 @@ public partial class CallPage : ContentPage
 
     // Runtime call-state changes replace ImageButton.Source, so use the active theme
     // variant directly instead of falling back to a generic-colored PNG.
-    // The call controls use a dedicated, consistent white icon family on the dark IMO bar.
-    // This is a presentation-only resource mapping; call state and event handlers are unchanged.
     private static string ThemedCallIcon(string fileName)
     {
-        return fileName switch
-        {
-            "himo_call_mic.png" => "imo_call_mic.png",
-            "himo_call_mic_off.png" => "imo_call_mic_off.png",
-            "himo_call_speaker.png" => "imo_call_speaker.png",
-            "himo_call_speaker_off.png" => "imo_call_speaker_off.png",
-            "himo_call_camera.png" => "imo_call_camera.png",
-            "himo_call_camera_off.png" => "imo_call_camera_off.png",
-            "himo_cam_switch.png" => "imo_call_switch_camera.png",
-            _ => "imo_call_more.png"
-        };
+        var styleId = HimoAppearanceManager.ActiveStyleId;
+        var supportedStyle = styleId is
+            "d_classic" or "d_sky" or "d_light" or "d_graphite" or "d_mint" or "d_rose" or
+            "p_royal_gold" or "p_electric_blue" or "p_neon_violet" or "p_emerald" or
+            "p_ruby" or "p_silver" or "p_aurora" or "p_rose_gold";
+
+        if (!supportedStyle)
+            styleId = "d_classic";
+
+        return $"himo_theme_{styleId}_{fileName}";
     }
 
     public CallPage(ICallService calls, HimoRealtimeService realtime, WebRtcNegotiationCoordinator negotiation, ChatService chat, HimoApiClient api, INotificationService notifications)
@@ -295,7 +292,7 @@ public partial class CallPage : ContentPage
     private void ApplyPeerAvatar(string? path)
     {
         var hasPhoto = !string.IsNullOrWhiteSpace(path) && File.Exists(path);
-        var source = hasPhoto ? ImageSource.FromFile(path!) : null;
+        ImageSource? source = hasPhoto ? ImageSource.FromFile(path!) : null;
 
         AudioAvatarBackgroundImage.Source = source;
         AudioAvatarBackgroundImage.IsVisible = hasPhoto;
@@ -424,7 +421,7 @@ public partial class CallPage : ContentPage
             {
                 nativeImage.SetRenderEffect(
                     global::Android.Graphics.RenderEffect.CreateBlurEffect(
-                        28f, 28f, global::Android.Graphics.Shader.TileMode.Clamp));
+                        28f, 28f, global::Android.Graphics.Shader.TileMode.Clamp!));
             }
         }
         catch (Exception ex)
@@ -1123,15 +1120,7 @@ public partial class CallPage : ContentPage
         {
             StopIncomingRingtone();
             var context = global::Android.App.Application.Context;
-            if (NotificationService.IsGroupCallMutedForConversation(_conversationId.ToString("D")))
-            {
-                // Keep the incoming call screen available, but remain silent for this group.
-                StartIncomingRingTimeout(_callId);
-                return;
-            }
-
-            var uri = NotificationService.GetGroupCallToneUriForConversation(context, _conversationId.ToString("D"))
-                ?? global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone);
+            var uri = global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone);
             if (uri is null) return;
 
             var ringtone = global::Android.Media.RingtoneManager.GetRingtone(context, uri);

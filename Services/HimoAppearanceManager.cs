@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
@@ -491,9 +491,11 @@ public static class HimoAppearanceManager
         if (view is not Label && view is not Button)
             return;
 
-        var foreground = GetTextColor(view);
-        var background = FindNearestOpaqueBackground(view);
-        if (foreground is null || background is null || ContrastRatio(foreground, background) >= 4.5)
+        if (GetTextColor(view) is not { } foreground ||
+            FindNearestOpaqueBackground(view) is not { } background)
+            return;
+
+        if (ContrastRatio(foreground, background) >= 4.5)
             return;
 
         // These are text colors only; select the one with the best contrast for the

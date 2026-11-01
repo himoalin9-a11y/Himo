@@ -101,11 +101,10 @@ public partial class ShareAccountPage : ContentPage
         if (userId == Guid.Empty) return;
         var safeName = string.IsNullOrWhiteSpace(name) ? "مستخدم Himo" : name.Trim();
         _shareDisplayName = safeName;
-        var nameToken = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(safeName))
-            .TrimEnd('=')
-            .Replace('+', '-')
-            .Replace('/', '_');
-        _accountShareUri = $"himo://user/{userId:D}?name64={nameToken}";
+        // Share an HTTPS landing URL instead of a custom scheme. Messaging apps
+        // such as WhatsApp reliably recognize the web URL as a tappable link.
+        // The page's Open button launches himo://user/{id} on Android.
+        _accountShareUri = _api.CreatePublicProfileShareLink(userId);
         AccountLinkLabel.Text = _accountShareUri;
         AccountQrCode.Value = _accountShareUri;
         AccountQrCode.IsVisible = true;

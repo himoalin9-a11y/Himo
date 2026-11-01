@@ -45,6 +45,7 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
         _pageActive = true;
         Interlocked.Exchange(ref _handlingScan, 0);
         _cameraReady = false;
+        AppLocalization.AttachToPage(this);
         _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this);
         _ = InitializeScannerAsync();
     }
@@ -68,7 +69,7 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
         {
             var incomingLink = _incomingProfileLink;
             _incomingProfileLink = null;
-            await HandleProfileLinkAsync(incomingLink);
+            await HandleHimoLinkAsync(incomingLink);
             // If the user declines the shared link, continue into the scanner.
             // If the link opened a chat, OnDisappearing flips _pageActive to false.
             if (!_pageActive) return;
@@ -102,7 +103,7 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
             ScannerView.IsEnabled = true;
             ScannerView.IsVisible = true;
             ScannerView.IsDetecting = true;
-            ScannerStatusLabel.Text = "وجّه الكاميرا إلى رمز QR الخاص بحساب Himo.";
+            ScannerStatusLabel.Text = "امسح رمز حساب أو مجموعة Himo.";
         }
         else
         {
@@ -130,7 +131,7 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
             try
             {
                 ScannerView.IsDetecting = false;
-                await HandleProfileLinkAsync(value);
+                await HandleHimoLinkAsync(value);
             }
             catch (Exception ex)
             {
@@ -151,18 +152,12 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
         });
     }
 
-    private async Task HandleProfileLinkAsync(string value)
+    private async Task HandleHimoLinkAsync(string value)
     {
-        if (TryParseGroupInviteLink(value, out var inviteCode))
+        if (!HimoAppLinkRouter.TryNormalizeLink(value, out var uri, _api.BaseUrl))
         {
-            await HandleGroupInviteAsync(inviteCode);
-            return;
-        }
-
-        if (!TryParseProfileLink(value, out var userId, out var userName))
-        {
-            await DisplayAlertAsync("رمز غير صالح", "هذا الرمز لا يحتوي على رابط حساب Himo صالح.", "حسنًا");
-            ScannerStatusLabel.Text = "جرّب مسح رمز QR لحساب Himo.";
+            await DisplayAlertAsync("رمز غير صالح", "هذا الرمز لا يحتوي على رابط Himo صالح.", "حسنًا");
+            ScannerStatusLabel.Text = "امسح رمز حساب أو مجموعة Himo.";
             return;
         }
 
@@ -171,149 +166,75 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
 
         if (!_api.HasToken)
         {
-            await DisplayAlertAsync("تسجيل الدخول", "سجّل الدخول إلى Himo قبل فتح حساب من رمز QR.", "حسنًا");
-            return;
-        }
-
-        var currentUserId = _account.CurrentAccount?.UserId ?? Guid.Empty;
-        if (currentUserId == Guid.Empty)
-        {
-            try
-            {
-                var ownProfile = await _api.GetMyProfileAsync();
-                if (ownProfile.UserId != Guid.Empty)
-                {
-                    currentUserId = ownProfile.UserId;
-                    _account.SetUserId(currentUserId);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Himo QR] Could not resolve current user id: {ex.Message}");
-            }
-        }
-
-        if (currentUserId != Guid.Empty && currentUserId == userId)
-        {
-            await DisplayAlertAsync("هذا حسابك", "رمز QR يعود إلى حسابك الحالي.", "حسنًا");
-            ScannerStatusLabel.Text = "يمكنك مسح رمز حساب شخص آخر.";
-            return;
-        }
-
-        var confirmed = await DisplayAlertAsync("تم العثور على حساب", $"هل تريد بدء محادثة مع {userName}؟", "بدء المحادثة", "إلغاء");
-        if (!confirmed)
-        {
-            ScannerStatusLabel.Text = "يمكنك مسح رمز آخر في أي وقت.";
+            await DisplayAlertAsync("تسجيل الدخول", "سجّل الدخول إلى Himo أولًا.", "حسنًا");
             return;
         }
 
         try
         {
-            var conversation = await _home.CreateConversationWithUserAsync(userName, userId);
-            var routeId = !string.IsNullOrWhiteSpace(conversation.RemoteId)
-                ? conversation.RemoteId
-                : conversation.Id.ToString();
+            string routeId;
+            if (uri.Host.Equals("user", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!Guid.TryParse(Uri.UnescapeDataString(uri.AbsolutePath).Trim('/'), out var userId) || userId == Guid.Empty)
+                    throw new InvalidOperationException("رابط الحساب غير صالح.");
+
+                var currentUserId = _account.CurrentAccount?.UserId ?? Guid.Empty;
+                if (currentUserId == Guid.Empty)
+                {
+                    var ownProfile = await _api.GetMyProfileAsync();
+                    currentUserId = ownProfile.UserId;
+                    if (currentUserId != Guid.Empty) _account.SetUserId(currentUserId);
+                }
+
+                var userName = HimoAppLinkRouter.ReadDisplayName(uri) ?? "مستخدم Himo";
+                var isSelf = currentUserId != Guid.Empty && currentUserId == userId;
+                if (isSelf)
+                {
+                    await SwipePageTransition.NavigateAsync(this, "profile", SwipeDirection.Left);
+                }
+                else
+                {
+                    var route = $"shared-profile?userId={userId:D}&name={Uri.EscapeDataString(userName)}";
+                    await SwipePageTransition.NavigateAsync(this, route, SwipeDirection.Left);
+                }
+                return;
+            }
+            else
+            {
+                if (!Guid.TryParse(Uri.UnescapeDataString(uri.AbsolutePath).Trim('/'), out var groupId) || groupId == Guid.Empty)
+                    throw new InvalidOperationException("رابط المجموعة غير صالح.");
+                var inviteCode = HimoAppLinkRouter.ReadQueryValue(uri, "invite");
+                if (string.IsNullOrWhiteSpace(inviteCode))
+                    throw new InvalidOperationException("رمز دعوة المجموعة غير موجود.");
+
+                var confirmed = await DisplayAlertAsync(
+                    AppLocalization.T("OpenSharedGroupTitle"),
+                    AppLocalization.T("OpenSharedGroupPrompt"),
+                    AppLocalization.T("OpenSharedGroupAction"),
+                    AppLocalization.T("Cancel"));
+                if (!confirmed)
+                {
+                    ScannerStatusLabel.Text = "يمكنك مسح رمز آخر.";
+                    return;
+                }
+
+                var conversation = await _home.JoinGroupByInviteAsync(inviteCode, groupId);
+                if (!Guid.TryParse(conversation.RemoteId, out var joinedGroupId) || joinedGroupId != groupId)
+                    throw new InvalidOperationException("رمز الدعوة لا يطابق المجموعة الموجودة في الرابط.");
+                routeId = conversation.RemoteId!;
+            }
+
             if (Shell.Current is not null)
                 await SwipePageTransition.NavigateAsync(this, $"chat?id={Uri.EscapeDataString(routeId)}", SwipeDirection.Left);
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذر فتح الحساب", ex.Message, "حسنًا");
-            ScannerStatusLabel.Text = "لم نتمكن من فتح هذا الحساب. تحقق من الاتصال ثم جرّب مرة أخرى.";
+            await DisplayAlertAsync(
+                AppLocalization.T("LinkOpenFailed"),
+                AppLocalization.TranslateSourceText(ex.Message),
+                AppLocalization.T("OK"));
+            ScannerStatusLabel.Text = "تعذر فتح الرابط. تحقق من الاتصال وحاول مرة أخرى.";
         }
-    }
-
-    private async Task HandleGroupInviteAsync(string inviteCode)
-    {
-        try { await _api.TokenInitialization; }
-        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo QR] Token initialization failed: {ex.Message}"); }
-        if (!_api.HasToken)
-        {
-            await DisplayAlertAsync("تسجيل الدخول", "سجّل الدخول إلى Himo قبل الانضمام إلى مجموعة.", "حسنًا");
-            return;
-        }
-
-        if (!await DisplayAlertAsync("دعوة مجموعة", "تم العثور على رابط دعوة إلى مجموعة Himo. هل تريد الانضمام؟", "انضمام", "إلغاء"))
-        {
-            ScannerStatusLabel.Text = "يمكنك مسح رمز آخر في أي وقت.";
-            return;
-        }
-
-        try
-        {
-            var group = await _api.JoinGroupByInviteAsync(inviteCode);
-            try { await _home.RefreshFromServerAsync(); }
-            catch (Exception refreshError) { System.Diagnostics.Debug.WriteLine($"[Himo QR] Group refresh failed: {refreshError.Message}"); }
-            if (Shell.Current is not null)
-                await SwipePageTransition.NavigateAsync(this, $"chat?id={Uri.EscapeDataString(group.Id.ToString("D"))}", SwipeDirection.Left);
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlertAsync("تعذر الانضمام", ex.Message, "حسنًا");
-            ScannerStatusLabel.Text = "تعذر الانضمام إلى المجموعة. تحقق من صلاحية رابط الدعوة.";
-        }
-    }
-
-    private static bool TryParseGroupInviteLink(string value, out string inviteCode)
-    {
-        inviteCode = string.Empty;
-        if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri) ||
-            !uri.Scheme.Equals("himo", StringComparison.OrdinalIgnoreCase) ||
-            !uri.Host.Equals("group", StringComparison.OrdinalIgnoreCase) ||
-            !Guid.TryParse(Uri.UnescapeDataString(uri.AbsolutePath).Trim('/'), out _))
-            return false;
-
-        foreach (var item in uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var pair = item.Split('=', 2);
-            if (pair.Length != 2 || !pair[0].Equals("invite", StringComparison.OrdinalIgnoreCase)) continue;
-            inviteCode = Uri.UnescapeDataString(pair[1]).Trim();
-            return inviteCode.Length is >= 16 and <= 80 && inviteCode.All(Uri.IsHexDigit);
-        }
-        return false;
-    }
-
-    private static bool TryParseProfileLink(string value, out Guid userId, out string name)
-    {
-        userId = Guid.Empty;
-        name = "حساب Himo";
-        // QR codes generated by ShareAccountPage use himo://user/{guid}. Trim
-        // scanner whitespace and validate the exact scheme/host/path before use.
-        if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri)
-            || !uri.Scheme.Equals("himo", StringComparison.OrdinalIgnoreCase)
-            || !uri.Host.Equals("user", StringComparison.OrdinalIgnoreCase)
-            || !Guid.TryParse(Uri.UnescapeDataString(uri.AbsolutePath).Trim('/'), out userId))
-            return false;
-
-        var query = uri.Query.TrimStart('?');
-        foreach (var item in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var pair = item.Split('=', 2);
-            if (pair.Length != 2) continue;
-            try
-            {
-                string decoded;
-                if (pair[0].Equals("name64", StringComparison.OrdinalIgnoreCase))
-                {
-                    var token = pair[1].Replace('-', '+').Replace('_', '/');
-                    token = token.PadRight(token.Length + ((4 - token.Length % 4) % 4), '=');
-                    decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(token)).Trim();
-                }
-                else if (pair[0].Equals("name", StringComparison.OrdinalIgnoreCase))
-                {
-                    decoded = Uri.UnescapeDataString(pair[1].Replace('+', ' ')).Trim();
-                }
-                else continue;
-
-                if (!string.IsNullOrWhiteSpace(decoded) && decoded.Length <= 60)
-                    name = decoded;
-            }
-            catch (FormatException)
-            {
-                // An invalid optional display-name token falls back to a generic account name.
-            }
-        }
-        return true;
     }
 
     private async void BackClicked(object? sender, EventArgs e)

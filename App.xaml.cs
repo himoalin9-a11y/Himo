@@ -1,4 +1,4 @@
-﻿using Himo.Services;
+using Himo.Services;
 using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using Microsoft.Maui.Controls;
@@ -53,6 +53,7 @@ public partial class App : Application
     public App(AccountService account, HimoApiClient api, ChatService chat, INotificationService notifications, AppLockService appLock, PushNotificationManager pushNotifications)
     {
         InitializeComponent();
+        AppLocalization.InitializeFromPreferences();
 #if DEBUG
         AppDomain.CurrentDomain.FirstChanceException -= LogFirstChanceNullReference;
         AppDomain.CurrentDomain.FirstChanceException += LogFirstChanceNullReference;
@@ -246,7 +247,10 @@ public partial class App : Application
 
                 var window = Windows.FirstOrDefault();
                 if (window is not null)
+                {
                     window.Page = new Views.LoginPage(_account, _api);
+                    AppLocalization.AttachToPage(window.Page);
+                }
             }
             finally
             {
@@ -330,6 +334,7 @@ public partial class App : Application
             {
                 _sessionUnlocked = false;
                 window.Page = new Views.LoginPage(_account, _api);
+                AppLocalization.AttachToPage(window.Page);
                 return window;
             }
 
@@ -345,6 +350,7 @@ public partial class App : Application
             }
 
             window.Page = initialDestination;
+            AppLocalization.AttachToPage(initialDestination);
 
             // Token restoration/validation remains asynchronous and does not hold
             // the native splash or delay first-page creation.

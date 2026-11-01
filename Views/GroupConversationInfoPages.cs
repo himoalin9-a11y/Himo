@@ -271,8 +271,8 @@ public sealed class GroupConversationInfoPage : ContentPage
         }
     }
 
-    internal static string BuildGroupInviteLink(Guid groupId, string inviteCode) =>
-        $"himo://group/{groupId:D}?invite={Uri.EscapeDataString(inviteCode ?? string.Empty)}";
+    internal string BuildGroupInviteLink(Guid groupId, string inviteCode) =>
+        _api.CreateGroupInviteShareLink(groupId, inviteCode);
 
     private async Task EditNameAsync()
     {

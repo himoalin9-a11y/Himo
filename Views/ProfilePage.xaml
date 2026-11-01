@@ -38,9 +38,6 @@
                 <Label Text="ملفي الشخصي" FontSize="21" FontAttributes="Bold"
                        TextColor="{DynamicResource HimoPrimary}"
                        HorizontalTextAlignment="Center" />
-                <Label Text="هويتك ومساحتك على Himo" FontSize="11.5"
-                       TextColor="{DynamicResource HimoTextSecondary}"
-                       HorizontalTextAlignment="Center" />
             </VerticalStackLayout>
             <BoxView Grid.Column="2" WidthRequest="42" HeightRequest="42" Opacity="0" />
         </Grid>
@@ -58,13 +55,6 @@
                         <VerticalStackLayout Grid.Column="0" Spacing="7"
                                              VerticalOptions="Center"
                                              FlowDirection="RightToLeft">
-                            <Border HorizontalOptions="Start" Padding="9,4"
-                                    BackgroundColor="{DynamicResource HimoSoft}"
-                                    Stroke="{DynamicResource HimoBorder}" StrokeThickness="0.8">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
-                                <Label Text="ملف Himo الشخصي" FontSize="10.5"
-                                       FontAttributes="Bold" TextColor="{DynamicResource HimoAccent}" />
-                            </Border>
                             <Label x:Name="ProfileNameLabel" Text="مستخدم Himo"
                                    FontSize="24" FontAttributes="Bold"
                                    TextColor="{DynamicResource HimoPrimary}"
@@ -74,14 +64,6 @@
                                    FontSize="13" TextColor="{DynamicResource HimoTextSecondary}"
                                    HorizontalTextAlignment="Start" LineBreakMode="TailTruncation"
                                    MaxLines="2" />
-                            <HorizontalStackLayout Spacing="6" FlowDirection="RightToLeft"
-                                                   HorizontalOptions="Start" Margin="0,2,0,0">
-                                <BoxView WidthRequest="7" HeightRequest="7" CornerRadius="4"
-                                         Color="{DynamicResource HimoSuccess}" VerticalOptions="Center" />
-                                <Label Text="حسابك على Himo" FontSize="11.5"
-                                       TextColor="{DynamicResource HimoTextSecondary}"
-                                       VerticalTextAlignment="Center" />
-                            </HorizontalStackLayout>
                         </VerticalStackLayout>
 
                         <Grid Grid.Column="1" WidthRequest="112" HeightRequest="112"
@@ -129,8 +111,6 @@
                                              VerticalOptions="Center" FlowDirection="RightToLeft">
                             <Label Text="مشاركة الحساب" FontSize="16" FontAttributes="Bold"
                                    TextColor="{DynamicResource HimoPrimary}" />
-                            <Label Text="اعرض رمز QR أو شارك رابط حسابك مع الآخرين" FontSize="12"
-                                   TextColor="{DynamicResource HimoTextSecondary}" />
                         </VerticalStackLayout>
                         <Border Grid.Column="1" WidthRequest="48" HeightRequest="48"
                                 BackgroundColor="{DynamicResource HimoSoft}"

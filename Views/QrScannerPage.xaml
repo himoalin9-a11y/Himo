@@ -15,7 +15,7 @@
 
         <Grid RowDefinitions="Auto,*,Auto" Padding="18,18,18,26">
             <!-- Top toolbar -->
-            <Grid Grid.Row="0" ColumnDefinitions="48,*,48,48" ColumnSpacing="10"
+            <Grid Grid.Row="0" ColumnDefinitions="48,*,48" ColumnSpacing="10"
                   FlowDirection="LeftToRight" HeightRequest="52">
                 <Border Grid.Column="0" WidthRequest="46" HeightRequest="46" BackgroundColor="#66080B12"
                         Stroke="#55FFFFFF" StrokeThickness="1" HorizontalOptions="Start">
@@ -27,19 +27,10 @@
                 <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center" HorizontalOptions="Center">
                     <Label Text="مسح رمز QR" FontSize="19" FontAttributes="Bold" TextColor="White"
                            HorizontalTextAlignment="Center" />
-                    <Label Text="امسح رمز حساب Himo" FontSize="12" TextColor="#D6DCE8"
+                    <Label Text="امسح رمز حساب أو مجموعة Himo" FontSize="12" TextColor="#D6DCE8"
                            HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
-                <Border Grid.Column="2" WidthRequest="44" HeightRequest="44" BackgroundColor="#66080B12"
-                        Stroke="#55FFFFFF" StrokeThickness="1">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
-                    <Label Text="▧" FontSize="23" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
-                </Border>
-                <Border Grid.Column="3" WidthRequest="44" HeightRequest="44" BackgroundColor="#66080B12"
-                        Stroke="#55FFFFFF" StrokeThickness="1">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="22" /></Border.StrokeShape>
-                    <Label Text="ϟ" FontSize="26" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
-                </Border>
+                <BoxView Grid.Column="2" WidthRequest="44" HeightRequest="44" Opacity="0" />
             </Grid>
 
             <!-- Scanner target with blue corner guides, matching the reference screenshot. -->
@@ -78,18 +69,10 @@
                 <Border BackgroundColor="#B3080B12" Stroke="#33FFFFFF" StrokeThickness="1" Padding="16,12">
                     <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
                     <Label x:Name="ScannerStatusLabel"
-                           Text="ضع رمز QR داخل الإطار وسيتم التعرف عليه تلقائيًا"
+                           Text="وجّه الكاميرا إلى الرمز"
                            FontSize="13" TextColor="White" HorizontalTextAlignment="Center" />
                 </Border>
-                <Grid ColumnDefinitions="42,*,42" ColumnSpacing="12" FlowDirection="LeftToRight" HeightRequest="44">
-                    <Label Grid.Column="0" Text="⊕" FontSize="30" TextColor="White"
-                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
-                    <Slider Grid.Column="1" Minimum="1" Maximum="4" Value="1" MinimumTrackColor="#168BFF"
-                            MaximumTrackColor="#99FFFFFF" ThumbColor="White" VerticalOptions="Center"
-                            IsEnabled="False" />
-                    <Label Grid.Column="2" Text="⊖" FontSize="30" TextColor="White"
-                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
-                </Grid>
+
             </VerticalStackLayout>
         </Grid>
     </Grid>

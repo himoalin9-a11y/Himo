@@ -97,6 +97,28 @@ public sealed class HomeViewModel
         return UpsertRemoteConversation(remote);
     }
 
+    public Task<Conversation> JoinGroupByInviteAsync(string inviteCode)
+        => JoinGroupByInviteAsync(inviteCode, expectedGroupId: null);
+
+    public async Task<Conversation> JoinGroupByInviteAsync(string inviteCode, Guid? expectedGroupId)
+    {
+        if (!_api.HasToken)
+            throw new InvalidOperationException("يجب تسجيل الدخول قبل الانضمام إلى مجموعة.");
+        if (expectedGroupId == Guid.Empty)
+            throw new ArgumentException("معرّف المجموعة غير صالح.", nameof(expectedGroupId));
+
+        var code = inviteCode?.Trim() ?? string.Empty;
+        if (code.Length is < 16 or > 80)
+            throw new ArgumentException("رابط دعوة المجموعة غير صالح.", nameof(inviteCode));
+
+        var remote = await _api.JoinGroupByInviteAsync(code, expectedGroupId);
+        if (!remote.IsGroup || remote.Id == Guid.Empty ||
+            (expectedGroupId.HasValue && remote.Id != expectedGroupId.Value))
+            throw new InvalidOperationException("رمز الدعوة لا يطابق المجموعة الموجودة في الرابط.");
+
+        return UpsertRemoteConversation(remote);
+    }
+
     public async Task<Conversation> CreateConversationAsync(string name)
     {
         if (!_api.HasToken)
