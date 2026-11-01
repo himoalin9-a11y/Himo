@@ -151,13 +151,26 @@ webApp.MapGet("/.well-known/assetlinks.json", (IConfiguration configuration) =>
 {
     var fingerprints = (configuration["ANDROID_APP_SHA256_CERT_FINGERPRINTS"] ?? string.Empty)
         .Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-        .Select(value => value.Replace(" ", string.Empty, StringComparison.Ordinal).ToUpperInvariant())
-        .Where(value =>
+        .Select(value =>
         {
-            var octets = value.Split(':');
-            return octets.Length == 32 && octets.All(octet =>
-                octet.Length == 2 && byte.TryParse(octet, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _));
+            var candidate = value.Trim();
+            var labelSeparator = candidate.IndexOf(':');
+            if (labelSeparator > 0)
+            {
+                var label = candidate[..labelSeparator].Replace("-", string.Empty, StringComparison.Ordinal);
+                if (label.Equals("SHA256", StringComparison.OrdinalIgnoreCase))
+                    candidate = candidate[(labelSeparator + 1)..];
+            }
+
+            // Accept keytool's "SHA256: AA:BB:..." line as well as a raw fingerprint.
+            var compact = new string(candidate.Where(Uri.IsHexDigit).ToArray());
+            if (compact.Length != 64)
+                return string.Empty;
+
+            return string.Join(":", Enumerable.Range(0, 32)
+                .Select(index => compact.Substring(index * 2, 2))).ToUpperInvariant();
         })
+        .Where(value => value.Length == 95)
         .Distinct(StringComparer.Ordinal)
         .ToArray();
 

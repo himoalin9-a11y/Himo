@@ -254,15 +254,24 @@ internal sealed class SharedProfilePageRouteFactory : RouteFactory
 
 internal sealed class CreateGroupPageRouteFactory : RouteFactory
 {
+    private static CreateGroupPage CreatePage(IServiceProvider services)
+    {
+        // Build the page from its actual constructor dependencies. This avoids a
+        // fragile requirement that CreateGroupPage itself must also be registered
+        // as a concrete DI service in every project configuration.
+        var api = services.GetRequiredService<HimoApiClient>();
+        var home = services.GetRequiredService<HomeViewModel>();
+        return new CreateGroupPage(api, home);
+    }
+
     public override Element GetOrCreate()
     {
         var services = Application.Current?.Handler?.MauiContext?.Services
             ?? throw new InvalidOperationException("تعذر الوصول إلى خدمات التطبيق.");
-        return services.GetRequiredService<CreateGroupPage>();
+        return CreatePage(services);
     }
 
-    public override Element GetOrCreate(IServiceProvider services) =>
-        services.GetRequiredService<CreateGroupPage>();
+    public override Element GetOrCreate(IServiceProvider services) => CreatePage(services);
 }
 
 
