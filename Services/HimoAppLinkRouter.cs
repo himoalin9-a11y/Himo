@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Himo.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,9 +23,7 @@ public static class HimoAppLinkRouter
 {
     private static readonly HashSet<string> KnownPublicHosts = new(StringComparer.OrdinalIgnoreCase)
     {
-        "himo-api.onrender.com",
-        "himo-3buh.onrender.com"
-    };
+        "himo-api.onrender.com",};
 
     public static async Task<HimoAppLinkResolution> ResolveAsync(string rawLink, IServiceProvider services)
     {

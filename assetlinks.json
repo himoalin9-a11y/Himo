@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.companyname.himo",
+      "sha256_cert_fingerprints": [
+        "4B:E6:98:95:4F:90:EC:9C:4C:D9:7E:F1:68:9F:73:95:03:E9:B8:86:DE:4B:E9:1A:92:7C:F2:56:46:3E:BE:8C"
+      ]
+    }
+  }
+]
