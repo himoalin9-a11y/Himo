@@ -1,4 +1,4 @@
-using Microsoft.Maui;
+﻿using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Platform;
 using Plugin.Firebase.CloudMessaging;
@@ -531,19 +531,21 @@ public class MainActivity : MauiAppCompatActivity
                         await shell.GoToAsync("profile");
                         break;
 
-                    case HimoAppLinkTargetKind.PublicProfile:
+                    case HimoAppLinkTargetKind.Conversation:
+                        // Profile share links are resolved to a real DM before reaching
+                        // this switch, so they open the conversation directly.
+                        await shell.GoToAsync($"chat?id={Uri.EscapeDataString(destination.TargetId.ToString("D"))}", false);
+                        break;
+
+                    case HimoAppLinkTargetKind.GroupInvite:
                     {
-                        var displayName = destination.DisplayName;
-                        if (string.IsNullOrWhiteSpace(displayName))
-                            displayName = "مستخدم Himo";
-                        var profileRoute = $"shared-profile?userId={destination.TargetId:D}&name={Uri.EscapeDataString(displayName)}";
-                        await shell.GoToAsync(profileRoute);
+                        var inviteCode = destination.InviteCode;
+                        if (string.IsNullOrWhiteSpace(inviteCode))
+                            throw new InvalidOperationException("رابط المجموعة لا يحتوي على رمز دعوة.");
+                        var groupRoute = $"group-invite?groupId={destination.TargetId:D}&invite={Uri.EscapeDataString(inviteCode)}";
+                        await shell.GoToAsync(groupRoute, false);
                         break;
                     }
-
-                    case HimoAppLinkTargetKind.Conversation:
-                        await shell.GoToAsync($"chat?id={Uri.EscapeDataString(destination.TargetId.ToString("D"))}");
-                        break;
 
                     default:
                         throw new InvalidOperationException("نوع رابط Himo غير مدعوم.");

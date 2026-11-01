@@ -1,4 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Himo.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,14 +8,15 @@ namespace Himo.Services;
 public enum HimoAppLinkTargetKind
 {
     OwnProfile,
-    PublicProfile,
-    Conversation
+    Conversation,
+    GroupInvite
 }
 
 public sealed record HimoAppLinkResolution(
     HimoAppLinkTargetKind Kind,
     Guid TargetId,
-    string? DisplayName = null);
+    string? DisplayName = null,
+    string? InviteCode = null);
 
 /// <summary>Normalizes and resolves trusted Himo links to an in-app destination.</summary>
 public static class HimoAppLinkRouter
@@ -40,32 +41,40 @@ public static class HimoAppLinkRouter
             if (!Guid.TryParse(Uri.UnescapeDataString(uri.AbsolutePath).Trim('/'), out var userId) || userId == Guid.Empty)
                 throw new InvalidOperationException("رابط حساب Himo لا يحتوي على معرّف صالح.");
 
-            // A self-link opens the signed-in user's local profile.
-            var ownProfile = await api.GetMyProfileAsync();
-            if (ownProfile.UserId == userId)
-                return new HimoAppLinkResolution(HimoAppLinkTargetKind.OwnProfile, userId, ownProfile.Name);
+            // Use the account cache first. This avoids an unnecessary /api/me
+            // round-trip for the common case while retaining a safe fallback after
+            // token restoration on a cold start.
+            var account = services.GetRequiredService<AccountService>();
+            var currentUserId = account.CurrentAccount?.UserId ?? Guid.Empty;
+            string? currentUserName = account.CurrentAccount?.Name;
+            if (currentUserId == Guid.Empty)
+            {
+                var ownProfile = await api.GetMyProfileAsync();
+                currentUserId = ownProfile.UserId;
+                currentUserName = ownProfile.Name;
+                if (currentUserId != Guid.Empty)
+                    account.SetUserId(currentUserId);
+            }
 
-            // Resolve the public identity and create/reuse a direct chat. No intermediate
-            // public-profile page or extra confirmation screen is needed for a tapped link.
+            if (currentUserId == userId)
+                return new HimoAppLinkResolution(HimoAppLinkTargetKind.OwnProfile, userId, currentUserName);
+
+            // Resolve the canonical account name, create/reuse the DM on the server,
+            // then navigate to chat. No browser landing page or public-profile page
+            // is part of the in-app flow once Android verifies the HTTPS App Link.
             var publicProfile = await api.GetPublicUserProfileAsync(userId);
             if (publicProfile.UserId != userId)
                 throw new InvalidOperationException("تعذر التحقق من الحساب المرتبط بالرابط.");
 
-            var displayName = publicProfile.Name?.Trim();
-            if (string.IsNullOrWhiteSpace(displayName))
-                displayName = ReadDisplayName(uri) ?? "مستخدم Himo";
-
+            var displayName = string.IsNullOrWhiteSpace(publicProfile.Name)
+                ? (ReadDisplayName(uri) ?? "مستخدم Himo")
+                : publicProfile.Name.Trim();
             var home = services.GetRequiredService<HomeViewModel>();
             var directConversation = await home.CreateConversationWithUserAsync(displayName, userId);
-            if (directConversation is null ||
-                !Guid.TryParse(directConversation.RemoteId, out var directConversationId) ||
-                directConversationId == Guid.Empty)
+            if (!Guid.TryParse(directConversation.RemoteId, out var directConversationId) || directConversationId == Guid.Empty)
                 throw new InvalidOperationException("تعذر فتح محادثة هذا المستخدم.");
 
-            return new HimoAppLinkResolution(
-                HimoAppLinkTargetKind.Conversation,
-                directConversationId,
-                displayName);
+            return new HimoAppLinkResolution(HimoAppLinkTargetKind.Conversation, directConversationId, displayName);
         }
 
         if (uri.Host.Equals("group", StringComparison.OrdinalIgnoreCase))
@@ -77,17 +86,12 @@ public static class HimoAppLinkRouter
             if (string.IsNullOrWhiteSpace(inviteCode))
                 throw new InvalidOperationException("رابط المجموعة لا يحتوي على رمز دعوة.");
 
-            var home = services.GetRequiredService<HomeViewModel>();
-            var conversation = await home.JoinGroupByInviteAsync(inviteCode, groupId);
-            if (conversation is null ||
-                !Guid.TryParse(conversation.RemoteId, out var joinedGroupId) ||
-                joinedGroupId != groupId)
-                throw new InvalidOperationException("رمز الدعوة لا يطابق المجموعة الموجودة في الرابط.");
-
+            // Do not join while resolving the link. The preview route validates
+            // the invite on the server and lets the user choose Join or Cancel.
             return new HimoAppLinkResolution(
-                HimoAppLinkTargetKind.Conversation,
-                joinedGroupId,
-                conversation.Name);
+                HimoAppLinkTargetKind.GroupInvite,
+                groupId,
+                InviteCode: inviteCode);
         }
 
         throw new InvalidOperationException("نوع رابط Himo غير مدعوم.");
@@ -177,7 +181,7 @@ public static class HimoAppLinkRouter
     {
         var result = await ResolveAsync(rawLink, services);
         if (result.Kind != HimoAppLinkTargetKind.Conversation)
-            throw new InvalidOperationException("هذا الرابط يفتح الملف الشخصي الخاص بك وليس محادثة.");
+            throw new InvalidOperationException("هذا الرابط لا يفتح محادثة مباشرة.");
         return result.TargetId.ToString("D");
     }
 

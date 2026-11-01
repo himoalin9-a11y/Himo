@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 using Himo.ViewModels;
 using Microsoft.Maui.ApplicationModel;
 using ZXing.Net.Maui;
@@ -186,17 +186,26 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
                     if (currentUserId != Guid.Empty) _account.SetUserId(currentUserId);
                 }
 
-                var userName = HimoAppLinkRouter.ReadDisplayName(uri) ?? "مستخدم Himo";
                 var isSelf = currentUserId != Guid.Empty && currentUserId == userId;
                 if (isSelf)
                 {
                     await SwipePageTransition.NavigateAsync(this, "profile", SwipeDirection.Left);
+                    return;
                 }
-                else
-                {
-                    var route = $"shared-profile?userId={userId:D}&name={Uri.EscapeDataString(userName)}";
-                    await SwipePageTransition.NavigateAsync(this, route, SwipeDirection.Left);
-                }
+
+                var publicProfile = await _api.GetPublicUserProfileAsync(userId);
+                if (publicProfile.UserId != userId)
+                    throw new InvalidOperationException("تعذر التحقق من الحساب المرتبط بالرمز.");
+                var userName = string.IsNullOrWhiteSpace(publicProfile.Name)
+                    ? (HimoAppLinkRouter.ReadDisplayName(uri) ?? "مستخدم Himo")
+                    : publicProfile.Name.Trim();
+                var directConversation = await _home.CreateConversationWithUserAsync(userName, userId);
+                if (!Guid.TryParse(directConversation.RemoteId, out var directConversationId) || directConversationId == Guid.Empty)
+                    throw new InvalidOperationException("تعذر إنشاء محادثة مع هذا الحساب.");
+                await SwipePageTransition.NavigateAsync(
+                    this,
+                    $"chat?id={Uri.EscapeDataString(directConversationId.ToString("D"))}",
+                    SwipeDirection.Left);
                 return;
             }
             else
@@ -204,24 +213,12 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
                 if (!Guid.TryParse(Uri.UnescapeDataString(uri.AbsolutePath).Trim('/'), out var groupId) || groupId == Guid.Empty)
                     throw new InvalidOperationException("رابط المجموعة غير صالح.");
                 var inviteCode = HimoAppLinkRouter.ReadQueryValue(uri, "invite");
-                if (string.IsNullOrWhiteSpace(inviteCode))
-                    throw new InvalidOperationException("رمز دعوة المجموعة غير موجود.");
+                if (string.IsNullOrWhiteSpace(inviteCode) || inviteCode.Length is < 16 or > 80)
+                    throw new InvalidOperationException("رمز دعوة المجموعة غير موجود أو غير صالح.");
 
-                var confirmed = await DisplayAlertAsync(
-                    AppLocalization.T("OpenSharedGroupTitle"),
-                    AppLocalization.T("OpenSharedGroupPrompt"),
-                    AppLocalization.T("OpenSharedGroupAction"),
-                    AppLocalization.T("Cancel"));
-                if (!confirmed)
-                {
-                    ScannerStatusLabel.Text = "يمكنك مسح رمز آخر.";
-                    return;
-                }
-
-                var conversation = await _home.JoinGroupByInviteAsync(inviteCode, groupId);
-                if (!Guid.TryParse(conversation.RemoteId, out var joinedGroupId) || joinedGroupId != groupId)
-                    throw new InvalidOperationException("رمز الدعوة لا يطابق المجموعة الموجودة في الرابط.");
-                routeId = conversation.RemoteId!;
+                var groupRoute = $"group-invite?groupId={groupId:D}&invite={Uri.EscapeDataString(inviteCode)}";
+                await SwipePageTransition.NavigateAsync(this, groupRoute, SwipeDirection.Left);
+                return;
             }
 
             if (Shell.Current is not null)

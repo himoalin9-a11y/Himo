@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -151,14 +151,13 @@ sealed class MongoStore
         return new { userId, email = user.PhoneNumber, name = user.Name, status = user.Status, contactPhoneNumber = user.ContactPhoneNumber, phoneDiscoverable = user.PhoneDiscoverable, hasProfilePhoto = user.ProfilePhoto is { Length: > 0 }, username = user.Username, profilePhotoVersion = user.ProfilePhotoVersion };
     }
 
+    // Public profile-link lookup returns only fields needed to resolve a direct chat.
+    // Never expose email, phone number, discoverability flags, or private account data.
     public object GetPublicProfile(Guid userId)
     {
         EnsureIndexes();
         var user = _users.Find(x => x.Id == GuidText(userId)).FirstOrDefault()
             ?? throw new InvalidOperationException("المستخدم غير موجود.");
-
-        // A share link exposes only the public identity fields. Never return the
-        // account email, phone number, or phone-discovery/privacy settings here.
         return new
         {
             userId,
@@ -704,6 +703,37 @@ sealed class MongoStore
         return EnsureGroupInviteCode(group);
     }
 
+    /// <summary>
+    /// Validates an invite without creating membership. The group ID is bound to
+    /// the invite code before any group data is returned to the authenticated user.
+    /// </summary>
+    public GroupInvitePreviewDto? GetGroupInvitePreview(string inviteCode, Guid currentUserId, Guid expectedGroupId)
+    {
+        EnsureIndexes();
+        inviteCode = (inviteCode ?? string.Empty).Trim();
+        if (expectedGroupId == Guid.Empty || inviteCode.Length is < 16 or > 80)
+            return null;
+
+        var group = _conversations.Find(x => x.IsGroup && x.InviteCode == inviteCode).FirstOrDefault();
+        if (group is null || !Guid.TryParse(group.Id, out var actualGroupId) || actualGroupId != expectedGroupId)
+            return null;
+
+        var memberCount = (int)Math.Min(int.MaxValue,
+            _participants.CountDocuments(x => x.ConversationId == group.Id));
+        var isMember = _participants.Find(x =>
+            x.ConversationId == group.Id && x.UserId == GuidText(currentUserId)).FirstOrDefault() is not null;
+
+        return new GroupInvitePreviewDto(
+            actualGroupId,
+            group.Name,
+            group.Description ?? string.Empty,
+            group.GroupPhoto is { Length: > 0 },
+            group.GroupPhotoVersion,
+            memberCount,
+            isMember,
+            group.RequireAdminApproval);
+    }
+
     public bool UpdateGroupInfo(Guid conversationId, Guid actorUserId, string name, string description)
     {
         EnsureIndexes();
@@ -843,12 +873,11 @@ sealed class MongoStore
     {
         EnsureIndexes();
         inviteCode = (inviteCode ?? string.Empty).Trim();
-        if (inviteCode.Length is < 16 or > 80 || expectedGroupId == Guid.Empty) return null;
+        if (inviteCode.Length is < 16 or > 80) return null;
         var group = _conversations.Find(x => x.IsGroup && x.InviteCode == inviteCode).FirstOrDefault();
         if (group is null) return null;
-
-        // Validate the ID embedded in the shared URI before creating membership.
-        // This prevents a valid invite code from being paired with a different group ID.
+        // Bind the invite to the group ID from the shared URI before adding membership.
+        // This prevents a tampered/mismatched URI from joining another group's invite.
         if (expectedGroupId.HasValue &&
             (!Guid.TryParse(group.Id, out var actualGroupId) || actualGroupId != expectedGroupId.Value))
             return null;

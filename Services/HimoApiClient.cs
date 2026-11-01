@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -1259,6 +1259,25 @@ public sealed class HimoApiClient
         return invite with { Link = shareLink };
     }
 
+    public async Task<GroupInvitePreviewResponse> GetGroupInvitePreviewAsync(
+        Guid groupId,
+        string inviteCode,
+        CancellationToken cancellationToken = default)
+    {
+        if (groupId == Guid.Empty)
+            throw new ArgumentException("معرّف المجموعة غير صالح.", nameof(groupId));
+
+        inviteCode = inviteCode?.Trim() ?? string.Empty;
+        if (inviteCode.Length is < 16 or > 80)
+            throw new ArgumentException("رمز دعوة المجموعة غير صالح.", nameof(inviteCode));
+
+        var path = $"api/groups/invite-preview/{groupId:D}?invite={Uri.EscapeDataString(inviteCode)}";
+        using var response = await _http.GetAsync(path, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<GroupInvitePreviewResponse>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("استجابة معاينة المجموعة غير صالحة.");
+    }
+
     public Task<ConversationDto> JoinGroupByInviteAsync(string inviteCode, CancellationToken cancellationToken = default)
         => JoinGroupByInviteAsync(inviteCode, expectedGroupId: null, cancellationToken: cancellationToken);
 
@@ -1751,6 +1770,15 @@ public sealed class HimoApiClient
     public sealed record GroupMemberDto(Guid Id, string Name, bool IsAdmin, bool HasProfilePhoto, long ProfilePhotoVersion, DateTimeOffset JoinedAt, string Status = "", string Username = "");
     public sealed record GroupDetailsDto(Guid Id, string Name, string Description, string InviteCode, bool HasPhoto, long PhotoVersion, bool CanManage, bool CanShareInviteLink, int DisappearingSeconds, IReadOnlyList<GroupMemberDto> Members);
     public sealed record GroupInviteResponse(string InviteCode, string Link);
+    public sealed record GroupInvitePreviewResponse(
+        Guid Id,
+        string Name,
+        string Description,
+        bool HasPhoto,
+        long PhotoVersion,
+        int MemberCount,
+        bool IsMember,
+        bool RequiresAdminApproval);
 
     public sealed record ConversationDto(
         Guid Id,

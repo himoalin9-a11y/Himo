@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
@@ -1125,6 +1125,19 @@ webApp.MapGet("/api/groups/{id:guid}/invite", (Guid id, HttpRequest http, MongoS
     catch (UnauthorizedAccessException ex) { return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "غير مسموح", detail: ex.Message); }
 });
 
+// Read-only authenticated invite preview. It validates the invite/group pair but
+// deliberately does not add the caller to the participant collection.
+webApp.MapGet("/api/groups/invite-preview/{id:guid}", (Guid id, HttpRequest http, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    var inviteCode = http.Query["invite"].ToString().Trim();
+    if (inviteCode.Length is < 16 or > 80)
+        return Results.BadRequest(new { message = "رمز دعوة المجموعة غير صالح." });
+
+    var preview = store.GetGroupInvitePreview(inviteCode, session.UserId, id);
+    return preview is null ? Results.NotFound() : Results.Ok(preview);
+});
+
 webApp.MapPost("/api/groups/join", (HttpRequest http, JoinGroupByInviteRequest request, MongoStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
@@ -1738,6 +1751,7 @@ record SetGroupMemberAdminRequest(bool IsAdmin);
 record JoinGroupByInviteRequest(string? InviteCode, Guid? ExpectedGroupId = null);
 record GroupMemberDto(Guid Id, string Name, bool IsAdmin, bool HasProfilePhoto, long ProfilePhotoVersion, DateTimeOffset JoinedAt, string Status = "", string Username = "");
 record GroupDetailsDto(Guid Id, string Name, string Description, string InviteCode, bool HasPhoto, long PhotoVersion, bool CanManage, bool CanShareInviteLink, int DisappearingSeconds, IReadOnlyList<GroupMemberDto> Members);
+record GroupInvitePreviewDto(Guid Id, string Name, string Description, bool HasPhoto, long PhotoVersion, int MemberCount, bool IsMember, bool RequiresAdminApproval);
 record CreateGroupRequest(string? Name, Guid[]? UserIds, int DisappearingSeconds = 0, bool AllMembersCanAddMembers = false, bool AllMembersCanShareInviteLink = false, bool RequireAdminApproval = false, bool AdminsOnlyMessages = false);
 record AddGroupMembersRequest(Guid[]? UserIds);
 record CallSignalMessage(Guid ConversationId, Guid SenderUserId, string Type, string? Payload);
