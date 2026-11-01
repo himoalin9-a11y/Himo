@@ -1,4 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Himo.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -57,22 +57,34 @@ public static class HimoAppLinkRouter
             if (currentUserId == userId)
                 return new HimoAppLinkResolution(HimoAppLinkTargetKind.OwnProfile, userId, currentUserName);
 
-            // Resolve the canonical account name, create/reuse the DM on the server,
-            // then navigate to chat. No browser landing page or public-profile page
-            // is part of the in-app flow once Android verifies the HTTPS App Link.
-            var publicProfile = await api.GetPublicUserProfileAsync(userId);
-            if (publicProfile.UserId != userId)
-                throw new InvalidOperationException("تعذر التحقق من الحساب المرتبط بالرابط.");
-
-            var displayName = string.IsNullOrWhiteSpace(publicProfile.Name)
-                ? (ReadDisplayName(uri) ?? "مستخدم Himo")
-                : publicProfile.Name.Trim();
             var home = services.GetRequiredService<HomeViewModel>();
+
+            // Fast path: if this direct chat is already in the local conversation
+            // cache, navigate immediately. ChatPage will refresh its message state.
+            var cachedConversation = home.Conversations.FirstOrDefault(item =>
+                !item.IsGroup &&
+                item.OtherParticipantUserId == userId &&
+                Guid.TryParse(item.RemoteId, out var cachedId) &&
+                cachedId != Guid.Empty);
+            if (cachedConversation is not null &&
+                Guid.TryParse(cachedConversation.RemoteId, out var cachedConversationId) &&
+                cachedConversationId != Guid.Empty)
+            {
+                return new HimoAppLinkResolution(
+                    HimoAppLinkTargetKind.Conversation,
+                    cachedConversationId,
+                    cachedConversation.Name);
+            }
+
+            // A single authenticated POST creates or reuses the direct conversation.
+            // The API returns the peer's canonical name and photo metadata, so a
+            // separate public-profile GET is redundant and only adds latency.
+            var displayName = ReadDisplayName(uri) ?? "محادثة";
             var directConversation = await home.CreateConversationWithUserAsync(displayName, userId);
             if (!Guid.TryParse(directConversation.RemoteId, out var directConversationId) || directConversationId == Guid.Empty)
                 throw new InvalidOperationException("تعذر فتح محادثة هذا المستخدم.");
 
-            return new HimoAppLinkResolution(HimoAppLinkTargetKind.Conversation, directConversationId, displayName);
+            return new HimoAppLinkResolution(HimoAppLinkTargetKind.Conversation, directConversationId, directConversation.Name);
         }
 
         if (uri.Host.Equals("group", StringComparison.OrdinalIgnoreCase))
@@ -84,8 +96,8 @@ public static class HimoAppLinkRouter
             if (string.IsNullOrWhiteSpace(inviteCode))
                 throw new InvalidOperationException("رابط المجموعة لا يحتوي على رمز دعوة.");
 
-            // Do not join while resolving the link. The preview route validates
-            // the invite on the server and lets the user choose Join or Cancel.
+            // Resolve only the invite data here. MainActivity shows the native
+            // confirmation dialog and calls the join API only after explicit approval.
             return new HimoAppLinkResolution(
                 HimoAppLinkTargetKind.GroupInvite,
                 groupId,

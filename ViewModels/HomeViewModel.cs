@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Himo.Models;
 using Himo.Services;
@@ -142,6 +142,11 @@ public sealed class HomeViewModel
             local.RemoteId = remoteId;
         }
 
+        // The server now returns the canonical peer/group name directly in the
+        // single create/join response. Refresh an existing local row as well.
+        local.Name = remote.Name;
+        local.Initial = GetInitial(remote.Name);
+        local.RemoteId = remoteId;
         local.OtherParticipantUserId = remote.OtherParticipantUserId;
         local.HasRemoteProfilePhoto = remote.HasProfilePhoto;
         local.ProfilePhotoVersion = remote.ProfilePhotoVersion;

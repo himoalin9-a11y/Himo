@@ -504,6 +504,7 @@ public class MainActivity : MauiAppCompatActivity
         {
             if (Interlocked.Exchange(ref _appLinkNavigationInProgress, 1) != 0) return;
             string? linkForCleanup = null;
+            var appLinkTimer = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 var candidateLink = _pendingAppLink;
@@ -520,11 +521,14 @@ public class MainActivity : MauiAppCompatActivity
                 var api = services.GetRequiredService<HimoApiClient>();
                 try { await api.TokenInitialization; }
                 catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo AppLink] Token initialization: {ex.Message}"); }
+                System.Diagnostics.Debug.WriteLine($"[Himo AppLink Timing] token-ready={appLinkTimer.ElapsedMilliseconds}ms");
                 // Keep the link pending while the user is on the sign-in screen.
                 // AppShell retries it after a successful login.
                 if (!api.HasToken) return;
 
+                var resolveTimer = System.Diagnostics.Stopwatch.StartNew();
                 var destination = await HimoAppLinkRouter.ResolveAsync(candidateLink, services);
+                System.Diagnostics.Debug.WriteLine($"[Himo AppLink Timing] resolve={resolveTimer.ElapsedMilliseconds}ms total={appLinkTimer.ElapsedMilliseconds}ms kind={destination.Kind}");
                 switch (destination.Kind)
                 {
                     case HimoAppLinkTargetKind.OwnProfile:
@@ -535,6 +539,7 @@ public class MainActivity : MauiAppCompatActivity
                         // Profile share links are resolved to a real DM before reaching
                         // this switch, so they open the conversation directly.
                         await shell.GoToAsync($"chat?id={Uri.EscapeDataString(destination.TargetId.ToString("D"))}", false);
+                        System.Diagnostics.Debug.WriteLine($"[Himo AppLink Timing] chat-navigation={appLinkTimer.ElapsedMilliseconds}ms");
                         break;
 
                     case HimoAppLinkTargetKind.GroupInvite:
@@ -542,8 +547,41 @@ public class MainActivity : MauiAppCompatActivity
                         var inviteCode = destination.InviteCode;
                         if (string.IsNullOrWhiteSpace(inviteCode))
                             throw new InvalidOperationException("رابط المجموعة لا يحتوي على رمز دعوة.");
-                        var groupRoute = $"group-invite?groupId={destination.TargetId:D}&invite={Uri.EscapeDataString(inviteCode)}";
-                        await shell.GoToAsync(groupRoute, false);
+
+                        var promptPage = shell.CurrentPage
+                            ?? throw new InvalidOperationException("تعذر عرض تأكيد الانضمام إلى المجموعة.");
+
+                        // Keep the invitation UI as a compact native dialog: no
+                        // separate full-screen page and no preview GET request.
+                        var shouldJoin = await promptPage.DisplayAlertAsync(
+                            "هل تريد أن تنضم للمجموعة؟",
+                            string.Empty,
+                            "الانضمام للمجموعة",
+                            "إلغاء");
+
+                        if (!shouldJoin)
+                            break;
+
+                        try
+                        {
+                            var home = services.GetRequiredService<global::Himo.ViewModels.HomeViewModel>();
+                            var joinedConversation = await home.JoinGroupByInviteAsync(inviteCode, destination.TargetId);
+                            if (!Guid.TryParse(joinedConversation.RemoteId, out var groupConversationId) ||
+                                groupConversationId != destination.TargetId)
+                                throw new InvalidOperationException("تعذر فتح المجموعة المرتبطة برابط الدعوة.");
+
+                            await shell.GoToAsync(
+                                $"chat?id={Uri.EscapeDataString(groupConversationId.ToString("D"))}",
+                                false);
+                            System.Diagnostics.Debug.WriteLine($"[Himo AppLink Timing] group-join-and-navigation={appLinkTimer.ElapsedMilliseconds}ms");
+                        }
+                        catch (Exception joinError)
+                        {
+                            await promptPage.DisplayAlertAsync(
+                                "تعذر الانضمام للمجموعة",
+                                AppLocalization.TranslateSourceText(joinError.Message),
+                                "حسنًا");
+                        }
                         break;
                     }
 

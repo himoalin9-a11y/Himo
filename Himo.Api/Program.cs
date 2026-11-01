@@ -939,9 +939,10 @@ webApp.MapPost("/api/conversations", (HttpRequest http, CreateConversationReques
     if (name.Length > 60) return Results.BadRequest(new { message = "اسم المحادثة طويل جدًا." });
     try
     {
+        // CreateConversation now returns the participant's canonical name/photo
+        // directly. Avoid loading every conversation merely to enrich this one row.
         var conversation = store.CreateConversation(session.UserId, name, request.UserId);
-        var enriched = store.GetConversations(session.UserId).FirstOrDefault(item => item.Id == conversation.Id) ?? conversation;
-        return Results.Created($"/api/conversations/{conversation.Id}", enriched);
+        return Results.Created($"/api/conversations/{conversation.Id}", conversation);
     }
     catch (InvalidOperationException ex)
     {

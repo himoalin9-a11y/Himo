@@ -574,11 +574,13 @@ sealed class MongoStore
         EnsureIndexes(); lock (_sync)
         {
             var uid = GuidText(userId); var now = DateTimeOffset.UtcNow; var timestamp = now.ToString("O");
+            MUser? otherUser = null;
             if (participantUserId.HasValue)
             {
                 var peer = GuidText(participantUserId.Value);
-                var otherUser = _users.Find(x => x.Id == peer).FirstOrDefault();
-                if (otherUser is null) throw new InvalidOperationException("المستخدم غير موجود.");
+                var targetUser = _users.Find(x => x.Id == peer).FirstOrDefault()
+                    ?? throw new InvalidOperationException("المستخدم غير موجود.");
+                otherUser = targetUser;
 
                 if (participantUserId.Value == userId)
                 {
@@ -598,9 +600,10 @@ sealed class MongoStore
                         state.IsArchived = false;
                         state.UpdatedAt = timestamp;
                         _userStates.ReplaceOne(x => x.Id == stateId, state, new ReplaceOptions { IsUpsert = true });
-                        return new ConversationDto(Guid.Parse(existingSelf.Id), otherUser.Name, existingSelf.LastMessage,
+                        return new ConversationDto(Guid.Parse(existingSelf.Id), targetUser.Name, existingSelf.LastMessage,
                             ParseTime(existingSelf.UpdatedAt, now), CountUnread(existingSelf.Id, uid, now), userId,
-                            otherUser.ProfilePhoto is { Length: > 0 }, otherUser.ProfilePhotoVersion);
+                            targetUser.ProfilePhoto is { Length: > 0 }, targetUser.ProfilePhotoVersion,
+                            isArchived: false, isMuted: state.IsMuted, isBlocked: false);
                     }
                 }
                 else
@@ -615,8 +618,12 @@ sealed class MongoStore
                         var stId = PairId(Guid.Parse(directIds.Id), userId); var st = _userStates.Find(x => x.Id == stId).FirstOrDefault() ?? new MUserState { Id = stId, ConversationId = directIds.Id, UserId = uid };
                         st.IsDeleted = false; st.IsArchived = false; st.UpdatedAt = timestamp; _userStates.ReplaceOne(x => x.Id == stId, st, new ReplaceOptions { IsUpsert = true });
                         var unread = CountUnread(directIds.Id, uid, now);
-                        return new ConversationDto(Guid.Parse(directIds.Id), otherUser.Name, directIds.LastMessage, ParseTime(directIds.UpdatedAt, now), unread, participantUserId,
-                            otherUser.ProfilePhoto is { Length: > 0 }, otherUser.ProfilePhotoVersion);
+                        var existingConversationIsBlocked = _blockedUsers.Find(x =>
+                            (x.BlockerUserId == uid && x.BlockedUserId == targetUser.Id) ||
+                            (x.BlockerUserId == targetUser.Id && x.BlockedUserId == uid)).FirstOrDefault() is not null;
+                        return new ConversationDto(Guid.Parse(directIds.Id), targetUser.Name, directIds.LastMessage, ParseTime(directIds.UpdatedAt, now), unread, participantUserId,
+                            targetUser.ProfilePhoto is { Length: > 0 }, targetUser.ProfilePhotoVersion,
+                            isArchived: false, isMuted: st.IsMuted, isBlocked: existingConversationIsBlocked);
                     }
                 }
             }
@@ -628,10 +635,27 @@ sealed class MongoStore
             if (participantUserId.HasValue && participantUserId.Value != userId)
                 _participants.InsertOne(new MParticipant { Id = PairId(Guid.Parse(conv.Id), participantUserId.Value), ConversationId = conv.Id, UserId = GuidText(participantUserId.Value), JoinedAt = timestamp, LastReadAt = timestamp });
             var createdSelf = participantUserId == userId;
-            var creator = createdSelf ? _users.Find(x => x.Id == uid).FirstOrDefault() : null;
-            return new ConversationDto(Guid.Parse(conv.Id), createdSelf ? creator?.Name ?? name : name, string.Empty, now, 0,
-                createdSelf ? userId : participantUserId,
-                createdSelf && creator?.ProfilePhoto is { Length: > 0 }, createdSelf ? creator?.ProfilePhotoVersion ?? 0L : 0L);
+            // otherUser was already loaded to validate the target. Reuse it to
+            // return the canonical peer name/photo without a second API list query.
+            var directPeer = participantUserId.HasValue ? otherUser : null;
+            var creator = createdSelf ? directPeer : null;
+            var displayUser = createdSelf ? creator : directPeer;
+            var directPeerId = directPeer?.Id;
+            var newConversationIsBlocked = !createdSelf && directPeerId is not null && _blockedUsers.Find(x =>
+                (x.BlockerUserId == uid && x.BlockedUserId == directPeerId) ||
+                (x.BlockerUserId == directPeerId && x.BlockedUserId == uid)).FirstOrDefault() is not null;
+            return new ConversationDto(
+                Guid.Parse(conv.Id),
+                displayUser?.Name ?? name,
+                string.Empty,
+                now,
+                0,
+                participantUserId,
+                displayUser?.ProfilePhoto is { Length: > 0 },
+                displayUser?.ProfilePhotoVersion ?? 0L,
+                isArchived: false,
+                isMuted: false,
+                isBlocked: newConversationIsBlocked);
         }
     }
 
@@ -881,11 +905,17 @@ sealed class MongoStore
         if (expectedGroupId.HasValue &&
             (!Guid.TryParse(group.Id, out var actualGroupId) || actualGroupId != expectedGroupId.Value))
             return null;
-        if (group.RequireAdminApproval)
-            throw new UnauthorizedAccessException("تتطلب هذه المجموعة موافقة المشرف قبل الانضمام.");
         var uid = GuidText(userId);
-        if (_participants.Find(x => x.ConversationId == group.Id && x.UserId == uid).FirstOrDefault() is null)
+        var existingMembership = _participants.Find(x =>
+            x.ConversationId == group.Id && x.UserId == uid).FirstOrDefault();
+
+        // Existing members may open the group even when new members need admin
+        // approval. Enforce the approval rule only before creating membership.
+        if (existingMembership is null)
         {
+            if (group.RequireAdminApproval)
+                throw new UnauthorizedAccessException("تتطلب هذه المجموعة موافقة المشرف قبل الانضمام.");
+
             var timestamp = NowText();
             _participants.InsertOne(new MParticipant { Id = PairId(Guid.Parse(group.Id), userId), ConversationId = group.Id, UserId = uid, JoinedAt = timestamp, LastReadAt = timestamp });
         }
