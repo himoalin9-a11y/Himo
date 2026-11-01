@@ -143,6 +143,42 @@ webApp.UseExceptionHandler(errorApp =>
 
 webApp.MapGet("/", () => Results.Ok(new { status = "ok", service = "Himo.Api", message = "Himo API is running", health = "/health" }));
 
+// Android Verified App Links association. Configure one or more SHA-256 signing
+// certificate fingerprints in Render's ANDROID_APP_SHA256_CERT_FINGERPRINTS
+// environment variable, separated by commas. Include both Debug and Release
+// certificates only when both app variants should open links directly.
+webApp.MapGet("/.well-known/assetlinks.json", (IConfiguration configuration) =>
+{
+    var fingerprints = (configuration["ANDROID_APP_SHA256_CERT_FINGERPRINTS"] ?? string.Empty)
+        .Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(value => value.Replace(" ", string.Empty, StringComparison.Ordinal).ToUpperInvariant())
+        .Where(value =>
+        {
+            var octets = value.Split(':');
+            return octets.Length == 32 && octets.All(octet =>
+                octet.Length == 2 && byte.TryParse(octet, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _));
+        })
+        .Distinct(StringComparer.Ordinal)
+        .ToArray();
+
+    if (fingerprints.Length == 0)
+        return Results.Json(Array.Empty<object>());
+
+    return Results.Json(new[]
+    {
+        new
+        {
+            relation = new[] { "delegate_permission/common.handle_all_urls" },
+            target = new
+            {
+                @namespace = "android_app",
+                package_name = "com.companyname.himo",
+                sha256_cert_fingerprints = fingerprints
+            }
+        }
+    });
+});
+
 // WhatsApp and many other messaging clients reliably recognize HTTPS links,
 // but may not treat custom schemes (himo://) as tappable links. This landing
 // page converts an HTTPS tap into an explicit Android intent to open Himo.
@@ -187,7 +223,7 @@ webApp.MapGet("/join/group/{id:guid}", (Guid id, HttpRequest request) =>
   <main>
     <div class="logo">H</div>
     <h1>دعوة للانضمام إلى مجموعة</h1>
-    <p>اضغط على الزر أدناه لفتح المجموعة في تطبيق Himo، ثم أكّد الانضمام من داخل التطبيق.</p>
+    <p>اضغط لفتح المجموعة في تطبيق Himo مباشرةً، وسيتم فتح المحادثة بعد التحقق من الدعوة.</p>
     <a href="{{safeIntentLink}}">فتح المجموعة في Himo</a>
     <a class="direct" href="{{safeAppLink}}">فتح الرابط مباشرة</a>
     <small>إذا لم يفتح التطبيق، تأكد من تثبيت Himo على جهازك ثم جرّب مرة أخرى.</small>
@@ -243,8 +279,8 @@ webApp.MapGet("/join/user/{id:guid}", (Guid id) =>
   <main>
     <div class="logo">H</div>
     <h1>ملف شخصي على Himo</h1>
-    <p>تمت مشاركة ملف شخصي معك. افتح تطبيق Himo لعرض الملف والتواصل مع صاحبه.</p>
-    <a href="{{safeIntentLink}}">فتح الملف الشخصي في Himo</a>
+    <p>تمت مشاركة حساب معك. افتح تطبيق Himo للانتقال مباشرةً إلى المحادثة.</p>
+    <a href="{{safeIntentLink}}">فتح المحادثة في Himo</a>
     <a class="direct" href="{{safeAppLink}}">فتح الرابط مباشرة</a>
     <small>إذا لم يفتح التطبيق، تأكد من تثبيت Himo على جهازك ثم جرّب مرة أخرى.</small>
   </main>
@@ -270,6 +306,7 @@ webApp.MapGet("/api/app-info", (IConfiguration configuration) =>
 {
     var configuredUrl = configuration["HIMO_APP_DOWNLOAD_URL"]?.Trim();
     if (!Uri.TryCreate(configuredUrl, UriKind.Absolute, out var downloadUri) ||
+        downloadUri is null ||
         downloadUri.Scheme != Uri.UriSchemeHttps)
     {
         configuredUrl = null;
@@ -1065,6 +1102,7 @@ webApp.MapGet("/api/groups/{id:guid}/invite", (Guid id, HttpRequest http, MongoS
         // This defaults to the production API address currently used by Himo clients.
         var publicBaseUrl = (configuration["HIMO_PUBLIC_BASE_URL"] ?? "https://himo-api.onrender.com").Trim().TrimEnd('/');
         if (!Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var publicBaseUri) ||
+            publicBaseUri is null ||
             !string.Equals(publicBaseUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
             return Results.Problem(statusCode: StatusCodes.Status500InternalServerError, title: "تعذر إنشاء رابط آمن للمجموعة.");
 

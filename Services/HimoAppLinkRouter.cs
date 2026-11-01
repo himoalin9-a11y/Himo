@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Himo.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,10 +17,7 @@ public sealed record HimoAppLinkResolution(
     Guid TargetId,
     string? DisplayName = null);
 
-/// <summary>
-/// Validates Himo custom-scheme links and HTTPS share links, then resolves them
-/// to a normalized himo:// URI before navigating inside the application.
-/// </summary>
+/// <summary>Normalizes and resolves trusted Himo links to an in-app destination.</summary>
 public static class HimoAppLinkRouter
 {
     private static readonly HashSet<string> KnownPublicHosts = new(StringComparer.OrdinalIgnoreCase)
@@ -34,7 +32,7 @@ public static class HimoAppLinkRouter
         ArgumentNullException.ThrowIfNull(services);
 
         var api = services.GetRequiredService<HimoApiClient>();
-        if (!TryNormalizeLink(rawLink, out var uri, api.BaseUrl))
+        if (!TryNormalizeLink(rawLink, out var uri, api.BaseUrl) || uri is null)
             throw new InvalidOperationException("رابط Himo غير صالح أو غير موثوق.");
 
         if (uri.Host.Equals("user", StringComparison.OrdinalIgnoreCase))
@@ -42,16 +40,32 @@ public static class HimoAppLinkRouter
             if (!Guid.TryParse(Uri.UnescapeDataString(uri.AbsolutePath).Trim('/'), out var userId) || userId == Guid.Empty)
                 throw new InvalidOperationException("رابط حساب Himo لا يحتوي على معرّف صالح.");
 
-            // Compare against the authenticated account so sharing one's own link
-            // returns to the local profile instead of attempting to message oneself.
+            // A self-link opens the signed-in user's local profile.
             var ownProfile = await api.GetMyProfileAsync();
             if (ownProfile.UserId == userId)
                 return new HimoAppLinkResolution(HimoAppLinkTargetKind.OwnProfile, userId, ownProfile.Name);
 
+            // Resolve the public identity and create/reuse a direct chat. No intermediate
+            // public-profile page or extra confirmation screen is needed for a tapped link.
+            var publicProfile = await api.GetPublicUserProfileAsync(userId);
+            if (publicProfile.UserId != userId)
+                throw new InvalidOperationException("تعذر التحقق من الحساب المرتبط بالرابط.");
+
+            var displayName = publicProfile.Name?.Trim();
+            if (string.IsNullOrWhiteSpace(displayName))
+                displayName = ReadDisplayName(uri) ?? "مستخدم Himo";
+
+            var home = services.GetRequiredService<HomeViewModel>();
+            var directConversation = await home.CreateConversationWithUserAsync(displayName, userId);
+            if (directConversation is null ||
+                !Guid.TryParse(directConversation.RemoteId, out var directConversationId) ||
+                directConversationId == Guid.Empty)
+                throw new InvalidOperationException("تعذر فتح محادثة هذا المستخدم.");
+
             return new HimoAppLinkResolution(
-                HimoAppLinkTargetKind.PublicProfile,
-                userId,
-                ReadDisplayName(uri) ?? "مستخدم Himo");
+                HimoAppLinkTargetKind.Conversation,
+                directConversationId,
+                displayName);
         }
 
         if (uri.Host.Equals("group", StringComparison.OrdinalIgnoreCase))
@@ -65,39 +79,58 @@ public static class HimoAppLinkRouter
 
             var home = services.GetRequiredService<HomeViewModel>();
             var conversation = await home.JoinGroupByInviteAsync(inviteCode, groupId);
-            if (!Guid.TryParse(conversation.RemoteId, out var joinedGroupId) || joinedGroupId != groupId)
+            if (conversation is null ||
+                !Guid.TryParse(conversation.RemoteId, out var joinedGroupId) ||
+                joinedGroupId != groupId)
                 throw new InvalidOperationException("رمز الدعوة لا يطابق المجموعة الموجودة في الرابط.");
 
-            return new HimoAppLinkResolution(HimoAppLinkTargetKind.Conversation, groupId, conversation.Name);
+            return new HimoAppLinkResolution(
+                HimoAppLinkTargetKind.Conversation,
+                joinedGroupId,
+                conversation.Name);
         }
 
         throw new InvalidOperationException("نوع رابط Himo غير مدعوم.");
     }
 
     /// <summary>
-    /// Converts trusted HTTPS landing links /join/user/{id} and /join/group/{id}
-    /// into the existing himo://user or himo://group routes. Old custom-scheme
-    /// links remain supported for backward compatibility.
+    /// Converts trusted HTTPS landing links (/join/user/{id} and /join/group/{id})
+    /// into the existing himo:// routes. Previous custom-scheme links remain supported.
     /// </summary>
-    public static bool TryNormalizeLink(string? rawLink, out Uri normalizedUri, string? trustedPublicBaseUrl = null)
+    public static bool TryNormalizeLink(
+        string? rawLink,
+        [NotNullWhen(true)] out Uri? normalizedUri,
+        string? trustedPublicBaseUrl = null)
     {
-        normalizedUri = null!;
+        normalizedUri = null;
         if (!Uri.TryCreate(rawLink?.Trim(), UriKind.Absolute, out var source) ||
+            source is null ||
             !string.IsNullOrEmpty(source.UserInfo))
             return false;
 
         if (source.Scheme.Equals("himo", StringComparison.OrdinalIgnoreCase))
         {
-            if (source.Host.Equals("user", StringComparison.OrdinalIgnoreCase) ||
-                source.Host.Equals("group", StringComparison.OrdinalIgnoreCase))
+            if (!source.Host.Equals("user", StringComparison.OrdinalIgnoreCase) &&
+                !source.Host.Equals("group", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (!Guid.TryParse(Uri.UnescapeDataString(source.AbsolutePath).Trim('/'), out var customTargetId) ||
+                customTargetId == Guid.Empty)
+                return false;
+
+            if (source.Host.Equals("group", StringComparison.OrdinalIgnoreCase))
             {
-                normalizedUri = source;
-                return true;
+                var customInvite = ReadQueryValue(source, "invite");
+                if (string.IsNullOrWhiteSpace(customInvite) || customInvite.Length is < 16 or > 80)
+                    return false;
             }
-            return false;
+
+            normalizedUri = source;
+            return true;
         }
 
         if (!source.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+            (!source.IsDefaultPort && source.Port != 443) ||
             !IsTrustedPublicHost(source, trustedPublicBaseUrl))
             return false;
 
@@ -110,8 +143,14 @@ public static class HimoAppLinkRouter
         if (segments[1].Equals("user", StringComparison.OrdinalIgnoreCase))
         {
             var name64 = ReadQueryValue(source, "name64");
-            var suffix = string.IsNullOrWhiteSpace(name64) ? string.Empty : $"?name64={Uri.EscapeDataString(name64)}";
-            normalizedUri = new Uri($"himo://user/{targetId:D}{suffix}", UriKind.Absolute);
+            var name = ReadQueryValue(source, "name");
+            var query = !string.IsNullOrWhiteSpace(name64)
+                ? $"?name64={Uri.EscapeDataString(name64)}"
+                : !string.IsNullOrWhiteSpace(name)
+                    ? $"?name={Uri.EscapeDataString(name)}"
+                    : string.Empty;
+
+            normalizedUri = new Uri($"himo://user/{targetId:D}{query}", UriKind.Absolute);
             return true;
         }
 
@@ -120,6 +159,7 @@ public static class HimoAppLinkRouter
             var inviteCode = ReadQueryValue(source, "invite");
             if (string.IsNullOrWhiteSpace(inviteCode) || inviteCode.Length is < 16 or > 80)
                 return false;
+
             normalizedUri = new Uri(
                 $"himo://group/{targetId:D}?invite={Uri.EscapeDataString(inviteCode)}",
                 UriKind.Absolute);
@@ -132,24 +172,21 @@ public static class HimoAppLinkRouter
     public static bool IsSupportedLink(string? rawLink, string? trustedPublicBaseUrl = null)
         => TryNormalizeLink(rawLink, out _, trustedPublicBaseUrl);
 
-    // Compatibility wrapper for callers that still expect a conversation-only link.
+    // Compatibility wrapper for existing callers that expect a conversation-only link.
     public static async Task<string> ResolveConversationIdAsync(string rawLink, IServiceProvider services)
     {
         var result = await ResolveAsync(rawLink, services);
         if (result.Kind != HimoAppLinkTargetKind.Conversation)
-            throw new InvalidOperationException("هذا الرابط يفتح ملفًا شخصيًا وليس محادثة.");
+            throw new InvalidOperationException("هذا الرابط يفتح الملف الشخصي الخاص بك وليس محادثة.");
         return result.TargetId.ToString("D");
     }
 
     private static bool IsTrustedPublicHost(Uri uri, string? trustedPublicBaseUrl)
     {
-        if (uri.IsDefaultPort == false && uri.Port != 443)
-            return false;
-
         if (KnownPublicHosts.Contains(uri.IdnHost))
             return true;
 
-        if (!Uri.TryCreate(trustedPublicBaseUrl, UriKind.Absolute, out var trusted) ||
+        if (!Uri.TryCreate(trustedPublicBaseUrl, UriKind.Absolute, out var trusted) || trusted is null ||
             !trusted.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
             return false;
 
@@ -193,6 +230,7 @@ public static class HimoAppLinkRouter
                 return null;
             }
         }
+
         return null;
     }
 }

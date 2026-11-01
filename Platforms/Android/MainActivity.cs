@@ -460,11 +460,18 @@ public class MainActivity : MauiAppCompatActivity
         if (intent is null || !string.Equals(intent.Action, global::Android.Content.Intent.ActionView, StringComparison.OrdinalIgnoreCase))
             return;
 
-        var rawLink = intent.DataString ?? intent.Data?.ToString();
-        if (!HimoAppLinkRouter.IsSupportedLink(rawLink)) return;
+        var rawLink = intent.DataString;
+        if (string.IsNullOrWhiteSpace(rawLink))
+            rawLink = intent.Data?.ToString();
 
-        _pendingAppLink = rawLink;
-        Preferences.Default.Set(PendingAppLinkPreferenceKey, rawLink!);
+        // Normalize HTTPS App Links into the app's internal URI before persisting them.
+        // This also removes nullable-flow ambiguity from Android's optional Intent.Data.
+        if (!HimoAppLinkRouter.TryNormalizeLink(rawLink, out var normalizedUri) || normalizedUri is null)
+            return;
+
+        var normalizedLink = normalizedUri.AbsoluteUri;
+        _pendingAppLink = normalizedLink;
+        Preferences.Default.Set(PendingAppLinkPreferenceKey, normalizedLink);
 
         // A tapped share link is the user's latest navigation intent. Do not let
         // an older push-notification destination open on top of this destination.
@@ -496,12 +503,16 @@ public class MainActivity : MauiAppCompatActivity
         MainThread.BeginInvokeOnMainThread(async () =>
         {
             if (Interlocked.Exchange(ref _appLinkNavigationInProgress, 1) != 0) return;
-            var rawLink = _pendingAppLink;
+            string? linkForCleanup = null;
             try
             {
-                rawLink = _pendingAppLink ?? Preferences.Default.Get(PendingAppLinkPreferenceKey, string.Empty);
-                if (string.IsNullOrWhiteSpace(rawLink)) return;
+                var candidateLink = _pendingAppLink;
+                if (string.IsNullOrWhiteSpace(candidateLink))
+                    candidateLink = Preferences.Default.Get(PendingAppLinkPreferenceKey, string.Empty);
+                if (string.IsNullOrWhiteSpace(candidateLink)) return;
 
+                // The guard above proves candidateLink is non-null/non-empty for the rest of this block.
+                linkForCleanup = candidateLink;
                 var shell = Shell.Current;
                 var services = global::Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services;
                 if (shell is null || services is null) return;
@@ -513,24 +524,7 @@ public class MainActivity : MauiAppCompatActivity
                 // AppShell retries it after a successful login.
                 if (!api.HasToken) return;
 
-                if (Uri.TryCreate(rawLink, UriKind.Absolute, out var incomingUri) &&
-                    incomingUri.Host.Equals("group", StringComparison.OrdinalIgnoreCase))
-                {
-                    var currentPage = shell.CurrentPage;
-                    if (currentPage is null) return;
-                    var accepted = await currentPage.DisplayAlertAsync(
-                        AppLocalization.T("OpenSharedGroupTitle"),
-                        AppLocalization.T("OpenSharedGroupPrompt"),
-                        AppLocalization.T("OpenSharedGroupAction"),
-                        AppLocalization.T("Cancel"));
-                    if (!accepted)
-                    {
-                        ClearPendingAppLink(rawLink);
-                        return;
-                    }
-                }
-
-                var destination = await HimoAppLinkRouter.ResolveAsync(rawLink, services);
+                var destination = await HimoAppLinkRouter.ResolveAsync(candidateLink, services);
                 switch (destination.Kind)
                 {
                     case HimoAppLinkTargetKind.OwnProfile:
@@ -538,12 +532,14 @@ public class MainActivity : MauiAppCompatActivity
                         break;
 
                     case HimoAppLinkTargetKind.PublicProfile:
-                        var displayName = string.IsNullOrWhiteSpace(destination.DisplayName)
-                            ? "مستخدم Himo"
-                            : destination.DisplayName!;
+                    {
+                        var displayName = destination.DisplayName;
+                        if (string.IsNullOrWhiteSpace(displayName))
+                            displayName = "مستخدم Himo";
                         var profileRoute = $"shared-profile?userId={destination.TargetId:D}&name={Uri.EscapeDataString(displayName)}";
                         await shell.GoToAsync(profileRoute);
                         break;
+                    }
 
                     case HimoAppLinkTargetKind.Conversation:
                         await shell.GoToAsync($"chat?id={Uri.EscapeDataString(destination.TargetId.ToString("D"))}");
@@ -552,7 +548,7 @@ public class MainActivity : MauiAppCompatActivity
                     default:
                         throw new InvalidOperationException("نوع رابط Himo غير مدعوم.");
                 }
-                ClearPendingAppLink(rawLink);
+                ClearPendingAppLink(candidateLink);
             }
             catch (Exception ex)
             {
@@ -567,7 +563,7 @@ public class MainActivity : MauiAppCompatActivity
                             AppLocalization.T("OK"));
                 }
                 catch { }
-                ClearPendingAppLink(rawLink);
+                ClearPendingAppLink(linkForCleanup);
             }
             finally
             {
