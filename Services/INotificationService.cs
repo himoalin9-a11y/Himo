@@ -6,6 +6,8 @@ public interface INotificationService
     Task InitializeAsync();
     Task SetEnabledAsync(bool enabled);
     Task ShowMessageAsync(string senderName, string message, string conversationId);
+    Task ShowMessageAsync(string senderName, string message, string conversationId, bool isGroup)
+        => ShowMessageAsync(senderName, message, conversationId);
     Task ShowIncomingCallAsync(string callerName, string conversationId, string mode, string callId);
     Task ClearIncomingCallAsync(string conversationId, string callId, bool suppressFurtherRinging = true);
     bool IsIncomingCallSuppressed(string callId);

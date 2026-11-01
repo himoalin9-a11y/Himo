@@ -706,7 +706,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     private void UpdateSectionChrome(string section)
     {
         ChatSearchCard.IsVisible = section == "chats";
-        // زر إنشاء المجموعة غير موجود في تخطيط HomePage الحالي؛ لذلك لا نحدّث عنصرًا غير معرّف.
+        HomeCreateGroupButton.IsVisible = section == "chats" && !_vm.ShowArchived && !_selectionMode;
         OverflowMenu.IsVisible = false;
         Search.Placeholder = _vm.ShowArchived ? "البحث في المحادثات المؤرشفة" : "البحث في محادثاتك";
         ArchiveListButton.Source = _vm.ShowArchived ? "selection_unarchive.png" : "selection_archive.png";

@@ -506,6 +506,14 @@ sealed class MongoStore
         return _participants.Find(x => x.ConversationId == cid && ids.Contains(x.UserId) && !muted.Contains(x.UserId)).ToList().Select(x => Guid.TryParse(x.UserId, out var g) ? g : Guid.Empty).Where(x => x != Guid.Empty).Distinct().ToArray();
     }
 
+    public bool IsGroupConversation(Guid conversationId)
+    {
+        EnsureIndexes();
+        if (conversationId == Guid.Empty) return false;
+        var conversation = _conversations.Find(x => x.Id == GuidText(conversationId)).FirstOrDefault();
+        return conversation?.IsGroup == true;
+    }
+
     public IReadOnlyList<ConversationDto> GetConversations(Guid userId)
     {
         EnsureIndexes(); var uid = GuidText(userId); var now = DateTimeOffset.UtcNow;

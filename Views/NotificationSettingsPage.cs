@@ -25,13 +25,25 @@ public sealed class NotificationSettingsPage : Himo.Services.LocalizedContentPag
     private const string CallsToneKey = "himo_notification_calls_tone";
     private const string CallsVibrationKey = "himo_notification_calls_vibration";
 
-    private static readonly string[] ToneOptions =
+    private static readonly NotificationToneOption[] ToneOptions =
     {
-        "النغمة الافتراضية",
-        "نغمة هادئة",
-        "نغمة كلاسيكية",
-        "نغمة قصيرة",
-        "بدون نغمة"
+        new("system", "نغمة الجهاز الافتراضية"),
+        new("himo_tone_breeze", "نسيم"),
+        new("himo_tone_spark", "شرارة"),
+        new("himo_tone_classic", "كلاسيكية"),
+        new("himo_tone_chime", "رنين زجاجي"),
+        new("himo_tone_soft", "هادئة"),
+        new("himo_tone_digital", "رقمية"),
+        new("himo_tone_marimba", "ماريمبا"),
+        new("himo_tone_bell", "جرس"),
+        new("himo_tone_ripple", "تموّج"),
+        new("himo_tone_pulse", "نبض"),
+        new("himo_tone_pluck", "وتر"),
+        new("himo_tone_glass", "كريستال"),
+        new("himo_tone_morning", "صباح"),
+        new("himo_tone_orbit", "مدار"),
+        new("himo_tone_alert", "تنبيه"),
+        new("silent", "بدون صوت")
     };
 
     private static readonly string[] VibrationOptions =
@@ -293,9 +305,11 @@ public sealed class NotificationSettingsPage : Himo.Services.LocalizedContentPag
 
     private View CreateChoiceRow(string title, string preferenceKey, string defaultValue, bool isVibration)
     {
+        var storedValue = Preferences.Default.Get(preferenceKey, defaultValue);
+        var displayedValue = isVibration ? storedValue : ToneLabel(NormalizeToneId(storedValue));
         var textStack = CreateDescriptionStack(
             title,
-            Preferences.Default.Get(preferenceKey, defaultValue),
+            displayedValue,
             14,
             11);
         var valueLabel = (Label)textStack.Children[1];
@@ -345,16 +359,47 @@ public sealed class NotificationSettingsPage : Himo.Services.LocalizedContentPag
             }
             else
             {
-                var selected = await DisplayActionSheetAsync("اختر " + title, "إلغاء", null, ToneOptions);
-                if (string.IsNullOrWhiteSpace(selected) || selected == "إلغاء")
+                var currentTone = NormalizeToneId(Preferences.Default.Get(preferenceKey, defaultValue));
+                var isCallTone = string.Equals(preferenceKey, CallsToneKey, StringComparison.Ordinal);
+                var picker = new TonePickerPage(currentTone, ToneOptions, isCallTone);
+                await Navigation.PushModalAsync(picker, true);
+                var selectedTone = await picker.Selection;
+                if (string.IsNullOrWhiteSpace(selectedTone))
                     return;
 
-                Preferences.Default.Set(preferenceKey, selected);
-                valueLabel.Text = selected;
+                // Save only after the user confirms. Previewing a row never changes
+                // the active notification preference.
+                Preferences.Default.Set(preferenceKey, selectedTone);
+                valueLabel.Text = ToneLabel(selectedTone);
+#if ANDROID
+                Himo.Platforms.Android.Services.NotificationService.RefreshNotificationChannels();
+#endif
             }
         };
         row.GestureRecognizers.Add(tap);
         return row;
+    }
+
+    private static string NormalizeToneId(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "system";
+        return value.Trim() switch
+        {
+            "النغمة الافتراضية" => "system",
+            "نغمة هادئة" => "himo_tone_soft",
+            "نغمة كلاسيكية" => "himo_tone_classic",
+            "نغمة قصيرة" => "himo_tone_digital",
+            "بدون نغمة" => "silent",
+            var id => id
+        };
+    }
+
+    private static string ToneLabel(string toneId)
+    {
+        foreach (var option in ToneOptions)
+            if (string.Equals(option.Id, toneId, StringComparison.OrdinalIgnoreCase))
+                return option.Name;
+        return ToneOptions[0].Name;
     }
 
     private static VerticalStackLayout CreateDescriptionStack(string title, string subtitle, double titleSize, double subtitleSize)
@@ -689,5 +734,209 @@ internal sealed class VibrationPickerPage : Himo.Services.LocalizedContentPage
         {
             // Complete the selection even if the modal was already dismissed elsewhere.
         }
+    }
+}
+
+
+internal sealed record NotificationToneOption(string Id, string Name);
+
+/// <summary>
+/// Tone selector: tapping the small button beside a tone selects it and plays
+/// the exact tone as a preview. Only the OK button commits the preference.
+/// </summary>
+internal sealed class TonePickerPage : Himo.Services.LocalizedContentPage
+{
+    private readonly TaskCompletionSource<string?> _completion =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly IReadOnlyList<NotificationToneOption> _options;
+    private readonly bool _isCallTone;
+    private readonly List<(string Id, Button Button)> _toneButtons = new();
+    private string _selected;
+
+    public Task<string?> Selection => _completion.Task;
+
+    public TonePickerPage(string initialValue, IReadOnlyList<NotificationToneOption> options, bool isCallTone)
+    {
+        _options = options ?? throw new ArgumentNullException(nameof(options));
+        _isCallTone = isCallTone;
+        _selected = _options.Any(x => string.Equals(x.Id, initialValue, StringComparison.OrdinalIgnoreCase))
+            ? initialValue : "system";
+
+        Title = isCallTone ? "نغمة المكالمات" : "نغمة الإشعارات";
+        FlowDirection = FlowDirection.RightToLeft;
+        Shell.SetNavBarIsVisible(this, false);
+        SetDynamicResource(BackgroundColorProperty, "HimoBackground");
+
+        var headerTitle = new Label
+        {
+            Text = Title,
+            FontSize = 21,
+            FontAttributes = FontAttributes.Bold,
+            FlowDirection = FlowDirection.RightToLeft,
+            HorizontalTextAlignment = TextAlignment.Start
+        };
+        headerTitle.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        var hint = new Label
+        {
+            Text = "اضغط زر التشغيل بجانب النغمة لسماعها وتحديدها، ثم اضغط موافق للحفظ.",
+            FontSize = 12,
+            FlowDirection = FlowDirection.RightToLeft,
+            HorizontalTextAlignment = TextAlignment.Start,
+            LineBreakMode = LineBreakMode.WordWrap
+        };
+        hint.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+
+        var optionsStack = new VerticalStackLayout { Spacing = 8, FlowDirection = FlowDirection.RightToLeft };
+        foreach (var option in _options)
+        {
+            var name = new Label
+            {
+                Text = option.Name,
+                FontSize = 14,
+                FontAttributes = FontAttributes.Bold,
+                VerticalTextAlignment = TextAlignment.Center,
+                FlowDirection = FlowDirection.RightToLeft,
+                HorizontalTextAlignment = TextAlignment.Start
+            };
+            name.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+
+            var playButton = new Button
+            {
+                Text = string.Equals(option.Id, _selected, StringComparison.OrdinalIgnoreCase) ? "✓" : "▶",
+                FontSize = 16,
+                FontAttributes = FontAttributes.Bold,
+                WidthRequest = 46,
+                HeightRequest = 42,
+                MinimumWidthRequest = 46,
+                MinimumHeightRequest = 42,
+                Padding = 0,
+                CornerRadius = 13,
+                BorderWidth = 1
+            };
+            playButton.SetDynamicResource(VisualElement.BackgroundColorProperty,
+                string.Equals(option.Id, _selected, StringComparison.OrdinalIgnoreCase) ? "HimoAccent" : "HimoSoft");
+            playButton.SetDynamicResource(Button.TextColorProperty,
+                string.Equals(option.Id, _selected, StringComparison.OrdinalIgnoreCase) ? "HimoOnAccent" : "HimoPrimary");
+            playButton.SetDynamicResource(Button.BorderColorProperty, "HimoBorder");
+            playButton.Clicked += (_, _) => SelectAndPreview(option.Id);
+            _toneButtons.Add((option.Id, playButton));
+
+            var row = new Grid
+            {
+                Padding = new Thickness(12, 8),
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(GridLength.Auto)
+                },
+                ColumnSpacing = 12,
+                FlowDirection = FlowDirection.RightToLeft,
+                MinimumHeightRequest = 58
+            };
+            row.Add(name, 0, 0);
+            row.Add(playButton, 1, 0);
+
+            var rowBorder = new Border
+            {
+                Padding = 0,
+                StrokeThickness = 1,
+                StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(14) },
+                Content = row
+            };
+            rowBorder.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoCard");
+            rowBorder.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+            optionsStack.Children.Add(rowBorder);
+        }
+
+        var scroll = new ScrollView
+        {
+            Content = optionsStack,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Never
+        };
+
+        var cancelButton = new Button
+        {
+            Text = "إلغاء",
+            HeightRequest = 48,
+            CornerRadius = 14,
+            BorderWidth = 1
+        };
+        cancelButton.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoSoft");
+        cancelButton.SetDynamicResource(Button.TextColorProperty, "HimoPrimary");
+        cancelButton.SetDynamicResource(Button.BorderColorProperty, "HimoBorder");
+        cancelButton.Clicked += async (_, _) => await CloseAsync(null);
+
+        var okButton = new Button
+        {
+            Text = "موافق",
+            HeightRequest = 48,
+            CornerRadius = 14
+        };
+        okButton.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoAccent");
+        okButton.SetDynamicResource(Button.TextColorProperty, "HimoOnAccent");
+        okButton.Clicked += async (_, _) => await CloseAsync(_selected);
+
+        var footer = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Star)
+            },
+            ColumnSpacing = 10,
+            FlowDirection = FlowDirection.LeftToRight
+        };
+        footer.Add(cancelButton, 0, 0);
+        footer.Add(okButton, 1, 0);
+
+        var layout = new Grid
+        {
+            Padding = new Thickness(18, 20, 18, 18),
+            RowDefinitions =
+            {
+                new RowDefinition(GridLength.Auto),
+                new RowDefinition(GridLength.Star),
+                new RowDefinition(GridLength.Auto)
+            },
+            RowSpacing = 14
+        };
+        var intro = new VerticalStackLayout { Spacing = 5, Children = { headerTitle, hint } };
+        layout.Add(intro, 0, 0);
+        layout.Add(scroll, 0, 1);
+        layout.Add(footer, 0, 2);
+        Content = layout;
+    }
+
+    private void SelectAndPreview(string toneId)
+    {
+        _selected = toneId;
+        foreach (var item in _toneButtons)
+        {
+            var selected = string.Equals(item.Id, toneId, StringComparison.OrdinalIgnoreCase);
+            item.Button.Text = selected ? "✓" : "▶";
+            item.Button.SetDynamicResource(VisualElement.BackgroundColorProperty,
+                selected ? "HimoAccent" : "HimoSoft");
+            item.Button.SetDynamicResource(Button.TextColorProperty,
+                selected ? "HimoOnAccent" : "HimoPrimary");
+        }
+#if ANDROID
+        Himo.Platforms.Android.Services.NotificationService.PlayTonePreview(toneId, _isCallTone);
+#endif
+    }
+
+    protected override bool OnBackButtonPressed()
+    {
+        _ = CloseAsync(null);
+        return true;
+    }
+
+    private async Task CloseAsync(string? value)
+    {
+        if (!_completion.TrySetResult(value)) return;
+#if ANDROID
+        Himo.Platforms.Android.Services.NotificationService.StopTonePreview();
+#endif
+        try { await Navigation.PopModalAsync(true); }
+        catch { /* The selection result is already completed. */ }
     }
 }

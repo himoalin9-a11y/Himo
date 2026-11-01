@@ -1,5 +1,4 @@
 using MessageDto = Himo.Services.HimoApiClient.MessageDto;
-using Himo.Models;
 #if ANDROID
 using Plugin.Firebase.CloudMessaging;
 using Plugin.Firebase.CloudMessaging.EventArgs;
@@ -16,7 +15,6 @@ public sealed class PushNotificationManager
 {
     private const string RegisteredTokenKey = "himo_registered_fcm_token";
     private const string PendingCleanupTokenKey = "himo_pending_fcm_token_cleanup";
-    private const string ActiveConversationPreferenceKey = "himo_active_conversation_id";
     private const int MaxRememberedMessageIds = 250;
     private const int MaxRememberedCallIds = 64;
 
@@ -71,25 +69,15 @@ public sealed class PushNotificationManager
 
     private async Task StartRealtimeInBackgroundAsync()
     {
-        // AutomaticReconnect does not retry a connection that failed on its first start.
-        var delays = new[] { 0, 2, 5, 10, 15 };
-        for (var attempt = 0; attempt < delays.Length; attempt++)
+        try
         {
-            if (attempt > 0)
-                await Task.Delay(TimeSpan.FromSeconds(delays[attempt])).ConfigureAwait(false);
-
-            try
-            {
-                await _realtime.StartAsync().ConfigureAwait(false);
-                if (_realtime.IsConnected) return;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Himo Push] SignalR startup attempt {attempt + 1} failed: {ex.Message}");
-            }
+            await _realtime.StartAsync().ConfigureAwait(false);
         }
-
-        System.Diagnostics.Debug.WriteLine("[Himo Push] SignalR remains offline after retries; API polling and FCM remain available.");
+        catch (Exception ex)
+        {
+            // FCM remains the background delivery path even when SignalR is unavailable.
+            System.Diagnostics.Debug.WriteLine($"[Himo Push] SignalR background startup skipped: {ex.Message}");
+        }
     }
 
     public async Task InitializeAsync()
@@ -247,29 +235,8 @@ public sealed class PushNotificationManager
                 return;
 
             if (!notification.Data.TryGetValue("conversation_id", out var conversationId) ||
-                string.IsNullOrWhiteSpace(conversationId) ||
-                !Guid.TryParse(conversationId, out var parsedConversationId) ||
-                parsedConversationId == Guid.Empty)
+                string.IsNullOrWhiteSpace(conversationId))
                 return;
-
-            notification.Data.TryGetValue("title", out var dataTitle);
-            notification.Data.TryGetValue("body", out var dataBody);
-            var title = !string.IsNullOrWhiteSpace(notification.Title)
-                ? notification.Title
-                : !string.IsNullOrWhiteSpace(dataTitle) ? dataTitle : "رسالة جديدة";
-            var body = !string.IsNullOrWhiteSpace(notification.Body)
-                ? notification.Body
-                : !string.IsNullOrWhiteSpace(dataBody) ? dataBody : "لديك رسالة جديدة";
-            var isActiveConversation = IsActiveConversation(conversationId);
-
-            // FCM can be the only delivery path if SignalR is reconnecting. Do not
-            // merely toast a notification: fetch and persist the actual server message
-            // so the open chat/list updates as well.
-            await SyncForegroundConversationFromServerAsync(
-                parsedConversationId, title, markRead: isActiveConversation);
-
-            if (isActiveConversation)
-                return; // The user is already reading this chat; do not show an OS notification over it.
 
             if (IsConversationMutedOrBlocked(conversationId))
                 return;
@@ -277,11 +244,24 @@ public sealed class PushNotificationManager
             var messageId = notification.Data.TryGetValue("message_id", out var id)
                 ? id
                 : string.Empty;
-            var dedupeKey = BuildDedupeKey(messageId, conversationId, body);
+            var pushBody = notification.Data.TryGetValue("body", out var dataBody)
+                ? dataBody : notification.Body;
+            var dedupeKey = BuildDedupeKey(messageId, conversationId, pushBody);
             if (!TryRememberNotification(dedupeKey))
                 return;
 
-            await _notifications.ShowMessageAsync(title, body, conversationId);
+            var title = notification.Data.TryGetValue("title", out var dataTitle) &&
+                        !string.IsNullOrWhiteSpace(dataTitle)
+                ? dataTitle
+                : string.IsNullOrWhiteSpace(notification.Title) ? "رسالة جديدة" : notification.Title;
+            var body = string.IsNullOrWhiteSpace(pushBody) ? "لديك رسالة جديدة" : pushBody;
+            var isGroupFromPush = notification.Data.TryGetValue("is_group", out var isGroupText) &&
+                                  bool.TryParse(isGroupText, out var parsedIsGroup) && parsedIsGroup;
+            var localConversation = _chat.Conversations.FirstOrDefault(c =>
+                string.Equals(c.RemoteId, conversationId, StringComparison.OrdinalIgnoreCase));
+            var isGroup = isGroupFromPush || (localConversation?.IsGroup ?? false);
+
+            await _notifications.ShowMessageAsync(title, body, conversationId, isGroup);
         }
         catch (Exception ex)
         {
@@ -541,138 +521,40 @@ public sealed class PushNotificationManager
 
     private void OnRealtimeMessageReceived(object? sender, MessageDto message)
     {
-        if (!_appInForeground || !_account.IsSignedIn ||
-            _account.CurrentAccount?.UserId == message.SenderUserId)
+        if (!_appInForeground || !_account.IsSignedIn)
             return;
 
-        _ = HandleRealtimeIncomingMessageAsync(message);
-    }
+        if (_account.CurrentAccount?.UserId == message.SenderUserId)
+            return;
 
-    private async Task HandleRealtimeIncomingMessageAsync(MessageDto message)
-    {
-        try
-        {
-            var remoteConversationId = message.ConversationId.ToString("D");
-            var conversation = await EnsureLocalConversationAsync(message.ConversationId, message.SenderPhoneNumber);
-            var myUserId = _account.CurrentAccount?.UserId ?? Guid.Empty;
-            var isMine = myUserId != Guid.Empty && message.SenderUserId == myUserId;
+        var remoteConversationId = message.ConversationId.ToString("D");
+        if (IsConversationMutedOrBlocked(remoteConversationId))
+            return;
 
-            await MainThread.InvokeOnMainThreadAsync(() =>
-                _chat.AddRemoteMessage(conversation.Id, message.Text, message.SentAt.LocalDateTime, isMine,
-                    message.Id.ToString("D"), message.AttachmentFileName, message.AttachmentContentType,
-                    message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"),
-                    message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted, message.ExpiresAt?.LocalDateTime));
+        var localConversation = _chat.Conversations.FirstOrDefault(c =>
+            string.Equals(c.RemoteId, remoteConversationId, StringComparison.OrdinalIgnoreCase));
+        var conversationName = localConversation?.Name;
 
-            // Persist first regardless of mute state. Muting suppresses notifications;
-            // it must never stop the message from reaching the local conversation cache.
-            if (IsActiveConversation(remoteConversationId))
-            {
-                await MainThread.InvokeOnMainThreadAsync(() => _chat.MarkAsRead(conversation.Id));
-                try { await _api.MarkConversationReadAsync(message.ConversationId); } catch { }
-                try { await _notifications.ClearConversationAsync(remoteConversationId); } catch { }
-                return;
-            }
+        var title = string.IsNullOrWhiteSpace(conversationName)
+            ? message.SenderPhoneNumber
+            : conversationName;
+        var body = string.IsNullOrWhiteSpace(message.Text) ? "لديك رسالة جديدة" : message.Text;
+        var dedupeKey = BuildDedupeKey(message.Id.ToString("D"), remoteConversationId, body);
 
-            if (IsConversationMutedOrBlocked(remoteConversationId))
-                return;
+        if (!TryRememberNotification(dedupeKey))
+            return;
 
-            var body = string.IsNullOrWhiteSpace(message.Text) ? "لديك رسالة جديدة" : message.Text;
-            var dedupeKey = BuildDedupeKey(message.Id.ToString("D"), remoteConversationId, body);
-            if (!TryRememberNotification(dedupeKey))
-                return;
-
-            var title = string.IsNullOrWhiteSpace(conversation.Name)
-                ? message.SenderPhoneNumber
-                : conversation.Name;
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                try { await _notifications.ShowMessageAsync(title, body, remoteConversationId); }
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo Push] SignalR notification failed: {ex}"); }
-            });
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Himo Push] Incoming SignalR message sync failed: {ex}");
-        }
-    }
-
-    private bool IsActiveConversation(string remoteConversationId)
-    {
-        if (!_appInForeground || string.IsNullOrWhiteSpace(remoteConversationId))
-            return false;
-
-        var activeId = Preferences.Default.Get(ActiveConversationPreferenceKey, string.Empty);
-        return string.Equals(activeId, remoteConversationId, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private async Task<Conversation> EnsureLocalConversationAsync(Guid remoteConversationId, string? fallbackName)
-    {
-        Conversation? local = _chat.Conversations.FirstOrDefault(x =>
-            string.Equals(x.RemoteId, remoteConversationId.ToString("D"), StringComparison.OrdinalIgnoreCase));
-
-        HimoApiClient.ConversationDto? remote = null;
-        // Hydrate a missing/placeholder row from the server so the conversation name,
-        // participant and archived state are authoritative, but never block display
-        // on this lookup if the API is temporarily unavailable.
-        if (local is null || string.IsNullOrWhiteSpace(local.Name) || string.Equals(local.Name, "محادثة", StringComparison.Ordinal))
+        _ = MainThread.InvokeOnMainThreadAsync(async () =>
         {
             try
             {
-                var conversations = await _api.GetConversationsAsync();
-                remote = conversations.FirstOrDefault(x => x.Id == remoteConversationId);
+                await _notifications.ShowMessageAsync(title, body, remoteConversationId, localConversation?.IsGroup ?? false);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[Himo Push] Conversation metadata refresh failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[Himo Push] SignalR notification failed: {ex}");
             }
-        }
-
-        return await MainThread.InvokeOnMainThreadAsync(() =>
-            remote is not null
-                ? _chat.UpsertRemoteConversation(remote, fallbackName)
-                : _chat.EnsureRemoteConversation(remoteConversationId, fallbackName));
-    }
-
-    private async Task SyncForegroundConversationFromServerAsync(Guid remoteConversationId, string? fallbackName, bool markRead)
-    {
-        try
-        {
-            var localConversation = await EnsureLocalConversationAsync(remoteConversationId, fallbackName);
-            var messages = await _api.GetMessagesAsync(remoteConversationId, limit: 100);
-            var myUserId = _account.CurrentAccount?.UserId ?? Guid.Empty;
-            var newlyAddedIncomingIds = new List<Guid>();
-
-            await MainThread.InvokeOnMainThreadAsync(() =>
-            {
-                foreach (var message in messages.OrderBy(x => x.SentAt))
-                {
-                    var isMine = myUserId != Guid.Empty && message.SenderUserId == myUserId;
-                    var added = _chat.AddRemoteMessage(
-                        localConversation.Id, message.Text, message.SentAt.LocalDateTime, isMine,
-                        message.Id.ToString("D"), message.AttachmentFileName, message.AttachmentContentType,
-                        message.AttachmentSize, message.Status, message.ReplyToMessageId?.ToString("D"),
-                        message.ReplyToText, message.IsEdited, message.EditedAt, message.IsDeleted, message.ExpiresAt?.LocalDateTime);
-                    if (added && !isMine)
-                        newlyAddedIncomingIds.Add(message.Id);
-                }
-
-                if (markRead)
-                    _chat.MarkAsRead(localConversation.Id);
-            });
-
-            foreach (var messageId in newlyAddedIncomingIds)
-                await _realtime.MarkMessageDeliveredAsync(messageId);
-
-            if (markRead)
-            {
-                await _api.MarkConversationReadAsync(remoteConversationId);
-                await _notifications.ClearConversationAsync(remoteConversationId.ToString("D"));
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Himo Push] Foreground FCM message sync failed for {remoteConversationId:D}: {ex}");
-        }
+        });
     }
 
     private bool IsConversationMutedOrBlocked(string remoteConversationId)

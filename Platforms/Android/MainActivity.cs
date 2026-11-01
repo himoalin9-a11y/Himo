@@ -872,26 +872,9 @@ public class MainActivity : MauiAppCompatActivity
     private static void CreateNotificationChannel()
     {
         if (!OperatingSystem.IsAndroidVersionAtLeast(26)) return;
-
-        var context = global::Android.App.Application.Context;
-        var manager = context.GetSystemService(global::Android.Content.Context.NotificationService)
-            as global::Android.App.NotificationManager;
-        if (manager is null) return;
-
-
-        var channel = new global::Android.App.NotificationChannel(
-            Platforms.Android.Services.NotificationService.MessageChannelId,
-            "رسائل Himo",
-            global::Android.App.NotificationImportance.High)
-        {
-            Description = "إشعارات الرسائل الجديدة في Himo"
-        };
-        channel.SetSound(
-            global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Notification),
-            null);
-        manager.CreateNotificationChannel(channel);
-
-        FirebaseCloudMessagingImplementation.ChannelId = Platforms.Android.Services.NotificationService.MessageChannelId;
+        Platforms.Android.Services.NotificationService.RefreshNotificationChannels();
+        FirebaseCloudMessagingImplementation.ChannelId =
+            Platforms.Android.Services.NotificationService.GetCurrentMessageChannelId();
     }
 
     public static bool IsNotificationPermissionGranted()

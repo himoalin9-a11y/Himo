@@ -1247,7 +1247,8 @@ webApp.MapPost("/api/conversations/{id:guid}/messages", async (Guid id, HttpRequ
                 message.Text,
                 message.ConversationId,
                 message.Id,
-                CancellationToken.None);
+                CancellationToken.None,
+                isGroup: store.IsGroupConversation(message.ConversationId));
 
             // FCM accepted the message for these registered device tokens.
             // Treat that as the delivered state for the message receipt so the
@@ -1390,7 +1391,8 @@ webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpR
         {
             var push = webApp.Services.GetRequiredService<FcmPushService>();
             var acceptedTokens = await push.SendMessageAsync(tokens, session.Name, message.Text,
-                message.ConversationId, message.Id, CancellationToken.None);
+                message.ConversationId, message.Id, CancellationToken.None,
+                isGroup: store.IsGroupConversation(message.ConversationId));
             var deliveredUserIds = store.GetPushTokenOwners(acceptedTokens);
             foreach (var deliveredUserId in deliveredUserIds)
             {

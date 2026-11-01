@@ -14,7 +14,7 @@ public class MainApplication : MauiApplication
     public MainApplication(IntPtr handle, global::Android.Runtime.JniHandleOwnership ownership)
         : base(handle, ownership)
     {
-        FirebaseCloudMessagingImplementation.ChannelId = Platforms.Android.Services.NotificationService.MessageChannelId;
+        FirebaseCloudMessagingImplementation.ChannelId = Platforms.Android.Services.NotificationService.GetCurrentMessageChannelId();
         EnsureNotificationChannels();
         // This routine queries the system notification manager and reflectively
         // walks active notifications. It is cleanup work, not launch-critical UI;
@@ -31,45 +31,38 @@ public class MainApplication : MauiApplication
 
     private static void ConfigureFcmLocalNotificationAction()
     {
-        // This callback runs from the Firebase messaging service, including when
-        // Android starts the app process for a background/data message. It must
-        // handle both call invites and ordinary chat messages; otherwise a message
-        // with conversation_id but without call_type is silently discarded.
+        // This callback is installed for the application lifetime. Message pushes
+        // are data-only so Himo can select the per-category tone on this device.
         FirebaseCloudMessagingImplementation.ShowLocalNotificationAction = notification =>
         {
             try
             {
+                var data = notification?.Data;
+                if (data is null) return;
+
                 var notificationTitle = notification?.Title;
                 var notificationBody = notification?.Body;
-                var data = notification?.Data;
-                if (data is null)
-                    return;
+                if (data.TryGetValue("title", out var dataTitle) && !string.IsNullOrWhiteSpace(dataTitle))
+                    notificationTitle = dataTitle;
+                if (data.TryGetValue("body", out var dataBody) && !string.IsNullOrWhiteSpace(dataBody))
+                    notificationBody = dataBody;
 
-                data.TryGetValue("conversation_id", out var conversationId);
-                data.TryGetValue("call_type", out var callType);
-                data.TryGetValue("call_id", out var callId);
-                data.TryGetValue("call_mode", out var callMode);
-                data.TryGetValue("caller_name", out var callerName);
-
-                var service = new Platforms.Android.Services.NotificationService();
-
-                if (!string.IsNullOrWhiteSpace(callType))
+                if (data.TryGetValue("call_type", out var callType))
                 {
+                    data.TryGetValue("conversation_id", out var conversationId);
+                    data.TryGetValue("call_id", out var callId);
+                    data.TryGetValue("call_mode", out var callMode);
+                    data.TryGetValue("caller_name", out var callerName);
+                    var service = new Platforms.Android.Services.NotificationService();
+
                     if (string.Equals(callType, "invite", StringComparison.OrdinalIgnoreCase))
                     {
-                        // The foreground notification manager routes invites directly
-                        // to CallPage. Background invites need a real Android call
-                        // notification with its own full-screen/content PendingIntent.
-                        if (!MainActivity.IsAppForeground)
-                        {
-                            _ = service.ShowIncomingCallAsync(
-                                string.IsNullOrWhiteSpace(callerName)
-                                    ? notificationTitle ?? "مكالمة واردة"
-                                    : callerName,
-                                conversationId ?? string.Empty,
-                                callMode ?? "audio",
-                                callId ?? string.Empty);
-                        }
+                        if (MainActivity.IsAppForeground) return;
+                        _ = service.ShowIncomingCallAsync(
+                            string.IsNullOrWhiteSpace(callerName) ? notificationTitle ?? "مكالمة واردة" : callerName,
+                            conversationId ?? string.Empty,
+                            callMode ?? "audio",
+                            callId ?? string.Empty);
                     }
                     else if (string.Equals(callType, "answering", StringComparison.OrdinalIgnoreCase) ||
                              string.Equals(callType, "accept", StringComparison.OrdinalIgnoreCase))
@@ -87,33 +80,24 @@ public class MainApplication : MauiApplication
                         Platforms.Android.Services.NotificationService.NotifyIncomingCallTerminatedByPush(
                             conversationId ?? string.Empty, callId ?? string.Empty);
                     }
-
-                    // Never convert call-state messages into chat notifications.
                     return;
                 }
 
-                // Ordinary messages do not have call_type. Plugin.Firebase's
-                // custom local-notification callback replaces its default handling,
-                // so explicitly post a Himo notification when the app is backgrounded.
                 if (MainActivity.IsAppForeground ||
-                    string.IsNullOrWhiteSpace(conversationId) ||
-                    !Guid.TryParse(conversationId, out var parsedConversationId) ||
-                    parsedConversationId == Guid.Empty)
+                    !data.TryGetValue("notification_type", out var notificationType) ||
+                    !string.Equals(notificationType, "chat_message", StringComparison.OrdinalIgnoreCase) ||
+                    !data.TryGetValue("conversation_id", out var messageConversationId) ||
+                    string.IsNullOrWhiteSpace(messageConversationId))
                     return;
 
-                data.TryGetValue("title", out var dataTitle);
-                data.TryGetValue("body", out var dataBody);
-
-                var title = !string.IsNullOrWhiteSpace(notificationTitle)
-                    ? notificationTitle
-                    : !string.IsNullOrWhiteSpace(dataTitle) ? dataTitle : "رسالة جديدة";
-                var body = !string.IsNullOrWhiteSpace(notificationBody)
-                    ? notificationBody
-                    : !string.IsNullOrWhiteSpace(dataBody) ? dataBody : "لديك رسالة جديدة";
-
-                _ = service.ShowMessageAsync(title, body, parsedConversationId.ToString("D"));
-                System.Diagnostics.Debug.WriteLine(
-                    $"[Himo Push] Background message notification posted. ConversationId={parsedConversationId:D}");
+                var isGroup = data.TryGetValue("is_group", out var groupText) &&
+                              bool.TryParse(groupText, out var parsedGroup) && parsedGroup;
+                var messageService = new Platforms.Android.Services.NotificationService();
+                _ = messageService.ShowMessageAsync(
+                    notificationTitle ?? "رسالة جديدة",
+                    notificationBody ?? "لديك رسالة جديدة",
+                    messageConversationId,
+                    isGroup);
             }
             catch (Exception ex)
             {
@@ -126,27 +110,9 @@ public class MainApplication : MauiApplication
     {
         try
         {
-            if (!OperatingSystem.IsAndroidVersionAtLeast(26))
-                return;
-
-            var context = global::Android.App.Application.Context;
-            var manager = context.GetSystemService(global::Android.Content.Context.NotificationService)
-                as global::Android.App.NotificationManager;
-            if (manager is null)
-                return;
-
-            var messageChannel = new global::Android.App.NotificationChannel(
-                Platforms.Android.Services.NotificationService.MessageChannelId,
-                "رسائل Himo",
-                global::Android.App.NotificationImportance.High)
-            {
-                Description = "إشعارات الرسائل الجديدة في Himo"
-            };
-            messageChannel.SetSound(
-                global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Notification),
-                null);
-            manager.CreateNotificationChannel(messageChannel);
-
+            Platforms.Android.Services.NotificationService.RefreshNotificationChannels();
+            FirebaseCloudMessagingImplementation.ChannelId =
+                Platforms.Android.Services.NotificationService.GetCurrentMessageChannelId();
         }
         catch (Exception ex)
         {

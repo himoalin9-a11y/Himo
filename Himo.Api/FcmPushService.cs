@@ -77,7 +77,8 @@ sealed class FcmPushService
         string message,
         Guid conversationId,
         Guid messageId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool isGroup = false)
     {
         var acceptedTokens = new List<string>();
 
@@ -101,17 +102,19 @@ sealed class FcmPushService
         if (cleanTokens.Count == 0)
             return acceptedTokens;
 
+        var safeTitle = string.IsNullOrWhiteSpace(senderName) ? "رسالة جديدة" : senderName.Trim();
+        if (safeTitle.Length > 120) safeTitle = safeTitle[..120];
+        var safeBody = string.IsNullOrWhiteSpace(message) ? "لديك رسالة جديدة" : message.Trim();
+        // Leave enough room for the remaining metadata within FCM's 4 KB data-payload limit.
+        if (safeBody.Length > 700) safeBody = safeBody[..700] + "…";
         var data = new Dictionary<string, string>
         {
-            // Chat pushes are data-only so the Android app can always render them
-            // with Himo's own notification icon and a PendingIntent carrying the
-            // conversation ID. A top-level FCM Notification is system-rendered
-            // and cannot reliably use the app's deep-link/call routing.
             ["conversation_id"] = conversationId.ToString("D"),
             ["message_id"] = messageId.ToString("D"),
             ["notification_type"] = "chat_message",
-            ["title"] = string.IsNullOrWhiteSpace(senderName) ? "رسالة جديدة" : senderName,
-            ["body"] = string.IsNullOrWhiteSpace(message) ? "لديك رسالة جديدة" : message,
+            ["title"] = safeTitle,
+            ["body"] = safeBody,
+            ["is_group"] = isGroup ? "true" : "false",
             ["is_silent_in_foreground"] = "true"
         };
 
@@ -130,13 +133,14 @@ sealed class FcmPushService
 #pragma warning disable CS0618 // FirebaseAdmin currently uses registration tokens here; Fids are a different identifier type.
                         Tokens = batch.ToList(),
 #pragma warning restore CS0618
+                        // Data-only payload: the Himo app creates the local Android
+                        // notification and selects the message/group channel from this
+                        // device's saved tone preference, even when the app is closed.
                         Data = data,
-                        // Keep this a high-priority data message. The Android
-                        // MainApplication callback posts the local notification
-                        // using the Himo icon and conversation PendingIntent.
                         Android = new AndroidConfig
                         {
-                            Priority = Priority.High
+                            Priority = Priority.High,
+                            TimeToLive = TimeSpan.FromHours(24)
                         }
                     };
 

@@ -1,13 +1,16 @@
 using Himo.Services;
-using Microsoft.Maui.Storage;
 
 namespace Himo.Platforms.Android.Services;
 
 public sealed class NotificationService : INotificationService
 {
+    // Legacy IDs are kept for compatibility with older app versions and existing intents.
     public const string MessageChannelId = "himo_messages_v5";
-    // Versioned because Android does not allow changing sound/audio attributes on an existing channel.
-    public const string CallsChannelId = "himo_calls_v5";
+    public const string CallsChannelId = "himo_calls_v4";
+    private const string MessagesTonePreferenceKey = "himo_notification_messages_tone";
+    private const string GroupsTonePreferenceKey = "himo_notification_groups_tone";
+    private const string CallsTonePreferenceKey = "himo_notification_calls_tone";
+    private const string DefaultToneId = "system";
     private const string ChannelName = "رسائل Himo";
     private const string ChannelDescription = "إشعارات الرسائل الجديدة في Himo";
     private const string CallsChannelName = "المكالمات الواردة";
@@ -23,6 +26,9 @@ public sealed class NotificationService : INotificationService
     private static System.Threading.CancellationTokenSource? _backgroundCallRingtoneCts;
     private static string? _backgroundCallRingtoneKey;
     private static string? _backgroundCallRingtoneCallId;
+    private static readonly object PreviewRingtoneGate = new();
+    private static global::Android.Media.Ringtone? _previewRingtone;
+    private static System.Threading.CancellationTokenSource? _previewRingtoneCts;
     private const int BackgroundCallRingTimeoutMs = 45_000;
     public static event Action<string, string>? IncomingCallTerminatedByPush;
     public static event Action<string, string, string>? IncomingCallAnsweredByPush;
@@ -58,10 +64,11 @@ public sealed class NotificationService : INotificationService
     }
 
     public Task ShowMessageAsync(string senderName, string message, string conversationId)
+        => ShowMessageAsync(senderName, message, conversationId, isGroup: false);
+
+    public Task ShowMessageAsync(string senderName, string message, string conversationId, bool isGroup)
     {
         if (!IsEnabled || string.IsNullOrWhiteSpace(conversationId))
-            return Task.CompletedTask;
-        if (IsGroupNotificationMuted(conversationId, "message-muted"))
             return Task.CompletedTask;
 
         var context = global::Android.App.Application.Context;
@@ -111,8 +118,7 @@ public sealed class NotificationService : INotificationService
         if (pendingIntent is null)
             return Task.CompletedTask;
 
-        var messageChannelId = GetGroupNotificationChannel(context, conversationId, isCall: false);
-        var builder = new global::AndroidX.Core.App.NotificationCompat.Builder(context, messageChannelId);
+        var builder = new global::AndroidX.Core.App.NotificationCompat.Builder(context, GetCurrentMessageChannelId(isGroup));
         builder.SetSmallIcon(Resource.Drawable.himo_notification);
         builder.SetContentTitle(title);
         builder.SetContentText(text);
@@ -123,13 +129,6 @@ public sealed class NotificationService : INotificationService
         builder.SetOnlyAlertOnce(false);
         builder.SetContentIntent(pendingIntent);
         builder.SetVisibility(global::AndroidX.Core.App.NotificationCompat.VisibilityPrivate);
-        if (!OperatingSystem.IsAndroidVersionAtLeast(26))
-        {
-            var tone = GetGroupToneUri(context, conversationId, isCall: false);
-            if (tone is not null) builder.SetSound(tone);
-            var vibration = GetGroupVibrationPattern(conversationId, isCall: false);
-            if (vibration is not null) builder.SetVibrate(vibration);
-        }
 
         var notification = builder.Build();
         if (notification is null)
@@ -144,9 +143,6 @@ public sealed class NotificationService : INotificationService
     public Task ShowIncomingCallAsync(string callerName, string conversationId, string mode, string callId)
     {
         if (string.IsNullOrWhiteSpace(conversationId)) return Task.CompletedTask;
-        // Muting a group call silences its alert, but must not hide the incoming call
-        // notification or prevent the user from opening the call screen.
-        var callMuted = IsGroupNotificationMuted(conversationId, "call-muted");
 
         var normalizedMode = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio";
         var normalizedCallId = Guid.TryParse(callId, out var parsedCallId) && parsedCallId != Guid.Empty
@@ -157,12 +153,9 @@ public sealed class NotificationService : INotificationService
         if (context is null) return Task.CompletedTask;
 
         var dedupeKey = string.IsNullOrWhiteSpace(normalizedCallId) ? conversationId : normalizedCallId;
-        var callToneUri = callMuted ? null : GetGroupToneUri(context, conversationId, isCall: true);
-        var callVibration = callMuted ? Array.Empty<long>() : GetGroupVibrationPattern(conversationId, isCall: true);
         try
         {
             EnsureChannels();
-            var callChannelId = GetGroupNotificationChannel(context, conversationId, isCall: true);
             global::Himo.MainActivity.SetPendingCall(conversationId, normalizedMode, normalizedCallId);
 
             var notificationManager = global::AndroidX.Core.App.NotificationManagerCompat.From(context);
@@ -186,30 +179,19 @@ public sealed class NotificationService : INotificationService
 
                 var title = string.IsNullOrWhiteSpace(callerName) ? "مكالمة واردة" : callerName.Trim();
                 var body = normalizedMode == "video" ? "مكالمة فيديو واردة — اضغط للرد" : "مكالمة صوتية واردة — اضغط للرد";
-                var builder = new global::AndroidX.Core.App.NotificationCompat.Builder(context, callChannelId);
+                var builder = new global::AndroidX.Core.App.NotificationCompat.Builder(context, GetCurrentCallsChannelId());
                 builder.SetSmallIcon(Resource.Drawable.himo_notification);
                 builder.SetContentTitle(title);
                 builder.SetContentText(body);
-                builder.SetStyle(new global::AndroidX.Core.App.NotificationCompat.BigTextStyle().BigText(body));
-                builder.SetSubText("Himo • مكالمة واردة");
-                builder.SetWhen(Java.Lang.JavaSystem.CurrentTimeMillis());
-                builder.SetShowWhen(true);
                 builder.SetCategory(global::AndroidX.Core.App.NotificationCompat.CategoryCall);
                 builder.SetPriority(global::AndroidX.Core.App.NotificationCompat.PriorityMax);
                 builder.SetVisibility(global::AndroidX.Core.App.NotificationCompat.VisibilityPublic);
                 builder.SetOngoing(true);
                 builder.SetAutoCancel(false);
-                // FCM may redeliver the same high-priority data push. Alert only once
-                // for this CallId, and let the same 45-second call timeout remove stale alerts.
-                builder.SetOnlyAlertOnce(true);
-                builder.SetTimeoutAfter(45_000);
+                builder.SetOnlyAlertOnce(false);
                 builder.SetContentIntent(pendingIntent);
-                // With full-screen access, show the incoming call surface over the lock screen;
-                // otherwise Android retains this as a high-priority heads-up/tray notification.
                 builder.SetFullScreenIntent(pendingIntent, true);
-                if (callVibration is { Length: > 0 }) builder.SetVibrate(callVibration);
-                if (!OperatingSystem.IsAndroidVersionAtLeast(26) && callToneUri is not null)
-                    builder.SetSound(callToneUri);
+                builder.SetVibrate(new long[] { 0, 500, 300, 500 });
                 notificationManager?.Notify(notificationId, builder.Build());
                 System.Diagnostics.Debug.WriteLine($"[Himo Call] Incoming-call notification posted; callId={normalizedCallId}; mode={normalizedMode}");
             }
@@ -218,20 +200,13 @@ public sealed class NotificationService : INotificationService
                 System.Diagnostics.Debug.WriteLine("[Himo Call] POST_NOTIFICATIONS permission missing; cannot post call notification.");
             }
 
-            // Keep a looping ringtone as a fallback unless this group is muted on this device.
-            if (!callMuted)
+            // Keep a looping ringtone as a fallback because notification sounds may be limited by device settings.
+            lock (FinishedCallIdsGate)
             {
-                lock (FinishedCallIdsGate)
-                {
-                    if (IsCallRingingSuppressed(normalizedCallId)) return Task.CompletedTask;
-                    ActiveCallRingtoneIds.Add(dedupeKey);
-                }
-                StartBackgroundIncomingCallRingtone(context, dedupeKey, conversationId, normalizedCallId, callToneUri);
+                if (IsCallRingingSuppressed(normalizedCallId)) return Task.CompletedTask;
+                ActiveCallRingtoneIds.Add(dedupeKey);
             }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[Himo Call] Incoming call notification shown silently for muted group {conversationId}.");
-            }
+            StartBackgroundIncomingCallRingtone(context, dedupeKey, conversationId, normalizedCallId);
         }
         catch (Exception ex)
         {
@@ -249,8 +224,7 @@ public sealed class NotificationService : INotificationService
         global::Android.Content.Context context,
         string dedupeKey,
         string conversationId,
-        string callId,
-        global::Android.Net.Uri? ringtoneUri)
+        string callId)
     {
         lock (BackgroundCallRingtoneGate)
         {
@@ -259,10 +233,13 @@ public sealed class NotificationService : INotificationService
                 return;
 
             StopBackgroundIncomingCallRingtoneLocked();
-            ringtoneUri ??= global::Android.Media.RingtoneManager.GetDefaultUri(
-                global::Android.Media.RingtoneType.Ringtone);
+            var selectedCallTone = GetSavedToneId(CallsTonePreferenceKey);
+            var ringtoneUri = GetToneUri(context, selectedCallTone, isCall: true);
             if (ringtoneUri is null)
-                throw new InvalidOperationException("Android did not provide a default ringtone URI.");
+            {
+                System.Diagnostics.Debug.WriteLine("[Himo Call] Incoming call ringtone is disabled by the selected tone.");
+                return;
+            }
 
             var ringtone = global::Android.Media.RingtoneManager.GetRingtone(context, ringtoneUri);
             if (ringtone is null)
@@ -405,8 +382,7 @@ public sealed class NotificationService : INotificationService
                                 ? notification?.GetType().GetProperty("ChannelId")?.GetValue(notification) as string
                                 : null;
                             var oldCallTag = (tag ?? string.Empty).StartsWith("himo-call-", StringComparison.OrdinalIgnoreCase);
-                            if (oldCallTag || string.Equals(channelId, "himo_calls_v4", StringComparison.OrdinalIgnoreCase) ||
-                                string.Equals(channelId, "himo_calls_v3", StringComparison.OrdinalIgnoreCase) ||
+                            if (oldCallTag || string.Equals(channelId, "himo_calls_v3", StringComparison.OrdinalIgnoreCase) ||
                                 string.Equals(channelId, "himo_calls_v2", StringComparison.OrdinalIgnoreCase) ||
                                 string.Equals(channelId, "himo_calls_v1", StringComparison.OrdinalIgnoreCase))
                                 compat?.Cancel(tag, id);
@@ -421,7 +397,6 @@ public sealed class NotificationService : INotificationService
 
             if (OperatingSystem.IsAndroidVersionAtLeast(26) && platformManager is not null)
             {
-                try { platformManager.DeleteNotificationChannel("himo_calls_v4"); } catch { }
                 try { platformManager.DeleteNotificationChannel("himo_calls_v3"); } catch { }
                 try { platformManager.DeleteNotificationChannel("himo_calls_v2"); } catch { }
                 try { platformManager.DeleteNotificationChannel("himo_calls_v1"); } catch { }
@@ -538,144 +513,131 @@ public sealed class NotificationService : INotificationService
         return Task.CompletedTask;
     }
 
-    private static bool IsGroupNotificationMuted(string conversationId, string setting)
+    public static string GetCurrentMessageChannelId(bool isGroup = false)
     {
-        if (!Guid.TryParse(conversationId, out var groupId) || groupId == Guid.Empty) return false;
-        return Preferences.Default.Get($"himo_group_{groupId:N}_{setting}", false);
+        var toneId = GetSavedToneId(isGroup ? GroupsTonePreferenceKey : MessagesTonePreferenceKey);
+        return $"himo_{(isGroup ? "groups" : "messages")}_{SafeChannelPart(toneId)}_v1";
     }
 
-    public static bool IsGroupCallMutedForConversation(string conversationId) =>
-        IsGroupNotificationMuted(conversationId, "call-muted");
-
-    public static global::Android.Net.Uri? GetGroupCallToneUriForConversation(
-        global::Android.Content.Context context, string conversationId) =>
-        GetGroupToneUri(context, conversationId, isCall: true);
-
-    private static string GetGroupNotificationChannel(
-        global::Android.Content.Context context,
-        string conversationId,
-        bool isCall)
+    public static string GetCurrentCallsChannelId()
     {
-        var defaultChannel = isCall ? CallsChannelId : MessageChannelId;
-        if (!OperatingSystem.IsAndroidVersionAtLeast(26) ||
-            !Guid.TryParse(conversationId, out var groupId) || groupId == Guid.Empty)
-            return defaultChannel;
+        var toneId = GetSavedToneId(CallsTonePreferenceKey);
+        return $"himo_calls_{SafeChannelPart(toneId)}_v1";
+    }
 
-        var prefix = $"himo_group_{groupId:N}_";
-        var toneKey = prefix + (isCall ? "call-tone" : "message-tone");
-        var vibrationKey = prefix + (isCall ? "call-vibration" : "message-vibration");
-        var tone = Preferences.Default.Get(toneKey, "الافتراضية");
-        var vibration = Preferences.Default.Get(vibrationKey, "تلقائي");
-        var muted = isCall && IsGroupNotificationMuted(conversationId, "call-muted");
-        if (tone == "الافتراضية" && vibration == "تلقائي" && !muted)
-            return defaultChannel;
+    public static void RefreshNotificationChannels() => EnsureChannels();
 
-        var toneCode = ToneCode(tone);
-        var vibrationCode = VibrationCode(vibration);
-        var channelId = $"himo_{(isCall ? "gc" : "gm")}_{groupId:N}_{toneCode}_{vibrationCode}_{(muted ? 1 : 0)}";
+    private static string GetSavedToneId(string preferenceKey)
+    {
+        var value = Preferences.Default.Get(preferenceKey, DefaultToneId)?.Trim();
+        if (string.IsNullOrWhiteSpace(value)) return DefaultToneId;
+        return value switch
+        {
+            "النغمة الافتراضية" => "system",
+            "نغمة هادئة" => "himo_tone_soft",
+            "نغمة كلاسيكية" => "himo_tone_classic",
+            "نغمة قصيرة" => "himo_tone_digital",
+            "بدون نغمة" => "silent",
+            _ => value
+        };
+    }
+
+    private static string SafeChannelPart(string value)
+    {
+        var cleaned = new string((value ?? DefaultToneId).ToLowerInvariant()
+            .Where(c => char.IsAsciiLetterOrDigit(c) || c == '_').ToArray());
+        return string.IsNullOrWhiteSpace(cleaned) ? DefaultToneId : cleaned;
+    }
+
+    private static int GetToneResourceId(string toneId) => toneId switch
+    {
+        "himo_tone_breeze" => Resource.Raw.himo_tone_breeze,
+        "himo_tone_spark" => Resource.Raw.himo_tone_spark,
+        "himo_tone_classic" => Resource.Raw.himo_tone_classic,
+        "himo_tone_chime" => Resource.Raw.himo_tone_chime,
+        "himo_tone_soft" => Resource.Raw.himo_tone_soft,
+        "himo_tone_digital" => Resource.Raw.himo_tone_digital,
+        "himo_tone_marimba" => Resource.Raw.himo_tone_marimba,
+        "himo_tone_bell" => Resource.Raw.himo_tone_bell,
+        "himo_tone_ripple" => Resource.Raw.himo_tone_ripple,
+        "himo_tone_pulse" => Resource.Raw.himo_tone_pulse,
+        "himo_tone_pluck" => Resource.Raw.himo_tone_pluck,
+        "himo_tone_glass" => Resource.Raw.himo_tone_glass,
+        "himo_tone_morning" => Resource.Raw.himo_tone_morning,
+        "himo_tone_orbit" => Resource.Raw.himo_tone_orbit,
+        "himo_tone_alert" => Resource.Raw.himo_tone_alert,
+        _ => 0
+    };
+
+    private static global::Android.Net.Uri? GetToneUri(
+        global::Android.Content.Context context, string toneId, bool isCall)
+    {
+        if (string.Equals(toneId, "silent", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        if (string.Equals(toneId, DefaultToneId, StringComparison.OrdinalIgnoreCase))
+            return global::Android.Media.RingtoneManager.GetDefaultUri(
+                isCall ? global::Android.Media.RingtoneType.Ringtone : global::Android.Media.RingtoneType.Notification);
+
+        var resourceId = GetToneResourceId(toneId);
+        if (resourceId == 0)
+            return global::Android.Media.RingtoneManager.GetDefaultUri(
+                isCall ? global::Android.Media.RingtoneType.Ringtone : global::Android.Media.RingtoneType.Notification);
+
+        return global::Android.Net.Uri.Parse($"android.resource://{context.PackageName}/{resourceId}");
+    }
+
+    public static void PlayTonePreview(string toneId, bool isCall)
+    {
+        var context = global::Android.App.Application.Context;
+        if (context is null) return;
+
+        lock (PreviewRingtoneGate)
+        {
+            StopTonePreviewLocked();
+            var uri = GetToneUri(context, toneId, isCall);
+            if (uri is null) return;
+
+            var ringtone = global::Android.Media.RingtoneManager.GetRingtone(context, uri);
+            if (ringtone is null) return;
+            _previewRingtone = ringtone;
+            _previewRingtoneCts = new System.Threading.CancellationTokenSource();
+            ringtone.Play();
+            _ = StopTonePreviewAfterAsync(ringtone, _previewRingtoneCts.Token);
+        }
+    }
+
+    public static void StopTonePreview()
+    {
+        lock (PreviewRingtoneGate)
+            StopTonePreviewLocked();
+    }
+
+    private static void StopTonePreviewLocked()
+    {
+        try { _previewRingtoneCts?.Cancel(); } catch { }
+        try { _previewRingtoneCts?.Dispose(); } catch { }
+        _previewRingtoneCts = null;
+        try { _previewRingtone?.Stop(); } catch { }
+        try { _previewRingtone?.Dispose(); } catch { }
+        _previewRingtone = null;
+    }
+
+    private static async Task StopTonePreviewAfterAsync(
+        global::Android.Media.Ringtone ringtone,
+        System.Threading.CancellationToken cancellationToken)
+    {
         try
         {
-            var manager = context.GetSystemService(global::Android.Content.Context.NotificationService)
-                as global::Android.App.NotificationManager;
-            if (manager is null) return defaultChannel;
-            if (manager.GetNotificationChannel(channelId) is not null) return channelId;
-
-            var channel = new global::Android.App.NotificationChannel(
-                channelId,
-                isCall ? "مكالمات المجموعة" : "رسائل المجموعة",
-                isCall ? global::Android.App.NotificationImportance.Max : global::Android.App.NotificationImportance.High);
-            channel.Description = isCall ? "تنبيهات مكالمات هذه المجموعة" : "تنبيهات رسائل هذه المجموعة";
-            if (isCall)
-                channel.LockscreenVisibility = global::Android.App.NotificationVisibility.Public;
-
-            var sound = muted ? null : GetGroupToneUri(context, conversationId, isCall);
-            channel.SetSound(sound, null);
-
-            var pattern = muted ? Array.Empty<long>() : GetGroupVibrationPattern(conversationId, isCall);
-            channel.EnableVibration(pattern is { Length: > 0 });
-            if (pattern is { Length: > 0 }) channel.SetVibrationPattern(pattern);
-            manager.CreateNotificationChannel(channel);
-            return channelId;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Himo Push] Group notification channel setup failed: {ex.Message}");
-            return defaultChannel;
-        }
-    }
-
-    private static int ToneCode(string tone) => tone switch
-    {
-        "هادئة" => 1,
-        "نغمة 1" or "رنين 1" => 2,
-        "نغمة 2" or "رنين 2" => 3,
-        "نغمة 3" or "رنين 3" => 4,
-        "رنين 4" => 5,
-        _ => 0
-    };
-
-    private static int VibrationCode(string vibration) => vibration switch
-    {
-        "إيقاف" => 1,
-        "قصير" => 2,
-        "طويل" => 3,
-        _ => 0
-    };
-
-    private static global::Android.Net.Uri? GetGroupToneUri(
-        global::Android.Content.Context context,
-        string conversationId,
-        bool isCall)
-    {
-        var defaultType = isCall
-            ? global::Android.Media.RingtoneType.Ringtone
-            : global::Android.Media.RingtoneType.Notification;
-        var tone = "الافتراضية";
-        if (Guid.TryParse(conversationId, out var groupId) && groupId != Guid.Empty)
-        {
-            var key = $"himo_group_{groupId:N}_{(isCall ? "call-tone" : "message-tone")}";
-            tone = Preferences.Default.Get(key, "الافتراضية");
-        }
-
-        var resourceId = isCall
-            ? tone switch
+            await Task.Delay(3_000, cancellationToken).ConfigureAwait(false);
+            lock (PreviewRingtoneGate)
             {
-                "رنين 1" => Resource.Raw.himo_call_tone_1,
-                "رنين 2" => Resource.Raw.himo_call_tone_2,
-                "رنين 3" => Resource.Raw.himo_call_tone_3,
-                "رنين 4" => Resource.Raw.himo_call_tone_4,
-                _ => 0
+                if (ReferenceEquals(_previewRingtone, ringtone))
+                    StopTonePreviewLocked();
             }
-            : tone switch
-            {
-                "هادئة" => Resource.Raw.himo_message_tone_soft,
-                "نغمة 1" => Resource.Raw.himo_message_tone_1,
-                "نغمة 2" => Resource.Raw.himo_message_tone_2,
-                "نغمة 3" => Resource.Raw.himo_message_tone_3,
-                _ => 0
-            };
-
-        if (resourceId != 0)
-            return global::Android.Net.Uri.Parse($"android.resource://{context.PackageName}/{resourceId}");
-        return global::Android.Media.RingtoneManager.GetDefaultUri(defaultType);
-    }
-
-    private static long[]? GetGroupVibrationPattern(string conversationId, bool isCall)
-    {
-        if (!Guid.TryParse(conversationId, out var groupId) || groupId == Guid.Empty)
-            return isCall ? new long[] { 0, 500, 300, 500 } : null;
-
-        var key = $"himo_group_{groupId:N}_{(isCall ? "call-vibration" : "message-vibration")}";
-        if (!Preferences.Default.ContainsKey(key))
-            return isCall ? new long[] { 0, 500, 300, 500 } : null;
-
-        return Preferences.Default.Get(key, "تلقائي") switch
-        {
-            "إيقاف" => Array.Empty<long>(),
-            "قصير" => new long[] { 0, 140 },
-            "طويل" => new long[] { 0, 750, 220, 750 },
-            _ => isCall ? new long[] { 0, 500, 300, 500 } : new long[] { 0, 220, 140, 220 }
-        };
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo Tone] Preview cleanup failed: {ex.Message}"); }
     }
 
     private static void EnsureChannels()
@@ -691,38 +653,53 @@ public sealed class NotificationService : INotificationService
             if (manager is null)
                 return;
 
-            var channel = new global::Android.App.NotificationChannel(
-                MessageChannelId,
-                ChannelName,
-                global::Android.App.NotificationImportance.High)
-            {
-                Description = ChannelDescription
-            };
-            channel.SetSound(
-                global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Notification),
-                null);
-            manager.CreateNotificationChannel(channel);
-
-            var callsChannel = new global::Android.App.NotificationChannel(
-                CallsChannelId,
-                CallsChannelName,
-                global::Android.App.NotificationImportance.Max)
-            {
-                Description = CallsChannelDescription,
-                LockscreenVisibility = global::Android.App.NotificationVisibility.Public
-            };
-            callsChannel.SetSound(
-                global::Android.Media.RingtoneManager.GetDefaultUri(global::Android.Media.RingtoneType.Ringtone),
-                null);
-            callsChannel.EnableVibration(true);
-            callsChannel.SetVibrationPattern(new long[] { 0, 500, 300, 500 });
-            manager.CreateNotificationChannel(callsChannel);
-
+            CreateToneChannel(manager, context, GetCurrentMessageChannelId(isGroup: false), ChannelName,
+                ChannelDescription, GetSavedToneId(MessagesTonePreferenceKey), isCall: false,
+                importance: global::Android.App.NotificationImportance.High);
+            CreateToneChannel(manager, context, GetCurrentMessageChannelId(isGroup: true), "مجموعات Himo",
+                "إشعارات الرسائل الجديدة في المجموعات", GetSavedToneId(GroupsTonePreferenceKey), isCall: false,
+                importance: global::Android.App.NotificationImportance.High);
+            CreateToneChannel(manager, context, GetCurrentCallsChannelId(), CallsChannelName,
+                CallsChannelDescription, GetSavedToneId(CallsTonePreferenceKey), isCall: true,
+                importance: global::Android.App.NotificationImportance.Max,
+                visibility: global::Android.App.NotificationVisibility.Public);
+            Plugin.Firebase.CloudMessaging.FirebaseCloudMessagingImplementation.ChannelId =
+                GetCurrentMessageChannelId();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo Push] Notification channel initialization failed: {ex}");
         }
+    }
+
+    private static void CreateToneChannel(
+        global::Android.App.NotificationManager manager,
+        global::Android.Content.Context context,
+        string channelId,
+        string name,
+        string description,
+        string toneId,
+        bool isCall,
+        global::Android.App.NotificationImportance importance,
+        global::Android.App.NotificationVisibility visibility = global::Android.App.NotificationVisibility.Private)
+    {
+        // Android freezes sound settings on first channel creation. A tone-specific ID
+        // ensures a newly confirmed selection receives a channel with the new sound.
+        if (manager.GetNotificationChannel(channelId) is not null)
+            return;
+
+        var channel = new global::Android.App.NotificationChannel(channelId, name, importance)
+        {
+            Description = description,
+            LockscreenVisibility = visibility
+        };
+        channel.SetSound(GetToneUri(context, toneId, isCall), null);
+        if (isCall)
+        {
+            channel.EnableVibration(true);
+            channel.SetVibrationPattern(new long[] { 0, 500, 300, 500 });
+        }
+        manager.CreateNotificationChannel(channel);
     }
 
     private static int GetNotificationId(string conversationId)
