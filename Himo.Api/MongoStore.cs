@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -467,11 +467,26 @@ sealed class MongoStore
                 else _blockedUsers.DeleteOne(x => x.Id == bid);
                 return;
             }
-            var state = _userStates.Find(x => x.ConversationId == cid && x.UserId == uid).FirstOrDefault() ?? new MUserState { Id = PairId(conversationId, userId), ConversationId = cid, UserId = uid };
+            var timestamp = NowText();
+            var state = _userStates.Find(x => x.ConversationId == cid && x.UserId == uid).FirstOrDefault()
+                ?? new MUserState { Id = PairId(conversationId, userId), ConversationId = cid, UserId = uid };
             if (action is "archive" or "unarchive") state.IsArchived = action == "archive";
             if (action is "mute" or "unmute") state.IsMuted = action == "mute";
-            if (action == "delete") state.IsDeleted = true;
-            state.UpdatedAt = NowText();
+            if (action == "delete")
+            {
+                // Delete is per-user: hide the conversation and set a durable history
+                // boundary so reopening the same direct/group conversation starts empty
+                // for this account without deleting the other participants' messages.
+                var clearResult = _participants.UpdateOne(
+                    x => x.ConversationId == cid && x.UserId == uid,
+                    Builders<MParticipant>.Update.Set(x => x.ClearedBefore, timestamp)
+                        .Set(x => x.LastReadAt, timestamp));
+                if (clearResult.MatchedCount == 0)
+                    throw new InvalidOperationException("لم يتم العثور على عضويتك في المحادثة.");
+                state.IsDeleted = true;
+                state.ClearedBefore = timestamp;
+            }
+            state.UpdatedAt = timestamp;
             _userStates.ReplaceOne(x => x.Id == state.Id, state, new ReplaceOptions { IsUpsert = true });
         }
     }
@@ -516,8 +531,13 @@ sealed class MongoStore
             }
             var visibleMessageFilter = Builders<MMessage>.Filter.Eq(x => x.ConversationId, p.ConversationId)
                 & (Builders<MMessage>.Filter.Eq(x => x.ExpiresAt, null) | Builders<MMessage>.Filter.Gt(x => x.ExpiresAt, now.ToString("O", CultureInfo.InvariantCulture)));
-            if (p.ClearedBefore is not null)
-                visibleMessageFilter &= Builders<MMessage>.Filter.Gt(x => x.SentAt, p.ClearedBefore);
+            var historyBoundary = p.ClearedBefore;
+            var stateHistoryBoundary = state?.ClearedBefore;
+            if (!string.IsNullOrWhiteSpace(stateHistoryBoundary) &&
+                (historyBoundary is null || string.CompareOrdinal(stateHistoryBoundary, historyBoundary) > 0))
+                historyBoundary = stateHistoryBoundary;
+            if (historyBoundary is not null)
+                visibleMessageFilter &= Builders<MMessage>.Filter.Gt(x => x.SentAt, historyBoundary);
             var last = _messages.Find(visibleMessageFilter)
                 .Sort(Builders<MMessage>.Sort.Descending(x => x.SentAt).Descending(x => x.Id))
                 .Limit(1).FirstOrDefault();
@@ -562,11 +582,17 @@ sealed class MongoStore
     {
         var participant = _participants.Find(x => x.ConversationId == conversationId && x.UserId == userId).FirstOrDefault();
         if (participant is null) return 0;
+        var state = _userStates.Find(x => x.ConversationId == conversationId && x.UserId == userId).FirstOrDefault();
+        var historyBoundary = participant.ClearedBefore;
+        var stateHistoryBoundary = state?.ClearedBefore;
+        if (!string.IsNullOrWhiteSpace(stateHistoryBoundary) &&
+            (historyBoundary is null || string.CompareOrdinal(stateHistoryBoundary, historyBoundary) > 0))
+            historyBoundary = stateHistoryBoundary;
         var since = participant.LastReadAt ?? participant.JoinedAt;
         return _messages.Find(x => x.ConversationId == conversationId).ToList().Count(x => x.SenderUserId != userId
             && string.CompareOrdinal(x.SentAt, since) > 0
             && (x.ExpiresAt is null || string.CompareOrdinal(x.ExpiresAt, now.ToString("O")) > 0)
-            && (participant.ClearedBefore is null || string.CompareOrdinal(x.SentAt, participant.ClearedBefore) > 0));
+            && (historyBoundary is null || string.CompareOrdinal(x.SentAt, historyBoundary) > 0));
     }
 
     public ConversationDto CreateConversation(Guid userId, string name, Guid? participantUserId = null)
@@ -618,10 +644,24 @@ sealed class MongoStore
                         var stId = PairId(Guid.Parse(directIds.Id), userId); var st = _userStates.Find(x => x.Id == stId).FirstOrDefault() ?? new MUserState { Id = stId, ConversationId = directIds.Id, UserId = uid };
                         st.IsDeleted = false; st.IsArchived = false; st.UpdatedAt = timestamp; _userStates.ReplaceOne(x => x.Id == stId, st, new ReplaceOptions { IsUpsert = true });
                         var unread = CountUnread(directIds.Id, uid, now);
+                        var currentMembership = _participants.Find(x => x.ConversationId == directIds.Id && x.UserId == uid).FirstOrDefault();
+                        var visibleFilter = Builders<MMessage>.Filter.Eq(x => x.ConversationId, directIds.Id)
+                            & (Builders<MMessage>.Filter.Eq(x => x.ExpiresAt, null)
+                                | Builders<MMessage>.Filter.Gt(x => x.ExpiresAt, now.ToString("O", CultureInfo.InvariantCulture)));
+                        var historyBoundary = currentMembership?.ClearedBefore;
+                        var stateHistoryBoundary = st.ClearedBefore;
+                        if (!string.IsNullOrWhiteSpace(stateHistoryBoundary) &&
+                            (historyBoundary is null || string.CompareOrdinal(stateHistoryBoundary, historyBoundary) > 0))
+                            historyBoundary = stateHistoryBoundary;
+                        if (historyBoundary is not null)
+                            visibleFilter &= Builders<MMessage>.Filter.Gt(x => x.SentAt, historyBoundary);
+                        var lastVisibleMessage = _messages.Find(visibleFilter)
+                            .Sort(Builders<MMessage>.Sort.Descending(x => x.SentAt).Descending(x => x.Id))
+                            .Limit(1).FirstOrDefault();
                         var existingConversationIsBlocked = _blockedUsers.Find(x =>
                             (x.BlockerUserId == uid && x.BlockedUserId == targetUser.Id) ||
                             (x.BlockerUserId == targetUser.Id && x.BlockedUserId == uid)).FirstOrDefault() is not null;
-                        return new ConversationDto(Guid.Parse(directIds.Id), targetUser.Name, directIds.LastMessage, ParseTime(directIds.UpdatedAt, now), unread, participantUserId,
+                        return new ConversationDto(Guid.Parse(directIds.Id), targetUser.Name, lastVisibleMessage?.Text ?? string.Empty, ParseTime(directIds.UpdatedAt, now), unread, participantUserId,
                             targetUser.ProfilePhoto is { Length: > 0 }, targetUser.ProfilePhotoVersion,
                             isArchived: false, isMuted: st.IsMuted, isBlocked: existingConversationIsBlocked);
                     }
@@ -848,7 +888,7 @@ sealed class MongoStore
         return result.DeletedCount > 0;
     }
 
-    public bool LeaveGroup(Guid conversationId, Guid userId)
+    public bool LeaveGroup(Guid conversationId, Guid userId, bool clearHistory = false)
     {
         EnsureIndexes();
         var cid = GuidText(conversationId);
@@ -889,7 +929,20 @@ sealed class MongoStore
             }
 
             var result = _participants.DeleteOne(x => x.ConversationId == cid && x.UserId == uid);
-            return result.DeletedCount > 0;
+            if (result.DeletedCount == 0) return false;
+
+            if (clearHistory)
+            {
+                var timestamp = NowText();
+                var state = _userStates.Find(x => x.ConversationId == cid && x.UserId == uid).FirstOrDefault()
+                    ?? new MUserState { Id = PairId(conversationId, userId), ConversationId = cid, UserId = uid };
+                state.IsDeleted = true;
+                state.IsArchived = false;
+                state.ClearedBefore = timestamp;
+                state.UpdatedAt = timestamp;
+                _userStates.ReplaceOne(x => x.Id == state.Id, state, new ReplaceOptions { IsUpsert = true });
+            }
+            return true;
         }
     }
 
@@ -908,6 +961,8 @@ sealed class MongoStore
         var uid = GuidText(userId);
         var existingMembership = _participants.Find(x =>
             x.ConversationId == group.Id && x.UserId == uid).FirstOrDefault();
+        var stateId = PairId(Guid.Parse(group.Id), userId);
+        var state = _userStates.Find(x => x.Id == stateId).FirstOrDefault();
 
         // Existing members may open the group even when new members need admin
         // approval. Enforce the approval rule only before creating membership.
@@ -917,9 +972,43 @@ sealed class MongoStore
                 throw new UnauthorizedAccessException("تتطلب هذه المجموعة موافقة المشرف قبل الانضمام.");
 
             var timestamp = NowText();
-            _participants.InsertOne(new MParticipant { Id = PairId(Guid.Parse(group.Id), userId), ConversationId = group.Id, UserId = uid, JoinedAt = timestamp, LastReadAt = timestamp });
+            _participants.InsertOne(new MParticipant
+            {
+                Id = stateId,
+                ConversationId = group.Id,
+                UserId = uid,
+                JoinedAt = timestamp,
+                LastReadAt = timestamp,
+                // A user who previously deleted/left this group starts after the
+                // saved boundary instead of receiving the old group history again.
+                ClearedBefore = state?.ClearedBefore
+            });
         }
-        return new ConversationDto(Guid.Parse(group.Id), group.Name, group.LastMessage, ParseTime(group.UpdatedAt, DateTimeOffset.UtcNow), 0, isGroup: true);
+
+        if (state is not null && (state.IsDeleted || state.IsArchived))
+        {
+            state.IsDeleted = false;
+            state.IsArchived = false;
+            state.UpdatedAt = NowText();
+            _userStates.ReplaceOne(x => x.Id == state.Id, state, new ReplaceOptions { IsUpsert = true });
+        }
+
+        var membershipForView = _participants.Find(x => x.ConversationId == group.Id && x.UserId == uid).FirstOrDefault();
+        var visibleGroupMessages = Builders<MMessage>.Filter.Eq(x => x.ConversationId, group.Id)
+            & (Builders<MMessage>.Filter.Eq(x => x.ExpiresAt, null)
+                | Builders<MMessage>.Filter.Gt(x => x.ExpiresAt, NowText()));
+        var groupHistoryBoundary = membershipForView?.ClearedBefore;
+        var stateHistoryBoundary = state?.ClearedBefore;
+        if (!string.IsNullOrWhiteSpace(stateHistoryBoundary) &&
+            (groupHistoryBoundary is null || string.CompareOrdinal(stateHistoryBoundary, groupHistoryBoundary) > 0))
+            groupHistoryBoundary = stateHistoryBoundary;
+        if (groupHistoryBoundary is not null)
+            visibleGroupMessages &= Builders<MMessage>.Filter.Gt(x => x.SentAt, groupHistoryBoundary);
+        var latestVisibleGroupMessage = _messages.Find(visibleGroupMessages)
+            .Sort(Builders<MMessage>.Sort.Descending(x => x.SentAt).Descending(x => x.Id))
+            .Limit(1).FirstOrDefault();
+        return new ConversationDto(Guid.Parse(group.Id), group.Name, latestVisibleGroupMessage?.Text ?? string.Empty,
+            ParseTime(group.UpdatedAt, DateTimeOffset.UtcNow), 0, isGroup: true);
     }
 
     private bool IsGroupAdmin(MConversation group, string userId)
@@ -1045,8 +1134,21 @@ sealed class MongoStore
     }
     public void ClearConversationForUser(Guid conversationId, Guid userId)
     {
-        EnsureIndexes(); var timestamp = NowText(); var result = _participants.UpdateOne(x => x.ConversationId == GuidText(conversationId) && x.UserId == GuidText(userId), Builders<MParticipant>.Update.Set(x => x.ClearedBefore, timestamp).Set(x => x.LastReadAt, timestamp));
-        if (result.MatchedCount == 0) throw new InvalidOperationException("لم يتم العثور على عضويتك في المحادثة.");
+        EnsureIndexes();
+        var timestamp = NowText();
+        var cid = GuidText(conversationId);
+        var uid = GuidText(userId);
+        var result = _participants.UpdateOne(
+            x => x.ConversationId == cid && x.UserId == uid,
+            Builders<MParticipant>.Update.Set(x => x.ClearedBefore, timestamp).Set(x => x.LastReadAt, timestamp));
+        if (result.MatchedCount == 0)
+            throw new InvalidOperationException("لم يتم العثور على عضويتك في المحادثة.");
+
+        var state = _userStates.Find(x => x.ConversationId == cid && x.UserId == uid).FirstOrDefault()
+            ?? new MUserState { Id = PairId(conversationId, userId), ConversationId = cid, UserId = uid };
+        state.ClearedBefore = timestamp;
+        state.UpdatedAt = timestamp;
+        _userStates.ReplaceOne(x => x.Id == state.Id, state, new ReplaceOptions { IsUpsert = true });
     }
 
     private DateTimeOffset? GetMessageExpiry(Guid conversationId, DateTimeOffset sentAt)
@@ -1076,14 +1178,22 @@ sealed class MongoStore
         var participant = currentUserId.HasValue
             ? _participants.Find(x => x.ConversationId == cid && x.UserId == GuidText(currentUserId.Value)).FirstOrDefault()
             : null;
+        var userState = currentUserId.HasValue
+            ? _userStates.Find(x => x.ConversationId == cid && x.UserId == GuidText(currentUserId.Value)).FirstOrDefault()
+            : null;
+        var historyBoundary = participant?.ClearedBefore;
+        var stateHistoryBoundary = userState?.ClearedBefore;
+        if (!string.IsNullOrWhiteSpace(stateHistoryBoundary) &&
+            (historyBoundary is null || string.CompareOrdinal(stateHistoryBoundary, historyBoundary) > 0))
+            historyBoundary = stateHistoryBoundary;
 
         var filters = new List<FilterDefinition<MMessage>>
         {
             Builders<MMessage>.Filter.Eq(x => x.ConversationId, cid),
             Builders<MMessage>.Filter.Eq(x => x.ExpiresAt, null) | Builders<MMessage>.Filter.Gt(x => x.ExpiresAt, now)
         };
-        if (participant?.ClearedBefore is not null)
-            filters.Add(Builders<MMessage>.Filter.Gt(x => x.SentAt, participant.ClearedBefore));
+        if (historyBoundary is not null)
+            filters.Add(Builders<MMessage>.Filter.Gt(x => x.SentAt, historyBoundary));
         if (since.HasValue)
             filters.Add(Builders<MMessage>.Filter.Gte(x => x.SentAt, since.Value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)));
         if (before.HasValue)
@@ -1259,7 +1369,7 @@ sealed class MongoStore
 [BsonIgnoreExtraElements] sealed class MSession { [BsonId] public string Token { get; set; } = ""; public string UserId { get; set; } = ""; public string ExpiresAt { get; set; } = ""; }
 [BsonIgnoreExtraElements] sealed class MConversation { [BsonId] public string Id { get; set; } = ""; public string OwnerUserId { get; set; } = ""; public string Name { get; set; } = ""; public string LastMessage { get; set; } = ""; public string UpdatedAt { get; set; } = ""; public bool IsGroup { get; set; } public int DisappearingSeconds { get; set; } public bool AllMembersCanAddMembers { get; set; } public bool AllMembersCanShareInviteLink { get; set; } public bool RequireAdminApproval { get; set; } public bool AdminsOnlyMessages { get; set; } public string? Description { get; set; } public string? InviteCode { get; set; } public byte[]? GroupPhoto { get; set; } public string? GroupPhotoContentType { get; set; } public long GroupPhotoVersion { get; set; } }
 [BsonIgnoreExtraElements] sealed class MParticipant { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string UserId { get; set; } = ""; public string JoinedAt { get; set; } = ""; public string? LastReadAt { get; set; } public string? ClearedBefore { get; set; } public bool IsAdmin { get; set; } }
-[BsonIgnoreExtraElements] sealed class MUserState { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string UserId { get; set; } = ""; public bool IsArchived { get; set; } public bool IsMuted { get; set; } public bool IsDeleted { get; set; } public string UpdatedAt { get; set; } = ""; }
+[BsonIgnoreExtraElements] sealed class MUserState { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string UserId { get; set; } = ""; public bool IsArchived { get; set; } public bool IsMuted { get; set; } public bool IsDeleted { get; set; } public string? ClearedBefore { get; set; } public string UpdatedAt { get; set; } = ""; }
 [BsonIgnoreExtraElements] sealed class MBlockedUser { [BsonId] public string Id { get; set; } = ""; public string BlockerUserId { get; set; } = ""; public string BlockedUserId { get; set; } = ""; public string CreatedAt { get; set; } = ""; }
 [BsonIgnoreExtraElements] sealed class MReport { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string ReporterUserId { get; set; } = ""; public string Reason { get; set; } = ""; public string CreatedAt { get; set; } = ""; }
 [BsonIgnoreExtraElements] sealed class MReceipt { [BsonId] public string Id { get; set; } = ""; public string MessageId { get; set; } = ""; public string RecipientUserId { get; set; } = ""; public string? DeliveredAt { get; set; } public string? ReadAt { get; set; } }

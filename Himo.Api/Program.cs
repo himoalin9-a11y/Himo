@@ -1095,7 +1095,11 @@ webApp.MapDelete("/api/groups/{id:guid}/leave", (Guid id, HttpRequest http, Mong
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
     try
     {
-        if (!store.LeaveGroup(id, session.UserId)) return Results.NotFound();
+        // Minimal API binds this parameter as HttpRequest, so query values are
+        // available directly through http.Query (HttpRequest has no Request property).
+        var clearHistory = bool.TryParse(http.Query["clearHistory"].ToString(), out var requestedClearHistory)
+            && requestedClearHistory;
+        if (!store.LeaveGroup(id, session.UserId, clearHistory)) return Results.NotFound();
         return Results.NoContent();
     }
     catch (InvalidOperationException ex)

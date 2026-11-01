@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Himo.Models;
 using Himo.Services;
@@ -13,6 +13,13 @@ public sealed class HomeViewModel
     private readonly HimoApiClient _api;
     public ObservableCollection<Conversation> Conversations => _chat.Conversations;
     public ObservableCollection<Conversation> FilteredConversations { get; } = new();
+
+    public bool RemoveConversationFromLocal(int localConversationId)
+    {
+        var removed = _chat.RemoveConversation(localConversationId);
+        if (removed) Filter();
+        return removed;
+    }
     public string SearchText { get; set; } = "";
     public ICommand SearchCommand { get; }
     public bool HasServerSession => _api.HasToken;
