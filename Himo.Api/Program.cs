@@ -1715,9 +1715,10 @@ sealed class HimoChatHub : Hub
             }
             else if (callId != Guid.Empty)
             {
-                var isPeerExit = isGroup && senderUserId != initiatorUserId &&
-                    (string.Equals(normalizedType, "Reject", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(normalizedType, "Leave", StringComparison.OrdinalIgnoreCase));
+                var isPeerExit = isGroup &&
+                    (string.Equals(normalizedType, "Leave", StringComparison.OrdinalIgnoreCase) ||
+                     (senderUserId != initiatorUserId &&
+                      string.Equals(normalizedType, "Reject", StringComparison.OrdinalIgnoreCase)));
                 await _push.SendCallStateAsync(
                     tokens, conversationId, callId, normalizedType, isPeerExit, senderUserId, CancellationToken.None);
             }

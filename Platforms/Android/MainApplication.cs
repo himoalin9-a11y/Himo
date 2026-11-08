@@ -72,6 +72,17 @@ public class MainApplication : MauiApplication
                         Platforms.Android.Services.NotificationService.NotifyIncomingCallAnsweredByPush(
                             conversationId ?? string.Empty, callId ?? string.Empty, callType);
                     }
+                    else if (string.Equals(callType, "leave", StringComparison.OrdinalIgnoreCase) ||
+                             (string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) &&
+                              data.TryGetValue("is_group_peer_exit", out var peerExitText) &&
+                              string.Equals(peerExitText, "true", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        // A group participant (including the original initiator) left.
+                        // Dismiss only this device's pending ring notification; accepted
+                        // participants must remain in their existing peer-to-peer mesh.
+                        _ = service.ClearIncomingCallAsync(
+                            conversationId ?? string.Empty, callId ?? string.Empty, suppressFurtherRinging: true);
+                    }
                     else if (string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) ||
                              string.Equals(callType, "end", StringComparison.OrdinalIgnoreCase))
                     {

@@ -23,6 +23,7 @@ public sealed class PushNotificationManager
     private readonly ChatService _chat;
     private readonly HimoRealtimeService _realtime;
     private readonly ICallService _calls;
+    private readonly WebRtcNegotiationCoordinator _negotiation;
     private readonly INotificationService _notifications;
     private readonly object _dedupeGate = new();
     private readonly HashSet<string> _shownMessageIds = new(StringComparer.OrdinalIgnoreCase);
@@ -49,6 +50,7 @@ public sealed class PushNotificationManager
         ChatService chat,
         HimoRealtimeService realtime,
         ICallService calls,
+        WebRtcNegotiationCoordinator negotiation,
         INotificationService notifications)
     {
         _account = account;
@@ -56,6 +58,7 @@ public sealed class PushNotificationManager
         _chat = chat;
         _realtime = realtime;
         _calls = calls;
+        _negotiation = negotiation;
         _notifications = notifications;
 
         _realtime.MessageReceived += OnRealtimeMessageReceived;
@@ -198,14 +201,51 @@ public sealed class PushNotificationManager
                 if (string.Equals(callType, "answering", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(callType, "accept", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(callType, "end", StringComparison.OrdinalIgnoreCase))
+                    string.Equals(callType, "end", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(callType, "leave", StringComparison.OrdinalIgnoreCase))
                 {
                     var normalizedCallId = Guid.TryParse(callId, out var parsedStateCallId) && parsedStateCallId != Guid.Empty
                         ? parsedStateCallId.ToString("D") : string.Empty;
-                    if (normalizedCallId.Length > 0)
+                    var isGroupPeerExit =
+                        (string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(callType, "leave", StringComparison.OrdinalIgnoreCase)) &&
+                        notification.Data.TryGetValue("is_group_peer_exit", out var peerExitText) &&
+                        string.Equals(peerExitText, "true", StringComparison.OrdinalIgnoreCase);
+                    if (isGroupPeerExit &&
+                        Guid.TryParse(normalizedCallId, out var peerExitCallId) &&
+                        notification.Data.TryGetValue("sender_user_id", out var senderText) &&
+                        Guid.TryParse(senderText, out var senderUserId))
+                    {
+                        try
+                        {
+                            var activeCall = _calls.Current;
+                            var initiatorLeftBeforeAnswer =
+                                string.Equals(callType, "leave", StringComparison.OrdinalIgnoreCase) &&
+                                activeCall is { IsGroup: true, IsAccepted: false } &&
+                                activeCall.CallId == peerExitCallId &&
+                                activeCall.InitiatorUserId == senderUserId;
+                            if (initiatorLeftBeforeAnswer)
+                                await _calls.TerminateFromRemoteAsync(peerExitCallId).ConfigureAwait(false);
+                            else
+                                await _negotiation.RemoveRemoteParticipantAsync(peerExitCallId, senderUserId).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Himo Push] Group peer removal failed: {ex.Message}");
+                        }
+                    }
+                    if (isGroupPeerExit)
+                    {
+                        // This only dismisses the OS incoming-call notification/ringtone.
+                        // It does not end an already accepted group call.
+                        _ = _notifications.ClearIncomingCallAsync(
+                            callConversationId ?? string.Empty, normalizedCallId, suppressFurtherRinging: true);
+                    }
+                    if (normalizedCallId.Length > 0 && !isGroupPeerExit)
                         RememberFinishedIncomingCall(normalizedCallId);
-                    _ = _notifications.ClearIncomingCallAsync(
-                        callConversationId ?? string.Empty, normalizedCallId, suppressFurtherRinging: true);
+                    if (!isGroupPeerExit)
+                        _ = _notifications.ClearIncomingCallAsync(
+                            callConversationId ?? string.Empty, normalizedCallId, suppressFurtherRinging: true);
                     if (string.Equals(callType, "answering", StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(callType, "accept", StringComparison.OrdinalIgnoreCase))
                     {
@@ -214,7 +254,7 @@ public sealed class PushNotificationManager
                             callConversationId ?? string.Empty, normalizedCallId, callType);
 #endif
                     }
-                    else if (string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) ||
+                    else if ((string.Equals(callType, "reject", StringComparison.OrdinalIgnoreCase) && !isGroupPeerExit) ||
                              string.Equals(callType, "end", StringComparison.OrdinalIgnoreCase))
                     {
                         if (Guid.TryParse(normalizedCallId, out var remoteEndedCallId) && remoteEndedCallId != Guid.Empty)
@@ -285,6 +325,20 @@ public sealed class PushNotificationManager
         {
             if (!_appInForeground) return; // background call UI is delivered by the full-screen FCM notification.
             RouteIncomingCall(signal.ConversationId.ToString("D"), mode, callId);
+            return;
+        }
+
+        var isGroupPeerExit =
+            CallSignalEnvelope.TryParse(signal.Payload, out var peerExitEnvelope) && peerExitEnvelope.IsGroup &&
+            (string.Equals(signal.Type, CallSignalType.Leave.ToString(), StringComparison.OrdinalIgnoreCase) ||
+             (string.Equals(signal.Type, CallSignalType.Reject.ToString(), StringComparison.OrdinalIgnoreCase) &&
+              signal.SenderUserId != peerExitEnvelope.InitiatorUserId));
+        if (isGroupPeerExit)
+        {
+            // Clear only a pending OS ringing notification. Do not mark the group
+            // call as globally ended: accepted members keep their other mesh peers.
+            _ = _notifications.ClearIncomingCallAsync(
+                signal.ConversationId.ToString("D"), callId, suppressFurtherRinging: true);
             return;
         }
 
