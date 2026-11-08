@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.Json;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
@@ -15,12 +15,15 @@ const string CurrentTermsVersion = "terms-2026-10-18-v1";
 const string CurrentPrivacyVersion = "privacy-2026-10-18-v1";
 
 var builder = WebApplication.CreateBuilder(args);
+// Emit clear container startup diagnostics to stdout (visible in Render logs).
+// Never write connection strings, API keys, or other secret values to the log.
+var renderPort = Environment.GetEnvironmentVariable("PORT");
+Console.WriteLine($"[HimoStartup] Process starting. Environment={builder.Environment.EnvironmentName}; PORT={(string.IsNullOrWhiteSpace(renderPort) ? "(not set)" : renderPort)}; ASPNETCORE_URLS={(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "(not set)")}");
 // Allow the API to run continuously as a Windows Service on the LAN.
 builder.Host.UseWindowsService();
 // Render injects PORT (normally 10000). Prefer that value so the app listens
 // on the port expected by Render. On local machines, preserve ASPNETCORE_URLS
 // when supplied and otherwise use the documented LAN development default.
-var renderPort = Environment.GetEnvironmentVariable("PORT");
 if (int.TryParse(renderPort, out var port) && port is > 0 and <= 65535)
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 else if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
@@ -76,6 +79,32 @@ builder.WebHost.ConfigureKestrel(options =>
 
 var webApp = builder.Build();
 webApp.UseForwardedHeaders();
+
+// Render terminates HTTPS at its edge proxy. Keep liveness independent from
+// MongoDB, Firebase, rate limiting, and HTTPS redirect middleware. This short
+// circuit also prevents a forwarded-proto mismatch from breaking Render's
+// health probe while the application is otherwise starting.
+webApp.Use(async (context, next) =>
+{
+    if (HttpMethods.IsGet(context.Request.Method) &&
+        string.Equals(context.Request.Path.Value, "/health", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status200OK;
+        context.Response.ContentType = "application/json; charset=utf-8";
+        await context.Response.WriteAsync(
+            "{\"status\":\"ok\",\"service\":\"Himo.Api\",\"databaseCheck\":\"/health/database\"}",
+            context.RequestAborted);
+        return;
+    }
+
+    await next();
+});
+
+webApp.Lifetime.ApplicationStarted.Register(() =>
+    webApp.Logger.LogInformation("[HimoStartup] Himo.Api is ready and listening. Environment={Environment}; URLs={Urls}",
+        webApp.Environment.EnvironmentName, string.Join(",", webApp.Urls)));
+webApp.Lifetime.ApplicationStopping.Register(() =>
+    webApp.Logger.LogWarning("[HimoStartup] Himo.Api is stopping."));
 
 // Server-side timing for message requests; use Render logs to separate API/DB time from client/network time.
 webApp.Use(async (context, next) =>
@@ -304,17 +333,6 @@ webApp.MapGet("/join/user/{id:guid}", (Guid id) =>
     return Results.Content(html, "text/html; charset=utf-8");
 });
 
-webApp.MapGet("/health", () =>
-{
-    // Dependency-free liveness endpoint for Render.
-    return Results.Ok(new
-    {
-        status = "ok",
-        service = "Himo.Api",
-        databaseCheck = "/health/database"
-    });
-});
-
 webApp.MapGet("/api/app-info", (IConfiguration configuration) =>
 {
     var configuredUrl = configuration["HIMO_APP_DOWNLOAD_URL"]?.Trim();
@@ -337,17 +355,37 @@ webApp.MapGet("/api/app-info", (IConfiguration configuration) =>
     });
 });
 
-webApp.MapGet("/health/database", (MongoStore store) =>
+webApp.MapGet("/health/database", (IServiceProvider services, ILoggerFactory loggerFactory) =>
 {
-    var database = store.GetHealthStatus();
-    return Results.Ok(new
+    // Resolve MongoStore only for this request. A missing/invalid MongoDB
+    // setting must not prevent the API process and its liveness check from starting.
+    try
     {
-        status = database.Connected && database.SchemaReady ? "ok" : "degraded",
-        service = "Himo.Api",
-        database = database.Connected,
-        databaseSchema = database.SchemaReady,
-        databaseError = database.Error
-    });
+        var store = services.GetRequiredService<MongoStore>();
+        var database = store.GetHealthStatus();
+        var healthy = database.Connected && database.SchemaReady;
+        return (IResult)Results.Json(new
+        {
+            status = healthy ? "ok" : "degraded",
+            service = "Himo.Api",
+            database = database.Connected,
+            databaseSchema = database.SchemaReady,
+            databaseError = database.Error
+        }, statusCode: healthy ? StatusCodes.Status200OK : StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (Exception ex)
+    {
+        loggerFactory.CreateLogger("Himo.DatabaseHealth").LogError(ex,
+            "[HimoHealth] MongoDB readiness check failed.");
+        return (IResult)Results.Json(new
+        {
+            status = "degraded",
+            service = "Himo.Api",
+            database = false,
+            databaseSchema = false,
+            databaseError = ex.GetType().Name
+        }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
 });
 webApp.MapHub<HimoChatHub>("/hubs/chat");
 
@@ -1418,7 +1456,19 @@ webApp.MapGet("/api/messages/{messageId:guid}/attachment", (Guid messageId, Http
     return Results.File(attachment.Stream, attachment.ContentType, attachment.FileName, enableRangeProcessing: true);
 });
 
-webApp.Run();
+try
+{
+    webApp.Run();
+}
+catch (Exception ex)
+{
+    webApp.Logger.LogCritical(ex, "[HimoStartup] Himo.Api terminated unexpectedly.");
+    throw;
+}
+finally
+{
+    Console.WriteLine("[HimoStartup] Himo.Api process stopped.");
+}
 
 static bool IsSupportedProfilePhotoType(string contentType) =>
     contentType is "image/jpeg" or "image/png" or "image/webp" or "image/heic" or
@@ -1572,7 +1622,7 @@ sealed class HimoChatHub : Hub
                 .SendAsync("MessageDeliveryChanged", messageId, session.UserId, "delivered");
     }
 
-    public async Task SendCallSignal(Guid conversationId, string type, string? payload)
+    public async Task SendCallSignal(Guid conversationId, string type, string? payload, Guid? targetUserId = null)
     {
         var session = GetSessionOrAbort();
         if (session is null || string.IsNullOrWhiteSpace(type) || type.Length > 32)
@@ -1583,8 +1633,18 @@ sealed class HimoChatHub : Hub
             return;
 
         var normalizedType = type.Trim();
-        var message = new CallSignalMessage(conversationId, session.UserId, normalizedType, payload);
-        var recipientIds = _store.GetOtherParticipantUserIds(conversationId, session.UserId);
+        var conversationRecipients = _store.GetOtherParticipantUserIds(conversationId, session.UserId);
+        // Media negotiation is peer-to-peer: SDP/ICE packets must reach exactly one
+        // participant. Lifecycle signals remain broadcast unless explicitly targeted.
+        if (targetUserId.HasValue)
+        {
+            if (targetUserId.Value == session.UserId || !conversationRecipients.Contains(targetUserId.Value))
+                return;
+        }
+        var recipientIds = targetUserId.HasValue
+            ? new[] { targetUserId.Value }
+            : conversationRecipients;
+        var message = new CallSignalMessage(conversationId, session.UserId, normalizedType, payload, targetUserId);
         foreach (var recipientId in recipientIds)
             await Clients.Group(UserGroup(recipientId)).SendAsync("CallSignalReceived", message);
 
@@ -1596,14 +1656,16 @@ sealed class HimoChatHub : Hub
             string.Equals(normalizedType, "Answering", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(normalizedType, "Accept", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(normalizedType, "Reject", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(normalizedType, "End", StringComparison.OrdinalIgnoreCase))
+            string.Equals(normalizedType, "End", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalizedType, "Leave", StringComparison.OrdinalIgnoreCase))
         {
             var recipientsSnapshot = recipientIds.ToArray();
             var callerNameSnapshot = session.Name ?? string.Empty;
+            var senderUserIdSnapshot = session.UserId;
             var typeSnapshot = normalizedType;
             var payloadSnapshot = payload;
             _ = Task.Run(() => DispatchCallPushAsync(
-                recipientsSnapshot, callerNameSnapshot, conversationId, typeSnapshot, payloadSnapshot));
+                recipientsSnapshot, callerNameSnapshot, conversationId, typeSnapshot, payloadSnapshot, senderUserIdSnapshot));
         }
     }
 
@@ -1612,7 +1674,8 @@ sealed class HimoChatHub : Hub
         string callerName,
         Guid conversationId,
         string normalizedType,
-        string? payload)
+        string? payload,
+        Guid senderUserId)
     {
         try
         {
@@ -1621,6 +1684,8 @@ sealed class HimoChatHub : Hub
 
             var mode = "audio";
             var callId = Guid.Empty;
+            var isGroup = false;
+            var initiatorUserId = Guid.Empty;
             if (!string.IsNullOrWhiteSpace(payload))
             {
                 try
@@ -1633,6 +1698,9 @@ sealed class HimoChatHub : Hub
                     if (root.TryGetProperty("callId", out var callIdValue) &&
                         Guid.TryParse(callIdValue.GetString(), out var parsedCallId))
                         callId = parsedCallId;
+                    isGroup = root.TryGetProperty("isGroup", out var groupValue) && groupValue.ValueKind == System.Text.Json.JsonValueKind.True;
+                    if (root.TryGetProperty("initiatorUserId", out var initiatorValue))
+                        Guid.TryParse(initiatorValue.GetString(), out initiatorUserId);
                 }
                 catch (Exception parseEx)
                 {
@@ -1647,8 +1715,11 @@ sealed class HimoChatHub : Hub
             }
             else if (callId != Guid.Empty)
             {
+                var isPeerExit = isGroup && senderUserId != initiatorUserId &&
+                    (string.Equals(normalizedType, "Reject", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(normalizedType, "Leave", StringComparison.OrdinalIgnoreCase));
                 await _push.SendCallStateAsync(
-                    tokens, conversationId, callId, normalizedType, CancellationToken.None);
+                    tokens, conversationId, callId, normalizedType, isPeerExit, senderUserId, CancellationToken.None);
             }
         }
         catch (Exception ex)
@@ -1761,7 +1832,7 @@ record GroupDetailsDto(Guid Id, string Name, string Description, string InviteCo
 record GroupInvitePreviewDto(Guid Id, string Name, string Description, bool HasPhoto, long PhotoVersion, int MemberCount, bool IsMember, bool RequiresAdminApproval);
 record CreateGroupRequest(string? Name, Guid[]? UserIds, int DisappearingSeconds = 0, bool AllMembersCanAddMembers = false, bool AllMembersCanShareInviteLink = false, bool RequireAdminApproval = false, bool AdminsOnlyMessages = false);
 record AddGroupMembersRequest(Guid[]? UserIds);
-record CallSignalMessage(Guid ConversationId, Guid SenderUserId, string Type, string? Payload);
+record CallSignalMessage(Guid ConversationId, Guid SenderUserId, string Type, string? Payload, Guid? TargetUserId = null);
 record SendMessageRequest(string? Text, string? ClientMessageId, Guid? ReplyToMessageId);
 record ReportConversationRequest(string? Reason);
 record ConversationActionRequest(string? Action);
@@ -1824,20 +1895,54 @@ sealed class ConversationDto
         IsGroup = isGroup;
     }
 }
-sealed class ExpiredMessagesCleanupService(MongoStore store, ILogger<ExpiredMessagesCleanupService> logger) : BackgroundService
+sealed class ExpiredMessagesCleanupService(
+    IServiceProvider services,
+    ILogger<ExpiredMessagesCleanupService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Do not construct MongoStore or perform MongoDB I/O during API startup.
+        // Render's liveness endpoint must become available even when Atlas is
+        // temporarily unreachable or its connection setting needs correction.
+        logger.LogInformation("[HimoExpiry] Cleanup worker scheduled; first run delayed until API startup settles.");
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            return;
+        }
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                var deleted = store.DeleteExpiredMessages();
-                if (deleted > 0) logger.LogInformation("[HimoExpiry] Deleted {Count} expired messages.", deleted);
+                var store = services.GetRequiredService<MongoStore>();
+                // MongoDB.Driver calls in MongoStore are synchronous. Keep them
+                // off the hosted-service loop so shutdown and other workers remain responsive.
+                var deleted = await Task.Run(() => store.DeleteExpiredMessages(), stoppingToken);
+                if (deleted > 0)
+                    logger.LogInformation("[HimoExpiry] Deleted {Count} expired messages.", deleted);
             }
-            catch (Exception ex) { logger.LogWarning(ex, "[HimoExpiry] Expired-message cleanup failed."); }
-            try { await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                // Database maintenance failure must never terminate the HTTP API.
+                logger.LogWarning(ex, "[HimoExpiry] Expired-message cleanup failed; API remains available.");
+            }
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
         }
     }
 }
