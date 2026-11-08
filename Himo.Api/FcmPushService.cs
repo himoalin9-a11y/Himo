@@ -298,11 +298,13 @@ sealed class FcmPushService
         Guid conversationId,
         Guid callId,
         string state,
+        bool isGroupPeerExit = false,
+        Guid senderUserId = default,
         CancellationToken cancellationToken = default)
     {
         if (_messaging is null || tokens.Count == 0 || callId == Guid.Empty) return;
         var normalizedState = (state ?? string.Empty).Trim().ToLowerInvariant();
-        if (normalizedState is not ("answering" or "accept" or "reject" or "end")) return;
+        if (normalizedState is not ("answering" or "accept" or "reject" or "end" or "leave")) return;
 
         var cleanTokens = tokens.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.Ordinal).ToList();
         if (cleanTokens.Count == 0) return;
@@ -315,6 +317,8 @@ sealed class FcmPushService
             ["call_type"] = normalizedState,
             ["conversation_id"] = conversationId.ToString("D"),
             ["call_id"] = callId.ToString("D"),
+            ["is_group_peer_exit"] = isGroupPeerExit ? "true" : "false",
+            ["sender_user_id"] = senderUserId == Guid.Empty ? string.Empty : senderUserId.ToString("D"),
             ["title"] = "__HIMO_CALL_STATE__",
             ["body"] = "__HIMO_CALL_STATE__",
             ["is_silent_in_foreground"] = "false"
@@ -336,7 +340,7 @@ sealed class FcmPushService
                         // Keep state events non-collapsible: FCM does not guarantee ordering.
                         // A terminal cancellation must outlive the 45-second Invite TTL;
                         // otherwise an offline receiver could get the Invite but lose End/Reject.
-                        TimeToLive = normalizedState is "end" or "reject"
+                        TimeToLive = normalizedState is "end" or "reject" or "leave"
                             ? TimeSpan.FromMinutes(2)
                             : TimeSpan.FromSeconds(45)
                     }
@@ -344,7 +348,7 @@ sealed class FcmPushService
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 // Terminal states run off the SignalR request path, so allow Firebase longer
                 // to accept them; this cannot hold the caller's End/Reject UI open.
-                timeout.CancelAfter(normalizedState is "end" or "reject"
+                timeout.CancelAfter(normalizedState is "end" or "reject" or "leave"
                     ? TimeSpan.FromSeconds(10)
                     : TimeSpan.FromSeconds(5));
                 var response = await _messaging.SendEachForMulticastAsync(message, timeout.Token);
