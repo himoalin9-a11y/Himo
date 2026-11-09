@@ -74,6 +74,11 @@
             </Grid.GestureRecognizers>
             <local:WebRtcRendererView x:Name="RemoteVideoHost" IsVisible="False" BackgroundColor="#05070B" />
 
+            <!-- Mesh calls render every remote participant in an independent tile. -->
+            <Grid x:Name="GroupRemoteVideoGrid" IsVisible="False"
+                  BackgroundColor="#05070B" RowSpacing="2" ColumnSpacing="2"
+                  Padding="2" InputTransparent="True" />
+
             <Border x:Name="LocalVideoContainer" FlowDirection="LeftToRight"
                     HorizontalOptions="Fill" VerticalOptions="Fill" Margin="0"
                     BackgroundColor="#080C14" StrokeThickness="0">

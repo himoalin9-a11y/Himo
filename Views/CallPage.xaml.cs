@@ -12,6 +12,8 @@ namespace Himo.Views;
 [QueryProperty(nameof(Incoming), "incoming")]
 [QueryProperty(nameof(CallId), "callId")]
 [QueryProperty(nameof(PeerName), "peerName")]
+[QueryProperty(nameof(JoinExistingGroupCall), "joinGroupCall")]
+[QueryProperty(nameof(InitiatorUserId), "initiatorUserId")]
 public partial class CallPage : ContentPage
 {
     private readonly ICallService _calls;
@@ -20,6 +22,12 @@ public partial class CallPage : ContentPage
     private readonly ChatService _chat;
     private readonly HimoApiClient _api;
     private readonly INotificationService _notifications;
+#if ANDROID
+    private readonly Dictionary<Guid, WebRtcRendererView> _groupRemoteVideoHosts = new();
+    private readonly Dictionary<Guid, Border> _groupRemoteVideoTiles = new();
+    private int _groupVideoRefreshRunning;
+    private int _groupVideoRefreshPending;
+#endif
     private CancellationTokenSource? _avatarLoadCts;
     private Guid _conversationId;
     private CallMode _mode = CallMode.Audio;
@@ -30,6 +38,8 @@ public partial class CallPage : ContentPage
     private long _callUiStateVersion;
     private bool _incoming;
     private bool _incomingAnswered;
+    private bool _joinExistingGroupCall;
+    private Guid _requestedInitiatorUserId;
     private bool _callSetupInProgress;
     private Guid _callId;
     private bool _navigationStarted;
@@ -79,6 +89,18 @@ public partial class CallPage : ContentPage
     {
         get => _incoming ? "true" : "false";
         set => _incoming = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public string JoinExistingGroupCall
+    {
+        get => _joinExistingGroupCall ? "true" : "false";
+        set => _joinExistingGroupCall = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public string InitiatorUserId
+    {
+        get => _requestedInitiatorUserId == Guid.Empty ? string.Empty : _requestedInitiatorUserId.ToString("D");
+        set => Guid.TryParse(value, out _requestedInitiatorUserId);
     }
 
     public string CallId
@@ -162,11 +184,14 @@ public partial class CallPage : ContentPage
         _notifications = notifications;
         _calls.StateChanged += CallsStateChanged;
         _calls.CallEnded += CallsEnded;
+        _negotiation.PeerConnectionsChanged += NegotiationPeerConnectionsChanged;
     }
 
     private Conversation? FindLocalCallConversation() =>
         _chat.Conversations.FirstOrDefault(c =>
             Guid.TryParse(c.RemoteId, out var remoteId) && remoteId == _conversationId);
+
+    private bool IsGroupCall => _calls.Current?.IsGroup == true || FindLocalCallConversation()?.IsGroup == true;
 
     private void PrepareCachedPeerAvatar()
     {
@@ -226,6 +251,7 @@ public partial class CallPage : ContentPage
                     if (localConversation is not null)
                     {
                         localConversation.OtherParticipantUserId = remote.OtherParticipantUserId;
+                        localConversation.IsGroup = remote.IsGroup;
                         localConversation.HasRemoteProfilePhoto = remote.HasProfilePhoto;
                         localConversation.ProfilePhotoVersion = remote.ProfilePhotoVersion;
                     }
@@ -625,6 +651,7 @@ public partial class CallPage : ContentPage
         Interlocked.Increment(ref _callUiStateVersion);
         _calls.StateChanged -= CallsStateChanged;
         _calls.CallEnded -= CallsEnded;
+        _negotiation.PeerConnectionsChanged -= NegotiationPeerConnectionsChanged;
         _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
 #if ANDROID
         NotificationService.IncomingCallTerminatedByPush -= OnIncomingCallTerminatedByPush;
@@ -723,6 +750,8 @@ public partial class CallPage : ContentPage
         _ = SwipePageTransition.AnimateIncomingAsync(this, SwipeDirection.Left);
         _calls.StateChanged -= CallsStateChanged;
         _calls.StateChanged += CallsStateChanged;
+        _negotiation.PeerConnectionsChanged -= NegotiationPeerConnectionsChanged;
+        _negotiation.PeerConnectionsChanged += NegotiationPeerConnectionsChanged;
         _calls.CallEnded -= CallsEnded;
         _calls.CallEnded += CallsEnded;
         _realtime.CallSignalReceived -= OnRealtimeCallSignalReceived;
@@ -832,7 +861,7 @@ public partial class CallPage : ContentPage
             _ = WarmIncomingSignalChannelAsync();
             try
             {
-                await _calls.PrepareIncomingAsync(new CallRequest(_conversationId, _mode, _callId));
+                await _calls.PrepareIncomingAsync(new CallRequest(_conversationId, _mode, _callId, IsGroupCall));
                 var preparedState = _calls.Current;
                 if (preparedState is null || preparedState.ConversationId != _conversationId ||
                     (_callId != Guid.Empty && preparedState.CallId != _callId))
@@ -907,6 +936,12 @@ public partial class CallPage : ContentPage
             return;
         }
 
+        if (_joinExistingGroupCall && !activeSameCall)
+        {
+            await JoinExistingGroupCallAsync();
+            return;
+        }
+
         if (!_incoming && activeSameCall)
         {
             // Navigation / activity resume can call OnAppearing again. Reuse the active
@@ -937,7 +972,7 @@ public partial class CallPage : ContentPage
                 return;
             }
 
-            await _calls.StartAsync(new CallRequest(_conversationId, _mode));
+            await _calls.StartAsync(new CallRequest(_conversationId, _mode, IsGroup: IsGroupCall));
             // StartAsync creates the authoritative call ID before signaling.
             _callId = _calls.Current?.CallId ?? Guid.Empty;
             StatusLabel.Text = _remoteAccepted ? "تم الرد، جارٍ الاتصال..." : "بانتظار قبول المكالمة...";
@@ -957,6 +992,83 @@ public partial class CallPage : ContentPage
             // StartAsync can fail before CallService publishes a current call state,
             // so no CallEnded event is guaranteed. Explicitly leave this page to avoid
             // trapping the caller in a dead call screen.
+            await NavigateBackFromCallAsync();
+        }
+        finally
+        {
+            _callSetupInProgress = false;
+        }
+    }
+
+    private async Task JoinExistingGroupCallAsync()
+    {
+        if (_callSetupInProgress) return;
+        _callSetupInProgress = true;
+        var joinRegistered = false;
+        try
+        {
+            if (_callId == Guid.Empty || _conversationId == Guid.Empty)
+                throw new InvalidOperationException("معرّف المكالمة الجماعية غير صالح.");
+
+            await _realtime.EnsureConnectedAsync();
+            var granted = await _calls.RequestPermissionsAsync(_mode);
+            if (!granted)
+            {
+                StatusLabel.Text = "يلزم السماح بالميكروفون والكاميرا للانضمام";
+                VideoStatusLabel.Text = StatusLabel.Text;
+                await NavigateBackFromCallAsync();
+                return;
+            }
+
+            // Prepare local call state first so early peer Accept notifications can
+            // be queued by WebRtcNegotiationCoordinator while native media starts.
+            await _calls.PrepareIncomingAsync(new CallRequest(
+                _conversationId, _mode, _callId, IsGroup: true,
+                InitiatorUserId: _requestedInitiatorUserId, AllowRejoin: true));
+
+            var joined = await _realtime.JoinGroupCallAsync(_conversationId, _callId);
+            if (joined is null || !joined.IsActive || joined.CallId != _callId)
+            {
+                await _calls.EndAsync(CancellationToken.None);
+                StatusLabel.Text = "انتهت المكالمة الجماعية قبل انضمامك.";
+                VideoStatusLabel.Text = StatusLabel.Text;
+                await NavigateBackFromCallAsync();
+                return;
+            }
+            joinRegistered = true;
+            if (_requestedInitiatorUserId == Guid.Empty)
+                _requestedInitiatorUserId = joined.InitiatorUserId;
+
+            _incomingAnswered = true;
+            IncomingActions.IsVisible = false;
+            OutgoingActions.IsVisible = true;
+            StatusLabel.Text = "جارٍ الانضمام إلى المكالمة الجماعية...";
+            VideoStatusLabel.Text = StatusLabel.Text;
+            WaitingCallTitle.Text = "جارٍ الانضمام إلى المجموعة";
+            WaitingCallSubtitle.Text = "يتم توصيلك بالأعضاء الموجودين في المكالمة";
+
+            await _calls.AcceptAsync();
+            var accepted = _calls.Current;
+            if (accepted is null || accepted.CallId != _callId)
+                throw new InvalidOperationException("تعذر تثبيت اتصال المكالمة الجماعية.");
+
+            StatusLabel.Text = accepted.IsConnected ? "متصل بالمكالمة الجماعية" : "تم الانضمام، جارٍ توصيل الصوت...";
+            VideoStatusLabel.Text = StatusLabel.Text;
+#if ANDROID
+            if (_mode == CallMode.Video)
+                await AttachVideoWithRetryAsync();
+#endif
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Join existing group call failed: {ex}");
+            if (joinRegistered || _calls.Current?.CallId == _callId)
+            {
+                try { await _calls.EndAsync(CancellationToken.None); }
+                catch (Exception cleanupEx) { System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Failed to leave partial group join: {cleanupEx.Message}"); }
+            }
+            StatusLabel.Text = "تعذر الانضمام إلى المكالمة الجماعية. حاول مرة أخرى.";
+            VideoStatusLabel.Text = StatusLabel.Text;
             await NavigateBackFromCallAsync();
         }
         finally
@@ -1343,9 +1455,150 @@ public partial class CallPage : ContentPage
         }
     }
 
+    private void NegotiationPeerConnectionsChanged(object? sender, EventArgs e)
+    {
+        if (_mode != CallMode.Video || !IsGroupCall) return;
+        _ = RefreshGroupRemoteVideoTilesAsync();
+    }
+
+    private async Task RefreshGroupRemoteVideoTilesAsync()
+    {
+        Interlocked.Exchange(ref _groupVideoRefreshPending, 1);
+        if (Interlocked.CompareExchange(ref _groupVideoRefreshRunning, 1, 0) != 0)
+            return;
+
+        try
+        {
+            while (Interlocked.Exchange(ref _groupVideoRefreshPending, 0) == 1)
+                await RefreshGroupRemoteVideoTilesCoreAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Group video tile refresh failed: {ex}");
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _groupVideoRefreshRunning, 0);
+            if (Interlocked.Exchange(ref _groupVideoRefreshPending, 0) == 1)
+                _ = RefreshGroupRemoteVideoTilesAsync();
+        }
+    }
+
+    private async Task RefreshGroupRemoteVideoTilesCoreAsync()
+    {
+        if (_mode != CallMode.Video || !IsGroupCall) return;
+        var peerIds = _negotiation.RemotePeerUserIds
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToArray();
+
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            var peerSet = peerIds.ToHashSet();
+            foreach (var removedId in _groupRemoteVideoTiles.Keys.Where(id => !peerSet.Contains(id)).ToArray())
+            {
+                GroupRemoteVideoGrid.Children.Remove(_groupRemoteVideoTiles[removedId]);
+                _groupRemoteVideoTiles.Remove(removedId);
+                _groupRemoteVideoHosts.Remove(removedId);
+            }
+
+            RemoteVideoHost.IsVisible = false;
+            if (peerIds.Length == 0)
+            {
+                GroupRemoteVideoGrid.IsVisible = false;
+                GroupRemoteVideoGrid.Children.Clear();
+                GroupRemoteVideoGrid.RowDefinitions.Clear();
+                GroupRemoteVideoGrid.ColumnDefinitions.Clear();
+                _groupRemoteVideoTiles.Clear();
+                _groupRemoteVideoHosts.Clear();
+                VideoWaitingOverlay.IsVisible = true;
+                return;
+            }
+
+            GroupRemoteVideoGrid.IsVisible = true;
+            VideoWaitingOverlay.IsVisible = false;
+
+            // Keep the same renderer host when a group shrinks from two peers to one.
+            // Reparenting a native SurfaceViewRenderer can leave an old EGL sink alive.
+            var columns = peerIds.Length == 1 ? 1 : peerIds.Length <= 4 ? 2 : 3;
+            var rows = (int)Math.Ceiling(peerIds.Length / (double)columns);
+            GroupRemoteVideoGrid.RowDefinitions.Clear();
+            GroupRemoteVideoGrid.ColumnDefinitions.Clear();
+            for (var row = 0; row < rows; row++)
+                GroupRemoteVideoGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            for (var column = 0; column < columns; column++)
+                GroupRemoteVideoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            GroupRemoteVideoGrid.Children.Clear();
+            for (var index = 0; index < peerIds.Length; index++)
+            {
+                var peerId = peerIds[index];
+                if (!_groupRemoteVideoHosts.TryGetValue(peerId, out var host))
+                {
+                    host = new WebRtcRendererView { BackgroundColor = Color.FromArgb("#05070B") };
+                    _groupRemoteVideoHosts[peerId] = host;
+                    _groupRemoteVideoTiles[peerId] = new Border
+                    {
+                        Content = host,
+                        BackgroundColor = Color.FromArgb("#05070B"),
+                        Stroke = new SolidColorBrush(Color.FromArgb("#44556677")),
+                        StrokeThickness = 1,
+                        Padding = 0
+                    };
+                }
+
+                var tile = _groupRemoteVideoTiles[peerId];
+                Grid.SetRow(tile, index / columns);
+                Grid.SetColumn(tile, index % columns);
+                GroupRemoteVideoGrid.Children.Add(tile);
+            }
+        });
+
+        // A SurfaceViewRenderer is ready only after its MAUI handler has connected.
+        // Retry briefly so fast Accept/Offer delivery does not race view creation.
+        for (var attempt = 0; attempt < 8; attempt++)
+        {
+            var allAttached = true;
+            foreach (var peerId in peerIds)
+            {
+                VisualElement host = _groupRemoteVideoHosts.TryGetValue(peerId, out var tileHost)
+                    ? tileHost
+                    : RemoteVideoHost;
+                try
+                {
+                    await _negotiation.AttachRemoteVideoAsync(peerId, host).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    allAttached = false;
+                    System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Remote renderer not ready for {peerId:D}: {ex.Message}");
+                }
+            }
+
+            if (allAttached) break;
+            await Task.Delay(125).ConfigureAwait(false);
+        }
+
+        try
+        {
+            await MainThread.InvokeOnMainThreadAsync(() => _negotiation.AttachLocalVideoAsync(LocalVideoHost));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Local renderer attach failed: {ex.Message}");
+        }
+    }
+
     private async Task AttachVideoWithRetryAsync()
     {
         if (_mode != CallMode.Video) return;
+
+        if (IsGroupCall)
+        {
+            await RefreshGroupRemoteVideoTilesAsync();
+            UpdateCallPresentation(_calls.Current?.IsConnected == true);
+            return;
+        }
 
         for (var attempt = 0; attempt < 6; attempt++)
         {
@@ -1474,6 +1727,11 @@ public partial class CallPage : ContentPage
         var isReject = string.Equals(signal.Type, CallSignalType.Reject.ToString(), StringComparison.OrdinalIgnoreCase);
         var isEnd = string.Equals(signal.Type, CallSignalType.End.ToString(), StringComparison.OrdinalIgnoreCase);
         if (!isAnswering && !isAccept && !isReject && !isEnd)
+            return;
+
+        // A participant declining a group invitation only removes that participant.
+        // It must not stop the initiator's ringback or clear the whole group's invite UI.
+        if (isReject && _calls.Current?.IsGroup == true)
             return;
 
         // Ignore delayed signals from an earlier call in the same conversation.

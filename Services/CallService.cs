@@ -21,7 +21,13 @@ public enum CallSignalType
     Leave
 }
 
-public sealed record CallRequest(Guid ConversationId, CallMode Mode, Guid CallId = default, bool IsGroup = false, Guid InitiatorUserId = default);
+public sealed record CallRequest(
+    Guid ConversationId,
+    CallMode Mode,
+    Guid CallId = default,
+    bool IsGroup = false,
+    Guid InitiatorUserId = default,
+    bool AllowRejoin = false);
 public enum CallLifecycleState
 {
     Idle,
@@ -257,7 +263,14 @@ public sealed class CallService : ICallService, IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (request.CallId != Guid.Empty && IsFinishedCall(request.CallId))
-            throw new InvalidOperationException("هذه المكالمة انتهت بالفعل.");
+        {
+            // A group participant may leave and later rejoin the same still-active
+            // room CallId. The hub's JoinGroupCall result is authoritative; allow
+            // only this explicit rejoin path to clear the local stale-call tombstone.
+            if (!request.IsGroup || !request.AllowRejoin)
+                throw new InvalidOperationException("هذه المكالمة انتهت بالفعل.");
+            ForgetFinishedCall(request.CallId);
+        }
 
         // Preserve an existing incoming call's authoritative ID when an FCM deep link
         // omits callId but the matching SignalR Invite has already arrived. Do not
@@ -793,6 +806,22 @@ public sealed class CallService : ICallService, IDisposable
             _finishedCallOrder.Enqueue(callId);
             while (_finishedCallOrder.Count > MaxFinishedCallIds)
                 _finishedCallIds.Remove(_finishedCallOrder.Dequeue());
+        }
+    }
+
+    private void ForgetFinishedCall(Guid callId)
+    {
+        if (callId == Guid.Empty) return;
+        lock (_finishedCallsGate)
+        {
+            if (!_finishedCallIds.Remove(callId)) return;
+            // The FIFO also stores IDs. Remove the old occurrence so a later finish
+            // of this rejoined call cannot be evicted by a stale duplicate queue entry.
+            if (_finishedCallOrder.Count == 0) return;
+            var retained = _finishedCallOrder.Where(id => id != callId).ToArray();
+            _finishedCallOrder.Clear();
+            foreach (var retainedId in retained)
+                _finishedCallOrder.Enqueue(retainedId);
         }
     }
 

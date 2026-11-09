@@ -4,6 +4,15 @@ using MessageDto = Himo.Services.HimoApiClient.MessageDto;
 
 namespace Himo.Services;
 
+public sealed record GroupCallSessionDto(
+    Guid ConversationId,
+    Guid CallId,
+    string Mode,
+    Guid InitiatorUserId,
+    IReadOnlyList<Guid> ParticipantUserIds,
+    DateTimeOffset StartedAt,
+    bool IsActive = true);
+
 public sealed class HimoRealtimeService
 {
     private readonly HimoApiClient _api;
@@ -18,6 +27,7 @@ public sealed class HimoRealtimeService
     public event EventHandler<MessageDto>? MessageDeleted;
     public event EventHandler? Reconnected;
     public event EventHandler<CallSignalMessage>? CallSignalReceived;
+    public event Action<GroupCallSessionDto>? GroupCallStateChanged;
 
     public bool IsConnected =>
         _connection?.State == HubConnectionState.Connected;
@@ -205,6 +215,20 @@ public sealed class HimoRealtimeService
                 }
             });
 
+        connection.On<GroupCallSessionDto>(
+            "GroupCallStateChanged",
+            state =>
+            {
+                try
+                {
+                    GroupCallStateChanged?.Invoke(state);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Himo Realtime] Group call state handler failed: {ex.Message}");
+                }
+            });
+
         connection.On<Guid, Guid, string>(
             "MessageDeliveryChanged",
             (messageId, userId, status) =>
@@ -299,7 +323,8 @@ public sealed class HimoRealtimeService
         Guid conversationId,
         string type,
         string? payload = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Guid? targetUserId = null)
     {
         // Never silently discard SDP or ICE when SignalR is reconnecting.
         // Wait briefly for the existing automatic-reconnect path, and restart
@@ -328,6 +353,7 @@ public sealed class HimoRealtimeService
                         conversationId,
                         type,
                         payload,
+                        targetUserId,
                         cancellationToken);
 
                     System.Diagnostics.Debug.WriteLine(
@@ -394,6 +420,41 @@ public sealed class HimoRealtimeService
         {
             return false;
         }
+    }
+
+    public async Task<GroupCallSessionDto?> GetActiveGroupCallAsync(
+        Guid conversationId,
+        CancellationToken cancellationToken = default)
+    {
+        if (conversationId == Guid.Empty) return null;
+        await EnsureConnectedAsync(cancellationToken);
+        var connection = _connection;
+        if (connection?.State != HubConnectionState.Connected) return null;
+        try
+        {
+            return await connection.InvokeAsync<GroupCallSessionDto?>(
+                "GetActiveGroupCall", conversationId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo Realtime] Active group call lookup failed: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<GroupCallSessionDto?> JoinGroupCallAsync(
+        Guid conversationId,
+        Guid callId,
+        CancellationToken cancellationToken = default)
+    {
+        if (conversationId == Guid.Empty || callId == Guid.Empty)
+            throw new ArgumentException("معرّف المحادثة أو المكالمة غير صالح.");
+        await EnsureConnectedAsync(cancellationToken);
+        var connection = _connection;
+        if (connection?.State != HubConnectionState.Connected)
+            throw new InvalidOperationException("اتصال الخادم غير متاح للانضمام إلى المكالمة الجماعية.");
+        return await connection.InvokeAsync<GroupCallSessionDto?>(
+            "JoinGroupCall", conversationId, callId, cancellationToken);
     }
 
     public async Task MarkMessageDeliveredAsync(
@@ -494,4 +555,4 @@ public sealed class HimoRealtimeService
     }
 }
 
-public sealed record CallSignalMessage(Guid ConversationId, Guid SenderUserId, string Type, string? Payload);
+public sealed record CallSignalMessage(Guid ConversationId, Guid SenderUserId, string Type, string? Payload, Guid? TargetUserId = null);

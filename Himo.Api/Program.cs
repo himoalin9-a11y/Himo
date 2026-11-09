@@ -1572,6 +1572,22 @@ sealed class HimoChatHub : Hub
     private readonly FcmPushService _push;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, int> OnlineUsers = new();
 
+    // Group calls are persistent rooms for the lifetime of the API process. A caller
+    // may leave while the remaining members keep talking; a new member can query and
+    // join the same CallId later. The room is removed only when its last participant leaves.
+    private sealed class ActiveGroupCallRoom
+    {
+        public required Guid ConversationId { get; init; }
+        public required Guid CallId { get; init; }
+        public required string Mode { get; init; }
+        public required Guid InitiatorUserId { get; init; }
+        public required DateTimeOffset StartedAt { get; init; }
+        public HashSet<Guid> ParticipantUserIds { get; } = new();
+    }
+
+    private static readonly object GroupCallRoomsGate = new();
+    private static readonly Dictionary<Guid, ActiveGroupCallRoom> ActiveGroupCallRooms = new();
+
     public HimoChatHub(MongoStore store, FcmPushService push)
     {
         _store = store;
@@ -1622,6 +1638,62 @@ sealed class HimoChatHub : Hub
                 .SendAsync("MessageDeliveryChanged", messageId, session.UserId, "delivered");
     }
 
+    public Task<GroupCallSessionDto?> GetActiveGroupCall(Guid conversationId)
+    {
+        var session = GetSessionOrAbort();
+        if (session is null || !_store.ExistsConversation(conversationId, session.UserId) ||
+            !_store.IsGroupConversation(conversationId))
+            return Task.FromResult<GroupCallSessionDto?>(null);
+
+        lock (GroupCallRoomsGate)
+        {
+            if (!ActiveGroupCallRooms.TryGetValue(conversationId, out var room) ||
+                room.ParticipantUserIds.Count == 0)
+                return Task.FromResult<GroupCallSessionDto?>(null);
+            return Task.FromResult<GroupCallSessionDto?>(ToGroupCallSessionDto(room));
+        }
+    }
+
+    public async Task<GroupCallSessionDto?> JoinGroupCall(Guid conversationId, Guid callId)
+    {
+        var session = GetSessionOrAbort();
+        if (session is null || callId == Guid.Empty ||
+            !_store.ExistsConversation(conversationId, session.UserId) ||
+            !_store.IsGroupConversation(conversationId) ||
+            _store.IsConversationBlockedForUser(conversationId, session.UserId))
+            return null;
+
+        Guid[] existingParticipants;
+        GroupCallSessionDto snapshot;
+        lock (GroupCallRoomsGate)
+        {
+            if (!ActiveGroupCallRooms.TryGetValue(conversationId, out var room) || room.CallId != callId)
+                return null;
+
+            existingParticipants = room.ParticipantUserIds
+                .Where(id => id != session.UserId)
+                .ToArray();
+            room.ParticipantUserIds.Add(session.UserId);
+            snapshot = ToGroupCallSessionDto(room);
+        }
+
+        var payload = SerializeGroupCallEnvelope(snapshot);
+        // Exchange a synthetic Accept with each already-joined member. This tells
+        // both sides to create their missing Mesh PeerConnection without ringing
+        // the whole group again. The joining device starts local media after this
+        // method returns, so CallService can queue these early peer notifications.
+        foreach (var peerUserId in existingParticipants)
+        {
+            var fromJoiner = new CallSignalMessage(conversationId, session.UserId, "Accept", payload);
+            var fromPeer = new CallSignalMessage(conversationId, peerUserId, "Accept", payload);
+            await Clients.Group(UserGroup(peerUserId)).SendAsync("CallSignalReceived", fromJoiner);
+            await Clients.Group(UserGroup(session.UserId)).SendAsync("CallSignalReceived", fromPeer);
+        }
+
+        await BroadcastGroupCallStateAsync(conversationId, session.UserId, snapshot);
+        return snapshot;
+    }
+
     public async Task SendCallSignal(Guid conversationId, string type, string? payload, Guid? targetUserId = null)
     {
         var session = GetSessionOrAbort();
@@ -1644,9 +1716,18 @@ sealed class HimoChatHub : Hub
         var recipientIds = targetUserId.HasValue
             ? new[] { targetUserId.Value }
             : conversationRecipients;
+
+        // Maintain an independently queryable group-call room. This state is not
+        // inferred from ringing notifications: it tracks only the active CallId and
+        // the members who have joined. Leave removes one member; an initiator leaving
+        // does not terminate the room while other participants remain.
+        var updatedGroupCall = UpdateGroupCallRoom(conversationId, session.UserId, normalizedType, payload);
         var message = new CallSignalMessage(conversationId, session.UserId, normalizedType, payload, targetUserId);
         foreach (var recipientId in recipientIds)
             await Clients.Group(UserGroup(recipientId)).SendAsync("CallSignalReceived", message);
+
+        if (updatedGroupCall is not null)
+            await BroadcastGroupCallStateAsync(conversationId, session.UserId, updatedGroupCall);
 
         // Do not await FCM inside the SignalR hub invocation. The caller uses a short
         // signaling timeout, so awaiting Firebase here can cancel End/Reject before
@@ -1666,6 +1747,143 @@ sealed class HimoChatHub : Hub
             var payloadSnapshot = payload;
             _ = Task.Run(() => DispatchCallPushAsync(
                 recipientsSnapshot, callerNameSnapshot, conversationId, typeSnapshot, payloadSnapshot, senderUserIdSnapshot));
+        }
+    }
+
+    private GroupCallSessionDto? UpdateGroupCallRoom(
+        Guid conversationId,
+        Guid senderUserId,
+        string signalType,
+        string? payload)
+    {
+        if (!_store.IsGroupConversation(conversationId) ||
+            !TryReadGroupCallEnvelope(payload, out var callId, out var mode, out _))
+            return null;
+
+        var normalized = signalType.Trim();
+        lock (GroupCallRoomsGate)
+        {
+            ActiveGroupCallRooms.TryGetValue(conversationId, out var room);
+            var changed = false;
+
+            if (string.Equals(normalized, "Invite", StringComparison.OrdinalIgnoreCase))
+            {
+                if (room is not null && room.CallId != callId && room.ParticipantUserIds.Count > 0)
+                    throw new HubException("توجد مكالمة جماعية نشطة بالفعل. انضم إلى المكالمة الحالية بدل بدء مكالمة أخرى.");
+                if (room is not null && room.CallId == callId && room.InitiatorUserId != senderUserId)
+                    throw new HubException("لا يمكن لعضو آخر إعادة إنشاء دعوة المكالمة القائمة.");
+
+                if (room is null || room.CallId != callId)
+                {
+                    room = new ActiveGroupCallRoom
+                    {
+                        ConversationId = conversationId,
+                        CallId = callId,
+                        Mode = mode,
+                        // Trust the authenticated SignalR identity, never a caller-supplied
+                        // InitiatorUserId in the JSON payload.
+                        InitiatorUserId = senderUserId,
+                        StartedAt = DateTimeOffset.UtcNow
+                    };
+                    ActiveGroupCallRooms[conversationId] = room;
+                    changed = true;
+                }
+                changed |= room.ParticipantUserIds.Add(senderUserId);
+            }
+            else if (room is not null && room.CallId == callId)
+            {
+                if (string.Equals(normalized, "Accept", StringComparison.OrdinalIgnoreCase))
+                {
+                    changed = room.ParticipantUserIds.Add(senderUserId);
+                }
+                else if (string.Equals(normalized, "Leave", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(normalized, "Reject", StringComparison.OrdinalIgnoreCase))
+                {
+                    changed = room.ParticipantUserIds.Remove(senderUserId);
+                }
+                else if (string.Equals(normalized, "End", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Legacy/global End from the original initiator closes the room;
+                    // End from another group member is treated as their own departure.
+                    if (senderUserId == room.InitiatorUserId)
+                    {
+                        room.ParticipantUserIds.Clear();
+                        changed = true;
+                    }
+                    else
+                    {
+                        changed = room.ParticipantUserIds.Remove(senderUserId);
+                    }
+                }
+
+                if (changed && room.ParticipantUserIds.Count == 0)
+                {
+                    ActiveGroupCallRooms.Remove(conversationId);
+                    return new GroupCallSessionDto(
+                        conversationId, callId, mode, room.InitiatorUserId,
+                        Array.Empty<Guid>(), room.StartedAt, IsActive: false);
+                }
+            }
+
+            return changed && room is not null ? ToGroupCallSessionDto(room) : null;
+        }
+    }
+
+    private async Task BroadcastGroupCallStateAsync(
+        Guid conversationId,
+        Guid currentUserId,
+        GroupCallSessionDto state)
+    {
+        var memberIds = _store.GetOtherParticipantUserIds(conversationId, currentUserId)
+            .Append(currentUserId)
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToArray();
+        foreach (var memberId in memberIds)
+            await Clients.Group(UserGroup(memberId)).SendAsync("GroupCallStateChanged", state);
+    }
+
+    private static GroupCallSessionDto ToGroupCallSessionDto(ActiveGroupCallRoom room) =>
+        new(room.ConversationId, room.CallId, room.Mode, room.InitiatorUserId,
+            room.ParticipantUserIds.ToArray(), room.StartedAt, IsActive: true);
+
+    private static string SerializeGroupCallEnvelope(GroupCallSessionDto state) =>
+        System.Text.Json.JsonSerializer.Serialize(new
+        {
+            callId = state.CallId,
+            mode = state.Mode,
+            isGroup = true,
+            initiatorUserId = state.InitiatorUserId
+        });
+
+    private static bool TryReadGroupCallEnvelope(
+        string? payload,
+        out Guid callId,
+        out string mode,
+        out Guid initiatorUserId)
+    {
+        callId = Guid.Empty;
+        mode = "audio";
+        initiatorUserId = Guid.Empty;
+        if (string.IsNullOrWhiteSpace(payload)) return false;
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(payload);
+            var root = document.RootElement;
+            if (!root.TryGetProperty("isGroup", out var groupElement) || groupElement.ValueKind != System.Text.Json.JsonValueKind.True)
+                return false;
+            if (!root.TryGetProperty("callId", out var callElement) || !Guid.TryParse(callElement.GetString(), out callId) || callId == Guid.Empty)
+                return false;
+            if (root.TryGetProperty("mode", out var modeElement) &&
+                string.Equals(modeElement.GetString(), "video", StringComparison.OrdinalIgnoreCase))
+                mode = "video";
+            if (root.TryGetProperty("initiatorUserId", out var initiatorElement))
+                Guid.TryParse(initiatorElement.GetString(), out initiatorUserId);
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -1834,6 +2052,8 @@ record GroupInvitePreviewDto(Guid Id, string Name, string Description, bool HasP
 record CreateGroupRequest(string? Name, Guid[]? UserIds, int DisappearingSeconds = 0, bool AllMembersCanAddMembers = false, bool AllMembersCanShareInviteLink = false, bool RequireAdminApproval = false, bool AdminsOnlyMessages = false);
 record AddGroupMembersRequest(Guid[]? UserIds);
 record CallSignalMessage(Guid ConversationId, Guid SenderUserId, string Type, string? Payload, Guid? TargetUserId = null);
+record GroupCallSessionDto(Guid ConversationId, Guid CallId, string Mode, Guid InitiatorUserId,
+    IReadOnlyList<Guid> ParticipantUserIds, DateTimeOffset StartedAt, bool IsActive = true);
 record SendMessageRequest(string? Text, string? ClientMessageId, Guid? ReplyToMessageId);
 record ReportConversationRequest(string? Reason);
 record ConversationActionRequest(string? Action);

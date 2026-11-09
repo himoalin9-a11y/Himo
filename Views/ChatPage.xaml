@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:models="clr-namespace:Himo.Models"
@@ -441,6 +441,39 @@
                         <Label x:Name="StatusLabel" Text="غير متصل" FontSize="11" TextColor="{DynamicResource HimoTextSecondary}" />
                     </VerticalStackLayout>
                 </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Persistent group-call banner: visible while a group room has at least one participant. -->
+        <Border x:Name="GroupCallBanner" Grid.Row="1" IsVisible="False"
+                Margin="10,4" Padding="11,8"
+                BackgroundColor="{DynamicResource HimoCard}"
+                Stroke="{DynamicResource HimoAccent}" StrokeThickness="1.1"
+                ZIndex="4">
+            <Border.StrokeShape><shapes:RoundRectangle CornerRadius="15" /></Border.StrokeShape>
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" FlowDirection="LeftToRight">
+                <Border Grid.Column="0" WidthRequest="35" HeightRequest="35"
+                        BackgroundColor="{DynamicResource HimoAccent}" StrokeThickness="0"
+                        VerticalOptions="Center">
+                    <Border.StrokeShape><shapes:RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                    <Label Text="●" FontSize="17" FontAttributes="Bold"
+                           TextColor="{DynamicResource HimoOnAccent}"
+                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                </Border>
+                <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center"
+                                     FlowDirection="RightToLeft">
+                    <Label x:Name="GroupCallTitleLabel" Text="مكالمة جماعية جارية"
+                           FontSize="13" FontAttributes="Bold"
+                           TextColor="{DynamicResource HimoPrimary}" />
+                    <Label x:Name="GroupCallSubtitleLabel" Text="يمكنك الانضمام إلى المكالمة"
+                           FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" />
+                </VerticalStackLayout>
+                <Button x:Name="GroupCallJoinButton" Grid.Column="2" Text="انضمام"
+                        FontSize="12" FontAttributes="Bold" Padding="14,7"
+                        CornerRadius="12" HeightRequest="38" MinimumHeightRequest="38"
+                        BackgroundColor="{DynamicResource HimoAccent}"
+                        TextColor="{DynamicResource HimoOnAccent}"
+                        Clicked="JoinActiveGroupCallClicked" VerticalOptions="Center" />
             </Grid>
         </Border>
 

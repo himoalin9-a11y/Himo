@@ -1,135 +1,97 @@
-
 namespace Himo.Services;
 
 /// <summary>
-/// Stage 4: WebRTC negotiation state is isolated from the UI and call lifecycle.
-/// The native media engine is intentionally plugged in at the next stage.
+/// Signaling state for exactly one remote participant in a Mesh call.
+/// SDP and ICE are routed to RemotePeerUserId; they are never broadcast to an
+/// entire group conversation.
 /// </summary>
 public sealed class WebRtcSession : IDisposable
 {
     private readonly ICallService _calls;
-    private readonly Queue<string> _pendingIceCandidates = new();
     private bool _disposed;
 
     public Guid ConversationId { get; }
     public CallMode Mode { get; }
     public Guid CallId { get; }
-    public string? RemoteOfferSdp { get; private set; }
-    public string? RemoteAnswerSdp { get; private set; }
-    public bool HasRemoteOffer => !string.IsNullOrWhiteSpace(RemoteOfferSdp);
-    public bool HasRemoteAnswer => !string.IsNullOrWhiteSpace(RemoteAnswerSdp);
-    public int PendingIceCandidates => _pendingIceCandidates.Count;
+    public Guid RemotePeerUserId { get; }
+    public Guid LocalUserId { get; }
 
-    public event EventHandler<string>? RemoteOfferReceived;
-    public event EventHandler<string>? RemoteAnswerReceived;
-    public event EventHandler<string>? IceCandidateReceived;
-
-    public WebRtcSession(ICallService calls, Guid conversationId, CallMode mode, Guid callId = default)
+    public WebRtcSession(
+        ICallService calls,
+        Guid conversationId,
+        CallMode mode,
+        Guid callId,
+        Guid remotePeerUserId,
+        Guid localUserId)
     {
+        if (remotePeerUserId == Guid.Empty)
+            throw new ArgumentException("A remote participant is required for a peer session.", nameof(remotePeerUserId));
+
         _calls = calls;
         ConversationId = conversationId;
         Mode = mode;
         CallId = callId;
-        _calls.IncomingSignal += OnSignal;
+        RemotePeerUserId = remotePeerUserId;
+        LocalUserId = localUserId;
     }
 
-    public async Task SendOfferAsync(string sdp, CancellationToken cancellationToken = default)
+    public Task SendOfferAsync(string sdp, CancellationToken cancellationToken = default)
     {
         EnsureActive();
         EnsureMatchingActiveCall();
         ValidateSdp(sdp);
-        await _calls.SendOfferAsync(sdp, cancellationToken);
+        return _calls.SendOfferAsync(RemotePeerUserId, sdp, cancellationToken);
     }
 
-    public async Task SendAnswerAsync(string sdp, CancellationToken cancellationToken = default)
+    public Task SendAnswerAsync(string sdp, CancellationToken cancellationToken = default)
     {
         EnsureActive();
         EnsureMatchingActiveCall();
         ValidateSdp(sdp);
-        await _calls.SendAnswerAsync(sdp, cancellationToken);
+        return _calls.SendAnswerAsync(RemotePeerUserId, sdp, cancellationToken);
     }
 
-    public async Task SendIceCandidateAsync(string candidate, CancellationToken cancellationToken = default)
+    public Task SendIceCandidateAsync(string candidate, CancellationToken cancellationToken = default)
     {
         EnsureActive();
         EnsureMatchingActiveCall();
-        if (string.IsNullOrWhiteSpace(candidate)) return;
-        await _calls.SendIceCandidateAsync(candidate, cancellationToken);
+        if (string.IsNullOrWhiteSpace(candidate)) return Task.CompletedTask;
+        return _calls.SendIceCandidateAsync(RemotePeerUserId, candidate, cancellationToken);
     }
 
-    public IReadOnlyList<string> DrainPendingIceCandidates()
+    public bool IsSignalForPeer(CallSignalMessage signal)
     {
-        var result = _pendingIceCandidates.ToArray();
-        _pendingIceCandidates.Clear();
-        return result;
-    }
+        if (_disposed || signal.ConversationId != ConversationId || signal.SenderUserId != RemotePeerUserId)
+            return false;
+        if (signal.TargetUserId.HasValue)
+        {
+            if (LocalUserId != Guid.Empty && signal.TargetUserId.Value != LocalUserId)
+                return false;
+        }
 
-    private void OnSignal(object? sender, CallSignalMessage signal)
-    {
-        if (_disposed || signal.ConversationId != ConversationId) return;
-
-        var payload = signal.Payload;
         if (CallSignalEnvelope.TryParse(signal.Payload, out var envelope))
-        {
-            if (CallId != Guid.Empty && envelope.CallId != Guid.Empty && envelope.CallId != CallId)
-                return;
-            payload = envelope.Data;
-        }
-
-        if (string.Equals(signal.Type, CallSignalType.Offer.ToString(), StringComparison.OrdinalIgnoreCase))
-        {
-            if (string.IsNullOrWhiteSpace(payload)) return;
-            RemoteOfferSdp = payload;
-            RemoteOfferReceived?.Invoke(this, payload);
-            return;
-        }
-
-        if (string.Equals(signal.Type, CallSignalType.Answer.ToString(), StringComparison.OrdinalIgnoreCase))
-        {
-            if (string.IsNullOrWhiteSpace(payload)) return;
-            RemoteAnswerSdp = payload;
-            RemoteAnswerReceived?.Invoke(this, payload);
-            return;
-        }
-
-        if (string.Equals(signal.Type, CallSignalType.IceCandidate.ToString(), StringComparison.OrdinalIgnoreCase))
-        {
-            if (string.IsNullOrWhiteSpace(payload)) return;
-            _pendingIceCandidates.Enqueue(payload);
-            IceCandidateReceived?.Invoke(this, payload);
-        }
+            return envelope.CallId == Guid.Empty || envelope.CallId == CallId;
+        return true;
     }
+
 
     private static void ValidateSdp(string sdp)
     {
         if (string.IsNullOrWhiteSpace(sdp))
             throw new ArgumentException("SDP is required.", nameof(sdp));
-
         if (!sdp.Contains("v=0", StringComparison.Ordinal))
             throw new ArgumentException("Invalid SDP payload.", nameof(sdp));
     }
 
-    private void EnsureActive()
-    {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-    }
+    private void EnsureActive() => ObjectDisposedException.ThrowIf(_disposed, this);
 
     private void EnsureMatchingActiveCall()
     {
         var current = _calls.Current;
-        if (current is null || current.ConversationId != ConversationId || current.Mode != Mode ||
-            (CallId != Guid.Empty && current.CallId != CallId))
-        {
+        if (current is null || current.ConversationId != ConversationId || current.Mode != Mode || current.CallId != CallId)
             throw new InvalidOperationException(
-                $"WebRTC session is stale; expected conversation={ConversationId:D}, callId={CallId:D}.");
-        }
+                $"WebRTC peer session is stale; expected conversation={ConversationId:D}, callId={CallId:D}, peer={RemotePeerUserId:D}.");
     }
 
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-        _calls.IncomingSignal -= OnSignal;
-        _pendingIceCandidates.Clear();
-    }
+    public void Dispose() => _disposed = true;
 }

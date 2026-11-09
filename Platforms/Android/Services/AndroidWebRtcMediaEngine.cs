@@ -16,6 +16,13 @@ namespace Himo.Platforms.Android.Services;
 /// </summary>
 public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
 {
+    // The root engine owns the camera/microphone tracks and PeerConnectionFactory.
+    // Child engines own only one additional PeerConnection and reuse those tracks.
+    private readonly bool _ownsMediaResources;
+    private readonly AndroidWebRtcMediaEngine? _mediaOwner;
+    private readonly object _childPeersGate = new();
+    private readonly List<AndroidWebRtcMediaEngine> _childPeers = new();
+
     private const string NativeAssemblyName = "FsWebRTC.Bindings.Maui.Android";
 
     private Assembly? _assembly;
@@ -85,6 +92,9 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
 
     public bool IsStarted => _started;
 
+    /// <summary>True when this engine currently owns a live native PeerConnection object.</summary>
+    public bool HasPeerConnection => _peerConnection is not null;
+
     public CallMode? Mode => _mode;
 
     public bool IsCameraEnabled => _cameraEnabled;
@@ -118,8 +128,157 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             "Connected",
             StringComparison.OrdinalIgnoreCase);
 
-    public bool IsConnectionEstablished =>
-        IsIceConnected && IsPeerConnectionConnected;
+    public bool IsConnectionEstablished
+    {
+        get
+        {
+            if (IsIceConnected && IsPeerConnectionConnected)
+                return true;
+            if (_ownsMediaResources)
+            {
+                lock (_childPeersGate)
+                    return _childPeers.Any(peer => peer.IsConnectionEstablished);
+            }
+            return false;
+        }
+    }
+
+    public AndroidWebRtcMediaEngine()
+    {
+        _ownsMediaResources = true;
+    }
+
+    private AndroidWebRtcMediaEngine(AndroidWebRtcMediaEngine mediaOwner)
+    {
+        _ownsMediaResources = false;
+        _mediaOwner = mediaOwner;
+        _assembly = mediaOwner._assembly;
+        _factory = mediaOwner._factory;
+        _audioSource = mediaOwner._audioSource;
+        _audioTrack = mediaOwner._audioTrack;
+        _videoSource = mediaOwner._videoSource;
+        _videoTrack = mediaOwner._videoTrack;
+        _eglBase = mediaOwner._eglBase;
+        _eglContext = mediaOwner._eglContext;
+        _mode = mediaOwner._mode;
+        _remoteAudioEnabled = mediaOwner._remoteAudioEnabled;
+        _started = true;
+    }
+
+    /// <summary>
+    /// Creates another direct peer connection while sharing the root microphone,
+    /// camera tracks and PeerConnectionFactory. A child owns only its peer transport.
+    /// </summary>
+    public async Task<AndroidWebRtcMediaEngine> CreatePeerConnectionEngineAsync(
+        CallMode mode,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_ownsMediaResources)
+            throw new InvalidOperationException("Only the root WebRTC engine can create group peer transports.");
+
+        // Serialize child creation with root Stop/Dispose. Without the owner gate,
+        // teardown could dispose the shared factory after a child passed the initial
+        // _started check but before that child's PeerConnection had been registered.
+        await _factoryGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!_started || _factory is null || _audioTrack is null)
+                throw new InvalidOperationException("The root WebRTC media engine must be started before adding another group participant.");
+            if (mode == CallMode.Video && _videoTrack is null)
+                throw new InvalidOperationException("The root video track is not ready for another group participant.");
+
+            var child = new AndroidWebRtcMediaEngine(this)
+            {
+                _mode = mode,
+                _sessionGeneration = 1
+            };
+            await child._factoryGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await Task.Run(() => child.InitializePeerConnection(child._sessionGeneration, mode), cancellationToken)
+                    .ConfigureAwait(false);
+                lock (_childPeersGate)
+                    _childPeers.Add(child);
+                System.Diagnostics.Debug.WriteLine($"[Himo WebRTC] Created mesh peer connection; mode={mode}; activePeers={_childPeers.Count + 1}.");
+                return child;
+            }
+            catch
+            {
+                child._started = false;
+                child.DisposePeerConnectionObjects();
+                throw;
+            }
+            finally
+            {
+                child._factoryGate.Release();
+            }
+        }
+        finally
+        {
+            _factoryGate.Release();
+        }
+    }
+
+    private void RemoveChildPeer(AndroidWebRtcMediaEngine child)
+    {
+        if (!_ownsMediaResources) return;
+        lock (_childPeersGate)
+            _childPeers.Remove(child);
+        NotifyConnectionEstablishedChanged();
+    }
+
+    /// <summary>
+    /// Rebuilds the root transport after its previous group participant leaves, while
+    /// retaining the shared microphone/camera tracks and PeerConnectionFactory.
+    /// </summary>
+    public async Task RecreatePeerConnectionOnlyAsync(
+        CallMode mode,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_ownsMediaResources || !_started || _factory is null || _audioTrack is null)
+            throw new InvalidOperationException("The root WebRTC media engine is not ready to recreate a peer transport.");
+        if (mode == CallMode.Video && _videoTrack is null)
+            throw new InvalidOperationException("The root video track is not ready to recreate a video peer transport.");
+
+        var sessionGeneration = ++_sessionGeneration;
+        await _factoryGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (sessionGeneration != _sessionGeneration) return;
+            DisposePeerConnectionObjects();
+            ResetConnectionState();
+            _mode = mode;
+            InitializePeerConnection(sessionGeneration, mode);
+        }
+        finally
+        {
+            _factoryGate.Release();
+        }
+    }
+
+    /// <summary>Closes the root's current remote transport but retains local media tracks
+    /// and the factory so the group can continue with the remaining child transports.</summary>
+    public async Task ClosePeerConnectionOnlyAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_ownsMediaResources)
+        {
+            await StopAsync(cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        ++_sessionGeneration;
+        await _factoryGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            DisposePeerConnectionObjects();
+            NotifyConnectionEstablishedChanged();
+        }
+        finally
+        {
+            _factoryGate.Release();
+        }
+    }
 
     /// <summary>
     /// Loads the WebRTC binding and initializes only PeerConnectionFactory.
@@ -234,6 +393,35 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (!_ownsMediaResources)
+        {
+            ++_sessionGeneration;
+            await _factoryGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                _started = false;
+                var wasConnected = _lastConnectionEstablished;
+                ResetConnectionState();
+                if (wasConnected) ConnectionEstablishedChanged?.Invoke(this, false);
+                DisposePeerConnectionObjects();
+                _mode = null;
+            }
+            finally
+            {
+                _factoryGate.Release();
+                _mediaOwner?.RemoveChildPeer(this);
+            }
+            return;
+        }
+
+        AndroidWebRtcMediaEngine[] children;
+        lock (_childPeersGate) children = _childPeers.ToArray();
+        foreach (var child in children)
+        {
+            try { await child.StopAsync(CancellationToken.None).ConfigureAwait(false); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo WebRTC] Child peer cleanup failed: {ex.Message}"); }
+        }
+
         // Invalidate an in-progress startup before waiting for the initialization gate.
         ++_sessionGeneration;
         await _factoryGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -762,10 +950,15 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
 
         if (_remoteAudioTrack is not null)
         {
-            InvokeOptional(
-                _remoteAudioTrack,
-                "SetEnabled",
-                enabled);
+            InvokeOptional(_remoteAudioTrack, "SetEnabled", enabled);
+        }
+
+        if (_ownsMediaResources)
+        {
+            AndroidWebRtcMediaEngine[] peers;
+            lock (_childPeersGate) peers = _childPeers.ToArray();
+            foreach (var peer in peers)
+                _ = peer.SetRemoteAudioEnabledAsync(enabled, cancellationToken);
         }
 
         return Task.CompletedTask;
@@ -1760,44 +1953,11 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
             ?? throw new InvalidOperationException(
                 "ICE server list could not be created.");
 
-        AddIceServer(
-            iceServerType,
-            iceServers,
-            "stun:stun.l.google.com:19302");
-
-        const string turnUsername =
-            "65b1a764775f41fdf4890e7c";
-
-        const string turnPassword =
-            "rg2auX6WI2YrXkzi";
-
-        AddIceServer(
-            iceServerType,
-            iceServers,
-            "turn:global.relay.metered.ca:80",
-            turnUsername,
-            turnPassword);
-
-        AddIceServer(
-            iceServerType,
-            iceServers,
-            "turn:global.relay.metered.ca:80?transport=tcp",
-            turnUsername,
-            turnPassword);
-
-        AddIceServer(
-            iceServerType,
-            iceServers,
-            "turn:global.relay.metered.ca:443",
-            turnUsername,
-            turnPassword);
-
-        AddIceServer(
-            iceServerType,
-            iceServers,
-            "turns:global.relay.metered.ca:443?transport=tcp",
-            turnUsername,
-            turnPassword);
+        // Free STUN discovery only. This avoids relying on a third-party paid TURN
+        // account or shipping long-lived relay credentials inside the APK. Peers behind
+        // restrictive/symmetric NATs may still need a self-hosted TURN server.
+        AddIceServer(iceServerType, iceServers, "stun:stun.l.google.com:19302");
+        AddIceServer(iceServerType, iceServers, "stun:stun.cloudflare.com:3478");
 
         var configuration =
             Activator.CreateInstance(
@@ -3031,6 +3191,23 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
 
     private void DisposeNativeObjects()
     {
+        if (!_ownsMediaResources)
+        {
+            DisposePeerConnectionObjects();
+            _started = false;
+            _mode = null;
+            return;
+        }
+
+        AndroidWebRtcMediaEngine[] children;
+        lock (_childPeersGate) children = _childPeers.ToArray();
+        foreach (var child in children)
+        {
+            try { child.DisposePeerConnectionObjects(); child._started = false; child._mode = null; }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo WebRTC] Child peer dispose failed: {ex.Message}"); }
+        }
+        lock (_childPeersGate) _childPeers.Clear();
+
         InvokeOptional(
             _capturer,
             "StopCapture");
@@ -3126,6 +3303,29 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
         _remoteAudioEnabled = false;
     }
 
+    private void DisposePeerConnectionObjects()
+    {
+        if (_remoteVideoTrack is not null && _remoteRenderer is not null)
+            InvokeCompatibleOptional(_remoteVideoTrack, "RemoveSink", _remoteRenderer);
+        if (_remoteAudioTrack is not null)
+            InvokeOptional(_remoteAudioTrack, "SetEnabled", false);
+        InvokeOptional(_remoteRenderer, "ClearImage");
+        RemoveRenderer(_remoteRenderer);
+        TryDispose(_peerConnection);
+        TryDispose(_peerConnectionObserver);
+        _peerConnection = null;
+        _peerConnectionObserver = null;
+        _remoteRenderer = null;
+        _remoteVideoTrack = null;
+        _remoteAudioTrack = null;
+        _pendingRemoteIceCandidates.Clear();
+        _remoteIceCandidateKeys.Clear();
+        _remoteDescriptionSet = false;
+        _lastIceConnectionState = null;
+        _lastPeerConnectionState = null;
+        _lastConnectionEstablished = false;
+    }
+
     private static void RemoveRenderer(object? renderer)
     {
         if (renderer is null)
@@ -3217,6 +3417,10 @@ public sealed class AndroidWebRtcMediaEngine : IWebRtcMediaEngine
         ConnectionEstablishedChanged?.Invoke(
             this,
             established);
+
+        // CallService subscribes to the root engine; propagate child transport changes
+        // so a group call stays connected while at least one peer is alive.
+        _mediaOwner?.NotifyConnectionEstablishedChanged();
     }
 
     private sealed class PeerConnectionObserverBridge :

@@ -1,4 +1,4 @@
-﻿using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Dispatching;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Networking;
@@ -30,6 +30,8 @@ public partial class ChatPage : ContentPage
     private readonly AccountService _account;
     private readonly INotificationService _notifications;
     private readonly HimoRealtimeService _realtime;
+    private GroupCallSessionDto? _activeGroupCall;
+    private int _groupCallRefreshVersion;
     private readonly RangeObservableCollection<ChatMessage> _visibleMessages = new();
     private Conversation? _avatarBoundConversation;
     private CancellationTokenSource? _pollCts;
@@ -196,6 +198,7 @@ public partial class ChatPage : ContentPage
         _realtime.MessageEdited += OnMessageEdited;
         _realtime.MessageDeleted += OnMessageDeleted;
         _realtime.Reconnected += OnRealtimeReconnected;
+        _realtime.GroupCallStateChanged += OnGroupCallStateChanged;
 
         _scrollIdleTimer = Dispatcher.CreateTimer();
         _scrollIdleTimer.Interval = TimeSpan.FromMilliseconds(650);
@@ -785,6 +788,7 @@ public partial class ChatPage : ContentPage
             {
                 var online = await _realtime.GetPresenceAsync(remoteId);
                 await MainThread.InvokeOnMainThreadAsync(() => SetPresenceText(online));
+                await RefreshActiveGroupCallAsync(cancellationToken);
             }
         }
         catch (Exception ex)
@@ -1872,6 +1876,8 @@ public partial class ChatPage : ContentPage
 
         try
         {
+            if (await TryJoinActiveGroupCallAsync(conversationId))
+                return;
             await SwipePageTransition.NavigateAsync(this, $"CallPage?id={conversationId:D}&mode=audio", SwipeDirection.Left);
         }
         catch (Exception ex)
@@ -1890,6 +1896,8 @@ public partial class ChatPage : ContentPage
 
         try
         {
+            if (await TryJoinActiveGroupCallAsync(conversationId))
+                return;
             await SwipePageTransition.NavigateAsync(this, $"CallPage?id={conversationId:D}&mode=video", SwipeDirection.Left);
         }
         catch (Exception ex)
@@ -1939,6 +1947,123 @@ public partial class ChatPage : ContentPage
     // Incoming calls are routed centrally by PushNotificationManager.
     // ChatPage must not show a second DisplayActionSheet for the same Invite.
 
+    private void OnGroupCallStateChanged(GroupCallSessionDto state)
+    {
+        if (!Guid.TryParse(_remoteConversationId, out var conversationId) ||
+            state.ConversationId != conversationId)
+            return;
+
+        MainThread.BeginInvokeOnMainThread(() => ApplyGroupCallState(state));
+    }
+
+    private async Task RefreshActiveGroupCallAsync(CancellationToken cancellationToken = default)
+    {
+        if (!Guid.TryParse(_remoteConversationId, out var conversationId))
+        {
+            await MainThread.InvokeOnMainThreadAsync(() => ApplyGroupCallState(null));
+            return;
+        }
+
+        var refreshVersion = Interlocked.Increment(ref _groupCallRefreshVersion);
+        try
+        {
+            await _api.TokenInitialization.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (!_api.HasToken)
+            {
+                await MainThread.InvokeOnMainThreadAsync(() => ApplyGroupCallState(null));
+                return;
+            }
+
+            // The hub validates that this is a group conversation. Do not rely on
+            // the local conversation cache's IsGroup flag: group metadata can still
+            // be hydrating when the chat page first opens.
+            var state = await _realtime.GetActiveGroupCallAsync(conversationId, cancellationToken)
+                .ConfigureAwait(false);
+            if (refreshVersion != Volatile.Read(ref _groupCallRefreshVersion)) return;
+            await MainThread.InvokeOnMainThreadAsync(() => ApplyGroupCallState(state));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Active group call refresh failed: {ex.Message}");
+        }
+    }
+
+    private void ApplyGroupCallState(GroupCallSessionDto? state)
+    {
+        if (GroupCallBanner is null) return;
+        if (state is null || !state.IsActive ||
+            !Guid.TryParse(_remoteConversationId, out var conversationId) ||
+            state.ConversationId != conversationId)
+        {
+            _activeGroupCall = null;
+            GroupCallBanner.IsVisible = false;
+            return;
+        }
+
+        _activeGroupCall = state;
+        GroupCallBanner.IsVisible = true;
+        GroupCallTitleLabel.Text = state.Mode.Equals("video", StringComparison.OrdinalIgnoreCase)
+            ? "مكالمة فيديو جماعية جارية"
+            : "مكالمة صوتية جماعية جارية";
+        var participantCount = state.ParticipantUserIds?.Count ?? 0;
+        GroupCallSubtitleLabel.Text = participantCount switch
+        {
+            0 => "يمكنك الانضمام إلى المكالمة",
+            1 => "مشارك واحد في المكالمة — يمكنك الانضمام",
+            2 => "مشاركان في المكالمة — يمكنك الانضمام",
+            _ => $"{participantCount} مشاركين في المكالمة — يمكنك الانضمام"
+        };
+    }
+
+    private async Task NavigateToGroupCallAsync(Guid conversationId, GroupCallSessionDto activeCall)
+    {
+        var name = Uri.EscapeDataString(NameLabel.Text ?? "المجموعة");
+        var route = $"CallPage?id={conversationId:D}&mode={Uri.EscapeDataString(activeCall.Mode)}" +
+                    $"&callId={activeCall.CallId:D}&joinGroupCall=true" +
+                    $"&initiatorUserId={activeCall.InitiatorUserId:D}&peerName={name}";
+        await SwipePageTransition.NavigateAsync(this, route, SwipeDirection.Left);
+    }
+
+    private async Task<bool> TryJoinActiveGroupCallAsync(Guid conversationId)
+    {
+        // Recheck with the hub before navigating. The banner can lag behind a room
+        // that just ended, or be a beat behind a room that was just created. Query
+        // before starting a second Invite so either call icon joins a live room.
+        var latest = await _realtime.GetActiveGroupCallAsync(conversationId);
+        if (latest is null || !latest.IsActive || latest.CallId == Guid.Empty)
+            return false;
+
+        ApplyGroupCallState(latest);
+        await NavigateToGroupCallAsync(conversationId, latest);
+        return true;
+    }
+
+    private async void JoinActiveGroupCallClicked(object? sender, EventArgs e)
+    {
+        if (!Guid.TryParse(_remoteConversationId, out var conversationId))
+            return;
+
+        GroupCallJoinButton.IsEnabled = false;
+        try
+        {
+            if (await TryJoinActiveGroupCallAsync(conversationId))
+                return;
+
+            ApplyGroupCallState(null);
+            await DisplayAlertAsync("المكالمة الجماعية", "انتهت المكالمة أو لم تعد متاحة.", "حسنًا");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Join active group call failed: {ex}");
+            await DisplayAlertAsync("المكالمة الجماعية", "تعذر الانضمام الآن. تحقق من الاتصال وحاول مرة أخرى.", "حسنًا");
+        }
+        finally
+        {
+            GroupCallJoinButton.IsEnabled = true;
+        }
+    }
+
     private async Task StartRealtimeAsync(CancellationToken cancellationToken = default)
     {
         await _realtime.StartAsync(cancellationToken);
@@ -1951,7 +2076,10 @@ public partial class ChatPage : ContentPage
         // ClientMessageId values so a lost HTTP response cannot create duplicates.
         _ = LoadRemoteAsync();
         if (Guid.TryParse(_remoteConversationId, out var remoteId))
+        {
             _ = RefreshPresenceAfterReconnectAsync(remoteId);
+            _ = RefreshActiveGroupCallAsync();
+        }
     }
 
     private int _flushingOutbox;
