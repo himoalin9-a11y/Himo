@@ -211,7 +211,7 @@ webApp.UseDefaultFiles();
 webApp.UseStaticFiles();
 
 webApp.MapGet("/", () => Results.Ok(new { status = "ok", service = "Himo.Api", message = "Himo API is running", health = "/health" }));
-webApp.MapGet("/web", () => Results.Redirect("/web/"));
+webApp.MapGet("/web", () => Results.Redirect("/web/index.html"));
 
 // Android Verified App Links association. Configure one or more SHA-256 signing
 // certificate fingerprints in Render's ANDROID_APP_SHA256_CERT_FINGERPRINTS
