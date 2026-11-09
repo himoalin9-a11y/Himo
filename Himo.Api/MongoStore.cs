@@ -23,6 +23,7 @@ sealed class MongoStore
     private readonly IMongoCollection<MEmailChange> _emailChanges;
     private readonly IMongoCollection<MPasswordReset> _passwordResets;
     private readonly IMongoCollection<MSession> _sessions;
+    private readonly IMongoCollection<MWebPairing> _webPairings;
     private readonly IMongoCollection<MConversation> _conversations;
     private readonly IMongoCollection<MParticipant> _participants;
     private readonly IMongoCollection<MUserState> _userStates;
@@ -63,6 +64,7 @@ sealed class MongoStore
         _emailChanges = _db.GetCollection<MEmailChange>("emailChangeVerificationCodes");
         _passwordResets = _db.GetCollection<MPasswordReset>("passwordResetCodes");
         _sessions = _db.GetCollection<MSession>("sessions");
+        _webPairings = _db.GetCollection<MWebPairing>("webDevicePairings");
         _conversations = _db.GetCollection<MConversation>("conversations");
         _participants = _db.GetCollection<MParticipant>("conversationParticipants");
         _userStates = _db.GetCollection<MUserState>("conversationUserStates");
@@ -111,6 +113,8 @@ sealed class MongoStore
             _passwordResets.Indexes.CreateOne(new CreateIndexModel<MPasswordReset>(Builders<MPasswordReset>.IndexKeys.Ascending(x => x.ExpiresAt)));
             _sessions.Indexes.CreateOne(new CreateIndexModel<MSession>(Builders<MSession>.IndexKeys.Ascending(x => x.UserId)));
             _sessions.Indexes.CreateOne(new CreateIndexModel<MSession>(Builders<MSession>.IndexKeys.Ascending(x => x.ExpiresAt)));
+            _sessions.Indexes.CreateOne(new CreateIndexModel<MSession>(Builders<MSession>.IndexKeys.Ascending(x => x.UserId).Ascending(x => x.DeviceId)));
+            _webPairings.Indexes.CreateOne(new CreateIndexModel<MWebPairing>(Builders<MWebPairing>.IndexKeys.Ascending(x => x.ExpiresAt)));
             _participants.Indexes.CreateOne(new CreateIndexModel<MParticipant>(Builders<MParticipant>.IndexKeys.Ascending(x => x.ConversationId).Ascending(x => x.UserId), new CreateIndexOptions { Unique = true }));
             _participants.Indexes.CreateOne(new CreateIndexModel<MParticipant>(Builders<MParticipant>.IndexKeys.Ascending(x => x.UserId).Ascending(x => x.JoinedAt)));
             _userStates.Indexes.CreateOne(new CreateIndexModel<MUserState>(Builders<MUserState>.IndexKeys.Ascending(x => x.ConversationId).Ascending(x => x.UserId), new CreateIndexOptions { Unique = true }));
@@ -283,23 +287,97 @@ sealed class MongoStore
 
     public void DeleteAccount(Guid userId)
     {
-        EnsureIndexes(); lock (_sync)
+        EnsureIndexes();
+        lock (_sync)
         {
-            var uid = GuidText(userId); var user = _users.Find(x => x.Id == uid).FirstOrDefault() ?? throw new InvalidOperationException("المستخدم غير موجود.");
-            var ownedConversations = _conversations.Find(x => x.OwnerUserId == uid).ToList().Select(x => x.Id).ToArray();
-            var messagesToDelete = _messages.Find(x => x.SenderUserId == uid || ownedConversations.Contains(x.ConversationId)).ToList();
+            var uid = GuidText(userId);
+            var user = _users.Find(x => x.Id == uid).FirstOrDefault()
+                ?? throw new InvalidOperationException("المستخدم غير موجود.");
+
+            // Preserve groups when their manager deletes their own Himo account.
+            // Group ownership must be handed to a member who was explicitly appointed
+            // as an admin. Do not grant management to an ordinary/last member by default.
+            var ownedGroups = _conversations.Find(x => x.IsGroup && x.OwnerUserId == uid).ToList();
+
+            // Validate every required handoff before mutating anything. If even one
+            // owned group has no appointed successor, account deletion is rejected
+            // without partially transferring some of the user's other groups.
+            var groupHandoffs = new List<(MConversation Group, MParticipant? Successor)>();
+            foreach (var group in ownedGroups)
+            {
+                var remaining = _participants.Find(x => x.ConversationId == group.Id && x.UserId != uid).ToList();
+                if (remaining.Count == 0)
+                {
+                    groupHandoffs.Add((group, null));
+                    continue;
+                }
+
+                var successor = SelectGroupLeadershipSuccessor(remaining.Where(x => x.IsAdmin));
+                if (successor is null)
+                    throw new InvalidOperationException(
+                        "لا يمكن حذف الحساب قبل تعيين مشرف بديل لكل مجموعة تملكها. عيّن عضوًا كمشرف أولًا، ثم أعد محاولة حذف الحساب.");
+                groupHandoffs.Add((group, successor));
+            }
+
+            foreach (var handoff in groupHandoffs)
+            {
+                if (handoff.Successor is null)
+                {
+                    DeleteGroupCompletely(handoff.Group.Id);
+                    continue;
+                }
+
+                var ownerUpdate = _conversations.UpdateOne(
+                    x => x.Id == handoff.Group.Id && x.OwnerUserId == uid,
+                    Builders<MConversation>.Update.Set(x => x.OwnerUserId, handoff.Successor.UserId).Set(x => x.UpdatedAt, NowText()));
+                if (ownerUpdate.MatchedCount == 0)
+                    throw new InvalidOperationException("تعذر نقل إدارة إحدى المجموعات قبل حذف الحساب.");
+
+                _participants.UpdateOne(
+                    x => x.ConversationId == handoff.Group.Id && x.UserId == handoff.Successor.UserId,
+                    Builders<MParticipant>.Update.Set(x => x.IsAdmin, true));
+            }
+
+            // A departing non-owner moderator does not cause an ordinary member to be
+            // promoted automatically. The group owner remains the controlling manager;
+            // only members explicitly appointed as admins retain moderator privileges.
+
+            // Only direct conversations whose owner account is being deleted are
+            // removed as owned conversations. Group conversations are re-homed above.
+            var ownedDirectConversationIds = _conversations
+                .Find(x => !x.IsGroup && x.OwnerUserId == uid)
+                .ToList()
+                .Select(x => x.Id)
+                .ToArray();
+
+            var messagesToDelete = _messages.Find(x =>
+                x.SenderUserId == uid || ownedDirectConversationIds.Contains(x.ConversationId)).ToList();
             var messageIdsToDelete = messagesToDelete.Select(m => m.Id).ToArray();
-            foreach (var m in messagesToDelete) DeleteGridFile(m);
-            _messages.DeleteMany(x => x.SenderUserId == uid || ownedConversations.Contains(x.ConversationId));
+            foreach (var message in messagesToDelete) DeleteGridFile(message);
+
+            _messages.DeleteMany(x => x.SenderUserId == uid || ownedDirectConversationIds.Contains(x.ConversationId));
             if (messageIdsToDelete.Length > 0) _receipts.DeleteMany(x => messageIdsToDelete.Contains(x.MessageId));
-            _conversations.DeleteMany(x => ownedConversations.Contains(x.Id));
-            _participants.DeleteMany(x => x.UserId == uid || ownedConversations.Contains(x.ConversationId));
-            _userStates.DeleteMany(x => x.UserId == uid || ownedConversations.Contains(x.ConversationId));
+            if (ownedDirectConversationIds.Length > 0)
+            {
+                _conversations.DeleteMany(x => ownedDirectConversationIds.Contains(x.Id));
+                _participants.DeleteMany(x => ownedDirectConversationIds.Contains(x.ConversationId));
+                _userStates.DeleteMany(x => ownedDirectConversationIds.Contains(x.ConversationId));
+                _reports.DeleteMany(x => ownedDirectConversationIds.Contains(x.ConversationId));
+            }
+
+            // Remove only this account's memberships and per-user state from groups.
+            _participants.DeleteMany(x => x.UserId == uid);
+            _userStates.DeleteMany(x => x.UserId == uid);
             _blockedUsers.DeleteMany(x => x.BlockerUserId == uid || x.BlockedUserId == uid);
-            _reports.DeleteMany(x => x.ReporterUserId == uid || ownedConversations.Contains(x.ConversationId));
-            _sessions.DeleteMany(x => x.UserId == uid); _pushTokens.DeleteMany(x => x.UserId == uid);
-            _otpCodes.DeleteOne(x => x.PhoneNumber == user.PhoneNumber); _emailVerifications.DeleteOne(x => x.Email == user.PhoneNumber);
-            _emailChanges.DeleteOne(x => x.UserId == uid); _passwordResets.DeleteOne(x => x.Email == user.PhoneNumber); _consents.DeleteMany(x => x.UserId == uid);
+            _reports.DeleteMany(x => x.ReporterUserId == uid);
+            _sessions.DeleteMany(x => x.UserId == uid);
+            _pushTokens.DeleteMany(x => x.UserId == uid);
+            _webPairings.DeleteMany(x => x.UserId == uid);
+            _otpCodes.DeleteOne(x => x.PhoneNumber == user.PhoneNumber);
+            _emailVerifications.DeleteOne(x => x.Email == user.PhoneNumber);
+            _emailChanges.DeleteOne(x => x.UserId == uid);
+            _passwordResets.DeleteOne(x => x.Email == user.PhoneNumber);
+            _consents.DeleteMany(x => x.UserId == uid);
             _users.DeleteOne(x => x.Id == uid);
         }
     }
@@ -372,7 +450,7 @@ sealed class MongoStore
             if (!SecureCodeEquals(reset.Code, code)) { _passwordResets.UpdateOne(x => x.Email == email, Builders<MPasswordReset>.Update.Inc(x => x.FailedAttempts, 1)); return false; }
             var user = _users.Find(EqualsCi<MUser>(x => x.PhoneNumber, email)).FirstOrDefault(); if (user is null) return false;
             _users.UpdateOne(x => x.Id == user.Id, Builders<MUser>.Update.Set(x => x.PasswordHash, newPasswordHash).Set(x => x.EmailVerified, true));
-            _sessions.DeleteMany(x => x.UserId == user.Id); _passwordResets.DeleteOne(x => x.Email == email);
+            _sessions.DeleteMany(x => x.UserId == user.Id); _webPairings.DeleteMany(x => x.UserId == user.Id); _passwordResets.DeleteOne(x => x.Email == email);
             result = new PasswordResetResult(Guid.Parse(user.Id), user.PhoneNumber, user.Name); failure = PasswordResetFailure.None; return true;
         }
     }
@@ -404,9 +482,238 @@ sealed class MongoStore
         return PasswordRules.Verify(password, user.PasswordHash) ? new UserRecord(Guid.Parse(user.Id), user.PhoneNumber, user.Name) : null;
     }
 
-    public void CreateSession(string token, Guid userId, DateTimeOffset expiresAt)
+    public void CreateSession(
+        string token,
+        Guid userId,
+        DateTimeOffset expiresAt,
+        string? deviceId = null,
+        string? deviceName = null,
+        string? deviceType = null)
     {
-        EnsureIndexes(); lock (_sync) { var now = NowText(); _sessions.DeleteMany(Builders<MSession>.Filter.Lte(x => x.ExpiresAt, now)); _sessions.ReplaceOne(x => x.Token == token, new MSession { Token = token, UserId = GuidText(userId), ExpiresAt = expiresAt.ToString("O") }, new ReplaceOptions { IsUpsert = true }); }
+        EnsureIndexes();
+        var now = NowText();
+        var candidateDeviceId = deviceId?.Trim();
+        var validDeviceId = !string.IsNullOrWhiteSpace(candidateDeviceId) &&
+            candidateDeviceId.Length <= 100 && candidateDeviceId.All(ch =>
+                (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+                (ch >= '0' && ch <= '9') || ch == '-' || ch == '_');
+        var cleanDeviceId = validDeviceId ? candidateDeviceId! : "mobile-" + Guid.NewGuid().ToString("N");
+        var cleanDeviceName = string.IsNullOrWhiteSpace(deviceName) ? "Himo على الهاتف" : deviceName.Trim();
+        cleanDeviceName = new string(cleanDeviceName.Where(ch => !char.IsControl(ch)).ToArray());
+        if (string.IsNullOrWhiteSpace(cleanDeviceName)) cleanDeviceName = "جهاز Himo";
+        if (cleanDeviceName.Length > 80) cleanDeviceName = cleanDeviceName[..80];
+        var cleanDeviceType = string.Equals(deviceType, "web", StringComparison.OrdinalIgnoreCase) ? "web" : "mobile";
+        lock (_sync)
+        {
+            _sessions.DeleteMany(Builders<MSession>.Filter.Lte(x => x.ExpiresAt, now));
+            _sessions.ReplaceOne(x => x.Token == token, new MSession
+            {
+                Token = token,
+                UserId = GuidText(userId),
+                ExpiresAt = expiresAt.ToString("O"),
+                DeviceId = cleanDeviceId,
+                DeviceName = cleanDeviceName,
+                DeviceType = cleanDeviceType,
+                CreatedAt = now,
+                LastSeenAt = now
+            }, new ReplaceOptions { IsUpsert = true });
+        }
+    }
+
+    private static string EffectiveDeviceId(MSession session)
+    {
+        if (!string.IsNullOrWhiteSpace(session.DeviceId)) return session.DeviceId;
+        var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(session.Token)));
+        return "legacy-" + digest[..24];
+    }
+
+    public IReadOnlyList<LinkedDeviceRecord> GetLinkedDevices(Guid userId)
+    {
+        EnsureIndexes();
+        var uid = GuidText(userId);
+        CleanupExpiredWebPairings(DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+        var incompleteWebDeviceIds = _webPairings.Find(x => x.UserId == uid && x.Status == "approved")
+            .ToList()
+            .Where(x => !string.IsNullOrWhiteSpace(x.DeviceId))
+            .Select(x => x.DeviceId!)
+            .ToHashSet(StringComparer.Ordinal);
+        return _sessions.Find(x => x.UserId == uid).ToList()
+            .Where(x => ParseTime(x.ExpiresAt) > now)
+            .Where(x => !string.Equals(x.DeviceType, "web", StringComparison.OrdinalIgnoreCase) ||
+                        !incompleteWebDeviceIds.Contains(EffectiveDeviceId(x)))
+            .Select(x => new LinkedDeviceRecord(
+                EffectiveDeviceId(x),
+                string.IsNullOrWhiteSpace(x.DeviceName) ? "جهاز Himo" : x.DeviceName,
+                string.Equals(x.DeviceType, "web", StringComparison.OrdinalIgnoreCase) ? "web" : "mobile",
+                ParseTime(x.CreatedAt, ParseTime(x.ExpiresAt).AddDays(-30)),
+                ParseTime(x.LastSeenAt, ParseTime(x.CreatedAt, ParseTime(x.ExpiresAt).AddDays(-30)))))
+            .GroupBy(x => x.DeviceId, StringComparer.Ordinal)
+            .Select(x => x.OrderByDescending(item => item.LastSeenAt).First())
+            .OrderByDescending(x => x.LastSeenAt)
+            .ToArray();
+    }
+
+    public bool RevokeLinkedDevice(Guid userId, string deviceId)
+    {
+        EnsureIndexes();
+        if (string.IsNullOrWhiteSpace(deviceId)) return false;
+        var uid = GuidText(userId);
+        var sessions = _sessions.Find(x => x.UserId == uid).ToList();
+        var tokens = sessions.Where(x => string.Equals(EffectiveDeviceId(x), deviceId, StringComparison.Ordinal))
+            .Select(x => x.Token).ToArray();
+
+        // Remove any approved-but-not-yet-completed pairing row as well as the
+        // durable session. This prevents a revoked browser from completing a stale link.
+        var pairingDelete = _webPairings.DeleteMany(x => x.UserId == uid && x.DeviceId == deviceId);
+        var pushDelete = _pushTokens.DeleteMany(x => x.UserId == uid && x.DeviceId == deviceId);
+        var sessionDelete = tokens.Length == 0
+            ? 0L
+            : _sessions.DeleteMany(x => x.UserId == uid && tokens.Contains(x.Token)).DeletedCount;
+        return pairingDelete.DeletedCount > 0 || pushDelete.DeletedCount > 0 || sessionDelete > 0;
+    }
+
+    private static bool PairingSecretMatches(string storedHash, string suppliedSecret)
+    {
+        if (string.IsNullOrWhiteSpace(storedHash) || string.IsNullOrWhiteSpace(suppliedSecret)) return false;
+        var normalizedHash = storedHash.Trim();
+        if (normalizedHash.Length != 64 || normalizedHash.Any(ch => !Uri.IsHexDigit(ch))) return false;
+
+        // Browser WebCrypto renders digest hex in lowercase, while Convert.ToHexString
+        // on .NET renders uppercase. Compare decoded digest bytes, not their casing.
+        byte[] actual;
+        try { actual = Convert.FromHexString(normalizedHash); }
+        catch (FormatException) { return false; }
+        var supplied = SHA256.HashData(Encoding.UTF8.GetBytes(suppliedSecret));
+        return actual.Length == supplied.Length && CryptographicOperations.FixedTimeEquals(actual, supplied);
+    }
+
+    public Guid CreateWebPairing(string qrKeyHash, string pollSecretHash, string browserName, DateTimeOffset expiresAt)
+    {
+        EnsureIndexes();
+        var now = NowText();
+        CleanupExpiredWebPairings(DateTimeOffset.UtcNow);
+        var id = Guid.NewGuid();
+        var name = string.IsNullOrWhiteSpace(browserName) ? "متصفح الكمبيوتر" : browserName.Trim();
+        name = new string(name.Where(ch => !char.IsControl(ch)).ToArray());
+        if (string.IsNullOrWhiteSpace(name)) name = "متصفح الكمبيوتر";
+        if (name.Length > 80) name = name[..80];
+        _webPairings.InsertOne(new MWebPairing
+        {
+            Id = GuidText(id),
+            QrKeyHash = qrKeyHash,
+            PollSecretHash = pollSecretHash,
+            BrowserName = name,
+            Status = "pending",
+            ExpiresAt = expiresAt.ToString("O"),
+            CreatedAt = now
+        });
+        return id;
+    }
+
+    public bool ApproveWebPairing(Guid pairingId, string qrKey, Guid userId, string accessToken, DateTimeOffset sessionExpiresAt)
+    {
+        EnsureIndexes();
+        lock (_sync)
+        {
+            var id = GuidText(pairingId);
+            var pairing = _webPairings.Find(x => x.Id == id).FirstOrDefault();
+            if (pairing is null || pairing.Status != "pending" || ParseTime(pairing.ExpiresAt) <= DateTimeOffset.UtcNow ||
+                !PairingSecretMatches(pairing.QrKeyHash, qrKey))
+                return false;
+
+            var now = NowText();
+            var deviceId = "web-" + pairingId.ToString("N");
+            var updated = _webPairings.UpdateOne(
+                x => x.Id == id && x.Status == "pending",
+                Builders<MWebPairing>.Update
+                    .Set(x => x.Status, "approved")
+                    .Set(x => x.UserId, GuidText(userId))
+                    .Set(x => x.AccessToken, accessToken)
+                    .Set(x => x.DeviceId, deviceId)
+                    .Set(x => x.ApprovedAt, now));
+            if (updated.MatchedCount == 0) return false;
+
+            _sessions.ReplaceOne(x => x.Token == accessToken, new MSession
+            {
+                Token = accessToken,
+                UserId = GuidText(userId),
+                ExpiresAt = sessionExpiresAt.ToString("O"),
+                DeviceId = deviceId,
+                DeviceName = pairing.BrowserName,
+                DeviceType = "web",
+                CreatedAt = now,
+                LastSeenAt = now
+            }, new ReplaceOptions { IsUpsert = true });
+            return true;
+        }
+    }
+
+    public WebPairingPollResult? PollWebPairing(Guid pairingId, string pollSecret)
+    {
+        EnsureIndexes();
+        var pairing = _webPairings.Find(x => x.Id == GuidText(pairingId)).FirstOrDefault();
+        if (pairing is null || !PairingSecretMatches(pairing.PollSecretHash, pollSecret)) return null;
+        if (ParseTime(pairing.ExpiresAt) <= DateTimeOffset.UtcNow)
+        {
+            if (pairing.Status == "approved" && !string.IsNullOrWhiteSpace(pairing.AccessToken))
+                _sessions.DeleteOne(x => x.Token == pairing.AccessToken);
+            _webPairings.DeleteOne(x => x.Id == pairing.Id);
+            return new WebPairingPollResult("expired", null, pairing.BrowserName);
+        }
+
+        if (pairing.Status == "approved" && !string.IsNullOrWhiteSpace(pairing.AccessToken))
+        {
+            // Atomically consume the approved pairing. Only one concurrent poll can
+            // receive the browser session token; subsequent polls cannot replay it.
+            var claimed = _webPairings.FindOneAndUpdate(
+                x => x.Id == pairing.Id &&
+                     x.Status == "approved" &&
+                     x.PolledAt == null &&
+                     x.PollSecretHash == pairing.PollSecretHash,
+                Builders<MWebPairing>.Update.Set(x => x.PolledAt, NowText()),
+                new FindOneAndUpdateOptions<MWebPairing>
+                {
+                    ReturnDocument = ReturnDocument.After
+                });
+
+            if (claimed is null || string.IsNullOrWhiteSpace(claimed.AccessToken))
+                return new WebPairingPollResult("consumed", null, pairing.BrowserName);
+
+            return new WebPairingPollResult("approved", claimed.AccessToken, claimed.BrowserName);
+        }
+
+        return new WebPairingPollResult("pending", null, pairing.BrowserName);
+    }
+
+    private void CleanupExpiredWebPairings(DateTimeOffset now)
+    {
+        var cutoff = now.ToString("O", CultureInfo.InvariantCulture);
+        var expired = _webPairings.Find(Builders<MWebPairing>.Filter.Lte(x => x.ExpiresAt, cutoff)).ToList();
+        foreach (var pairing in expired)
+        {
+            // Approval creates a web session before the browser receives the token.
+            // If the QR expires before the browser polls, revoke that orphan session.
+            if (pairing.Status == "approved" && !string.IsNullOrWhiteSpace(pairing.AccessToken))
+                _sessions.DeleteOne(x => x.Token == pairing.AccessToken);
+            _webPairings.DeleteOne(x => x.Id == pairing.Id);
+        }
+    }
+
+    public bool CompleteWebPairing(Guid pairingId, string pollSecret)
+    {
+        EnsureIndexes();
+        var id = GuidText(pairingId);
+        var pairing = _webPairings.Find(x => x.Id == id).FirstOrDefault();
+        if (pairing is null ||
+            pairing.Status != "approved" ||
+            string.IsNullOrWhiteSpace(pairing.PolledAt) ||
+            !PairingSecretMatches(pairing.PollSecretHash, pollSecret))
+            return false;
+
+        var polledAt = pairing.PolledAt;
+        return _webPairings.DeleteOne(x =>
+            x.Id == id && x.Status == "approved" && x.PolledAt == polledAt).DeletedCount > 0;
     }
 
     public bool RevokeSession(HttpRequest request)
@@ -414,7 +721,7 @@ sealed class MongoStore
         EnsureIndexes(); var token = GetBearerToken(request); if (token is null) return false; return _sessions.DeleteOne(x => x.Token == token).DeletedCount > 0;
     }
 
-    public void RevokeAllSessions(Guid userId) { EnsureIndexes(); var uid = GuidText(userId); _sessions.DeleteMany(x => x.UserId == uid); _pushTokens.DeleteMany(x => x.UserId == uid); }
+    public void RevokeAllSessions(Guid userId) { EnsureIndexes(); var uid = GuidText(userId); _sessions.DeleteMany(x => x.UserId == uid); _pushTokens.DeleteMany(x => x.UserId == uid); _webPairings.DeleteMany(x => x.UserId == uid); }
 
     public bool TryGetSession(HttpRequest request, out SessionRecord? session)
     {
@@ -422,12 +729,35 @@ sealed class MongoStore
         var stored = _sessions.Find(x => x.Token == token).FirstOrDefault(); if (stored is null) return false;
         var expires = ParseTime(stored.ExpiresAt); if (expires <= DateTimeOffset.UtcNow) { _sessions.DeleteOne(x => x.Token == token); return false; }
         var user = _users.Find(x => x.Id == stored.UserId).FirstOrDefault(); if (user is null) { _sessions.DeleteOne(x => x.Token == token); return false; }
-        session = new SessionRecord(Guid.Parse(user.Id), user.PhoneNumber, user.Name, expires); return true;
+        var now = DateTimeOffset.UtcNow;
+        if (ParseTime(stored.LastSeenAt) <= now.AddMinutes(-2))
+        {
+            var lastSeen = now.ToString("O", CultureInfo.InvariantCulture);
+            _sessions.UpdateOne(x => x.Token == token, Builders<MSession>.Update.Set(x => x.LastSeenAt, lastSeen));
+            stored.LastSeenAt = lastSeen;
+        }
+        session = new SessionRecord(
+            Guid.Parse(user.Id), user.PhoneNumber, user.Name, expires,
+            EffectiveDeviceId(stored),
+            string.IsNullOrWhiteSpace(stored.DeviceName) ? "جهاز Himo" : stored.DeviceName,
+            string.Equals(stored.DeviceType, "web", StringComparison.OrdinalIgnoreCase) ? "web" : "mobile");
+        return true;
     }
 
-    public void SavePushToken(Guid userId, string token)
+    public void SavePushToken(Guid userId, string token, string? deviceId = null)
     {
-        EnsureIndexes(); if (string.IsNullOrWhiteSpace(token)) return; lock (_sync) { _pushTokens.ReplaceOne(x => x.Token == token, new MPushToken { Token = token, UserId = GuidText(userId), UpdatedAt = NowText() }, new ReplaceOptions { IsUpsert = true }); }
+        EnsureIndexes();
+        if (string.IsNullOrWhiteSpace(token)) return;
+        lock (_sync)
+        {
+            _pushTokens.ReplaceOne(x => x.Token == token, new MPushToken
+            {
+                Token = token,
+                UserId = GuidText(userId),
+                DeviceId = deviceId,
+                UpdatedAt = NowText()
+            }, new ReplaceOptions { IsUpsert = true });
+        }
     }
     public void RemovePushToken(Guid userId, string token) { EnsureIndexes(); _pushTokens.DeleteOne(x => x.UserId == GuidText(userId) && x.Token == token); }
     public int GetPushTokenCount() { EnsureIndexes(); return (int)_pushTokens.CountDocuments(FilterDefinition<MPushToken>.Empty); }
@@ -474,7 +804,23 @@ sealed class MongoStore
             if (action is "mute" or "unmute") state.IsMuted = action == "mute";
             if (action == "delete")
             {
-                // Delete is per-user: hide the conversation and set a durable history
+                // A sole participant does not gain permanent group-deletion rights
+                // merely by being the last person left. Only the designated owner or
+                // an explicitly appointed admin may delete the orphaned group here.
+                // A non-admin can still hide the conversation for their own account;
+                // leaving the group is a separate action that cleans up an empty group.
+                var group = _conversations.Find(x => x.Id == cid && x.IsGroup).FirstOrDefault();
+                if (group is not null)
+                {
+                    var members = _participants.Find(x => x.ConversationId == cid).ToList();
+                    if (members.Count == 1 && members[0].UserId == uid && IsGroupAdmin(group, uid))
+                    {
+                        DeleteGroupCompletely(cid);
+                        return;
+                    }
+                }
+
+                // Delete is otherwise per-user: hide the conversation and set a durable history
                 // boundary so reopening the same direct/group conversation starts empty
                 // for this account without deleting the other participants' messages.
                 var clearResult = _participants.UpdateOne(
@@ -870,16 +1216,26 @@ sealed class MongoStore
         var cid = GuidText(conversationId);
         var actor = GuidText(actorUserId);
         var target = GuidText(memberUserId);
-        var group = _conversations.Find(x => x.Id == cid && x.IsGroup).FirstOrDefault();
-        if (group is null) return false;
-        if (!IsGroupAdmin(group, actor)) throw new UnauthorizedAccessException("إدارة الأعضاء متاحة للمشرفين فقط.");
-        if (_participants.Find(x => x.ConversationId == cid && x.UserId == target).FirstOrDefault() is null)
-            throw new InvalidOperationException("هذا المستخدم ليس عضوًا في المجموعة.");
-        if (target == group.OwnerUserId && !makeAdmin)
-            throw new InvalidOperationException("لا يمكن إزالة صلاحية مالك المجموعة.");
-        _participants.UpdateOne(x => x.ConversationId == cid && x.UserId == target,
-            Builders<MParticipant>.Update.Set(x => x.IsAdmin, makeAdmin));
-        return true;
+
+        lock (_sync)
+        {
+            var group = _conversations.Find(x => x.Id == cid && x.IsGroup).FirstOrDefault();
+            if (group is null) return false;
+            if (!IsGroupAdmin(group, actor)) throw new UnauthorizedAccessException("إدارة الأعضاء متاحة للمشرفين فقط.");
+
+            var targetParticipant = _participants.Find(x => x.ConversationId == cid && x.UserId == target).FirstOrDefault();
+            if (targetParticipant is null)
+                throw new InvalidOperationException("هذا المستخدم ليس عضوًا في المجموعة.");
+            if (target == group.OwnerUserId && !makeAdmin)
+                throw new InvalidOperationException("لا يمكن إزالة صلاحية مدير المجموعة الحالي.");
+
+            _participants.UpdateOne(x => x.ConversationId == cid && x.UserId == target,
+                Builders<MParticipant>.Update.Set(x => x.IsAdmin, makeAdmin));
+
+            // Do not promote a regular member automatically when an admin is demoted.
+            // The group owner remains the manager and may explicitly appoint another admin.
+            return true;
+        }
     }
 
     public bool RemoveGroupMember(Guid conversationId, Guid actorUserId, Guid memberUserId)
@@ -888,13 +1244,32 @@ sealed class MongoStore
         var cid = GuidText(conversationId);
         var actor = GuidText(actorUserId);
         var target = GuidText(memberUserId);
-        var group = _conversations.Find(x => x.Id == cid && x.IsGroup).FirstOrDefault();
-        if (group is null) return false;
-        if (!IsGroupAdmin(group, actor)) throw new UnauthorizedAccessException("إزالة الأعضاء متاحة للمشرفين فقط.");
-        if (target == group.OwnerUserId) throw new InvalidOperationException("لا يمكن إزالة مالك المجموعة.");
-        var result = _participants.DeleteOne(x => x.ConversationId == cid && x.UserId == target);
-        return result.DeletedCount > 0;
+
+        lock (_sync)
+        {
+            var group = _conversations.Find(x => x.Id == cid && x.IsGroup).FirstOrDefault();
+            if (group is null) return false;
+            if (!IsGroupAdmin(group, actor)) throw new UnauthorizedAccessException("إزالة الأعضاء متاحة للمشرفين فقط.");
+            if (target == group.OwnerUserId) throw new InvalidOperationException("لا يمكن إزالة مدير المجموعة الحالي.");
+
+            var targetParticipant = _participants.Find(x => x.ConversationId == cid && x.UserId == target).FirstOrDefault();
+            if (targetParticipant is null) return false;
+
+            var result = _participants.DeleteOne(x => x.ConversationId == cid && x.UserId == target);
+            if (result.DeletedCount == 0) return false;
+
+            // Removing an admin does not transfer manager rights to an ordinary member.
+            // The owner remains able to manage the group and appoint a successor explicitly.
+            return true;
+        }
     }
+
+    private static MParticipant? SelectGroupLeadershipSuccessor(IEnumerable<MParticipant> candidates)
+        => candidates
+            .Where(x => x.IsAdmin)
+            .OrderBy(x => ParseTime(x.JoinedAt, DateTimeOffset.MaxValue))
+            .ThenBy(x => x.UserId, StringComparer.Ordinal)
+            .FirstOrDefault();
 
     public bool LeaveGroup(Guid conversationId, Guid userId, bool clearHistory = false)
     {
@@ -910,31 +1285,40 @@ sealed class MongoStore
             var current = _participants.Find(x => x.ConversationId == cid && x.UserId == uid).FirstOrDefault();
             if (current is null) return false;
 
-            if (string.Equals(group.OwnerUserId, uid, StringComparison.OrdinalIgnoreCase))
+            var remaining = _participants.Find(x => x.ConversationId == cid && x.UserId != uid).ToList();
+
+            // Once the last participant explicitly leaves, there is no account or
+            // membership left to preserve, so the orphaned group can be cleaned up.
+            if (remaining.Count == 0)
             {
-                var remaining = _participants.Find(x => x.ConversationId == cid && x.UserId != uid)
-                    .ToList()
-                    .OrderByDescending(x => x.IsAdmin)
-                    .ThenBy(x => x.JoinedAt, StringComparer.Ordinal)
-                    .ToList();
+                DeleteGroupCompletely(cid);
+                return true;
+            }
 
-                if (remaining.Count == 0)
-                    throw new InvalidOperationException("أنت آخر عضو في المجموعة. أضف عضوًا آخر قبل الخروج حتى لا تبقى المجموعة بلا مشرف.");
+            var isCurrentOwner = string.Equals(group.OwnerUserId, uid, StringComparison.OrdinalIgnoreCase);
+            if (isCurrentOwner)
+            {
+                // Transfer management only to a member who was explicitly appointed
+                // as an admin. Being the last ordinary member does not grant manager
+                // or group-deletion rights; appoint a successor before leaving.
+                var nextOwner = SelectGroupLeadershipSuccessor(remaining.Where(x => x.IsAdmin));
+                if (nextOwner is null)
+                    throw new InvalidOperationException(
+                        "لا يمكنك مغادرة المجموعة قبل تعيين مشرف بديل. عيّن أحد الأعضاء مشرفًا أولًا، وستنتقل إليه الإدارة تلقائيًا عند مغادرتك.");
 
-                var nextOwner = remaining[0];
                 var ownerUpdate = _conversations.UpdateOne(
                     x => x.Id == cid && x.OwnerUserId == uid,
                     Builders<MConversation>.Update.Set(x => x.OwnerUserId, nextOwner.UserId).Set(x => x.UpdatedAt, NowText()));
                 if (ownerUpdate.MatchedCount == 0)
-                    throw new InvalidOperationException("تعذر نقل ملكية المجموعة. حاول مرة أخرى.");
+                    throw new InvalidOperationException("تعذر نقل إدارة المجموعة. حاول مرة أخرى.");
 
-                if (!nextOwner.IsAdmin)
-                {
-                    _participants.UpdateOne(
-                        x => x.ConversationId == cid && x.UserId == nextOwner.UserId,
-                        Builders<MParticipant>.Update.Set(x => x.IsAdmin, true));
-                }
+                // The successor is already an appointed admin; preserve that role.
+                _participants.UpdateOne(
+                    x => x.ConversationId == cid && x.UserId == nextOwner.UserId,
+                    Builders<MParticipant>.Update.Set(x => x.IsAdmin, true));
             }
+            // A non-owner admin may leave without promoting a regular member. The
+            // owner retains management authority; remaining admins keep their roles.
 
             var result = _participants.DeleteOne(x => x.ConversationId == cid && x.UserId == uid);
             if (result.DeletedCount == 0) return false;
@@ -952,6 +1336,23 @@ sealed class MongoStore
             }
             return true;
         }
+    }
+
+    private void DeleteGroupCompletely(string conversationId)
+    {
+        var messages = _messages.Find(x => x.ConversationId == conversationId).ToList();
+        foreach (var message in messages)
+            DeleteGridFile(message);
+
+        var messageIds = messages.Select(x => x.Id).ToArray();
+        if (messageIds.Length > 0)
+            _receipts.DeleteMany(x => messageIds.Contains(x.MessageId));
+
+        _messages.DeleteMany(x => x.ConversationId == conversationId);
+        _participants.DeleteMany(x => x.ConversationId == conversationId);
+        _userStates.DeleteMany(x => x.ConversationId == conversationId);
+        _reports.DeleteMany(x => x.ConversationId == conversationId);
+        _conversations.DeleteOne(x => x.Id == conversationId && x.IsGroup);
     }
 
     public ConversationDto? JoinGroupByInvite(string inviteCode, Guid userId, Guid? expectedGroupId = null)
@@ -1369,12 +1770,37 @@ sealed class MongoStore
 
 [BsonIgnoreExtraElements] sealed class MUser { [BsonId] public string Id { get; set; } = ""; public string PhoneNumber { get; set; } = ""; public string Name { get; set; } = ""; public string Status { get; set; } = "متاح على Himo"; public string CreatedAt { get; set; } = ""; public string? PasswordHash { get; set; } public bool EmailVerified { get; set; } public byte[]? ProfilePhoto { get; set; } public string? ProfilePhotoContentType { get; set; } public long ProfilePhotoVersion { get; set; } public string? ContactPhoneNumber { get; set; } public bool PhoneDiscoverable { get; set; } public string? Username { get; set; } }
 [BsonIgnoreExtraElements] sealed class MConsent { [BsonId] public string Id { get; set; } = ""; public string UserId { get; set; } = ""; public string DocumentType { get; set; } = ""; public string DocumentVersion { get; set; } = ""; public string AcceptedAt { get; set; } = ""; public string AcceptanceSource { get; set; } = "account_registration"; }
-[BsonIgnoreExtraElements] sealed class MPushToken { [BsonId] public string Token { get; set; } = ""; public string UserId { get; set; } = ""; public string UpdatedAt { get; set; } = ""; }
+[BsonIgnoreExtraElements] sealed class MPushToken { [BsonId] public string Token { get; set; } = ""; public string UserId { get; set; } = ""; public string? DeviceId { get; set; } public string UpdatedAt { get; set; } = ""; }
 [BsonIgnoreExtraElements] sealed class MOtp { [BsonId] public string PhoneNumber { get; set; } = ""; public string Code { get; set; } = ""; public string ExpiresAt { get; set; } = ""; public int FailedAttempts { get; set; } public string? LastSentAt { get; set; } }
 [BsonIgnoreExtraElements] sealed class MEmailVerification { [BsonId] public string Email { get; set; } = ""; public string Code { get; set; } = ""; public string Name { get; set; } = ""; public string PasswordHash { get; set; } = ""; public string ExpiresAt { get; set; } = ""; public int FailedAttempts { get; set; } public string? LastSentAt { get; set; } public string? ContactPhoneNumber { get; set; } public string? TermsAcceptedAt { get; set; } public string? TermsVersion { get; set; } public string? PrivacyAcceptedAt { get; set; } public string? PrivacyVersion { get; set; } }
 [BsonIgnoreExtraElements] sealed class MEmailChange { [BsonId] public string UserId { get; set; } = ""; public string NewEmail { get; set; } = ""; public string Code { get; set; } = ""; public string ExpiresAt { get; set; } = ""; public int FailedAttempts { get; set; } public string? LastSentAt { get; set; } }
 [BsonIgnoreExtraElements] sealed class MPasswordReset { [BsonId] public string Email { get; set; } = ""; public string Code { get; set; } = ""; public string ExpiresAt { get; set; } = ""; public int FailedAttempts { get; set; } public string? LastSentAt { get; set; } }
-[BsonIgnoreExtraElements] sealed class MSession { [BsonId] public string Token { get; set; } = ""; public string UserId { get; set; } = ""; public string ExpiresAt { get; set; } = ""; }
+[BsonIgnoreExtraElements] sealed class MSession
+{
+    [BsonId] public string Token { get; set; } = "";
+    public string UserId { get; set; } = "";
+    public string ExpiresAt { get; set; } = "";
+    public string? DeviceId { get; set; }
+    public string? DeviceName { get; set; }
+    public string? DeviceType { get; set; }
+    public string? CreatedAt { get; set; }
+    public string? LastSeenAt { get; set; }
+}
+[BsonIgnoreExtraElements] sealed class MWebPairing
+{
+    [BsonId] public string Id { get; set; } = "";
+    public string QrKeyHash { get; set; } = "";
+    public string PollSecretHash { get; set; } = "";
+    public string BrowserName { get; set; } = "";
+    public string Status { get; set; } = "pending";
+    public string ExpiresAt { get; set; } = "";
+    public string CreatedAt { get; set; } = "";
+    public string? UserId { get; set; }
+    public string? AccessToken { get; set; }
+    public string? DeviceId { get; set; }
+    public string? ApprovedAt { get; set; }
+    public string? PolledAt { get; set; }
+}
 [BsonIgnoreExtraElements] sealed class MConversation { [BsonId] public string Id { get; set; } = ""; public string OwnerUserId { get; set; } = ""; public string Name { get; set; } = ""; public string LastMessage { get; set; } = ""; public string UpdatedAt { get; set; } = ""; public bool IsGroup { get; set; } public int DisappearingSeconds { get; set; } public bool AllMembersCanAddMembers { get; set; } public bool AllMembersCanShareInviteLink { get; set; } public bool RequireAdminApproval { get; set; } public bool AdminsOnlyMessages { get; set; } public string? Description { get; set; } public string? InviteCode { get; set; } public byte[]? GroupPhoto { get; set; } public string? GroupPhotoContentType { get; set; } public long GroupPhotoVersion { get; set; } }
 [BsonIgnoreExtraElements] sealed class MParticipant { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string UserId { get; set; } = ""; public string JoinedAt { get; set; } = ""; public string? LastReadAt { get; set; } public string? ClearedBefore { get; set; } public bool IsAdmin { get; set; } }
 [BsonIgnoreExtraElements] sealed class MUserState { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string UserId { get; set; } = ""; public bool IsArchived { get; set; } public bool IsMuted { get; set; } public bool IsDeleted { get; set; } public string? ClearedBefore { get; set; } public string UpdatedAt { get; set; } = ""; }
@@ -1382,3 +1808,6 @@ sealed class MongoStore
 [BsonIgnoreExtraElements] sealed class MReport { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string ReporterUserId { get; set; } = ""; public string Reason { get; set; } = ""; public string CreatedAt { get; set; } = ""; }
 [BsonIgnoreExtraElements] sealed class MReceipt { [BsonId] public string Id { get; set; } = ""; public string MessageId { get; set; } = ""; public string RecipientUserId { get; set; } = ""; public string? DeliveredAt { get; set; } public string? ReadAt { get; set; } }
 [BsonIgnoreExtraElements] sealed class MMessage { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string SenderUserId { get; set; } = ""; public string SenderPhoneNumber { get; set; } = ""; public string Text { get; set; } = ""; public string SentAt { get; set; } = ""; public string? ClientMessageId { get; set; } public string? AttachmentFileName { get; set; } public string? AttachmentContentType { get; set; } public long? AttachmentSize { get; set; } public byte[]? AttachmentData { get; set; } public string? AttachmentGridFsId { get; set; } public string? AudioGridFsId { get; set; } public string? ReplyToMessageId { get; set; } public string? EditedAt { get; set; } public string? DeletedAt { get; set; } public string? ExpiresAt { get; set; } }
+
+record LinkedDeviceRecord(string DeviceId, string DeviceName, string DeviceType, DateTimeOffset CreatedAt, DateTimeOffset LastSeenAt);
+record WebPairingPollResult(string Status, string? AccessToken, string? DeviceName);

@@ -1,6 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
     <TargetFrameworks>net10.0-android36.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <RootNamespace>Himo</RootNamespace>
@@ -49,7 +50,7 @@
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
-    <AndroidLaunchActivity>com.companyname.himo.LauncherIconHomeDefault</AndroidLaunchActivity>
+    <AndroidLaunchActivity>com.companyname.himo.LauncherIconDefault</AndroidLaunchActivity>
   </PropertyGroup>
 
   <!-- Explicit Release configuration: also keep symbols so launching/debugging Release does not fail. -->

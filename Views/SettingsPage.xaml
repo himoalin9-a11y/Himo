@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:models="clr-namespace:Himo.Models"
              x:Class="Himo.Views.SettingsPage"
              Title="الإعدادات"
              FlowDirection="RightToLeft"
              BackgroundColor="{DynamicResource HimoBackground}"
              Shell.NavBarIsVisible="False">
-    <Grid x:Name="SettingsRoot" RowDefinitions="Auto,*,Auto" BackgroundColor="{DynamicResource HimoBackground}">
+    <Grid RowDefinitions="Auto,*,Auto" BackgroundColor="{DynamicResource HimoBackground}">
         <!-- The soft glow is decorative and never intercepts touches. -->
         <Border Grid.RowSpan="3"
                 WidthRequest="290" HeightRequest="290"
@@ -33,6 +32,8 @@
                                  FlowDirection="RightToLeft">
                 <Label Text="الإعدادات" FontSize="24" FontAttributes="Bold"
                        TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
+                <Label Text="إدارة حسابك وتفضيلاتك" FontSize="12"
+                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
             </VerticalStackLayout>
             <BoxView Grid.Column="2" WidthRequest="42" HeightRequest="42" Opacity="0" />
         </Grid>
@@ -60,8 +61,15 @@
                             <Label x:Name="SettingsAccountNameLabel" Text="حسابك في Himo"
                                    FontSize="18" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}"
                                    VerticalTextAlignment="Center" HorizontalTextAlignment="Start" />
-                            <Label x:Name="SettingsAccountEmailLabel" Text=""
+                            <Label x:Name="SettingsAccountEmailLabel" Text="إدارة حسابك وتفضيلاتك"
                                    FontSize="12" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
+                            <HorizontalStackLayout Spacing="5" HorizontalOptions="End" FlowDirection="RightToLeft">
+                                <Border WidthRequest="8" HeightRequest="8" BackgroundColor="{DynamicResource HimoSuccess}" StrokeThickness="0">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                                </Border>
+                                <Label Text="حسابك نشط الآن" FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}"
+                                       VerticalTextAlignment="Center" />
+                            </HorizontalStackLayout>
                         </VerticalStackLayout>
                         <Border Grid.Column="2" WidthRequest="76" HeightRequest="76"
                                 BackgroundColor="{DynamicResource HimoSoft}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.4"
@@ -107,6 +115,27 @@
                                    HorizontalOptions="Center" VerticalOptions="Center" Aspect="AspectFit" />
                             <Grid.GestureRecognizers>
                                 <TapGestureRecognizer Tapped="AccountManagementRowTapped" />
+                            </Grid.GestureRecognizers>
+                        </Grid>
+                        <BoxView HeightRequest="1" Margin="12,0" BackgroundColor="{DynamicResource HimoSoft}" />
+                        <Grid Padding="13,11" ColumnDefinitions="30,*,42" ColumnSpacing="0"
+                              FlowDirection="LeftToRight" MinimumHeightRequest="68">
+                            <Border Grid.Column="2" WidthRequest="42" HeightRequest="42"
+                                    BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" HorizontalOptions="End">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
+                                <Image Source="himo_pro_ui_settings_icon_user.png" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="3" HorizontalOptions="Fill" VerticalOptions="Center"
+                                                 FlowDirection="RightToLeft">
+                                <Label Text="الأجهزة المرتبطة" FontSize="14.5" FontAttributes="Bold"
+                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
+                                <Label Text="ربط الكمبيوتر وإدارة الهواتف والمتصفحات" FontSize="11"
+                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
+                            </VerticalStackLayout>
+                            <Image Grid.Column="0" Source="himo_pro_ui_settings_icon_chevron.png" WidthRequest="16" HeightRequest="16"
+                                   HorizontalOptions="Center" VerticalOptions="Center" Aspect="AspectFit" />
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="LinkedDevicesRowTapped" />
                             </Grid.GestureRecognizers>
                         </Grid>
                         <BoxView HeightRequest="1" Margin="12,0" BackgroundColor="{DynamicResource HimoSoft}" />
@@ -184,6 +213,8 @@
                 </Border>
 
                 <!-- Storage and data section -->
+                <Label Text="التخزين والبيانات" FontSize="14" FontAttributes="Bold"
+                       TextColor="{DynamicResource HimoPrimary}" Margin="2,2,2,0" HorizontalTextAlignment="Start" />
                 <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="0">
                     <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
                     <Grid Padding="13,11" ColumnDefinitions="30,*,42" ColumnSpacing="0"
@@ -233,208 +264,8 @@
                     </Grid>
                 </Border>
 
-                <!-- Appearance section -->
+                <!-- Appearance and experience hub -->
                 <Label Text="المظهر والتجربة" FontSize="14" FontAttributes="Bold"
-                       TextColor="{DynamicResource HimoPrimary}" Margin="2,2,2,0" HorizontalTextAlignment="Start" />
-                <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="0">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
-                    <VerticalStackLayout Spacing="0">
-                        <Grid Padding="13,11" ColumnDefinitions="30,*,42" ColumnSpacing="0"
-                              FlowDirection="LeftToRight" MinimumHeightRequest="68">
-                            <Border Grid.Column="2" WidthRequest="42" HeightRequest="42"
-                                    BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" HorizontalOptions="End">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
-                                <Image Source="himo_pro_ui_settings_icon_palette.png" WidthRequest="23" HeightRequest="23"
-                                       Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
-                            <VerticalStackLayout Grid.Column="1" Spacing="3" HorizontalOptions="Fill" VerticalOptions="Center"
-                                                 FlowDirection="RightToLeft">
-                                <Label Text="الوضع الداكن" FontSize="14.5" FontAttributes="Bold"
-                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
-                                <Label Text="تغيير مظهر التطبيق" FontSize="11"
-                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
-                            </VerticalStackLayout>
-                            <Switch x:Name="DarkModeSwitch" Grid.Column="0"
-                                    Toggled="DarkModeToggled" VerticalOptions="Center" HorizontalOptions="Start" />
-                        </Grid>
-                        <BoxView HeightRequest="1" Margin="12,0" BackgroundColor="{DynamicResource HimoSoft}" />
-                        <Grid Padding="13,11" ColumnDefinitions="Auto,*,42" ColumnSpacing="10"
-                              FlowDirection="LeftToRight" MinimumHeightRequest="68">
-                            <Label x:Name="LanguageValueLabel" Grid.Column="0" Text="العربية"
-                                   FontSize="11" TextColor="{DynamicResource HimoTextSecondary}"
-                                   VerticalOptions="Center" HorizontalOptions="Start" />
-                            <VerticalStackLayout Grid.Column="1" Spacing="3" HorizontalOptions="Fill" VerticalOptions="Center"
-                                                 FlowDirection="RightToLeft">
-                                <Label x:Name="LanguageTitleLabel" Text="لغة التطبيق" FontSize="14.5" FontAttributes="Bold"
-                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
-                                <Label x:Name="LanguageSubtitleLabel" Text="اختر اللغة التي تفضّل استخدامها" FontSize="11"
-                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
-                            </VerticalStackLayout>
-                            <Border Grid.Column="2" WidthRequest="42" HeightRequest="42"
-                                    BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" HorizontalOptions="End">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
-                                <Image Source="himo_pro_ui_settings_icon_globe.png" WidthRequest="23" HeightRequest="23"
-                                       Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
-                            <Grid.GestureRecognizers>
-                                <TapGestureRecognizer Tapped="LanguageRowTapped" />
-                            </Grid.GestureRecognizers>
-                        </Grid>
-                        <BoxView HeightRequest="1" Margin="12,0" BackgroundColor="{DynamicResource HimoSoft}" />
-                        <Grid Padding="13,11" ColumnDefinitions="30,*,42" ColumnSpacing="0"
-                              FlowDirection="LeftToRight" MinimumHeightRequest="68">
-                            <Border Grid.Column="2" WidthRequest="42" HeightRequest="42"
-                                    BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" HorizontalOptions="End">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
-                                <Image Source="himo_pro_ui_settings_icon_text.png" WidthRequest="23" HeightRequest="23"
-                                       Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
-                            <VerticalStackLayout Grid.Column="1" Spacing="3" HorizontalOptions="Fill" VerticalOptions="Center"
-                                                 FlowDirection="RightToLeft">
-                                <Label Text="حجم الخط" FontSize="14.5" FontAttributes="Bold"
-                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
-                                <Label Text="تحديد حجم النص في صفحة الإعدادات" FontSize="11"
-                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
-                            </VerticalStackLayout>
-                            <Button Grid.Column="0" Text="متوسط" x:Name="FontSizeValueButton"
-                                    FontSize="10.5" Padding="7,0" HeightRequest="32" CornerRadius="12"
-                                    BackgroundColor="{DynamicResource HimoSoft}" TextColor="{DynamicResource HimoTextSecondary}"
-                                    Clicked="FontSizeRowClicked" VerticalOptions="Center" />
-                        </Grid>
-                        <BoxView HeightRequest="1" Margin="12,0" BackgroundColor="{DynamicResource HimoSoft}" />
-                        <Grid Padding="13,11" ColumnDefinitions="30,*,42" ColumnSpacing="0"
-                              FlowDirection="LeftToRight" MinimumHeightRequest="68">
-                            <Border Grid.Column="2" WidthRequest="42" HeightRequest="42"
-                                    BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" HorizontalOptions="End">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
-                                <Image Source="himo_pro_ui_settings_icon_gear.png" WidthRequest="23" HeightRequest="23"
-                                       Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
-                            <VerticalStackLayout Grid.Column="1" Spacing="3" HorizontalOptions="Fill" VerticalOptions="Center"
-                                                 FlowDirection="RightToLeft">
-                                <Label Text="السمات والأيقونات" FontSize="14.5" FontAttributes="Bold"
-                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
-                                <Label Text="تغيير ألوان الواجهات والرموز باختيار سمة متكاملة" FontSize="11"
-                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
-                            </VerticalStackLayout>
-                            <Image Grid.Column="0" Source="himo_pro_ui_settings_icon_chevron.png" WidthRequest="16" HeightRequest="16"
-                                   HorizontalOptions="Center" VerticalOptions="Center" Aspect="AspectFit" />
-                            <Grid.GestureRecognizers>
-                                <TapGestureRecognizer Tapped="IconsAndAppearanceTapped" />
-                            </Grid.GestureRecognizers>
-                        </Grid>
-                    </VerticalStackLayout>
-                </Border>
-
-                <!-- Feature section -->
-                <Label Text="الميزات" FontSize="14" FontAttributes="Bold"
-                       TextColor="{DynamicResource HimoPrimary}" Margin="2,2,2,0" HorizontalTextAlignment="Start" />
-                <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="0">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
-                    <VerticalStackLayout Spacing="0">
-                        <Grid Padding="13,11" ColumnDefinitions="30,*,42" ColumnSpacing="0"
-                              FlowDirection="LeftToRight" MinimumHeightRequest="68">
-                            <Border Grid.Column="2" WidthRequest="42" HeightRequest="42"
-                                    BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0" HorizontalOptions="End">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
-                                <Image Source="himo_pro_ui_settings_icon_lock.png" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
-                            <VerticalStackLayout Grid.Column="1" Spacing="3" HorizontalOptions="Fill" VerticalOptions="Center"
-                                                 FlowDirection="RightToLeft">
-                                <Label Text="قفل التطبيق" FontSize="14.5" FontAttributes="Bold"
-                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
-                                <Label Text="تعيين رمز مرور لحماية التطبيق" FontSize="11"
-                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
-                            </VerticalStackLayout>
-                            <Switch x:Name="AppLockSwitch" Grid.Column="0"
-                                    Toggled="AppLockToggled" VerticalOptions="Center" HorizontalOptions="Start" />
-                        </Grid>
-                        <VerticalStackLayout Padding="14,0,14,11" Spacing="8">
-                            <Entry x:Name="AppLockPinEntry" Placeholder="رمز جديد (4-6 أرقام)"
-                                   Keyboard="Numeric" IsPassword="True" MaxLength="6" IsVisible="False"
-                                   TextColor="{DynamicResource HimoPrimary}" PlaceholderColor="{DynamicResource HimoTextSecondary}" BackgroundColor="{DynamicResource HimoBackground}" />
-                            <Button x:Name="SaveAppLockButton" Text="حفظ رمز القفل"
-                                    HeightRequest="40" CornerRadius="13" IsVisible="False"
-                                    BackgroundColor="{DynamicResource HimoAccent}" TextColor="{DynamicResource HimoOnAccent}" Clicked="SaveAppLockClicked" />
-                            <Label x:Name="AppLockStatusLabel" FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" />
-                        </VerticalStackLayout>
-                        <BoxView HeightRequest="1" Margin="12,0" BackgroundColor="{DynamicResource HimoSoft}" />
-                        <Grid Padding="13,11" ColumnDefinitions="30,*,42" ColumnSpacing="0"
-                              FlowDirection="LeftToRight" MinimumHeightRequest="68">
-                            <Border Grid.Column="2" WidthRequest="42" HeightRequest="42"
-                                    BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" HorizontalOptions="End">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
-                                <Image Source="himo_pro_ui_settings_icon_bell.png" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
-                            <VerticalStackLayout Grid.Column="1" Spacing="3" HorizontalOptions="Fill" VerticalOptions="Center"
-                                                 FlowDirection="RightToLeft">
-                                <Label Text="محتوى الإشعارات" FontSize="14.5" FontAttributes="Bold"
-                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
-                                <Label Text="عرض محتوى الرسائل في الإشعارات" FontSize="11"
-                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
-                            </VerticalStackLayout>
-                            <Switch x:Name="NotificationPreviewSwitch" Grid.Column="0"
-                                    Toggled="NotificationPreviewToggled" VerticalOptions="Center" HorizontalOptions="Start" />
-                        </Grid>
-                        <BoxView HeightRequest="1" Margin="12,0" BackgroundColor="{DynamicResource HimoSoft}" />
-                        <Grid Padding="13,11" ColumnDefinitions="30,*,42" ColumnSpacing="0"
-                              FlowDirection="LeftToRight" MinimumHeightRequest="68">
-                            <Border Grid.Column="2" WidthRequest="42" HeightRequest="42"
-                                    BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" HorizontalOptions="End">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
-                                <Image Source="himo_pro_ui_settings_icon_contacts.png" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
-                            <VerticalStackLayout Grid.Column="1" Spacing="3" HorizontalOptions="Fill" VerticalOptions="Center"
-                                                 FlowDirection="RightToLeft">
-                                <Label Text="البحث في جهات الاتصال" FontSize="14.5" FontAttributes="Bold"
-                                       TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
-                                <Label Text="العثور على أصدقائك المسجلين في Himo" FontSize="11"
-                                       TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
-                            </VerticalStackLayout>
-                            <Button x:Name="FindContactsButton" Grid.Column="0" Text="‹"
-                                    FontSize="28" Padding="0" HeightRequest="38" WidthRequest="32"
-                                    BackgroundColor="Transparent" TextColor="{DynamicResource HimoTextSecondary}"
-                                    Clicked="FindContactsClicked" VerticalOptions="Center" />
-                        </Grid>
-                        <VerticalStackLayout x:Name="ContactsResultsPanel" IsVisible="False"
-                                             Padding="13,0,13,13" Spacing="8">
-                            <Label x:Name="ContactsMatchStatusLabel" FontSize="11"
-                                   TextColor="{DynamicResource HimoTextSecondary}" LineBreakMode="WordWrap" />
-                            <ActivityIndicator x:Name="ContactsLookupProgress" IsVisible="False"
-                                               IsRunning="False" Color="{DynamicResource HimoAccent}" HorizontalOptions="Center" />
-                            <CollectionView x:Name="ContactMatchesList" IsVisible="False"
-                                            SelectionMode="Single" SelectionChanged="ContactMatchSelected"
-                                            HeightRequest="210">
-                                <CollectionView.ItemTemplate>
-                                    <DataTemplate x:DataType="models:ContactMatchDto">
-                                        <Border BackgroundColor="{DynamicResource HimoSoft}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1"
-                                                Padding="10,8" Margin="0,2">
-                                            <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
-                                            <Grid ColumnDefinitions="38,*,Auto" ColumnSpacing="9" FlowDirection="LeftToRight">
-                                                <Border WidthRequest="36" HeightRequest="36" BackgroundColor="{DynamicResource HimoAccent}" StrokeThickness="0">
-                                                    <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
-                                                    <Label Text="{Binding Initial}" FontSize="14.5" FontAttributes="Bold"
-                                                           TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
-                                                </Border>
-                                                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center" FlowDirection="RightToLeft">
-                                                    <Label Text="{Binding Name}" FontSize="13" FontAttributes="Bold"
-                                                           TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
-                                                    <Label Text="مستخدم Himo من جهات اتصالك" FontSize="10"
-                                                           TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
-                                                </VerticalStackLayout>
-                                                <Image Grid.Column="2" Source="himo_pro_ui_settings_icon_chevron.png" WidthRequest="15" HeightRequest="15"
-                                                       VerticalOptions="Center" Aspect="AspectFit" />
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </CollectionView.ItemTemplate>
-                            </CollectionView>
-                        </VerticalStackLayout>
-                    </VerticalStackLayout>
-                </Border>
-
-                <!-- App distribution link -->
-                <Label Text="حول Himo" FontSize="14" FontAttributes="Bold"
                        TextColor="{DynamicResource HimoPrimary}" Margin="2,2,2,0" HorizontalTextAlignment="Start" />
                 <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="0">
                     <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
@@ -443,30 +274,58 @@
                         <Border Grid.Column="2" WidthRequest="42" HeightRequest="42"
                                 BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" HorizontalOptions="End">
                             <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
-                            <Image Source="himo_pro_ui_settings_icon_globe.png" WidthRequest="23" HeightRequest="23"
+                            <Image Source="himo_pro_ui_settings_icon_palette.png" WidthRequest="23" HeightRequest="23"
                                    Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
                         </Border>
                         <VerticalStackLayout Grid.Column="1" Spacing="3" HorizontalOptions="Fill" VerticalOptions="Center"
                                              FlowDirection="RightToLeft">
-                            <Label Text="رابط التطبيق" FontSize="14.5" FontAttributes="Bold"
+                            <Label Text="المظهر والتجربة" FontSize="14.5" FontAttributes="Bold"
                                    TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
-                            <Label Text="مشاركة رابط تنزيل Himo" FontSize="11"
+                            <Label Text="الوضع الداكن واللغة وحجم الخط والسمات والأيقونات" FontSize="11"
                                    TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
                         </VerticalStackLayout>
                         <Image Grid.Column="0" Source="himo_pro_ui_settings_icon_chevron.png" WidthRequest="16" HeightRequest="16"
                                HorizontalOptions="Center" VerticalOptions="Center" Aspect="AspectFit" />
                         <Grid.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="AppDownloadLinkTapped" />
+                            <TapGestureRecognizer Tapped="AppearanceExperienceTapped" />
+                        </Grid.GestureRecognizers>
+                    </Grid>
+                </Border>
+
+                <!-- Features hub -->
+                <Label Text="الميزات" FontSize="14" FontAttributes="Bold"
+                       TextColor="{DynamicResource HimoPrimary}" Margin="2,2,2,0" HorizontalTextAlignment="Start" />
+                <Border BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" Padding="0">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                    <Grid Padding="13,11" ColumnDefinitions="30,*,42" ColumnSpacing="0"
+                          FlowDirection="LeftToRight" MinimumHeightRequest="68">
+                        <Border Grid.Column="2" WidthRequest="42" HeightRequest="42"
+                                BackgroundColor="{DynamicResource HimoSoft}" StrokeThickness="0" HorizontalOptions="End">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
+                            <Image Source="himo_pro_ui_settings_icon_gear.png" WidthRequest="23" HeightRequest="23"
+                                   Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="3" HorizontalOptions="Fill" VerticalOptions="Center"
+                                             FlowDirection="RightToLeft">
+                            <Label Text="الميزات" FontSize="14.5" FontAttributes="Bold"
+                                   TextColor="{DynamicResource HimoPrimary}" HorizontalTextAlignment="Start" />
+                            <Label Text="قفل التطبيق ورابط تنزيل Himo" FontSize="11"
+                                   TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Start" />
+                        </VerticalStackLayout>
+                        <Image Grid.Column="0" Source="himo_pro_ui_settings_icon_chevron.png" WidthRequest="16" HeightRequest="16"
+                               HorizontalOptions="Center" VerticalOptions="Center" Aspect="AspectFit" />
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="FeaturesTapped" />
                         </Grid.GestureRecognizers>
                     </Grid>
                 </Border>
             </VerticalStackLayout>
         </ScrollView>
 
-        <!-- Unified five-item Himo navigation: same order and styling as HomePage. -->
+        <!-- Unified four-item Himo navigation: same order and styling as HomePage. -->
         <Border x:Name="BottomNavigationBar" Grid.Row="2" Margin="9,7,9,9" HeightRequest="68" MinimumHeightRequest="68" MaximumHeightRequest="68" VerticalOptions="End" BackgroundColor="{DynamicResource HimoCard}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.1" Padding="3,4">
             <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
-            <Grid ColumnDefinitions="*,*,*,*,*" FlowDirection="RightToLeft">
+            <Grid ColumnDefinitions="*,*,*,*" FlowDirection="RightToLeft">
                 <Border Grid.Column="0" Margin="2,0" Padding="2,5" BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
                     <VerticalStackLayout Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
@@ -483,15 +342,8 @@
                     </VerticalStackLayout>
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="CallsNavTapped" /></Border.GestureRecognizers>
                 </Border>
+
                 <Border Grid.Column="2" Margin="2,0" Padding="2,5" BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
-                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
-                        <Image Source="home_search_neon.png" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" />
-                        <Label Text="بحث الأشخاص" FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
-                    </VerticalStackLayout>
-                    <Border.GestureRecognizers><TapGestureRecognizer Tapped="PeopleNavTapped" /></Border.GestureRecognizers>
-                </Border>
-                <Border Grid.Column="3" Margin="2,0" Padding="2,5" BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
                     <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
                         <Image Source="home_user_neon.png" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" />
@@ -499,7 +351,7 @@
                     </VerticalStackLayout>
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="ProfileNavTapped" /></Border.GestureRecognizers>
                 </Border>
-                <Border Grid.Column="4" Margin="2,0" Padding="2,5" BackgroundColor="{DynamicResource HimoSoft}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="0.8">
+                <Border Grid.Column="3" Margin="2,0" Padding="2,5" BackgroundColor="{DynamicResource HimoSoft}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="0.8">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
                     <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
                         <Image Source="home_settings_neon.png" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" />

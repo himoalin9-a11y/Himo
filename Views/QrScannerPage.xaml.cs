@@ -1,4 +1,4 @@
-﻿using Himo.Services;
+using Himo.Services;
 using Himo.ViewModels;
 using Microsoft.Maui.ApplicationModel;
 using ZXing.Net.Maui;
@@ -172,6 +172,28 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
 
         try
         {
+            if (uri.Host.Equals("link-device", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!Guid.TryParse(Uri.UnescapeDataString(uri.AbsolutePath).Trim('/'), out var pairingId) || pairingId == Guid.Empty)
+                    throw new InvalidOperationException("معرّف ربط الكمبيوتر غير صالح.");
+                var qrKey = HimoAppLinkRouter.ReadQueryValue(uri, "key");
+                var deviceName = HimoAppLinkRouter.ReadQueryValue(uri, "device") ?? "متصفح الكمبيوتر";
+                if (string.IsNullOrWhiteSpace(qrKey) || qrKey.Length != 64 || qrKey.Any(ch => !Uri.IsHexDigit(ch)))
+                    throw new InvalidOperationException("رمز ربط الكمبيوتر غير صالح.");
+
+                var approved = await DisplayAlertAsync(
+                    "تأكيد ربط جهاز جديد",
+                    $"هل تريد ربط {deviceName} بحساب Himo؟ سيصبح بإمكان هذا المتصفح قراءة محادثاتك وإرسال الرسائل حتى تلغي ربطه.",
+                    "ربط الجهاز",
+                    "إلغاء");
+                if (!approved) return;
+
+                await _api.ApproveWebPairingAsync(pairingId, qrKey, deviceName);
+                await DisplayAlertAsync("تم ربط الكمبيوتر", $"تم ربط {deviceName} بنجاح. يمكنك الآن استخدام Himo من المتصفح.", "حسنًا");
+                ScannerStatusLabel.Text = "تم ربط جهاز الكمبيوتر بنجاح.";
+                return;
+            }
+
             string routeId;
             if (uri.Host.Equals("user", StringComparison.OrdinalIgnoreCase))
             {

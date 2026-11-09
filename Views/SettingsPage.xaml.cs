@@ -1,27 +1,14 @@
-using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
-using Himo.Models;
 using Himo.Services;
 using Himo.ViewModels;
 using Microsoft.Maui.ApplicationModel;
-using Microsoft.Maui.ApplicationModel.Communication;
 using Microsoft.Maui.Storage;
 
 namespace Himo.Views;
 
 public partial class SettingsPage : ContentPage
 {
-    private static readonly (string Code, string ResourceKey)[] LanguageOptions =
-    {
-        ("ar", "LanguageArabic"),
-        ("en", "LanguageEnglish"),
-        ("fr", "LanguageFrench"),
-        ("tr", "LanguageTurkish"),
-        ("ur", "LanguageUrdu"),
-        ("es", "LanguageSpanish"),
-        ("id", "LanguageIndonesian")
-    };
 
     private readonly HimoApiClient _api;
     private readonly AccountService _account;
@@ -29,22 +16,14 @@ public partial class SettingsPage : ContentPage
     private readonly ChatService _chat;
     private readonly INotificationService _notifications;
     private readonly AppLockService _appLock;
-    private readonly HomeViewModel _home;
-    private readonly ObservableCollection<ContactMatchDto> _contactMatches = new();
     private readonly Dictionary<VisualElement, double> _originalFontSizes = new();
-    private bool _initializingAppLockSwitch;
     private bool _initializingNotificationsSwitch;
-    private bool _initializingAppearanceSwitch;
-    private bool _initializingNotificationPreviewSwitch;
-    private bool _contactsSearchBusy;
-    private bool _openingContactConversation;
     private static int _accountRouteRegistered;
     private static int _privacyRoutesRegistered;
 
     public SettingsPage(HimoApiClient api, AccountService account, ProfileService profile, ChatService chat, INotificationService notifications, AppLockService appLock, HomeViewModel home)
     {
         InitializeComponent();
-        UpdateLanguageSelectorUi();
         RegisterPrivacyRoutes();
         _api = api;
         _profile = profile;
@@ -55,39 +34,19 @@ public partial class SettingsPage : ContentPage
         if (SettingsAccountNameLabel is not null)
             SettingsAccountNameLabel.Text = string.IsNullOrWhiteSpace(currentAccountName) ? "حسابك في Himo" : currentAccountName;
         if (SettingsAccountEmailLabel is not null)
-        {
-            SettingsAccountEmailLabel.Text = currentAccountEmail ?? string.Empty;
-            SettingsAccountEmailLabel.IsVisible = !string.IsNullOrWhiteSpace(currentAccountEmail);
-        }
+            SettingsAccountEmailLabel.Text = string.IsNullOrWhiteSpace(currentAccountEmail) ? "إدارة حسابك وتفضيلاتك" : currentAccountEmail;
         _chat = chat;
         _notifications = notifications;
         _appLock = appLock;
-        _home = home;
-        if (ContactMatchesList is not null)
-            ContactMatchesList.ItemsSource = _contactMatches;
 
-        _initializingAppearanceSwitch = true;
-        if (DarkModeSwitch is not null)
-            DarkModeSwitch.IsToggled = HimoAppearanceManager.IsActiveStyleDark;
-        _initializingAppearanceSwitch = false;
-
-        _initializingNotificationPreviewSwitch = true;
-        if (NotificationPreviewSwitch is not null)
-            NotificationPreviewSwitch.IsToggled = Preferences.Default.Get("himo_notification_preview", true);
-        _initializingNotificationPreviewSwitch = false;
 
         CaptureOriginalFontSizes(this);
-        UpdateFontSizeButtonText(Preferences.Default.Get("himo_settings_font_scale", 1.0));
 
         _initializingNotificationsSwitch = true;
         if (NotificationsSwitch is not null)
             NotificationsSwitch.IsToggled = _notifications.IsEnabled;
         _initializingNotificationsSwitch = false;
         UpdateNotificationPermissionStatus();
-        _initializingAppLockSwitch = true;
-        if (AppLockSwitch is not null) AppLockSwitch.IsToggled = _appLock.IsEnabled;
-        _initializingAppLockSwitch = false;
-        UpdateAppLockUi();
 
     }
 
@@ -96,6 +55,18 @@ public partial class SettingsPage : ContentPage
 
     private void AccountManagementRowTapped(object? sender, TappedEventArgs e) =>
         _ = NavigateToAccountManagementAsync();
+
+    private async void LinkedDevicesRowTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            await Navigation.PushAsync(new LinkedDevicesPage(_api), true);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("الأجهزة المرتبطة", "تعذر فتح صفحة الأجهزة المرتبطة: " + ex.Message, "حسنًا");
+        }
+    }
 
     private async Task NavigateToAccountManagementAsync()
     {
@@ -217,9 +188,6 @@ public partial class SettingsPage : ContentPage
             await SwipePageTransition.NavigateAsync(this, "profile", SwipeDirection.Right);
     }
 
-    private async void PeopleNavTapped(object? sender, TappedEventArgs e) =>
-        await SwipePageTransition.NavigateToHomeSectionAsync(this, "phone", SwipeDirection.Right);
-
     private async void CallsNavTapped(object? sender, TappedEventArgs e) =>
         await SwipePageTransition.NavigateToHomeSectionAsync(this, "calls", SwipeDirection.Right);
 
@@ -227,169 +195,38 @@ public partial class SettingsPage : ContentPage
         await SwipePageTransition.NavigateToHomeSectionAsync(this, "chats", SwipeDirection.Right);
 
 
-    private async void IconsAndAppearanceTapped(object? sender, TappedEventArgs e)
+    private async void AppearanceExperienceTapped(object? sender, TappedEventArgs e)
     {
         try
         {
-            if (Shell.Current is not null)
-                await HimoShellNavigator.NavigateAsync("icons-appearance", true);
-            else if (Navigation is not null)
-                await Navigation.PushAsync(new IconsAppearanceSettingsPage(), true);
-            else
-                throw new InvalidOperationException("تعذر الوصول إلى مسار التنقل.");
+            await Navigation.PushAsync(new AppearanceExperiencePage(), true);
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الأيقونات والشكل", "تعذر فتح الصفحة: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync("المظهر والتجربة", "تعذر فتح الصفحة: " + ex.Message, "حسنًا");
         }
     }
 
-    private void AppLockToggled(object sender, ToggledEventArgs e)
-    {
-        if (_initializingAppLockSwitch) return;
-        if (e.Value)
-        {
-            if (AppLockPinEntry is not null) AppLockPinEntry.IsVisible = true;
-            if (SaveAppLockButton is not null) SaveAppLockButton.IsVisible = true;
-            if (AppLockStatusLabel is not null) AppLockStatusLabel.Text = "أدخل رمزًا جديدًا ثم اضغط حفظ.";
-        }
-        else
-        {
-            _ = DisableAppLockAsync();
-        }
-    }
-
-    private async void SaveAppLockClicked(object sender, EventArgs e)
+    private async void FeaturesTapped(object? sender, TappedEventArgs e)
     {
         try
         {
-            var pin = AppLockPinEntry?.Text?.Trim() ?? string.Empty;
-            await _appLock.SetPinAsync(pin);
-            AppRuntimeBridge.MarkSessionUnlocked();
-            if (AppLockStatusLabel is not null) AppLockStatusLabel.Text = "تم تفعيل قفل التطبيق.";
-            if (AppLockPinEntry is not null) { AppLockPinEntry.Text = string.Empty; AppLockPinEntry.IsVisible = false; }
-            if (SaveAppLockButton is not null) SaveAppLockButton.IsVisible = false;
+            await Navigation.PushAsync(new FeaturesSettingsPage(_api, _appLock), true);
         }
         catch (Exception ex)
         {
-            if (AppLockStatusLabel is not null) AppLockStatusLabel.Text = ex.Message;
+            await DisplayAlertAsync("الميزات", "تعذر فتح الصفحة: " + ex.Message, "حسنًا");
         }
-    }
-
-    private async Task DisableAppLockAsync()
-    {
-        await _appLock.DisableAsync();
-        if (AppLockPinEntry is not null) { AppLockPinEntry.Text = string.Empty; AppLockPinEntry.IsVisible = false; }
-        if (SaveAppLockButton is not null) SaveAppLockButton.IsVisible = false;
-        if (AppLockStatusLabel is not null) AppLockStatusLabel.Text = "قفل التطبيق متوقف.";
-    }
-
-    private void UpdateAppLockUi()
-    {
-        var enabled = _appLock.IsEnabled;
-        if (AppLockSwitch is not null) AppLockSwitch.IsToggled = enabled;
-        if (AppLockPinEntry is not null) AppLockPinEntry.IsVisible = enabled && false;
-        if (SaveAppLockButton is not null) SaveAppLockButton.IsVisible = false;
-        if (AppLockStatusLabel is not null) AppLockStatusLabel.Text = enabled ? "قفل التطبيق مفعل." : "قفل التطبيق متوقف.";
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        UpdateLanguageSelectorUi();
-        AppLocalization.AttachToPage(this);
-        _initializingAppearanceSwitch = true;
-        if (DarkModeSwitch is not null)
-            DarkModeSwitch.IsToggled = HimoAppearanceManager.IsActiveStyleDark;
-        _initializingAppearanceSwitch = false;
         ApplyFontScale(Preferences.Default.Get("himo_settings_font_scale", 1.0));
         _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this, batchSize: 48);
         UpdateNotificationPermissionStatus();
         UpdateAccountCard();
         _ = RefreshOwnProfilePhotoAsync();
-    }
-
-    private void UpdateLanguageSelectorUi()
-    {
-        if (SettingsRoot is not null)
-            SettingsRoot.FlowDirection = AppLocalization.PreferredFlowDirection;
-
-        var option = LanguageOptions.FirstOrDefault(item => item.Code == AppLocalization.CurrentLanguageCode);
-        if (LanguageValueLabel is not null)
-            LanguageValueLabel.Text = AppLocalization.T(string.IsNullOrWhiteSpace(option.ResourceKey) ? "LanguageArabic" : option.ResourceKey);
-    }
-
-    private async void LanguageRowTapped(object? sender, TappedEventArgs e)
-    {
-        try
-        {
-            await UiMotion.PressAsync(sender as VisualElement);
-            var localizedOptions = LanguageOptions
-                .Select(option => (option.Code, option.ResourceKey, Label: AppLocalization.T(option.ResourceKey)))
-                .ToArray();
-            var cancel = AppLocalization.T("Cancel");
-            var selected = await DisplayActionSheetAsync(
-                AppLocalization.T("LanguageTitle"),
-                cancel,
-                null,
-                localizedOptions.Select(option => option.Label).ToArray());
-
-            var chosen = localizedOptions.FirstOrDefault(option =>
-                string.Equals(option.Label, selected, StringComparison.Ordinal));
-            if (string.IsNullOrWhiteSpace(chosen.Code))
-                return;
-
-            AppLocalization.SetLanguage(chosen.Code);
-            UpdateLanguageSelectorUi();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Himo Language] Selection failed: {ex}");
-            await DisplayAlertAsync(
-                AppLocalization.TranslateSourceText("اللغة"),
-                AppLocalization.TranslateSourceText("تعذر تطبيق اللغة المختارة.") + " " + ex.Message,
-                AppLocalization.TranslateSourceText("حسنًا"));
-        }
-    }
-
-    private void DarkModeToggled(object? sender, ToggledEventArgs e)
-    {
-        if (_initializingAppearanceSwitch)
-            return;
-
-        HimoAppearanceManager.SetDarkModeEnabled(e.Value);
-        _initializingAppearanceSwitch = true;
-        if (DarkModeSwitch is not null)
-            DarkModeSwitch.IsToggled = HimoAppearanceManager.IsActiveStyleDark;
-        _initializingAppearanceSwitch = false;
-        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this, batchSize: 48);
-        ApplyFontScale(Preferences.Default.Get("himo_settings_font_scale", 1.0));
-    }
-
-    private async void FontSizeRowClicked(object? sender, EventArgs e)
-    {
-        var selected = await DisplayActionSheetAsync("حجم النص في الإعدادات", "إلغاء", null,
-            "صغير · 90%", "متوسط · 100%", "كبير · 115%");
-        var scale = selected switch
-        {
-            "صغير · 90%" => 0.90,
-            "متوسط · 100%" => 1.00,
-            "كبير · 115%" => 1.15,
-            _ => Preferences.Default.Get("himo_settings_font_scale", 1.0)
-        };
-        if (selected is not ("صغير · 90%" or "متوسط · 100%" or "كبير · 115%"))
-            return;
-
-        Preferences.Default.Set("himo_settings_font_scale", scale);
-        UpdateFontSizeButtonText(scale);
-        ApplyFontScale(scale);
-    }
-
-    private void UpdateFontSizeButtonText(double scale)
-    {
-        if (FontSizeValueButton is null)
-            return;
-        FontSizeValueButton.Text = scale < 0.95 ? "صغير" : scale > 1.05 ? "كبير" : "متوسط";
     }
 
     private void CaptureOriginalFontSizes(VisualElement element)
@@ -442,169 +279,6 @@ public partial class SettingsPage : ContentPage
         }
     }
 
-    private void NotificationPreviewToggled(object? sender, ToggledEventArgs e)
-    {
-        if (_initializingNotificationPreviewSwitch)
-            return;
-        Preferences.Default.Set("himo_notification_preview", e.Value);
-    }
-
-    private async void FindContactsClicked(object? sender, EventArgs e)
-    {
-        ContactsResultsPanel.IsVisible = true;
-        if (_contactsSearchBusy)
-            return;
-
-        await _api.TokenInitialization;
-        if (!_api.HasToken)
-        {
-            ContactsMatchStatusLabel.Text = "سجّل الدخول أولًا للبحث عن أصدقائك.";
-            return;
-        }
-
-        if (!Preferences.Default.Get("himo_contacts_lookup_consent", false))
-        {
-            var consent = await DisplayAlertAsync("الخصوصية وجهات الاتصال",
-                "سيقرأ Himo أرقام جهات اتصالك ويرسل الأرقام اللازمة للمطابقة عبر اتصال آمن. لن يحفظ الخادم دفتر العناوين؛ سيعيد فقط حسابات Himo المطابقة التي سمح أصحابها بالعثور عليهم.",
-                "متابعة", "إلغاء");
-            if (!consent)
-            {
-                ContactsMatchStatusLabel.Text = "لم يبدأ البحث في جهات الاتصال.";
-                return;
-            }
-            Preferences.Default.Set("himo_contacts_lookup_consent", true);
-        }
-
-#if ANDROID
-        try
-        {
-            _contactsSearchBusy = true;
-            FindContactsButton.IsEnabled = false;
-            ContactsLookupProgress.IsVisible = true;
-            ContactsLookupProgress.IsRunning = true;
-            ContactMatchesList.IsVisible = false;
-            ContactsMatchStatusLabel.Text = "جارٍ طلب الإذن وقراءة جهات الاتصال...";
-            _contactMatches.Clear();
-
-            var permission = await Permissions.CheckStatusAsync<Permissions.ContactsRead>();
-            if (permission != PermissionStatus.Granted)
-                permission = await Permissions.RequestAsync<Permissions.ContactsRead>();
-            if (permission != PermissionStatus.Granted)
-            {
-                ContactsMatchStatusLabel.Text = "لم يتم منح إذن جهات الاتصال. فعّل الإذن من إعدادات Android ثم حاول مجددًا.";
-                return;
-            }
-
-            var contacts = await Contacts.Default.GetAllAsync();
-            if (contacts is null)
-            {
-                ContactsMatchStatusLabel.Text = "تعذر قراءة جهات الاتصال من الهاتف.";
-                return;
-            }
-
-            var numbers = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var contact in contacts)
-            {
-                if (contact?.Phones is null)
-                    continue;
-                foreach (var phone in contact.Phones)
-                {
-                    var normalized = NormalizeContactNumber(phone?.PhoneNumber);
-                    if (normalized is not null)
-                        numbers.Add(normalized);
-                    if (numbers.Count >= 5000)
-                        break;
-                }
-                if (numbers.Count >= 5000)
-                    break;
-            }
-
-            if (numbers.Count == 0)
-            {
-                ContactsMatchStatusLabel.Text = "لم نعثر على أرقام هاتف صالحة في جهات اتصالك.";
-                return;
-            }
-
-            var foundMatches = new Dictionary<Guid, ContactMatchDto>();
-            var batches = numbers.Chunk(200).ToArray();
-            for (var index = 0; index < batches.Length; index++)
-            {
-                ContactsMatchStatusLabel.Text = $"جارٍ مطابقة الأرقام... ({index + 1}/{batches.Length})";
-                var batchMatches = await _api.FindUsersByPhoneNumbersAsync(batches[index]);
-                foreach (var match in batchMatches)
-                    foundMatches[match.Id] = match;
-            }
-
-            foreach (var match in foundMatches.Values.OrderBy(x => x.Name, StringComparer.CurrentCulture))
-                _contactMatches.Add(match);
-
-            ContactMatchesList.IsVisible = _contactMatches.Count > 0;
-            ContactsMatchStatusLabel.Text = _contactMatches.Count == 0
-                ? "لم نعثر على حسابات Himo مطابقة. قد لا تكون الأرقام مسجلة أو لم يفعّل أصحابها إمكانية العثور عليهم."
-                : $"عُثر على {_contactMatches.Count} حسابًا. اضغط على حساب لبدء محادثة.";
-        }
-        catch (Exception ex)
-        {
-            ContactsMatchStatusLabel.Text = "تعذر البحث في جهات الاتصال. تحقق من الاتصال ثم حاول مجددًا.";
-            System.Diagnostics.Debug.WriteLine($"[Himo Settings] Contacts lookup failed: {ex}");
-            await DisplayAlertAsync("البحث في جهات الاتصال", ex.Message, "حسنًا");
-        }
-        finally
-        {
-            _contactsSearchBusy = false;
-            FindContactsButton.IsEnabled = true;
-            ContactsLookupProgress.IsRunning = false;
-            ContactsLookupProgress.IsVisible = false;
-        }
-#else
-        ContactsMatchStatusLabel.Text = "البحث في جهات الاتصال متاح حاليًا على Android فقط.";
-        await DisplayAlertAsync("جهات الاتصال", ContactsMatchStatusLabel.Text, "حسنًا");
-#endif
-    }
-
-    private static string? NormalizeContactNumber(string? value)
-    {
-        var digits = PhoneNumberUtils.Normalize(value);
-        if (digits.StartsWith("00", StringComparison.Ordinal))
-            digits = digits[2..];
-        if (digits.Length == 10 && digits.StartsWith("05", StringComparison.Ordinal))
-            digits = "966" + digits[1..];
-        else if (digits.Length == 9 && digits.StartsWith("5", StringComparison.Ordinal))
-            digits = "966" + digits;
-        return digits.Length is >= 7 and <= 15 ? digits : null;
-    }
-
-    private async void ContactMatchSelected(object? sender, SelectionChangedEventArgs e)
-    {
-        if (_openingContactConversation || e.CurrentSelection.FirstOrDefault() is not ContactMatchDto selected)
-            return;
-        if (sender is CollectionView collection)
-            collection.SelectedItem = null;
-
-        _openingContactConversation = true;
-        try
-        {
-            ContactsMatchStatusLabel.Text = "جارٍ تجهيز المحادثة...";
-            var conversation = await _home.CreateConversationWithUserAsync(selected.Name, selected.Id);
-            var routeId = !string.IsNullOrWhiteSpace(conversation.RemoteId)
-                ? conversation.RemoteId
-                : conversation.Id.ToString();
-            if (Shell.Current is { } shell)
-                await shell.GoToAsync($"chat?id={routeId}", false);
-            else
-                await DisplayAlertAsync("المحادثة", "تعذر فتح المحادثة من هذه الصفحة. افتح المحادثة من الواجهة الرئيسية.", "حسنًا");
-        }
-        catch (Exception ex)
-        {
-            ContactsMatchStatusLabel.Text = "تعذر بدء المحادثة.";
-            await DisplayAlertAsync("المحادثة", ex.Message, "حسنًا");
-        }
-        finally
-        {
-            _openingContactConversation = false;
-        }
-    }
-
     private void UpdateAccountCard()
     {
         var current = _account.CurrentAccount;
@@ -613,10 +287,7 @@ public partial class SettingsPage : ContentPage
         if (SettingsAccountNameLabel is not null)
             SettingsAccountNameLabel.Text = string.IsNullOrWhiteSpace(currentName) ? "حسابك في Himo" : currentName;
         if (SettingsAccountEmailLabel is not null)
-        {
-            SettingsAccountEmailLabel.Text = currentEmail ?? string.Empty;
-            SettingsAccountEmailLabel.IsVisible = !string.IsNullOrWhiteSpace(currentEmail);
-        }
+            SettingsAccountEmailLabel.Text = string.IsNullOrWhiteSpace(currentEmail) ? "إدارة حسابك وتفضيلاتك" : currentEmail;
         DisplayOwnProfilePhoto(_profile.Profile.PhotoPath);
     }
 
@@ -721,18 +392,6 @@ public partial class SettingsPage : ContentPage
             if (NotificationsSwitch is not null)
                 NotificationsSwitch.IsToggled = !e.Value;
             await DisplayAlertAsync("الإشعارات", $"تعذر تغيير إعداد الإشعارات: {ex.Message}", "حسنًا");
-        }
-    }
-
-    private async void AppDownloadLinkTapped(object? sender, TappedEventArgs e)
-    {
-        try
-        {
-            await Navigation.PushAsync(new AppDownloadLinkPage(_api));
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlertAsync("رابط التطبيق", "تعذر فتح صفحة رابط التطبيق: " + ex.Message, "حسنًا");
         }
     }
 

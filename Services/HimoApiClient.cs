@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -20,6 +20,7 @@ public sealed class HimoApiClient
 {
     private const string BaseUrlKey = "himo_api_base_url";
     private const string TokenKey = "himo_api_token";
+    private const string InstallationDeviceIdKey = "himo_installation_device_id";
 
     private HttpClient _http;
     private string? _accessToken;
@@ -263,13 +264,17 @@ public sealed class HimoApiClient
                 nameof(code));
         }
 
+        var device = GetCurrentDeviceRegistration();
         using var response =
             await _http.PostAsJsonAsync(
                 "api/auth/verify-email",
                 new
                 {
                     email,
-                    code
+                    code,
+                    deviceId = device.DeviceId,
+                    deviceName = device.DeviceName,
+                    deviceType = device.DeviceType
                 },
                 cancellationToken);
 
@@ -319,6 +324,7 @@ public sealed class HimoApiClient
 
         ValidatePassword(newPassword);
 
+        var device = GetCurrentDeviceRegistration();
         using var response =
             await _http.PostAsJsonAsync(
                 "api/auth/reset-password",
@@ -326,7 +332,10 @@ public sealed class HimoApiClient
                 {
                     email,
                     code = code.Trim(),
-                    newPassword
+                    newPassword,
+                    deviceId = device.DeviceId,
+                    deviceName = device.DeviceName,
+                    deviceType = device.DeviceType
                 },
                 cancellationToken);
 
@@ -405,13 +414,17 @@ public sealed class HimoApiClient
         string password,
         CancellationToken cancellationToken)
     {
+        var device = GetCurrentDeviceRegistration();
         using var response =
             await _http.PostAsJsonAsync(
                 "api/auth/login-email",
                 new
                 {
                     email,
-                    password
+                    password,
+                    deviceId = device.DeviceId,
+                    deviceName = device.DeviceName,
+                    deviceType = device.DeviceType
                 },
                 cancellationToken);
 
@@ -425,6 +438,26 @@ public sealed class HimoApiClient
 
         return ApplyAuthResponse(result);
     }
+
+    private static MobileDeviceRegistration GetCurrentDeviceRegistration()
+    {
+        var deviceId = Preferences.Default.Get(InstallationDeviceIdKey, string.Empty);
+        if (!Guid.TryParseExact(deviceId, "N", out _))
+        {
+            deviceId = Guid.NewGuid().ToString("N");
+            Preferences.Default.Set(InstallationDeviceIdKey, deviceId);
+        }
+
+        var manufacturer = Microsoft.Maui.Devices.DeviceInfo.Current.Manufacturer?.Trim();
+        var model = Microsoft.Maui.Devices.DeviceInfo.Current.Model?.Trim();
+        var name = string.Join(" ", new[] { manufacturer, model }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+        if (string.IsNullOrWhiteSpace(name)) name = "هاتف Himo";
+        if (name.Length > 80) name = name[..80];
+        return new MobileDeviceRegistration(deviceId, name, "mobile");
+    }
+
+    private sealed record MobileDeviceRegistration(string DeviceId, string DeviceName, string DeviceType);
 
     private Account ApplyAuthResponse(AuthResponse? result)
     {
@@ -1177,6 +1210,34 @@ public sealed class HimoApiClient
             ?? throw new InvalidOperationException("استجابة الخادم لإضافة أعضاء المجموعة غير صالحة.");
     }
 
+    public async Task ApproveWebPairingAsync(Guid pairingId, string qrKey, string deviceName, CancellationToken cancellationToken = default)
+    {
+        if (pairingId == Guid.Empty || string.IsNullOrWhiteSpace(qrKey) || qrKey.Length != 64)
+            throw new ArgumentException("رمز ربط المتصفح غير صالح.");
+        using var response = await _http.PostAsJsonAsync("api/devices/pair/approve", new
+        {
+            pairingId,
+            qrKey,
+            deviceName
+        }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<LinkedDeviceInfo>> GetLinkedDevicesAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync("api/me/devices", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<List<LinkedDeviceInfo>>(cancellationToken: cancellationToken)
+            ?? new List<LinkedDeviceInfo>();
+    }
+
+    public async Task RevokeLinkedDeviceAsync(string deviceId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(deviceId)) throw new ArgumentException("معرّف الجهاز غير صالح.", nameof(deviceId));
+        using var response = await _http.DeleteAsync($"api/me/devices/{Uri.EscapeDataString(deviceId)}", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
     public async Task<GroupDetailsDto> GetGroupDetailsAsync(Guid groupId, CancellationToken cancellationToken = default)
     {
         using var response = await _http.GetAsync($"api/groups/{groupId:D}", cancellationToken);
@@ -1873,3 +1934,10 @@ public sealed class HimoApiClient
     private sealed record ApiError(
         string? Message);
 }
+public sealed record LinkedDeviceInfo(
+    string DeviceId,
+    string DeviceName,
+    string DeviceType,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset LastSeenAt,
+    bool IsCurrent);

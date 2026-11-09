@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Himo.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -125,12 +125,25 @@ public static class HimoAppLinkRouter
         if (source.Scheme.Equals("himo", StringComparison.OrdinalIgnoreCase))
         {
             if (!source.Host.Equals("user", StringComparison.OrdinalIgnoreCase) &&
-                !source.Host.Equals("group", StringComparison.OrdinalIgnoreCase))
+                !source.Host.Equals("group", StringComparison.OrdinalIgnoreCase) &&
+                !source.Host.Equals("link-device", StringComparison.OrdinalIgnoreCase))
                 return false;
 
             if (!Guid.TryParse(Uri.UnescapeDataString(source.AbsolutePath).Trim('/'), out var customTargetId) ||
                 customTargetId == Guid.Empty)
                 return false;
+
+            if (source.Host.Equals("link-device", StringComparison.OrdinalIgnoreCase))
+            {
+                var qrKey = ReadQueryValue(source, "key");
+                if (string.IsNullOrWhiteSpace(qrKey) || qrKey.Length != 64 || qrKey.Any(ch => !Uri.IsHexDigit(ch)))
+                    return false;
+                var device = ReadQueryValue(source, "device");
+                if (string.IsNullOrWhiteSpace(device) || device.Length > 80)
+                    return false;
+                normalizedUri = source;
+                return true;
+            }
 
             if (source.Host.Equals("group", StringComparison.OrdinalIgnoreCase))
             {

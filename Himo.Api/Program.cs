@@ -9,6 +9,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using QRCoder;
 
 // Bump these version identifiers whenever the corresponding legal text changes.
 const string CurrentTermsVersion = "terms-2026-10-18-v1";
@@ -66,6 +67,30 @@ builder.Services.AddRateLimiter(options =>
         _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+    options.AddPolicy("web-pair-start", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+    options.AddPolicy("web-pair-poll", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 90,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+    options.AddPolicy("device-pair-approve", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0
         }));
@@ -156,6 +181,17 @@ webApp.Use(async (context, next) =>
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["Referrer-Policy"] = "no-referrer";
+
+    if (context.Request.Path.StartsWithSegments("/web", StringComparison.OrdinalIgnoreCase))
+    {
+        // Himo Web must execute only same-origin scripts. QR images are generated
+        // by the API itself; no CDN script can read the browser's stored session token.
+        context.Response.Headers["Content-Security-Policy"] =
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+            "img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; " +
+            "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+    }
+
     await next();
 });
 
@@ -170,7 +206,12 @@ webApp.UseExceptionHandler(errorApp =>
     });
 });
 
+// Serve the browser client from Himo.Api/wwwroot/web after common security headers.
+webApp.UseDefaultFiles();
+webApp.UseStaticFiles();
+
 webApp.MapGet("/", () => Results.Ok(new { status = "ok", service = "Himo.Api", message = "Himo API is running", health = "/health" }));
+webApp.MapGet("/web", () => Results.Redirect("/web/"));
 
 // Android Verified App Links association. Configure one or more SHA-256 signing
 // certificate fingerprints in Render's ANDROID_APP_SHA256_CERT_FINGERPRINTS
@@ -483,7 +524,7 @@ webApp.MapPost("/api/auth/verify-email", (VerifyEmailRequest request, MongoStore
             pending.TermsAcceptedAt, pending.TermsVersion,
             pending.PrivacyAcceptedAt, pending.PrivacyVersion);
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        store.CreateSession(token, user.Id, DateTimeOffset.UtcNow.AddDays(30));
+        store.CreateSession(token, user.Id, DateTimeOffset.UtcNow.AddDays(30), request.DeviceId, request.DeviceName, request.DeviceType);
         return Results.Ok(new AuthResponse(token, user.Id, email, user.Name));
     }
     catch (InvalidOperationException ex)
@@ -501,7 +542,7 @@ webApp.MapPost("/api/auth/login-email", (EmailLoginRequest request, MongoStore s
     var user = store.AuthenticateEmail(email, password);
     if (user is null) return Results.Json(new { message = "البريد الإلكتروني أو كلمة المرور غير صحيحة." }, statusCode: StatusCodes.Status401Unauthorized);
     var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-    store.CreateSession(token, user.Id, DateTimeOffset.UtcNow.AddDays(30));
+    store.CreateSession(token, user.Id, DateTimeOffset.UtcNow.AddDays(30), request.DeviceId, request.DeviceName, request.DeviceType);
     return Results.Ok(new AuthResponse(token, user.Id, email, user.Name));
 }).RequireRateLimiting("auth");
 
@@ -566,7 +607,7 @@ webApp.MapPost("/api/auth/reset-password", (PasswordResetConfirmRequest request,
     }
 
     var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-    store.CreateSession(token, result!.UserId, DateTimeOffset.UtcNow.AddDays(30));
+    store.CreateSession(token, result!.UserId, DateTimeOffset.UtcNow.AddDays(30), request.DeviceId, request.DeviceName, request.DeviceType);
     return Results.Ok(new AuthResponse(token, result.UserId, result.Email, result.Name));
 }).RequireRateLimiting("auth");
 
@@ -578,6 +619,89 @@ webApp.MapPost("/api/auth/logout-all", (HttpRequest http, MongoStore store) =>
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
     store.RevokeAllSessions(session.UserId);
     return Results.NoContent();
+});
+
+// Browser pairing is a short-lived two-secret handshake. The QR secret is
+// scanned by the authenticated phone; the independent poll secret stays only
+// in the browser tab. A QR image alone never contains an account session token.
+webApp.MapPost("/api/web/pair/start", (StartWebPairingRequest request, MongoStore store, HttpContext context) =>
+{
+    context.Response.Headers["Cache-Control"] = "no-store";
+    if (!IsSha256Hex(request.QrKeyHash) || !IsSha256Hex(request.PollSecretHash))
+        return Results.BadRequest(new { message = "بيانات طلب ربط المتصفح غير صالحة." });
+    var browserName = string.IsNullOrWhiteSpace(request.BrowserName) ? "متصفح الكمبيوتر" : request.BrowserName.Trim();
+    if (browserName.Length > 80) browserName = browserName[..80];
+    var id = store.CreateWebPairing(request.QrKeyHash!, request.PollSecretHash!, browserName, DateTimeOffset.UtcNow.AddMinutes(2));
+    return Results.Ok(new { pairingId = id, expiresInSeconds = 120 });
+}).RequireRateLimiting("web-pair-start");
+
+// Generate QR PNG on the same server so the browser does not execute third-party
+// JavaScript in the origin that holds its Himo session token.
+webApp.MapPost("/api/web/pair/qr", (WebPairingQrRequest request, HttpContext context) =>
+{
+    context.Response.Headers["Cache-Control"] = "no-store, no-cache, max-age=0";
+    if (string.IsNullOrWhiteSpace(request.Payload) ||
+        request.Payload.Length > 512 ||
+        !request.Payload.StartsWith("himo://link-device/", StringComparison.Ordinal) ||
+        request.Payload.Any(char.IsControl))
+        return Results.BadRequest(new { message = "محتوى رمز QR غير صالح." });
+
+    using var qrData = QRCodeGenerator.GenerateQrCode(request.Payload, QRCodeGenerator.ECCLevel.Q);
+    var png = new PngByteQRCode(qrData).GetGraphic(8);
+    return Results.File(png, "image/png");
+}).RequireRateLimiting("web-pair-start");
+
+webApp.MapPost("/api/web/pair/poll", (PollWebPairingRequest request, MongoStore store, HttpContext context) =>
+{
+    context.Response.Headers["Cache-Control"] = "no-store, no-cache, max-age=0";
+    if (request.PairingId == Guid.Empty || !IsSecretHex(request.PollSecret))
+        return Results.BadRequest(new { message = "طلب الربط غير صالح." });
+    var result = store.PollWebPairing(request.PairingId, request.PollSecret!);
+    if (result is null) return Results.Unauthorized();
+    return Results.Ok(new { status = result.Status, accessToken = result.AccessToken, deviceName = result.DeviceName });
+}).RequireRateLimiting("web-pair-poll");
+
+webApp.MapPost("/api/web/pair/complete", (PollWebPairingRequest request, MongoStore store, HttpContext context) =>
+{
+    context.Response.Headers["Cache-Control"] = "no-store, no-cache, max-age=0";
+    if (request.PairingId == Guid.Empty || !IsSecretHex(request.PollSecret))
+        return Results.BadRequest(new { message = "طلب الربط غير صالح." });
+    return store.CompleteWebPairing(request.PairingId, request.PollSecret!)
+        ? Results.NoContent()
+        : Results.NotFound();
+}).RequireRateLimiting("web-pair-poll");
+
+webApp.MapPost("/api/devices/pair/approve", (HttpRequest http, ApproveWebPairingRequest request, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    if (request.PairingId == Guid.Empty || !IsSecretHex(request.QrKey))
+        return Results.BadRequest(new { message = "رمز ربط الكمبيوتر غير صالح." });
+    var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+    if (!store.ApproveWebPairing(request.PairingId, request.QrKey!, session.UserId, token, DateTimeOffset.UtcNow.AddDays(30)))
+        return Results.Conflict(new { message = "انتهت صلاحية رمز الربط أو تم استخدامه مسبقًا. حدّث صفحة الكمبيوتر وامسح الرمز الجديد." });
+    return Results.Ok(new { linked = true, deviceName = request.DeviceName });
+}).RequireRateLimiting("device-pair-approve");
+
+webApp.MapGet("/api/me/devices", (HttpRequest http, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    var devices = store.GetLinkedDevices(session.UserId).Select(device => new
+    {
+        device.DeviceId,
+        device.DeviceName,
+        device.DeviceType,
+        device.CreatedAt,
+        device.LastSeenAt,
+        isCurrent = string.Equals(device.DeviceId, session.DeviceId, StringComparison.Ordinal)
+    });
+    return Results.Ok(devices);
+});
+
+webApp.MapDelete("/api/me/devices/{deviceId}", (string deviceId, HttpRequest http, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    if (string.IsNullOrWhiteSpace(deviceId) || deviceId.Length > 100) return Results.BadRequest();
+    return store.RevokeLinkedDevice(session.UserId, deviceId) ? Results.NoContent() : Results.NotFound();
 });
 
 webApp.MapGet("/api/me", (HttpRequest http, MongoStore store) =>
@@ -597,8 +721,15 @@ webApp.MapGet("/api/users/{id:guid}/profile", (Guid id, HttpRequest http, MongoS
 webApp.MapDelete("/api/me", (HttpRequest http, MongoStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
-    store.DeleteAccount(session.UserId);
-    return Results.NoContent();
+    try
+    {
+        store.DeleteAccount(session.UserId);
+        return Results.NoContent();
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
 });
 
 webApp.MapPut("/api/me", (HttpRequest http, UpdateProfileRequest request, MongoStore store) =>
@@ -835,7 +966,7 @@ webApp.MapPost("/api/push-token", (HttpRequest http, [Microsoft.AspNetCore.Mvc.F
     if (token.Length < 20 || token.Length > 4096)
         return Results.BadRequest(new { message = "رمز إشعارات الجهاز غير صحيح." });
 
-    store.SavePushToken(session.UserId, token);
+    store.SavePushToken(session.UserId, token, session.DeviceId);
     return Results.NoContent();
 });
 
@@ -926,6 +1057,8 @@ webApp.MapPost("/api/conversations/{id:guid}/actions", (Guid id, HttpRequest htt
     try
     {
         store.ApplyConversationAction(id, session.UserId, action);
+        if (action == "delete" && !store.IsGroupConversation(id))
+            HimoChatHub.ForgetGroupCallRoom(id);
         return Results.Ok(new { conversationId = id, action });
     }
     catch (InvalidOperationException ex)
@@ -1138,6 +1271,8 @@ webApp.MapDelete("/api/groups/{id:guid}/leave", (Guid id, HttpRequest http, Mong
         var clearHistory = bool.TryParse(http.Query["clearHistory"].ToString(), out var requestedClearHistory)
             && requestedClearHistory;
         if (!store.LeaveGroup(id, session.UserId, clearHistory)) return Results.NotFound();
+        if (!store.IsGroupConversation(id))
+            HimoChatHub.ForgetGroupCallRoom(id);
         return Results.NoContent();
     }
     catch (InvalidOperationException ex)
@@ -1558,6 +1693,11 @@ static (string? Value, string? Error) NormalizeContactPhoneForMatching(string? i
     return (digits, null);
 }
 
+static bool IsSecretHex(string? value)
+    => !string.IsNullOrWhiteSpace(value) && value.Length == 64 && value.All(Uri.IsHexDigit);
+
+static bool IsSha256Hex(string? value) => IsSecretHex(value);
+
 static bool IsValidEmail(string? value)
 {
     var email = NormalizeEmail(value);
@@ -1595,6 +1735,13 @@ sealed class HimoChatHub : Hub
     }
 
     public static string UserGroup(Guid userId) => $"user:{userId:D}";
+
+    public static void ForgetGroupCallRoom(Guid conversationId)
+    {
+        if (conversationId == Guid.Empty) return;
+        lock (GroupCallRoomsGate)
+            ActiveGroupCallRooms.Remove(conversationId);
+    }
 
     public override async Task OnConnectedAsync()
     {
@@ -2026,10 +2173,14 @@ record EmailRegisterRequest(
     string? Email, string? Password, string? Name, string? ContactPhoneNumber = null,
     bool TermsAccepted = false, bool PrivacyAccepted = false,
     string? TermsVersion = null, string? PrivacyVersion = null);
-record EmailLoginRequest(string? Email, string? Password);
-record VerifyEmailRequest(string? Email, string? Code);
+record EmailLoginRequest(string? Email, string? Password, string? DeviceId = null, string? DeviceName = null, string? DeviceType = null);
+record StartWebPairingRequest(string? BrowserName, string? QrKeyHash, string? PollSecretHash);
+record PollWebPairingRequest(Guid PairingId, string? PollSecret);
+record WebPairingQrRequest(string? Payload);
+record ApproveWebPairingRequest(Guid PairingId, string? QrKey, string? DeviceName);
+record VerifyEmailRequest(string? Email, string? Code, string? DeviceId = null, string? DeviceName = null, string? DeviceType = null);
 record PasswordResetRequest(string? Email);
-record PasswordResetConfirmRequest(string? Email, string? Code, string? NewPassword);
+record PasswordResetConfirmRequest(string? Email, string? Code, string? NewPassword, string? DeviceId = null, string? DeviceName = null, string? DeviceType = null);
 record PasswordResetResult(Guid UserId, string Email, string Name);
 enum PasswordResetFailure { None, InvalidCode, RateLimited }
 record PushTokenRequest(string? Token);
@@ -2066,7 +2217,7 @@ record EmailVerificationPending(
     int FailedAttempts, string? ContactPhoneNumber,
     DateTimeOffset TermsAcceptedAt, string TermsVersion,
     DateTimeOffset PrivacyAcceptedAt, string PrivacyVersion);
-record SessionRecord(Guid UserId, string PhoneNumber, string Name, DateTimeOffset ExpiresAt);
+record SessionRecord(Guid UserId, string PhoneNumber, string Name, DateTimeOffset ExpiresAt, string DeviceId = "", string DeviceName = "جهاز Himo", string DeviceType = "mobile");
 sealed class ConversationDto
 {
     public Guid Id { get; init; }
