@@ -2223,6 +2223,7 @@ sealed class ConversationDto
     public Guid Id { get; init; }
     public string Name { get; init; }
     public string LastMessage { get; init; }
+    public string? LastMessageAttachmentContentType { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
     public int UnreadCount { get; init; }
     public Guid? OtherParticipantUserId { get; init; }
@@ -2251,11 +2252,13 @@ sealed class ConversationDto
         bool isArchived = false,
         bool isMuted = false,
         bool isBlocked = false,
-        bool isGroup = false)
+        bool isGroup = false,
+        string? lastMessageAttachmentContentType = null)
     {
         Id = id;
         Name = name ?? string.Empty;
         LastMessage = lastMessage ?? string.Empty;
+        LastMessageAttachmentContentType = lastMessageAttachmentContentType;
         UpdatedAt = updatedAt;
         UnreadCount = unreadCount;
         OtherParticipantUserId = otherParticipantUserId;

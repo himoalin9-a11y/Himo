@@ -902,7 +902,7 @@ sealed class MongoStore
             var unread = (int)_messages.CountDocuments(unreadFilter);
             var isBlocked = isDirect && !isSelfChat && other is not null && _blockedUsers.Find(x => (x.BlockerUserId == uid && x.BlockedUserId == other.Id) || (x.BlockerUserId == other.Id && x.BlockedUserId == uid)).FirstOrDefault() is not null;
             Guid? otherIdParsed = other is not null && Guid.TryParse(other.Id, out var oid) ? oid : null;
-            result.Add(new ConversationDto(Guid.Parse(conversation.Id), isDirect && other is not null ? other.Name : conversation.Name, last?.Text ?? string.Empty, ParseTime(conversation.UpdatedAt, now), unread, otherIdParsed, other?.ProfilePhoto is { Length: > 0 }, other?.ProfilePhotoVersion ?? 0L, state?.IsArchived ?? false, state?.IsMuted ?? false, isBlocked, conversation.IsGroup));
+            result.Add(new ConversationDto(Guid.Parse(conversation.Id), isDirect && other is not null ? other.Name : conversation.Name, last?.Text ?? string.Empty, ParseTime(conversation.UpdatedAt, now), unread, otherIdParsed, other?.ProfilePhoto is { Length: > 0 }, other?.ProfilePhotoVersion ?? 0L, state?.IsArchived ?? false, state?.IsMuted ?? false, isBlocked, conversation.IsGroup, last?.AttachmentContentType));
         }
         return result.OrderByDescending(x => x.UpdatedAt).ToArray();
     }
