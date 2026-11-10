@@ -649,6 +649,108 @@ sealed class MongoStore
         }
     }
 
+    public Guid CreateMobilePairing(Guid userId, string qrKeyHash, DateTimeOffset expiresAt)
+    {
+        EnsureIndexes();
+        CleanupExpiredWebPairings(DateTimeOffset.UtcNow);
+        var id = Guid.NewGuid();
+        _webPairings.InsertOne(new MWebPairing
+        {
+            Id = GuidText(id), QrKeyHash = qrKeyHash, PollSecretHash = string.Empty,
+            BrowserName = "هاتف Himo مساعد", Status = "pending", ExpiresAt = expiresAt.ToString("O"),
+            CreatedAt = NowText(), UserId = GuidText(userId)
+        });
+        return id;
+    }
+
+    public bool ClaimMobilePairing(Guid pairingId, string qrKey, string pollSecretHash, string deviceId, string deviceName)
+    {
+        EnsureIndexes();
+        lock (_sync)
+        {
+            var id = GuidText(pairingId);
+            var pairing = _webPairings.Find(x => x.Id == id).FirstOrDefault();
+            if (pairing is null || pairing.Status != "pending" || string.IsNullOrWhiteSpace(pairing.UserId) ||
+                ParseTime(pairing.ExpiresAt) <= DateTimeOffset.UtcNow ||
+                !PairingSecretMatches(pairing.QrKeyHash, qrKey) || !string.IsNullOrWhiteSpace(pairing.PollSecretHash)) return false;
+            var update = Builders<MWebPairing>.Update.Set(x => x.Status, "claimed")
+                .Set(x => x.PollSecretHash, pollSecretHash).Set(x => x.BrowserName, deviceName).Set(x => x.DeviceId, deviceId);
+            return _webPairings.UpdateOne(x => x.Id == id && x.Status == "pending", update).ModifiedCount > 0;
+        }
+    }
+
+    public IReadOnlyList<MobilePairingRequestInfo> GetPendingMobilePairings(Guid userId)
+    {
+        EnsureIndexes();
+        var uid = GuidText(userId);
+        return _webPairings.Find(x => x.UserId == uid && x.Status == "claimed")
+            .ToList().Where(x => ParseTime(x.ExpiresAt) > DateTimeOffset.UtcNow)
+            .Select(x => new MobilePairingRequestInfo(Guid.Parse(x.Id), x.BrowserName, ParseTime(x.CreatedAt), ParseTime(x.ExpiresAt)))
+            .OrderBy(x => x.CreatedAt).ToArray();
+    }
+
+    public bool ApproveMobilePairing(Guid userId, Guid pairingId, string accessToken, DateTimeOffset sessionExpiresAt)
+    {
+        EnsureIndexes();
+        lock (_sync)
+        {
+            var id = GuidText(pairingId); var uid = GuidText(userId);
+            var pairing = _webPairings.Find(x => x.Id == id && x.UserId == uid && x.Status == "claimed").FirstOrDefault();
+            if (pairing is null || ParseTime(pairing.ExpiresAt) <= DateTimeOffset.UtcNow || string.IsNullOrWhiteSpace(pairing.DeviceId)) return false;
+            var now = NowText();
+            var update = Builders<MWebPairing>.Update.Set(x => x.Status, "approved")
+                .Set(x => x.AccessToken, accessToken).Set(x => x.ApprovedAt, now);
+            if (_webPairings.UpdateOne(x => x.Id == id && x.UserId == uid && x.Status == "claimed", update).ModifiedCount == 0) return false;
+            _sessions.ReplaceOne(x => x.Token == accessToken, new MSession
+            {
+                Token = accessToken, UserId = uid, ExpiresAt = sessionExpiresAt.ToString("O"),
+                DeviceId = pairing.DeviceId, DeviceName = pairing.BrowserName, DeviceType = "mobile",
+                CreatedAt = now, LastSeenAt = now
+            }, new ReplaceOptions { IsUpsert = true });
+            return true;
+        }
+    }
+
+    public object? PollMobilePairing(Guid pairingId, string pollSecret)
+    {
+        EnsureIndexes();
+        var id = GuidText(pairingId);
+        var pairing = _webPairings.Find(x => x.Id == id && x.UserId != null).FirstOrDefault();
+        if (pairing is null || !PairingSecretMatches(pairing.PollSecretHash, pollSecret)) return null;
+        if (ParseTime(pairing.ExpiresAt) <= DateTimeOffset.UtcNow)
+        {
+            if (pairing.Status == "approved" && !string.IsNullOrWhiteSpace(pairing.AccessToken)) _sessions.DeleteOne(x => x.Token == pairing.AccessToken);
+            _webPairings.DeleteOne(x => x.Id == id);
+            return new { status = "expired" };
+        }
+        if (pairing.Status != "approved" || string.IsNullOrWhiteSpace(pairing.AccessToken))
+            return new { status = pairing.Status };
+        var user = _users.Find(x => x.Id == pairing.UserId).FirstOrDefault();
+        if (user is null) return new { status = "expired" };
+        return new { status = "approved", accessToken = pairing.AccessToken, userId = Guid.Parse(user.Id), email = user.PhoneNumber, name = user.Name, deviceName = pairing.BrowserName };
+    }
+
+    public bool CompleteMobilePairing(Guid pairingId, string pollSecret)
+    {
+        EnsureIndexes();
+        var id = GuidText(pairingId);
+        var pairing = _webPairings.Find(x => x.Id == id && x.Status == "approved").FirstOrDefault();
+        if (pairing is null || !PairingSecretMatches(pairing.PollSecretHash, pollSecret)) return false;
+        return _webPairings.DeleteOne(x => x.Id == id && x.Status == "approved").DeletedCount > 0;
+    }
+
+    public bool CancelMobilePairing(Guid userId, Guid pairingId)
+    {
+        EnsureIndexes();
+        var id = GuidText(pairingId); var uid = GuidText(userId);
+        var pairing = _webPairings.Find(x => x.Id == id && x.UserId == uid).FirstOrDefault();
+        if (pairing is null) return false;
+        if (pairing.Status == "approved" && !string.IsNullOrWhiteSpace(pairing.AccessToken)) _sessions.DeleteOne(x => x.Token == pairing.AccessToken);
+        return _webPairings.UpdateOne(x => x.Id == id && x.UserId == uid,
+            Builders<MWebPairing>.Update.Set(x => x.Status, "denied").Set(x => x.ExpiresAt, DateTimeOffset.UtcNow.AddSeconds(30).ToString("O"))
+                .Unset(x => x.AccessToken)).ModifiedCount > 0;
+    }
+
     public WebPairingPollResult? PollWebPairing(Guid pairingId, string pollSecret)
     {
         EnsureIndexes();
@@ -1810,4 +1912,5 @@ sealed class MongoStore
 [BsonIgnoreExtraElements] sealed class MMessage { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string SenderUserId { get; set; } = ""; public string SenderPhoneNumber { get; set; } = ""; public string Text { get; set; } = ""; public string SentAt { get; set; } = ""; public string? ClientMessageId { get; set; } public string? AttachmentFileName { get; set; } public string? AttachmentContentType { get; set; } public long? AttachmentSize { get; set; } public byte[]? AttachmentData { get; set; } public string? AttachmentGridFsId { get; set; } public string? AudioGridFsId { get; set; } public string? ReplyToMessageId { get; set; } public string? EditedAt { get; set; } public string? DeletedAt { get; set; } public string? ExpiresAt { get; set; } }
 
 record LinkedDeviceRecord(string DeviceId, string DeviceName, string DeviceType, DateTimeOffset CreatedAt, DateTimeOffset LastSeenAt);
+record MobilePairingRequestInfo(Guid PairingId, string DeviceName, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt);
 record WebPairingPollResult(string Status, string? AccessToken, string? DeviceName);

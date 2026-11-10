@@ -682,6 +682,64 @@ webApp.MapPost("/api/devices/pair/approve", (HttpRequest http, ApproveWebPairing
     return Results.Ok(new { linked = true, deviceName = request.DeviceName });
 }).RequireRateLimiting("device-pair-approve");
 
+// A phone-to-phone pairing is initiated by an authenticated primary phone.
+// The QR carries only a one-time claim secret. The companion generates its own
+// polling secret; the primary phone must explicitly approve the named device.
+webApp.MapPost("/api/devices/mobile-pair/start", (HttpRequest http, StartMobilePairingRequest request, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    if (!IsSha256Hex(request.QrKeyHash)) return Results.BadRequest(new { message = "بيانات ربط الهاتف غير صالحة." });
+    var id = store.CreateMobilePairing(session.UserId, request.QrKeyHash!, DateTimeOffset.UtcNow.AddMinutes(2));
+    return Results.Ok(new { pairingId = id, expiresInSeconds = 120 });
+}).RequireRateLimiting("device-pair-approve");
+
+webApp.MapPost("/api/devices/mobile-pair/claim", (MobilePairingClaimRequest request, MongoStore store) =>
+{
+    if (request.PairingId == Guid.Empty || !IsSecretHex(request.QrKey) || !IsSha256Hex(request.PollSecretHash)) return Results.BadRequest(new { message = "رمز ربط الهاتف غير صالح." });
+    var deviceName = string.IsNullOrWhiteSpace(request.DeviceName) ? "هاتف Himo مساعد" : request.DeviceName.Trim();
+    if (deviceName.Length > 80) deviceName = deviceName[..80];
+    var deviceId = string.IsNullOrWhiteSpace(request.DeviceId) ? "mobile-" + Guid.NewGuid().ToString("N") : request.DeviceId.Trim();
+    if (deviceId.Length > 100) return Results.BadRequest(new { message = "معرّف الهاتف غير صالح." });
+    return store.ClaimMobilePairing(request.PairingId, request.QrKey!, request.PollSecretHash!, deviceId, deviceName)
+        ? Results.Ok(new { claimed = true })
+        : Results.Conflict(new { message = "انتهت صلاحية رمز الربط أو سبق استخدامه." });
+}).RequireRateLimiting("web-pair-poll");
+
+webApp.MapGet("/api/devices/mobile-pair/pending", (HttpRequest http, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    return Results.Ok(store.GetPendingMobilePairings(session.UserId));
+}).RequireRateLimiting("web-pair-poll");
+
+webApp.MapPost("/api/devices/mobile-pair/approve", (HttpRequest http, MobilePairingDecisionRequest request, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    if (request.PairingId == Guid.Empty) return Results.BadRequest();
+    var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+    return store.ApproveMobilePairing(session.UserId, request.PairingId, token, DateTimeOffset.UtcNow.AddDays(30))
+        ? Results.Ok(new { approved = true })
+        : Results.Conflict(new { message = "طلب الربط لم يعد صالحًا." });
+}).RequireRateLimiting("device-pair-approve");
+
+webApp.MapPost("/api/devices/mobile-pair/poll", (MobilePairingPollRequest request, MongoStore store) =>
+{
+    if (request.PairingId == Guid.Empty || !IsSecretHex(request.PollSecret)) return Results.BadRequest();
+    var result = store.PollMobilePairing(request.PairingId, request.PollSecret!);
+    return result is null ? Results.Unauthorized() : Results.Ok(result);
+}).RequireRateLimiting("web-pair-poll");
+
+webApp.MapPost("/api/devices/mobile-pair/complete", (MobilePairingPollRequest request, MongoStore store) =>
+{
+    if (request.PairingId == Guid.Empty || !IsSecretHex(request.PollSecret)) return Results.BadRequest();
+    return store.CompleteMobilePairing(request.PairingId, request.PollSecret!) ? Results.NoContent() : Results.NotFound();
+}).RequireRateLimiting("web-pair-poll");
+
+webApp.MapPost("/api/devices/mobile-pair/cancel", (HttpRequest http, MobilePairingDecisionRequest request, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    return store.CancelMobilePairing(session.UserId, request.PairingId) ? Results.NoContent() : Results.NotFound();
+}).RequireRateLimiting("device-pair-approve");
+
 webApp.MapGet("/api/me/devices", (HttpRequest http, MongoStore store) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
@@ -2178,6 +2236,10 @@ record StartWebPairingRequest(string? BrowserName, string? QrKeyHash, string? Po
 record PollWebPairingRequest(Guid PairingId, string? PollSecret);
 record WebPairingQrRequest(string? Payload);
 record ApproveWebPairingRequest(Guid PairingId, string? QrKey, string? DeviceName);
+record StartMobilePairingRequest(string? QrKeyHash);
+record MobilePairingClaimRequest(Guid PairingId, string? QrKey, string? PollSecretHash, string? DeviceId, string? DeviceName);
+record MobilePairingPollRequest(Guid PairingId, string? PollSecret);
+record MobilePairingDecisionRequest(Guid PairingId);
 record VerifyEmailRequest(string? Email, string? Code, string? DeviceId = null, string? DeviceName = null, string? DeviceType = null);
 record PasswordResetRequest(string? Email);
 record PasswordResetConfirmRequest(string? Email, string? Code, string? NewPassword, string? DeviceId = null, string? DeviceName = null, string? DeviceType = null);
