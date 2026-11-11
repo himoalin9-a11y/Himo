@@ -1,3 +1,4 @@
+using Himo.Services;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
@@ -126,8 +127,102 @@ public sealed class Conversation : INotifyPropertyChanged
     public string LastMessage
     {
         get => _lastMessage;
-        set => SetField(ref _lastMessage, value ?? "");
+        set
+        {
+            var next = value ?? string.Empty;
+            if (string.Equals(_lastMessage, next, StringComparison.Ordinal)) return;
+            _lastMessage = next;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastMessage)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastMessagePreview)));
+        }
     }
+
+    // Persist the MIME type separately from the display text so the conversation
+    // preview can always be rendered in the currently selected application language.
+    private string? _lastMessageAttachmentContentType;
+    public string? LastMessageAttachmentContentType
+    {
+        get => _lastMessageAttachmentContentType;
+        set
+        {
+            if (string.Equals(_lastMessageAttachmentContentType, value, StringComparison.OrdinalIgnoreCase)) return;
+            _lastMessageAttachmentContentType = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastMessageAttachmentContentType)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastMessagePreview)));
+        }
+    }
+
+    [JsonIgnore]
+    public string LastMessagePreview
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(LastMessageAttachmentContentType))
+                return ChatMessage.GetAttachmentPreviewText(LastMessageAttachmentContentType);
+
+            // Older chat caches stored the Arabic preview itself. Recognize those
+            // legacy values so they are localized even before the next message sync.
+            var legacy = LastMessage.Trim();
+            if (legacy is "📷 صورة" or "📷 الصورة" or "صورة")
+                return ChatMessage.GetAttachmentPreviewText("image/unknown");
+            if (legacy is "🎙️ رسالة صوتية" or "🎙 رسالة صوتية" or "الرسالة الصوتية")
+                return ChatMessage.GetAttachmentPreviewText("audio/unknown");
+            if (legacy is "🎬 فيديو" or "فيديو")
+                return ChatMessage.GetAttachmentPreviewText("video/unknown");
+            if (legacy is "📎 ملف مرفق" or "ملف مرفق")
+                return ChatMessage.GetAttachmentPreviewText(null);
+
+            return LastMessage;
+        }
+    }
+
+    public void SetLastMessageText(string? text)
+    {
+        LastMessageAttachmentContentType = null;
+        LastMessage = text ?? string.Empty;
+        NotifyLastMessagePreviewChanged();
+    }
+
+    public void SetLastMessageAttachment(string? contentType)
+    {
+        LastMessageAttachmentContentType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType;
+        LastMessage = ChatMessage.GetAttachmentPreviewText(LastMessageAttachmentContentType);
+        NotifyLastMessagePreviewChanged();
+    }
+
+    public void SetLastMessageFromServer(
+        string? text,
+        DateTime updatedAt,
+        string? attachmentContentType = null)
+    {
+        // Conversation snapshots can briefly contain an empty LastMessage while
+        // message history is still syncing. Preserve a valid local preview, but
+        // still accept MIME metadata when the server provides it.
+        var incoming = text?.Trim() ?? string.Empty;
+        var hasIncomingAttachmentType = !string.IsNullOrWhiteSpace(attachmentContentType);
+
+        if (string.IsNullOrWhiteSpace(incoming) && !hasIncomingAttachmentType)
+            return;
+
+        var sameMessageText = string.Equals(LastMessage, incoming, StringComparison.Ordinal);
+
+        if (hasIncomingAttachmentType)
+        {
+            LastMessageAttachmentContentType = attachmentContentType!.Trim();
+        }
+        else if (updatedAt > UpdatedAt && !sameMessageText)
+        {
+            LastMessageAttachmentContentType = null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(incoming))
+            LastMessage = incoming;
+
+        NotifyLastMessagePreviewChanged();
+    }
+
+    public void NotifyLastMessagePreviewChanged()
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastMessagePreview)));
 
     public string Time
     {
@@ -357,12 +452,87 @@ public sealed class ChatMessage : INotifyPropertyChanged
     public bool IsAudioAttachment => AttachmentContentType?.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) == true;
     public bool IsVideoAttachment => AttachmentContentType?.StartsWith("video/", StringComparison.OrdinalIgnoreCase) == true;
     public bool HasVideoPreview => IsVideoAttachment && !string.IsNullOrWhiteSpace(VideoThumbnailPath);
+
+    [JsonIgnore]
+    public string AttachmentDisplayName
+    {
+        get
+        {
+            var fileName = Path.GetFileName(AttachmentFileName ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(fileName) || IsOpaqueAttachmentName(fileName))
+                return GetAttachmentTypeLabel(AttachmentContentType ?? string.Empty);
+            return fileName;
+        }
+    }
+
+    [JsonIgnore]
     public string AttachmentLabel => string.IsNullOrWhiteSpace(AttachmentFileName)
         ? string.Empty
-        : IsImageAttachment
-            ? $"📷 {AttachmentFileName}"
-            : IsAudioAttachment
-                ? $"🎙️ {AttachmentFileName}"
-                : $"📎 {AttachmentFileName}";
+        : $"{GetAttachmentPreviewText(AttachmentContentType)} {AttachmentDisplayName}";
+
+    public static string GetAttachmentPreviewText(string? contentType)
+    {
+        if (contentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true)
+            return $"📷 {GetAttachmentTypeLabel("image")}";
+        if (contentType?.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) == true)
+            return $"🎙️ {GetAttachmentTypeLabel("audio")}";
+        if (contentType?.StartsWith("video/", StringComparison.OrdinalIgnoreCase) == true)
+            return $"🎬 {GetAttachmentTypeLabel("video")}";
+        return $"📎 {GetAttachmentTypeLabel("file")}";
+    }
+
+    private static string GetAttachmentTypeLabel(string type)
+    {
+        // Keep these short labels available for every language supported by
+        // AppLocalization, even when an optional satellite resource is absent.
+        var language = AppLocalization.CurrentLanguageCode;
+        return (type, language) switch
+        {
+            ("image", "en") => "Image",
+            ("image", "fr") => "Image",
+            ("image", "tr") => "Resim",
+            ("image", "ur") => "تصویر",
+            ("image", "es") => "Imagen",
+            ("image", "id") => "Gambar",
+            ("audio", "en") => "Voice message",
+            ("audio", "fr") => "Message vocal",
+            ("audio", "tr") => "Sesli mesaj",
+            ("audio", "ur") => "صوتی پیغام",
+            ("audio", "es") => "Mensaje de voz",
+            ("audio", "id") => "Pesan suara",
+            ("video", "en") => "Video",
+            ("video", "fr") => "Vidéo",
+            ("video", "tr") => "Video",
+            ("video", "ur") => "ویڈیو",
+            ("video", "es") => "Vídeo",
+            ("video", "id") => "Video",
+            ("file", "en") => "Attachment",
+            ("file", "fr") => "Pièce jointe",
+            ("file", "tr") => "Ek dosya",
+            ("file", "ur") => "منسلک فائل",
+            ("file", "es") => "Archivo adjunto",
+            ("file", "id") => "Lampiran",
+            ("image", _) => "صورة",
+            ("audio", _) => "رسالة صوتية",
+            ("video", _) => "فيديو",
+            _ => "ملف مرفق"
+        };
+    }
+
+    private static bool IsOpaqueAttachmentName(string fileName)
+    {
+        if (fileName.Contains("://", StringComparison.Ordinal) ||
+            fileName.StartsWith("content:", StringComparison.OrdinalIgnoreCase) ||
+            fileName.StartsWith("document:", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var stem = Path.GetFileNameWithoutExtension(fileName);
+        if (Guid.TryParse(stem, out _))
+            return true;
+
+        // Some Android document providers expose a 24-64 character hexadecimal
+        // token instead of the user's original file name. Never show that token.
+        return stem.Length is >= 24 and <= 64 && stem.All(Uri.IsHexDigit);
+    }
     public event PropertyChangedEventHandler? PropertyChanged;
 }

@@ -1,0 +1,59 @@
+--- a/Platforms/Android/MainActivity.cs
++++ b/Platforms/Android/MainActivity.cs
+@@ -251,12 +251,10 @@
+ 
+     protected override void OnCreate(global::Android.OS.Bundle? savedInstanceState)
+     {
+-        // Set the native window background before MAUI creates its first content
+-        // view. Setting it only after base.OnCreate left a white frame visible on
+-        // some cold starts while the framework and persisted session were loading.
+-        SetLaunchWindowBackground();
++        // Let MAUI initialize its splash screen and first native content before
++        // applying the app window background. Applying it before base.OnCreate
++        // can cover the configured Himo splash artwork on cold starts.
+         base.OnCreate(savedInstanceState);
+-        EnsureVisualStudioLaunchAliasEnabled();
+         // Android launchers can retain an old activity-alias state across updates.
+         // Reconcile every launcher entry with the saved selection so only one icon
+         // can be enabled after startup, even if a previous OnStop cleanup was skipped.
+@@ -301,40 +299,6 @@
+         }
+     }
+ 
+-
+-    private void EnsureVisualStudioLaunchAliasEnabled()
+-    {
+-        try
+-        {
+-            var context = Android.App.Application.Context;
+-            var packageName = context.PackageName;
+-            var packageManager = context.PackageManager;
+-            if (string.IsNullOrWhiteSpace(packageName) || packageManager is null)
+-                return;
+-
+-            // Keep the permanent fallback alias available in every configuration.
+-            var launchAliases = new List<string> { "LauncherIconHomeDefault" };
+-#if DEBUG
+-            // Visual Studio launches this MAIN/LAUNCHER alias in Debug. The dynamic
+-            // icon switch used to disable it after a custom icon was selected.
+-            launchAliases.Add("LauncherIconHome");
+-#endif
+-            foreach (var aliasName in launchAliases)
+-            {
+-                var launchAlias = new Android.Content.ComponentName(
+-                    packageName,
+-                    $"{packageName}.{aliasName}");
+-                packageManager.SetComponentEnabledSetting(
+-                    launchAlias,
+-                    Android.Content.PM.ComponentEnabledState.Enabled,
+-                    Android.Content.PM.ComponentEnableOption.DontKillApp);
+-            }
+-        }
+-        catch (Exception ex)
+-        {
+-            System.Diagnostics.Debug.WriteLine($"[Himo Debug Launch] Could not enable persistent launch alias: {ex.Message}");
+-        }
+-    }
+ 
+     private void SetLaunchWindowBackground()
+     {

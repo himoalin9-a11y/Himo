@@ -98,13 +98,16 @@ public sealed class ChatSettingsPage : Himo.Services.LocalizedContentPage
 
     private async Task ChooseFontSizeAsync(Button button)
     {
-        var chosen = await DisplayActionSheetAsync("حجم الخط", "إلغاء", null, "صغير", "متوسط", "كبير");
+        var chosenDisplay = await DisplayActionSheetAsync(
+            AppLocalization.TranslateSourceText("حجم الخط"), AppLocalization.TranslateSourceText("إلغاء"), null,
+            AppLocalization.TranslateSourceText("صغير"), AppLocalization.TranslateSourceText("متوسط"), AppLocalization.TranslateSourceText("كبير"));
+        var chosen = AppLocalization.ResolveSourceText(chosenDisplay, "صغير", "متوسط", "كبير");
         if (chosen is not ("صغير" or "متوسط" or "كبير"))
             return;
 
         Preferences.Default.Set(ChatFontSizeKey, chosen);
         button.Text = chosen;
-        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حجم الخط"), "تم حفظ التفضيل. سيُستخدم الحجم عند فتح المحادثة التالية.", Himo.Services.AppLocalization.TranslateSourceText("موافق"));
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حجم الخط"),Himo.Services.AppLocalization.TranslateSourceText("تم حفظ التفضيل. سيُستخدم الحجم عند فتح المحادثة التالية."), Himo.Services.AppLocalization.TranslateSourceText("موافق"));
     }
 
     private static View BuildHeading(string title, string subtitle, string iconName)
@@ -300,7 +303,8 @@ public sealed class ChatBackupSettingsPage : Himo.Services.LocalizedContentPage
     private static readonly Color IconTileColor = Color.FromArgb("#39204F");
     private static readonly Color IconTileBorderColor = Color.FromArgb("#594768");
     private readonly ChatService _chat;
-    private readonly Picker _frequency = new() { Title = "اختر التكرار", ItemsSource = new List<string> { "يوميًا", "أسبوعيًا", "شهريًا", "فقط عند الضغط على نسخ احتياطي", "متوقف" }, WidthRequest = 150, FontSize = 11.5 };
+    private static readonly string[] BackupFrequencyValues = { "يوميًا", "أسبوعيًا", "شهريًا", "فقط عند الضغط على نسخ احتياطي", "متوقف" };
+    private readonly Picker _frequency = new() { Title = "اختر التكرار", WidthRequest = 150, FontSize = 11.5 };
     private readonly Microsoft.Maui.Controls.Switch _cellular = new();
     private readonly Microsoft.Maui.Controls.Switch _videos = new();
     private readonly Label _status = new() { FontSize = 11.5, LineBreakMode = LineBreakMode.WordWrap };
@@ -313,7 +317,7 @@ public sealed class ChatBackupSettingsPage : Himo.Services.LocalizedContentPage
         BackgroundColor = Color.FromArgb("#211333");
         SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
         _status.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
-        _frequency.SelectedItem = Preferences.Default.Get(ChatSettingsPage.BackupFrequencyKey, "فقط عند الضغط على نسخ احتياطي");
+        ApplyBackupFrequencyTranslations();
         _frequency.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoInput");
         _frequency.SetDynamicResource(Picker.TextColorProperty, "HimoPrimary");
         _frequency.SetDynamicResource(Picker.TitleColorProperty, "HimoTextSecondary");
@@ -321,7 +325,12 @@ public sealed class ChatBackupSettingsPage : Himo.Services.LocalizedContentPage
         _videos.IsToggled = Preferences.Default.Get(ChatSettingsPage.BackupVideosKey, false);
         _cellular.SetDynamicResource(Microsoft.Maui.Controls.Switch.OnColorProperty, "HimoAccent");
         _videos.SetDynamicResource(Microsoft.Maui.Controls.Switch.OnColorProperty, "HimoAccent");
-        _frequency.SelectedIndexChanged += (_, _) => Preferences.Default.Set(ChatSettingsPage.BackupFrequencyKey, _frequency.SelectedItem?.ToString() ?? "فقط عند الضغط على نسخ احتياطي");
+        _frequency.SelectedIndexChanged += (_, _) =>
+        {
+            var index = _frequency.SelectedIndex;
+            if (index >= 0 && index < BackupFrequencyValues.Length)
+                Preferences.Default.Set(ChatSettingsPage.BackupFrequencyKey, BackupFrequencyValues[index]);
+        };
         _cellular.Toggled += (_, e) => Preferences.Default.Set(ChatSettingsPage.BackupCellularKey, e.Value);
         _videos.Toggled += (_, e) => Preferences.Default.Set(ChatSettingsPage.BackupVideosKey, e.Value);
 
@@ -359,6 +368,9 @@ public sealed class ChatBackupSettingsPage : Himo.Services.LocalizedContentPage
     {
         base.OnAppearing();
         HimoAppearanceManager.ApplyToTree(this);
+        AppLocalization.LanguageChanged -= OnLanguageChanged;
+        AppLocalization.LanguageChanged += OnLanguageChanged;
+        ApplyBackupFrequencyTranslations();
     }
 
     private static View BuildHeading(string title, string subtitle, string iconName)
@@ -489,5 +501,24 @@ public sealed class ChatBackupSettingsPage : Himo.Services.LocalizedContentPage
         {
             _status.Text = "تعذر إنشاء النسخة الاحتياطية: " + ex.Message;
         }
+    }
+
+    private void ApplyBackupFrequencyTranslations()
+    {
+        var saved = Preferences.Default.Get(ChatSettingsPage.BackupFrequencyKey, "فقط عند الضغط على نسخ احتياطي");
+        var selectedIndex = Array.IndexOf(BackupFrequencyValues, saved);
+        _frequency.ItemsSource = BackupFrequencyValues
+            .Select(AppLocalization.TranslateSourceText)
+            .ToList();
+        _frequency.SelectedIndex = selectedIndex >= 0 ? selectedIndex : 3;
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+        => MainThread.BeginInvokeOnMainThread(ApplyBackupFrequencyTranslations);
+
+    protected override void OnDisappearing()
+    {
+        AppLocalization.LanguageChanged -= OnLanguageChanged;
+        base.OnDisappearing();
     }
 }

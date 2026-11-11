@@ -474,9 +474,9 @@ public partial class ChatPage : ContentPage
         panel.StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(20) };
 
         var headerText = new VerticalStackLayout { Spacing = 0 };
-        var heading = new Label { Text = "إرسال وسائط", FontSize = 12, FontAttributes = FontAttributes.Bold };
+        var heading = new Label { Text = AppLocalization.TranslateSourceText("إرسال وسائط"), FontSize = 12, FontAttributes = FontAttributes.Bold };
         heading.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
-        var subheading = new Label { Text = "اختر ما تريد إرساله", FontSize = 9.5 };
+        var subheading = new Label { Text = AppLocalization.TranslateSourceText("اختر ما تريد إرساله"), FontSize = 9.5 };
         subheading.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
         headerText.Children.Add(heading);
         headerText.Children.Add(subheading);
@@ -920,7 +920,11 @@ public partial class ChatPage : ContentPage
                 return;
 
             local.RemoteId = best.Id.ToString("D");
-            local.LastMessage = best.LastMessage ?? string.Empty;
+            // Conversation metadata can arrive before the message snapshot. An
+            // empty LastMessage here is not authoritative and must not clear the
+            // preview/attachment information already cached on the local item.
+            if (!string.IsNullOrWhiteSpace(best.LastMessage) || !string.IsNullOrWhiteSpace(best.LastMessageAttachmentContentType))
+                local.SetLastMessageFromServer(best.LastMessage, best.UpdatedAt.LocalDateTime, best.LastMessageAttachmentContentType);
             local.Time = best.UpdatedAt.LocalDateTime.ToString("HH:mm");
             local.UpdatedAt = best.UpdatedAt.LocalDateTime;
             local.UnreadCount = best.UnreadCount;
@@ -1131,26 +1135,26 @@ public partial class ChatPage : ContentPage
             "خيارات المحادثة",
             "إلغاء",
             null,
-            "البحث في المحادثة",
-            IsConversationMuted ? "إلغاء كتم الإشعارات" : "كتم الإشعارات",
+            AppLocalization.TranslateSourceText("البحث في المحادثة"),
+            IsConversationMuted ? AppLocalization.TranslateSourceText("إلغاء كتم الإشعارات") : AppLocalization.TranslateSourceText("كتم الإشعارات"),
             "الرسائل ذاتية الاختفاء",
-            "خلفية الدردشة",
-            "الإبلاغ عن المحادثة",
+            AppLocalization.TranslateSourceText("خلفية الدردشة"),
+            AppLocalization.TranslateSourceText("الإبلاغ عن المحادثة"),
             IsConversationBlocked ? "إلغاء حظر المحادثة" : "حظر المحادثة",
             IsConversationArchived ? "إلغاء أرشفة المحادثة" : "أرشفة المحادثة");
 
         if (string.IsNullOrWhiteSpace(selected) || selected == "إلغاء")
             return;
 
-        if (selected == "البحث في المحادثة")
+        if (selected == AppLocalization.TranslateSourceText("البحث في المحادثة"))
             SearchMessagesClicked(sender, e);
-        else if (selected == "كتم الإشعارات" || selected == "إلغاء كتم الإشعارات")
+        else if (selected == AppLocalization.TranslateSourceText("كتم الإشعارات") || selected == AppLocalization.TranslateSourceText("إلغاء كتم الإشعارات"))
             MuteConversationClicked(sender, e);
         else if (selected == "الرسائل ذاتية الاختفاء")
             DisappearingMessagesMenuClicked(sender, e);
-        else if (selected == "خلفية الدردشة")
+        else if (selected == AppLocalization.TranslateSourceText("خلفية الدردشة"))
             ChatBackgroundMenuClicked(sender, e);
-        else if (selected == "الإبلاغ عن المحادثة")
+        else if (selected == AppLocalization.TranslateSourceText("الإبلاغ عن المحادثة"))
             ReportConversationClicked(sender, e);
         else if (selected == "حظر المحادثة" || selected == "إلغاء حظر المحادثة")
             BlockConversationClicked(sender, e);
@@ -1210,7 +1214,7 @@ public partial class ChatPage : ContentPage
         CloseConversationMenu();
 
         var selected = await DisplayActionSheetAsync(
-            "خلفية الدردشة",
+            AppLocalization.TranslateSourceText("خلفية الدردشة"),
             "إلغاء",
             null,
             "🌸 الأزهار البنفسجية",
@@ -1825,7 +1829,7 @@ public partial class ChatPage : ContentPage
     private async void ReportConversationClicked(object? sender, EventArgs e)
     {
         if (!Guid.TryParse(_remoteConversationId, out var conversationId)) return;
-        var reason = await DisplayPromptAsync("الإبلاغ عن المحادثة", "اكتب سبب البلاغ:", "إرسال", "إلغاء", "السبب", 200, Keyboard.Text);
+        var reason = await DisplayPromptAsync(AppLocalization.TranslateSourceText("الإبلاغ عن المحادثة"), AppLocalization.TranslateSourceText("اكتب سبب البلاغ:"), "إرسال", "إلغاء", "السبب", 200, Keyboard.Text);
         if (string.IsNullOrWhiteSpace(reason)) return;
 
         try
@@ -1863,7 +1867,7 @@ public partial class ChatPage : ContentPage
             .ToList();
         if (!archived) values.Add(_remoteConversationId);
         Preferences.Default.Set("himo_archived_conversations", string.Join(',', values.Distinct(StringComparer.OrdinalIgnoreCase)));
-        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المحادثة"), archived ? "تم إلغاء أرشفة المحادثة." : Himo.Services.AppLocalization.TranslateSourceText("تمت أرشفة المحادثة."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المحادثة"), archived ? AppLocalization.TranslateSourceText("تم إلغاء أرشفة المحادثة.") : Himo.Services.AppLocalization.TranslateSourceText("تمت أرشفة المحادثة."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     private async void AudioCallClicked(object? sender, EventArgs e)
@@ -2332,7 +2336,7 @@ public partial class ChatPage : ContentPage
     {
         if (!Guid.TryParse(_remoteConversationId, out var conversationId) || message.ConversationId != conversationId) return;
         if (_chat.UpdateMessageDeleted(message.Id.ToString("D")))
-            RefreshMessagesView(scrollToEnd: false);
+            RefreshMessagesView(scrollToEnd: false, forceReset: true);
     }
 
     private void OnMessageDeliveryChanged(object? sender, (Guid MessageId, Guid UserId, string Status) e)
@@ -2354,13 +2358,13 @@ public partial class ChatPage : ContentPage
         if (!Guid.TryParse(_remoteConversationId, out var conversationId) || e.ConversationId != conversationId) return;
         _remoteTyping = e.IsTyping;
         if (StatusLabel is not null)
-            StatusLabel.Text = e.IsTyping ? "يكتب الآن..." : "متصل الآن";
+            StatusLabel.Text = e.IsTyping ? AppLocalization.TranslateSourceText("يكتب الآن...") : AppLocalization.TranslateSourceText("متصل الآن");
     }
 
     private void SetPresenceText(bool isOnline)
     {
         if (_remoteTyping) return;
-        if (StatusLabel is not null) StatusLabel.Text = isOnline ? "متصل الآن" : "غير متصل";
+        if (StatusLabel is not null) StatusLabel.Text = isOnline ? AppLocalization.TranslateSourceText("متصل الآن") : AppLocalization.TranslateSourceText("غير متصل");
         if (StatusDot is not null)
         {
             StatusDot.Fill = isOnline
@@ -4184,7 +4188,7 @@ public partial class ChatPage : ContentPage
     private async void EditClicked(object? sender, EventArgs e)
     {
         if (sender is not Button button || button.BindingContext is not ChatMessage message || !message.IsMine || !Guid.TryParse(message.RemoteId, out var messageId) || message.IsAttachment) return;
-        var edited = await DisplayPromptAsync("تعديل الرسالة", "عدّل النص:", initialValue: message.Text, maxLength: 4000, keyboard: Keyboard.Text);
+        var edited = await DisplayPromptAsync(AppLocalization.TranslateSourceText("تعديل الرسالة"), AppLocalization.TranslateSourceText("عدّل النص:"), initialValue: message.Text, maxLength: 4000, keyboard: Keyboard.Text);
         if (edited is null) return;
         edited = edited.Trim();
         if (string.IsNullOrWhiteSpace(edited) || string.Equals(edited, message.Text, StringComparison.Ordinal)) return;
@@ -4211,14 +4215,14 @@ public partial class ChatPage : ContentPage
             return;
         }
 
-        var confirm = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الرسالة"), "هل تريد حذف الرسالة؟", Himo.Services.AppLocalization.TranslateSourceText("حذف"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
+        var confirm = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الرسالة"), AppLocalization.TranslateSourceText("هل تريد حذف الرسالة؟"), Himo.Services.AppLocalization.TranslateSourceText("حذف"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
         if (!confirm) return;
 
         try
         {
             var deleted = await _api.DeleteMessageAsync(messageId);
             _chat.UpdateMessageDeleted(deleted.Id.ToString("D"));
-            RefreshMessagesView(scrollToEnd: false);
+            RefreshMessagesView(scrollToEnd: false, forceReset: true);
         }
         catch (Exception ex)
         {
@@ -4287,7 +4291,7 @@ public partial class ChatPage : ContentPage
             actions.Add("حذف");
         }
 
-        var selected = await DisplayActionSheetAsync("خيارات الرسالة", "إلغاء", null, actions.ToArray());
+        var selected = await DisplayActionSheetAsync(AppLocalization.TranslateSourceText("خيارات الرسالة"), "إلغاء", null, actions.ToArray());
         if (string.Equals(selected, "تحديد", StringComparison.Ordinal))
             SelectMessageClicked(button, EventArgs.Empty);
         else if (string.Equals(selected, "رد", StringComparison.Ordinal))
@@ -4398,7 +4402,7 @@ public partial class ChatPage : ContentPage
                 selected.Select(x => string.IsNullOrWhiteSpace(x.Text) ? "رسالة مرفقة" : x.Text.Trim()));
             await Share.Default.RequestAsync(new ShareTextRequest
             {
-                Title = "مشاركة الرسائل",
+                Title = AppLocalization.TranslateSourceText("مشاركة الرسائل"),
                 Text = text
             });
             ExitSelectionMode();
@@ -4419,7 +4423,7 @@ public partial class ChatPage : ContentPage
 
                 await Share.Default.RequestAsync(new ShareFileRequest
                 {
-                    Title = "مشاركة المرفق",
+                    Title = AppLocalization.TranslateSourceText("مشاركة المرفق"),
                     File = new ShareFile(path)
                 });
             }
@@ -4427,7 +4431,7 @@ public partial class ChatPage : ContentPage
             {
                 await Share.Default.RequestAsync(new ShareTextRequest
                 {
-                    Title = "مشاركة الرسالة",
+                    Title = AppLocalization.TranslateSourceText("مشاركة الرسالة"),
                     Text = message.Text ?? string.Empty
                 });
             }
@@ -4544,7 +4548,7 @@ public partial class ChatPage : ContentPage
         }
 
         ExitSelectionMode();
-        RefreshMessagesView(scrollToEnd: false);
+        RefreshMessagesView(scrollToEnd: false, forceReset: true);
 
         if (failures.Count > 0)
         {
@@ -4821,9 +4825,9 @@ public partial class ChatPage : ContentPage
             var date = message.SentAt.Date;
             message.DateSeparatorText = previousDate != date
                 ? date == DateTime.Today
-                    ? "اليوم"
+                    ? AppLocalization.TranslateSourceText("اليوم")
                     : date == DateTime.Today.AddDays(-1)
-                        ? "أمس"
+                        ? AppLocalization.TranslateSourceText("أمس")
                         : date.ToString("dd/MM/yyyy")
                 : string.Empty;
 
@@ -4831,14 +4835,14 @@ public partial class ChatPage : ContentPage
         }
     }
 
-    private void SetMessagesItemsSource(IReadOnlyList<ChatMessage> messages)
+    private void SetMessagesItemsSource(IReadOnlyList<ChatMessage> messages, bool forceReset = false)
     {
         var bindTrace = Stopwatch.StartNew();
         System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] SetMessagesItemsSource START count={messages.Count} mainThread={MainThread.IsMainThread}");
         if (!MainThread.IsMainThread)
         {
             var snapshot = messages.ToList();
-            MainThread.BeginInvokeOnMainThread(() => SetMessagesItemsSource(snapshot));
+            MainThread.BeginInvokeOnMainThread(() => SetMessagesItemsSource(snapshot, forceReset));
             return;
         }
 
@@ -4860,7 +4864,7 @@ public partial class ChatPage : ContentPage
         var currentKeys = _visibleMessages.Select(GetMessageUiKey).ToList();
         var desiredKeys = orderedMessages.Select(GetMessageUiKey).ToList();
 
-        if (currentKeys.SequenceEqual(desiredKeys, StringComparer.Ordinal))
+        if (!forceReset && currentKeys.SequenceEqual(desiredKeys, StringComparer.Ordinal))
         {
             System.Diagnostics.Debug.WriteLine($"[HimoOpenTrace] SetMessagesItemsSource unchanged total={bindTrace.ElapsedMilliseconds}ms");
             return;
@@ -5007,15 +5011,42 @@ public partial class ChatPage : ContentPage
             if (Messages?.Handler?.PlatformView is RecyclerView recycler &&
                 recycler.GetLayoutManager() is LinearLayoutManager layoutManager)
             {
-                // Let RecyclerView anchor the short first page from the bottom.
-                // Do not issue a second native scroll here: that extra layout pass
-                // was visible as a long Android HWUI/Davey stall on slower devices.
                 layoutManager.ReverseLayout = false;
                 layoutManager.StackFromEnd = true;
-                _initialPositioningLatest = false;
-                _allowOlderPaging = true;
-                _lastVisibleItemIndex = Math.Max(-1, _visibleMessages.Count - 1);
-                ScrollToBottomButton?.SetValue(IsVisibleProperty, false);
+
+                // StackFromEnd only anchors content when it is shorter than the
+                // viewport. With a normal multi-screen history it can still leave
+                // the first (oldest) item at the top. Post an explicit scroll after
+                // the adapter has received the initial collection reset.
+                var expectedLastIndex = _visibleMessages.Count - 1;
+                recycler.Post(() =>
+                {
+                    try
+                    {
+                        if (!IsConversationVisible || Messages?.Handler?.PlatformView != recycler)
+                            return;
+
+                        var lastIndex = _visibleMessages.Count - 1;
+                        var adapter = recycler.GetAdapter();
+                        if (lastIndex >= 0 && adapter is not null && adapter.ItemCount > lastIndex)
+                            recycler.ScrollToPosition(lastIndex);
+
+                        _initialPositioningLatest = false;
+                        _allowOlderPaging = true;
+                        _lastVisibleItemIndex = lastIndex;
+                        ScrollToBottomButton?.SetValue(IsVisibleProperty, false);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[Himo ChatPage] Initial latest-message scroll failed: {ex}");
+                    }
+                });
+
+                // Do not enable older-message paging until the posted initial
+                // positioning has completed; otherwise the top-edge detector may
+                // request older history during the first layout pass.
+                _lastVisibleItemIndex = expectedLastIndex;
                 return;
             }
         }
@@ -5252,15 +5283,19 @@ public partial class ChatPage : ContentPage
             ScrollToBottomButton.IsVisible = false;
     }
 
-    private void RefreshMessagesView(bool scrollToEnd)
+    private void RefreshMessagesView(bool scrollToEnd, bool forceReset = false)
     {
         if (!MainThread.IsMainThread)
         {
-            MainThread.BeginInvokeOnMainThread(() => RefreshMessagesView(scrollToEnd));
+            MainThread.BeginInvokeOnMainThread(() => RefreshMessagesView(scrollToEnd, forceReset));
             return;
         }
 
-        AppendNewMessagesToVisible();
+        if (forceReset)
+            SetMessagesItemsSource(_visibleMessages.ToList(), forceReset: true);
+        else
+            AppendNewMessagesToVisible();
+
         EmptyState?.SetValue(IsVisibleProperty, _visibleMessages.Count == 0);
 
         if (scrollToEnd && _visibleMessages.Count > 0)

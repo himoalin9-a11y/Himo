@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Himo.Views.LoginPage"
              Title="Himo"
-             FlowDirection="RightToLeft"
+             FlowDirection="LeftToRight"
              Shell.NavBarIsVisible="False"
              BackgroundColor="#050A24">
 
@@ -45,6 +45,32 @@
 
         <ScrollView x:Name="LoginScroll" VerticalScrollBarVisibility="Never">
             <VerticalStackLayout Padding="24,27,24,30" Spacing="0">
+                <HorizontalStackLayout HorizontalOptions="End" Spacing="8" Margin="0,0,0,10"
+                                       FlowDirection="LeftToRight">
+                    <Button x:Name="LoginLanguageButton"
+                            Text="🌐 English"
+                            Clicked="LoginLanguageButtonClicked"
+                            HeightRequest="42"
+                            MinimumWidthRequest="116"
+                            Padding="14,0"
+                            CornerRadius="14"
+                            BackgroundColor="#17113F"
+                            BorderColor="#7657C9"
+                            BorderWidth="1"
+                            TextColor="#E8DFFF"
+                            FontSize="13"
+                            FontAttributes="Bold" />
+                    <Button x:Name="LoginMoreButton"
+                            Text="⋮"
+                            Clicked="LoginMoreButtonClicked"
+                            WidthRequest="42" HeightRequest="42"
+                            Padding="0" CornerRadius="14"
+                            BackgroundColor="#17113F"
+                            BorderColor="#7657C9" BorderWidth="1"
+                            TextColor="#E8DFFF" FontSize="25"
+                            FontAttributes="Bold"
+                            SemanticProperties.Description="خيارات إضافية" />
+                </HorizontalStackLayout>
                 <!-- Himo wordmark and custom H mark, matching the approved mockup. -->
                 <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="12" HorizontalOptions="Center"
                       FlowDirection="LeftToRight" Margin="0,7,0,34">

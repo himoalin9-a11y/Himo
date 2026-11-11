@@ -1,4 +1,4 @@
-using Himo.Models;
+﻿using Himo.Models;
 using Himo.Services;
 
 namespace Himo.Views;
@@ -42,7 +42,34 @@ public partial class LoginPage : ContentPage
         _navigationInProgress = false;
         if (ModeButton is not null)
             ModeButton.IsEnabled = !_busy;
+        if (LoginMoreButton is not null)
+            LoginMoreButton.IsEnabled = !_busy && !_navigationInProgress;
     }
+    private async void LoginMoreButtonClicked(object? sender, EventArgs e)
+    {
+        if (_busy || _navigationInProgress) return;
+        var selectedDisplay = await DisplayActionSheetAsync(
+            AppLocalization.TranslateSourceText("خيارات تسجيل الدخول"), AppLocalization.TranslateSourceText("إلغاء"), null,
+            AppLocalization.TranslateSourceText("إضافة كهاتف مساعد"));
+        var selected = AppLocalization.ResolveSourceText(selectedDisplay, "إضافة كهاتف مساعد");
+        if (!string.Equals(selected, "إضافة كهاتف مساعد", StringComparison.Ordinal)) return;
+
+        try
+        {
+            _navigationInProgress = true;
+            if (LoginMoreButton is not null) LoginMoreButton.IsEnabled = false;
+            var page = new MobileCompanionPage(_api, _account);
+            NavigationPage.SetHasNavigationBar(page, false);
+            await Navigation.PushModalAsync(new NavigationPage(page), animated: true);
+        }
+        catch (Exception ex)
+        {
+            _navigationInProgress = false;
+            if (LoginMoreButton is not null) LoginMoreButton.IsEnabled = true;
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إضافة كهاتف مساعد"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+        }
+    }
+
     private async void PrimaryClicked(object sender, EventArgs e)
     {
         var primaryButton = PrimaryButton;
@@ -64,7 +91,7 @@ public partial class LoginPage : ContentPage
         }
         if (password.Length < 8)
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تنبيه"), "كلمة المرور يجب أن تكون 8 أحرف على الأقل.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تنبيه"),Himo.Services.AppLocalization.TranslateSourceText("كلمة المرور يجب أن تكون 8 أحرف على الأقل."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             passwordEntry.Focus();
             return;
         }
@@ -82,7 +109,7 @@ public partial class LoginPage : ContentPage
         {
             System.Diagnostics.Debug.WriteLine($"[Himo Login] Failed: {ex}");
             SetStatus("تعذر تسجيل الدخول.");
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تسجيل الدخول"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تسجيل الدخول"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -118,7 +145,7 @@ public partial class LoginPage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo Password Reset] Unable to open recovery page: {ex}");
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("استعادة كلمة المرور"), "تعذر فتح صفحة الاستعادة. حاول مرة أخرى.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("استعادة كلمة المرور"),Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح صفحة الاستعادة. حاول مرة أخرى."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -198,7 +225,7 @@ public partial class LoginPage : ContentPage
             System.Diagnostics.Debug.WriteLine($"[Himo AuthNav] Unable to open registration page: {ex}");
             _navigationInProgress = false;
             if (ModeButton is not null) ModeButton.IsEnabled = !_busy;
-            await DisplayAlertAsync("Himo", "تعذر فتح واجهة إنشاء الحساب. حاول مرة أخرى.", "حسنًا");
+            await DisplayAlertAsync("Himo",Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح واجهة إنشاء الحساب. حاول مرة أخرى."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -253,6 +280,7 @@ public partial class LoginPage : ContentPage
         _busy = value;
         if (PrimaryButton is not null) PrimaryButton.IsEnabled = !value;
         if (ModeButton is not null) ModeButton.IsEnabled = !value && !_navigationInProgress;
+        if (LoginMoreButton is not null) LoginMoreButton.IsEnabled = !value && !_navigationInProgress;
         if (ForgotPasswordButton is not null) ForgotPasswordButton.IsEnabled = !value;
         if (EmailEntry is not null) EmailEntry.IsEnabled = !value;
         if (PasswordEntry is not null) PasswordEntry.IsEnabled = !value;

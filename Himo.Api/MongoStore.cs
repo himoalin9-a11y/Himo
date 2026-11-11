@@ -1004,7 +1004,7 @@ sealed class MongoStore
             var unread = (int)_messages.CountDocuments(unreadFilter);
             var isBlocked = isDirect && !isSelfChat && other is not null && _blockedUsers.Find(x => (x.BlockerUserId == uid && x.BlockedUserId == other.Id) || (x.BlockerUserId == other.Id && x.BlockedUserId == uid)).FirstOrDefault() is not null;
             Guid? otherIdParsed = other is not null && Guid.TryParse(other.Id, out var oid) ? oid : null;
-            result.Add(new ConversationDto(Guid.Parse(conversation.Id), isDirect && other is not null ? other.Name : conversation.Name, last?.Text ?? string.Empty, ParseTime(conversation.UpdatedAt, now), unread, otherIdParsed, other?.ProfilePhoto is { Length: > 0 }, other?.ProfilePhotoVersion ?? 0L, state?.IsArchived ?? false, state?.IsMuted ?? false, isBlocked, conversation.IsGroup, last?.AttachmentContentType));
+            result.Add(new ConversationDto(Guid.Parse(conversation.Id), isDirect && other is not null ? other.Name : conversation.Name, last?.Text ?? string.Empty, ParseTime(conversation.UpdatedAt, now), unread, otherIdParsed, other?.ProfilePhoto is { Length: > 0 }, other?.ProfilePhotoVersion ?? 0L, state?.IsArchived ?? false, state?.IsMuted ?? false, isBlocked, conversation.IsGroup));
         }
         return result.OrderByDescending(x => x.UpdatedAt).ToArray();
     }
@@ -1811,15 +1811,56 @@ sealed class MongoStore
 
     public MessageDto? DeleteMessage(Guid messageId, Guid userId)
     {
-        EnsureIndexes(); var m = _messages.Find(x => x.Id == GuidText(messageId) && x.SenderUserId == GuidText(userId) && x.DeletedAt == null).FirstOrDefault();
-        if (m is null) return null;
+        EnsureIndexes();
+
+        // Older attachment records may contain GUIDs serialized in a different
+        // standard format or letter casing. Match the same GUID value without
+        // weakening the sender-ownership check.
+        var messageIds = GuidTextVariants(messageId);
+        var senderIds = GuidTextVariants(userId);
+        var filter = Builders<MMessage>.Filter.In(x => x.Id, messageIds)
+            & Builders<MMessage>.Filter.In(x => x.SenderUserId, senderIds)
+            & Builders<MMessage>.Filter.Eq(x => x.DeletedAt, null);
+
+        var existing = _messages.Find(filter).FirstOrDefault();
+        if (existing is null) return null;
+
         var deleted = NowText();
-        var update = _messages.UpdateOne(x => x.Id == m.Id && x.SenderUserId == GuidText(userId) && x.DeletedAt == null,
-            Builders<MMessage>.Update.Set(x => x.Text, "تم حذف هذه الرسالة").Set(x => x.DeletedAt, deleted).Unset(x => x.EditedAt));
-        if (update.ModifiedCount == 0) return null;
-        DeleteGridFile(m);
-        _messages.UpdateOne(x => x.Id == m.Id, Builders<MMessage>.Update.Unset(x => x.AttachmentData).Unset(x => x.AttachmentGridFsId).Unset(x => x.AudioGridFsId));
-        m.Text = "تم حذف هذه الرسالة"; m.DeletedAt = deleted; m.EditedAt = null; return ToMessageDto(m, userId);
+        var update = Builders<MMessage>.Update
+            .Set(x => x.Text, "تم حذف هذه الرسالة")
+            .Set(x => x.DeletedAt, deleted)
+            .Unset(x => x.EditedAt)
+            .Unset(x => x.AttachmentData)
+            .Unset(x => x.AttachmentGridFsId)
+            .Unset(x => x.AudioGridFsId)
+            .Unset(x => x.AttachmentFileName)
+            .Unset(x => x.AttachmentContentType)
+            .Unset(x => x.AttachmentSize);
+
+        // One atomic update prevents a race between checking the message and
+        // marking it deleted. ReturnDocument.After also gives the response the
+        // cleared attachment metadata, so the client cannot keep rendering it.
+        var deletedMessage = _messages.FindOneAndUpdate(
+            filter,
+            update,
+            new FindOneAndUpdateOptions<MMessage> { ReturnDocument = ReturnDocument.After });
+
+        if (deletedMessage is null) return null;
+
+        // Delete the GridFS object only after the message has been marked deleted.
+        // The database record remains deleted even if an orphaned GridFS object
+        // has already disappeared or cannot be removed at this moment.
+        DeleteGridFile(existing);
+        return ToMessageDto(deletedMessage, userId);
+    }
+
+    private static string[] GuidTextVariants(Guid id)
+    {
+        var formats = new[] { "D", "N", "B", "P" };
+        return formats
+            .SelectMany(format => new[] { id.ToString(format), id.ToString(format).ToUpperInvariant() })
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
     }
 
     public MessageDto AddAttachmentMessage(Guid messageId, Guid conversationId, Guid userId, string senderPhone, string displayText, string fileName, string contentType, long size, Stream attachmentStream, CancellationToken cancellationToken = default)

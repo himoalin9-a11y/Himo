@@ -1,4 +1,5 @@
-using System.Collections;
+﻿using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Resources;
@@ -27,11 +28,14 @@ public static class AppLocalization
     private static readonly ConditionalWeakTable<BindableObject, PropertyTextState> PropertyStates = new();
     private static readonly ConditionalWeakTable<BindableObject, ObservedNodeState> ObservedNodes = new();
     private static readonly ConditionalWeakTable<Page, AttachedPageState> AttachedPages = new();
-    private static readonly string[] SupportedCodes = { "ar", "en", "fr", "tr", "ur", "es", "id" };
-    private static CultureInfo _culture = CultureInfo.GetCultureInfo("ar");
+    private static readonly ConcurrentDictionary<string, string> TranslatedTextToSource = new(StringComparer.Ordinal);
+    private static readonly string[] SupportedCodes = { "ar", "en", "fr", "tr", "ur", "es", "id", "de", "pt", "zh-hans", "hi", "ja" };
+    private static CultureInfo _culture = CultureInfo.GetCultureInfo("en");
 
-    public static string CurrentLanguageCode => _culture.TwoLetterISOLanguageName;
-    public static bool IsRightToLeft => CurrentLanguageCode is "ar" or "ur";
+    public static event EventHandler? LanguageChanged;
+
+    public static string CurrentLanguageCode => _culture.Name;
+    public static bool IsRightToLeft => CurrentLanguageCode.Equals("ar", StringComparison.OrdinalIgnoreCase) || CurrentLanguageCode.Equals("ur", StringComparison.OrdinalIgnoreCase);
     public static FlowDirection PreferredFlowDirection => IsRightToLeft ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
 
     /// <summary>Loads the saved culture before the first application page is shown.</summary>
@@ -42,7 +46,7 @@ public static class AppLocalization
         {
             // Migrate the two-language preference written by the earlier language patch.
             // This keeps an already selected English/Arabic setting instead of resetting it.
-            stored = Preferences.Default.Get("Himo.AppLanguageCode", "ar");
+            stored = Preferences.Default.Get("Himo.AppLanguageCode", "en");
             Preferences.Default.Set(PreferenceKey, NormalizeCultureCode(stored));
         }
 
@@ -58,6 +62,8 @@ public static class AppLocalization
 
         MainThread.BeginInvokeOnMainThread(() =>
         {
+            LanguageChanged?.Invoke(null, EventArgs.Empty);
+
             var app = Application.Current;
             if (app is null) return;
 
@@ -76,6 +82,12 @@ public static class AppLocalization
                 {
                     _ = ApplyToPageInBatchesAsync(page, batchSize: 64, skipCollectionViewContents: true);
                 }
+
+                // Modal pages are not descendants of Shell.CurrentPage. Refresh them
+                // separately so dialogs/pages opened before a language switch do not
+                // retain text in the previous language.
+                foreach (var modalPage in page.Navigation.ModalStack)
+                    _ = ApplyToPageInBatchesAsync(modalPage, batchSize: 64, skipCollectionViewContents: true);
             }
 
         });
@@ -84,12 +96,54 @@ public static class AppLocalization
     public static string T(string key)
     {
         if (string.IsNullOrWhiteSpace(key)) return key;
-        return ResourceManager.GetString(key, _culture) ?? key;
+        var translated = ResourceManager.GetString(key, _culture) ?? key;
+        var source = ResourceManager.GetString(key, CultureInfo.InvariantCulture);
+        if (!string.IsNullOrWhiteSpace(source)) RememberTranslatedSource(source, translated);
+        return translated;
     }
 
     /// <summary>Translates a fixed source-language phrase when a resource exists; otherwise returns it unchanged.</summary>
     public static string TranslateSourceText(string? sourceText)
-        => string.IsNullOrEmpty(sourceText) ? sourceText ?? string.Empty : TranslateText(sourceText);
+    {
+        if (string.IsNullOrEmpty(sourceText)) return sourceText ?? string.Empty;
+        var translated = TranslateText(sourceText);
+        RememberTranslatedSource(sourceText, translated);
+        return translated;
+    }
+
+    private static void RememberTranslatedSource(string source, string translated)
+    {
+        if (string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(translated) ||
+            string.Equals(source, translated, StringComparison.Ordinal) ||
+            !source.Any(ch => ch is >= '\u0600' and <= '\u06FF')) return;
+
+        var normalizedSource = Regex.Replace(source.Trim(), @"[ \t]+", " ");
+        var isKnownSource = SourceTextToKey.Value.ContainsKey(normalizedSource) ||
+                            SourceTextTemplates.Value.Any(template => template.Matcher.IsMatch(source.Trim()));
+        if (!isKnownSource) return;
+
+        TranslatedTextToSource.AddOrUpdate(
+            translated, source,
+            (_, existing) => string.Equals(existing, source, StringComparison.Ordinal) ? existing : string.Empty);
+    }
+
+    private static string RestoreSourceText(string text)
+        => TranslatedTextToSource.TryGetValue(text, out var source) && !string.IsNullOrEmpty(source)
+            ? source
+            : text;
+
+    /// <summary>Maps a localized action-sheet label back to its stable source value so
+    /// existing command handlers and persisted preference keys remain unchanged.</summary>
+    public static string ResolveSourceText(string? displayedText, params string[] sourceOptions)
+    {
+        if (string.IsNullOrEmpty(displayedText)) return displayedText ?? string.Empty;
+        foreach (var sourceOption in sourceOptions)
+        {
+            if (string.Equals(displayedText, TranslateSourceText(sourceOption), StringComparison.Ordinal))
+                return sourceOption;
+        }
+        return displayedText;
+    }
 
     public static void AttachToPage(Page page)
     {
@@ -301,6 +355,9 @@ public static class AppLocalization
                 // persist their original Arabic values as domain/preference keys.
                 TranslateProperty(picker, nameof(Picker.Title), picker.Title, value => picker.Title = value);
                 break;
+            case RadioButton radioButton when radioButton.Content is string radioText:
+                TranslateProperty(radioButton, nameof(RadioButton.Content), radioText, value => radioButton.Content = value);
+                break;
             // ToolbarItem and SwipeItem derive from MenuItem, so handle the
             // more specific types first to keep every switch arm reachable.
             case ToolbarItem toolbarItem:
@@ -357,6 +414,7 @@ public static class AppLocalization
             SearchBar _ => propertyName == nameof(SearchBar.Placeholder),
             Editor _ => propertyName == nameof(Editor.Placeholder),
             Picker _ => propertyName == nameof(Picker.Title),
+            RadioButton _ => propertyName == nameof(RadioButton.Content),
             // Keep derived MenuItem types before MenuItem itself.
             ToolbarItem _ => propertyName == nameof(ToolbarItem.Text),
             SwipeItem _ => propertyName == nameof(SwipeItem.Text),
@@ -389,14 +447,14 @@ public static class AppLocalization
         var state = PropertyStates.GetValue(owner, _ => new PropertyTextState());
         if (!state.Values.TryGetValue(propertyName, out var textState))
         {
-            textState = new SingleTextState(currentValue, currentValue);
+            textState = new SingleTextState(RestoreSourceText(currentValue), currentValue);
             state.Values[propertyName] = textState;
         }
         else if (!string.Equals(currentValue, textState.LastApplied, StringComparison.Ordinal))
         {
             // A control was updated by the page's own logic. Treat that new value
             // as the new source phrase instead of restoring stale text later.
-            textState.Original = currentValue;
+            textState.Original = RestoreSourceText(currentValue);
         }
 
         var translated = TranslateText(textState.Original);
@@ -424,9 +482,10 @@ public static class AppLocalization
             lookupText = lookupText[index..];
         }
 
-        if (SourceTextToKey.Value.TryGetValue(lookupText, out var key))
+        var normalizedLookup = Regex.Replace(lookupText, @"[ \t]+", " ").Trim();
+        if (SourceTextToKey.Value.TryGetValue(normalizedLookup, out var key))
         {
-            var translated = ResourceManager.GetString(key, _culture) ?? lookupText;
+            var translated = ResourceManager.GetString(key, _culture) ?? normalizedLookup;
             return leading + marker + translated + trailing;
         }
 
@@ -453,6 +512,7 @@ public static class AppLocalization
                     return false;
                 var suffix = trimmed[pair.Key.Length..];
                 return pair.Key.EndsWith(':') || pair.Key.EndsWith('@') ||
+                       ((pair.Key is "مراسلة" or "إزالة") && suffix.StartsWith(" ", StringComparison.Ordinal)) ||
                        suffix.StartsWith("\n", StringComparison.Ordinal) ||
                        suffix.StartsWith("\r\n", StringComparison.Ordinal) ||
                        suffix.StartsWith(" •", StringComparison.Ordinal);
@@ -533,7 +593,20 @@ public static class AppLocalization
             if (!value.Any(ch => ch is >= '\u0600' and <= '\u06FF'))
                 continue;
 
-            map.TryAdd(value.Trim(), key);
+            var trimmed = value.Trim();
+            map.TryAdd(trimmed, key);
+
+            // Many visual themes and attachment previews prefix a translatable
+            // phrase with an emoji. Keep the same resource key available when a
+            // page displays the plain text without that decorative marker.
+            var plainAlias = Regex.Replace(trimmed, @"^(?:[\p{So}\p{Sk}\p{Sm}]|\s)+", string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(plainAlias))
+                map.TryAdd(plainAlias, key);
+
+            // A few UI surfaces omit the leading verb while preserving the same
+            // fixed phrase (for example, "محادثة جديدة").
+            if (trimmed.StartsWith("بدء ", StringComparison.Ordinal))
+                map.TryAdd(trimmed[4..], key);
         }
         return map;
     }
@@ -546,7 +619,7 @@ public static class AppLocalization
         }
         catch (CultureNotFoundException)
         {
-            _culture = CultureInfo.GetCultureInfo("ar");
+            _culture = CultureInfo.GetCultureInfo("en");
         }
 
         CultureInfo.DefaultThreadCurrentCulture = _culture;
@@ -557,8 +630,8 @@ public static class AppLocalization
 
     private static string NormalizeCultureCode(string? code)
     {
-        var normalized = (code ?? "ar").Trim().ToLowerInvariant();
-        return SupportedCodes.Contains(normalized, StringComparer.Ordinal) ? normalized : "ar";
+        var normalized = (code ?? "en").Trim().ToLowerInvariant();
+        return SupportedCodes.Contains(normalized, StringComparer.Ordinal) ? normalized : "en";
     }
 
     private sealed record SourceTextTemplate(string Key, string Source, Regex Matcher, string[] Placeholders);

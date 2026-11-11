@@ -1,4 +1,4 @@
-using Himo.Models;
+﻿using Himo.Models;
 using Himo.Services;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls.Shapes;
@@ -187,7 +187,7 @@ public sealed class GroupConversationInfoPage : ContentPage
         catch (Exception ex)
         {
             _detailsLoaded = false;
-            await DisplayAlertAsync("معلومات المجموعة", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("معلومات المجموعة"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -253,7 +253,10 @@ public sealed class GroupConversationInfoPage : ContentPage
         if (_details.CanShareInviteLink) options.Add("مشاركة");
         if (options.Count == 0) return;
 
-        var selected = await DisplayActionSheetAsync("المجموعة", "إلغاء", null, options.ToArray());
+        var selectedDisplay = await DisplayActionSheetAsync(
+            AppLocalization.TranslateSourceText("المجموعة"), AppLocalization.TranslateSourceText("إلغاء"), null,
+            options.Select(AppLocalization.TranslateSourceText).ToArray());
+        var selected = AppLocalization.ResolveSourceText(selectedDisplay, options.ToArray());
         switch (selected)
         {
             case "تعديل الاسم": await EditNameAsync(); break;
@@ -305,7 +308,7 @@ public sealed class GroupConversationInfoPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذر حفظ التعديل", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر حفظ التعديل"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return false;
         }
         finally { _working = false; }
@@ -323,7 +326,7 @@ public sealed class GroupConversationInfoPage : ContentPage
             await using var stream = await file.OpenReadAsync();
             using var memory = new MemoryStream();
             await stream.CopyToAsync(memory);
-            if (memory.Length > 4 * 1024 * 1024) { await DisplayAlertAsync("صورة المجموعة", "الحد الأقصى للصورة 4 ميغابايت.", "حسنًا"); return; }
+            if (memory.Length > 4 * 1024 * 1024) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("صورة المجموعة"),Himo.Services.AppLocalization.TranslateSourceText("الحد الأقصى للصورة 4 ميغابايت."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); return; }
             var type = file.ContentType;
             if (string.IsNullOrWhiteSpace(type)) type = global::System.IO.Path.GetExtension(file.FileName).ToLowerInvariant() switch { ".png" => "image/png", ".webp" => "image/webp", _ => "image/jpeg" };
             _working = true;
@@ -331,21 +334,21 @@ public sealed class GroupConversationInfoPage : ContentPage
             _details = await _api.GetGroupDetailsAsync(_groupId);
             await LoadGroupPhotoAsync(_details.HasPhoto, _details.PhotoVersion);
         }
-        catch (Exception ex) { await DisplayAlertAsync("تعذر تغيير الصورة", ex.Message, "حسنًا"); }
+        catch (Exception ex) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر تغيير الصورة"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
         finally { _working = false; }
     }
 
     private async Task DeletePhotoAsync()
     {
         if (_details?.CanManage != true || !_details.HasPhoto) return;
-        if (!await DisplayAlertAsync("إزالة صورة المجموعة", "هل تريد إزالة الصورة الحالية؟", "إزالة", "إلغاء")) return;
+        if (!await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إزالة صورة المجموعة"),Himo.Services.AppLocalization.TranslateSourceText("هل تريد إزالة الصورة الحالية؟"),Himo.Services.AppLocalization.TranslateSourceText("إزالة"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"))) return;
         try
         {
             await _api.DeleteGroupPhotoAsync(_groupId);
             _details = await _api.GetGroupDetailsAsync(_groupId);
             await LoadGroupPhotoAsync(false, _details.PhotoVersion);
         }
-        catch (Exception ex) { await DisplayAlertAsync("تعذر إزالة الصورة", ex.Message, "حسنًا"); }
+        catch (Exception ex) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر إزالة الصورة"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
     }
 
     private async Task OpenGroupPhotoAsync()
@@ -465,7 +468,7 @@ public sealed class GroupEditNamePage : ContentPage
 
     private async void ChooseEmojiClicked(object? sender, EventArgs e)
     {
-        var emoji = await DisplayActionSheetAsync("اختر رمزًا", "إلغاء", null, "❤️", "💕", "🌸", "✨", "⭐", "🎉", "👨‍👩‍👧‍👦", "🤍", "💜", "🌷", "😊", "🎯", "🏡");
+        var emoji = await DisplayActionSheetAsync(Himo.Services.AppLocalization.TranslateSourceText("اختر رمزًا"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"), null, "❤️", "💕", "🌸", "✨", "⭐", "🎉", "👨‍👩‍👧‍👦", "🤍", "💜", "🌷", "😊", "🎯", "🏡");
         if (string.IsNullOrWhiteSpace(emoji) || emoji == "إلغاء") return;
         var current = (_nameEntry.Text ?? string.Empty).Trim();
         var first = current.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
@@ -481,7 +484,7 @@ public sealed class GroupEditNamePage : ContentPage
         var name = (_nameEntry.Text ?? string.Empty).Trim();
         if (name.Length < 2)
         {
-            await DisplayAlertAsync("اسم المجموعة", "اكتب اسمًا من حرفين على الأقل.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("اسم المجموعة"),Himo.Services.AppLocalization.TranslateSourceText("اكتب اسمًا من حرفين على الأقل."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
         _saving = true;
@@ -489,7 +492,7 @@ public sealed class GroupEditNamePage : ContentPage
         {
             if (await _save(name)) await Navigation.PopAsync();
         }
-        catch (Exception ex) { await DisplayAlertAsync("تعذر حفظ الاسم", ex.Message, "حسنًا"); }
+        catch (Exception ex) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر حفظ الاسم"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
         finally { _saving = false; }
     }
 }
@@ -547,7 +550,7 @@ public sealed class GroupEditDescriptionPage : ContentPage
         var description = (_descriptionEntry.Text ?? string.Empty).Trim();
         if (description.Length > 500)
         {
-            await DisplayAlertAsync("وصف المجموعة", "الحد الأقصى 500 حرف.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("وصف المجموعة"),Himo.Services.AppLocalization.TranslateSourceText("الحد الأقصى 500 حرف."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
         _saving = true;
@@ -555,7 +558,7 @@ public sealed class GroupEditDescriptionPage : ContentPage
         {
             if (await _save(description)) await Navigation.PopAsync();
         }
-        catch (Exception ex) { await DisplayAlertAsync("تعذر حفظ الوصف", ex.Message, "حسنًا"); }
+        catch (Exception ex) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر حفظ الوصف"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
         finally { _saving = false; }
     }
 }
@@ -724,10 +727,7 @@ public sealed class GroupMembersPage : ContentPage
     private async void ClearGroupChatClicked(object? sender, EventArgs e)
     {
         if (_groupActionBusy) return;
-        var confirmed = await DisplayAlertAsync(
-            "مسح محتوى الدردشة",
-            "سيتم مسح الرسائل من حسابك فقط، ولن تُحذف من حسابات بقية أعضاء المجموعة. هل تريد المتابعة؟",
-            "مسح المحتوى", "إلغاء");
+        var confirmed = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("مسح محتوى الدردشة"),Himo.Services.AppLocalization.TranslateSourceText("سيتم مسح الرسائل من حسابك فقط، ولن تُحذف من حسابات بقية أعضاء المجموعة. هل تريد المتابعة؟"),Himo.Services.AppLocalization.TranslateSourceText("مسح المحتوى"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
         if (!confirmed) return;
 
         _groupActionBusy = true;
@@ -738,11 +738,11 @@ public sealed class GroupMembersPage : ContentPage
 
             await _api.ClearConversationContentAsync(groupId);
             _chat.ClearConversationMessages(_conversation.Id);
-            await DisplayAlertAsync("تم المسح", "تم مسح محتوى الدردشة من حسابك.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تم المسح"),Himo.Services.AppLocalization.TranslateSourceText("تم مسح محتوى الدردشة من حسابك."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذر مسح المحتوى", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر مسح المحتوى"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally { _groupActionBusy = false; }
     }
@@ -750,10 +750,7 @@ public sealed class GroupMembersPage : ContentPage
     private async void LeaveGroupClicked(object? sender, EventArgs e)
     {
         if (_groupActionBusy) return;
-        var confirmed = await DisplayAlertAsync(
-            "الخروج من المجموعة",
-            "بعد الخروج لن تصلك رسائل المجموعة ولن تظهر في قائمة محادثاتك. هل تريد الخروج؟",
-            "الخروج", "إلغاء");
+        var confirmed = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الخروج من المجموعة"),Himo.Services.AppLocalization.TranslateSourceText("بعد الخروج لن تصلك رسائل المجموعة ولن تظهر في قائمة محادثاتك. هل تريد الخروج؟"),Himo.Services.AppLocalization.TranslateSourceText("الخروج"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
         if (!confirmed) return;
 
         _groupActionBusy = true;
@@ -783,7 +780,7 @@ public sealed class GroupMembersPage : ContentPage
         catch (Exception ex)
         {
             _groupActionBusy = false;
-            await DisplayAlertAsync("تعذر الخروج من المجموعة", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر الخروج من المجموعة"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -904,7 +901,7 @@ public sealed class GroupMembersPage : ContentPage
             _loaded = true;
             _needsRefresh = false;
         }
-        catch (Exception ex) { await DisplayAlertAsync("الأعضاء", ex.Message, "حسنًا"); }
+        catch (Exception ex) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الأعضاء"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
         finally
         {
             _busy.IsVisible = _busy.IsRunning = false;
@@ -918,11 +915,15 @@ public sealed class GroupMembersPage : ContentPage
         var isSelf = currentId != Guid.Empty && member.Id == currentId;
         if (_details?.CanManage == true && !isSelf && member.Id != Guid.Empty)
         {
-            var action = await DisplayActionSheetAsync(member.Name, "إلغاء", null,
-                "مراسلة " + member.Name,
-                member.IsAdmin ? "إلغاء تعيينه كمشرف" : "تعيين كمشرف",
-                "إزالة " + member.Name);
-            if (action == "مراسلة " + member.Name)
+            var messageAction = "مراسلة " + member.Name;
+            var adminAction = member.IsAdmin ? "إلغاء تعيينه كمشرف" : "تعيين كمشرف";
+            var removeAction = "إزالة " + member.Name;
+            var actionDisplay = await DisplayActionSheetAsync(
+                member.Name, AppLocalization.TranslateSourceText("إلغاء"), null,
+                AppLocalization.TranslateSourceText(messageAction), AppLocalization.TranslateSourceText(adminAction),
+                AppLocalization.TranslateSourceText(removeAction));
+            var action = AppLocalization.ResolveSourceText(actionDisplay, messageAction, adminAction, removeAction);
+            if (action == messageAction)
                 await OpenDirectAsync(member, null);
             else if (action == "تعيين كمشرف" || action == "إلغاء تعيينه كمشرف")
             {
@@ -932,18 +933,18 @@ public sealed class GroupMembersPage : ContentPage
                     _needsRefresh = true;
                     await RefreshMembersAsync();
                 }
-                catch (Exception ex) { await DisplayAlertAsync("إدارة المشرفين", ex.Message, "حسنًا"); }
+                catch (Exception ex) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إدارة المشرفين"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
             }
-            else if (action == "إزالة " + member.Name)
+            else if (action == removeAction)
             {
-                if (!await DisplayAlertAsync("إزالة عضو", $"هل تريد إزالة {member.Name} من المجموعة؟", "إزالة", "إلغاء")) return;
+                if (!await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إزالة عضو"),Himo.Services.AppLocalization.TranslateSourceText($"هل تريد إزالة {member.Name} من المجموعة؟"),Himo.Services.AppLocalization.TranslateSourceText("إزالة"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"))) return;
                 try
                 {
                     await _api.RemoveGroupMemberAsync(Guid.Parse(_conversation.RemoteId!), member.Id);
                     _needsRefresh = true;
                     await RefreshMembersAsync();
                 }
-                catch (Exception ex) { await DisplayAlertAsync("إزالة عضو", ex.Message, "حسنًا"); }
+                catch (Exception ex) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إزالة عضو"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
             }
             return;
         }
@@ -994,7 +995,7 @@ public sealed class GroupMembersPage : ContentPage
                 await Shell.Current.GoToAsync(route, false);
             }
         }
-        catch (Exception ex) { await DisplayAlertAsync("تعذر فتح المحادثة", ex.Message, "حسنًا"); }
+        catch (Exception ex) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح المحادثة"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
     }
 }
 
@@ -1357,12 +1358,12 @@ public sealed class GroupAddMembersPage : ContentPage
         {
             var result = await _api.AddGroupMembersAsync(_groupId, _selected.Keys.ToArray());
             _markParentForRefresh();
-            await DisplayAlertAsync("أعضاء المجموعة", result.AddedCount > 0 ? $"تمت إضافة {result.AddedCount} أعضاء." : "الأشخاص المحددون أعضاء بالفعل.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("أعضاء المجموعة"),Himo.Services.AppLocalization.TranslateSourceText(result.AddedCount > 0 ? $"تمت إضافة {result.AddedCount} أعضاء." : "الأشخاص المحددون أعضاء بالفعل."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             await Navigation.PopAsync();
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذرت إضافة الأعضاء", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذرت إضافة الأعضاء"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -1557,7 +1558,7 @@ public sealed class GroupNotificationSettingsPage : ContentPage
         {
             if (_busy) return; _busy = true;
             try { await change(e.Value); }
-            catch (Exception ex) { await DisplayAlertAsync("الإشعارات", ex.Message, "حسنًا"); mute.IsToggled = !e.Value; }
+            catch (Exception ex) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الإشعارات"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); mute.IsToggled = !e.Value; }
             finally { _busy = false; }
         };
         stack.Add(top); stack.Add(new BoxView { HeightRequest = 1, Opacity = 0.12 }); stack.Add(tone); stack.Add(new BoxView { HeightRequest = 1, Opacity = 0.12 }); stack.Add(vibration);
@@ -1577,9 +1578,15 @@ public sealed class GroupNotificationSettingsPage : ContentPage
         var chevron = new Label { Text = "‹", FontSize = 23, VerticalTextAlignment = TextAlignment.Center }; chevron.SetDynamicResource(Label.TextColorProperty, "HimoAccent"); grid.Add(chevron, 1, 0);
         var tap = new TapGestureRecognizer(); tap.Tapped += async (_, _) =>
         {
-            var choice = await DisplayActionSheetAsync(title, "إلغاء", null, values);
-            if (string.IsNullOrWhiteSpace(choice) || choice == "إلغاء") return;
-            selected.Text = choice; Preferences.Default.Set(Key(key), choice);
+            var choiceDisplay = await DisplayActionSheetAsync(
+                AppLocalization.TranslateSourceText(title), AppLocalization.TranslateSourceText("إلغاء"), null,
+                values.Select(AppLocalization.TranslateSourceText).ToArray());
+            if (string.IsNullOrWhiteSpace(choiceDisplay) ||
+                string.Equals(choiceDisplay, AppLocalization.TranslateSourceText("إلغاء"), StringComparison.Ordinal)) return;
+            var choice = AppLocalization.ResolveSourceText(choiceDisplay, values);
+            if (string.IsNullOrWhiteSpace(choice)) return;
+            selected.Text = choice;
+            Preferences.Default.Set(Key(key), choice);
         };
         grid.GestureRecognizers.Add(tap); return grid;
     }
@@ -1703,9 +1710,9 @@ public sealed class GroupInviteLinkPage : ContentPage
             try
             {
                 await Clipboard.Default.SetTextAsync(link);
-                await DisplayAlertAsync("رابط المجموعة", "تم نسخ الرابط.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("رابط المجموعة"),Himo.Services.AppLocalization.TranslateSourceText("تم نسخ الرابط."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             }
-            catch (Exception ex) { await DisplayAlertAsync("تعذر النسخ", ex.Message, "حسنًا"); }
+            catch (Exception ex) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر النسخ"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
         };
         body.Add(copyButton);
         root.Add(new ScrollView { Content = body }, 0, 1);

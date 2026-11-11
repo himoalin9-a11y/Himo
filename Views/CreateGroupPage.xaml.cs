@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Himo.Models;
 using Himo.Services;
 using Himo.ViewModels;
@@ -261,7 +261,7 @@ public partial class CreateGroupPage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo Groups] Load people failed: {ex}");
-            await DisplayAlertAsync("جهات الاتصال", "تعذر تحميل الأشخاص الآن. يمكنك البحث عن حساب بالاسم أو رقم الهاتف.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("جهات الاتصال"),Himo.Services.AppLocalization.TranslateSourceText("تعذر تحميل الأشخاص الآن. يمكنك البحث عن حساب بالاسم أو رقم الهاتف."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -270,10 +270,7 @@ public partial class CreateGroupPage : ContentPage
 #if ANDROID
         if (!Preferences.Default.Get("himo_contacts_lookup_consent", false))
         {
-            var consent = await DisplayAlertAsync(
-                "الخصوصية وجهات الاتصال",
-                "سيقرأ Himo أرقام الهاتف المحفوظة في جهات اتصالك ويرسل الأرقام اللازمة للمطابقة عبر اتصال آمن. لن يحفظ الخادم دفتر العناوين؛ سيعيد فقط حسابات Himo المطابقة التي سمح أصحابها بالعثور عليهم.",
-                "متابعة", "إلغاء");
+            var consent = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الخصوصية وجهات الاتصال"),Himo.Services.AppLocalization.TranslateSourceText("سيقرأ Himo أرقام الهاتف المحفوظة في جهات اتصالك ويرسل الأرقام اللازمة للمطابقة عبر اتصال آمن. لن يحفظ الخادم دفتر العناوين؛ سيعيد فقط حسابات Himo المطابقة التي سمح أصحابها بالعثور عليهم."),Himo.Services.AppLocalization.TranslateSourceText("متابعة"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
             if (!consent) return;
             Preferences.Default.Set("himo_contacts_lookup_consent", true);
         }
@@ -378,7 +375,7 @@ public partial class CreateGroupPage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo Groups] Phone contacts lookup failed: {ex}");
-            await DisplayAlertAsync("جهات الاتصال", "تعذر مطابقة جهات الاتصال الآن. يمكنك متابعة اختيار الأشخاص الذين تتواصل معهم بالفعل.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("جهات الاتصال"),Himo.Services.AppLocalization.TranslateSourceText("تعذر مطابقة جهات الاتصال الآن. يمكنك متابعة اختيار الأشخاص الذين تتواصل معهم بالفعل."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
 #else
         await Task.CompletedTask;
@@ -440,7 +437,7 @@ public partial class CreateGroupPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("البحث عن الأشخاص", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("البحث عن الأشخاص"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -702,7 +699,7 @@ public partial class CreateGroupPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("دعوة جهة اتصال", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("دعوة جهة اتصال"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -966,12 +963,12 @@ public partial class CreateGroupPage : ContentPage
             _busy.IsVisible = _busy.IsRunning = true;
             var result = await _api.AddGroupMembersAsync(groupId, _selected.Keys.ToArray());
             await _home.RefreshFromServerAsync();
-            await DisplayAlertAsync("إضافة أعضاء", $"تمت إضافة {result.AddedCount} عضو.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إضافة أعضاء"),Himo.Services.AppLocalization.TranslateSourceText($"تمت إضافة {result.AddedCount} عضو."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             await Navigation.PopAsync();
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذر إضافة الأعضاء", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر إضافة الأعضاء"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {

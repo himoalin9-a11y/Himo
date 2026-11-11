@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Storage;
 
@@ -20,6 +20,10 @@ public partial class ProfilePage : ContentPage
         ChatService chat, INotificationService notifications)
     {
         InitializeComponent();
+        if (ProfileNameLabel is not null) ProfileNameLabel.AutomationId = "Himo.UserSuppliedText";
+        if (ProfileStatusLabel is not null) ProfileStatusLabel.AutomationId = "Himo.UserSuppliedText";
+        if (InitialLabel is not null) InitialLabel.AutomationId = "Himo.UserSuppliedText";
+        Himo.Services.AppLocalization.AttachToPage(this);
         _profile = profile;
         _api = api;
         _account = account;
@@ -39,7 +43,8 @@ public partial class ProfilePage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(this, batchSize: 48);
+        // Keep navigation lightweight: the blue icons are defined by the page assets,
+        // so do not rescan the entire visual tree or animate every element on entry.
         LoadProfile();
     }
 
@@ -51,8 +56,8 @@ public partial class ProfilePage : ContentPage
             return;
         }
 
-        // Profile follows phone search; the right swipe returns to that home section.
-        await SwipePageTransition.NavigateToHomeSectionAsync(this, "phone", SwipeDirection.Right);
+        // Profile sits between Calls and Settings after removing the duplicate People/Search tab.
+        await SwipePageTransition.NavigateToHomeSectionAsync(this, "calls", SwipeDirection.Right);
     }
 
     private void LoadProfile()
@@ -118,7 +123,7 @@ public partial class ProfilePage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الملف الشخصي", "تعذر فتح تفاصيل الحساب. " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الملف الشخصي"),Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح تفاصيل الحساب. " + Himo.Services.AppLocalization.TranslateSourceText(ex.Message)),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -132,7 +137,7 @@ public partial class ProfilePage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الملف الشخصي", "تعذر فتح تفاصيل الحساب. " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الملف الشخصي"),Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح تفاصيل الحساب. " + Himo.Services.AppLocalization.TranslateSourceText(ex.Message)),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -157,20 +162,17 @@ public partial class ProfilePage : ContentPage
         {
             var navigated = await HimoShellNavigator.NavigateAsync(route, false);
             if (!navigated && Shell.Current is null)
-                await DisplayAlertAsync("التنقل", errorMessage, "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("التنقل"), errorMessage,Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("التنقل", errorMessage + " " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("التنقل"), errorMessage + " " + Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
     private async void HelpTapped(object? sender, TappedEventArgs e)
     {
-        await DisplayAlertAsync(
-            "مساعدة ودعم",
-            "إذا واجهت مشكلة في Himo، تحقق أولًا من اتصال الإنترنت وأذونات الإشعارات والكاميرا والميكروفون. يمكنك مراجعة خيارات الخصوصية والمظهر من هذه الصفحة، وإعادة فتح التطبيق إذا توقف تحديث الواجهة.",
-            "حسنًا");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("مساعدة ودعم"),Himo.Services.AppLocalization.TranslateSourceText("إذا واجهت مشكلة في Himo، تحقق أولًا من اتصال الإنترنت وأذونات الإشعارات والكاميرا والميكروفون. يمكنك مراجعة خيارات الخصوصية والمظهر من هذه الصفحة، وإعادة فتح التطبيق إذا توقف تحديث الواجهة."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     private async void AboutTapped(object? sender, TappedEventArgs e)
@@ -178,14 +180,13 @@ public partial class ProfilePage : ContentPage
         var version = string.IsNullOrWhiteSpace(AppInfo.Current.VersionString)
             ? "غير محدد"
             : AppInfo.Current.VersionString;
-        await DisplayAlertAsync("حول Himo", $"Himo — تطبيق للتواصل والمحادثات والمكالمات.\nالإصدار: {version}", "حسنًا");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حول Himo"),Himo.Services.AppLocalization.TranslateSourceText($"Himo — تطبيق للتواصل والمحادثات والمكالمات.\nالإصدار: {version}"),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     private async void LogoutClicked(object? sender, EventArgs e)
     {
         if (_logoutInProgress) return;
-        var confirmed = await DisplayAlertAsync(
-            "تسجيل الخروج", "هل تريد تسجيل الخروج من هذا الجهاز؟", "خروج", "إلغاء");
+        var confirmed = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تسجيل الخروج"),Himo.Services.AppLocalization.TranslateSourceText("هل تريد تسجيل الخروج من هذا الجهاز؟"),Himo.Services.AppLocalization.TranslateSourceText("خروج"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
         if (!confirmed) return;
 
         _logoutInProgress = true;
@@ -217,7 +218,7 @@ public partial class ProfilePage : ContentPage
             }
 
             if (!string.IsNullOrWhiteSpace(logoutError))
-                await DisplayAlertAsync("تسجيل الخروج", "تم تسجيل الخروج من الجهاز، لكن تعذر إكمال العملية على الخادم. يمكنك تسجيل الدخول لاحقًا.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تسجيل الخروج"),Himo.Services.AppLocalization.TranslateSourceText("تم تسجيل الخروج من الجهاز، لكن تعذر إكمال العملية على الخادم. يمكنك تسجيل الدخول لاحقًا."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -230,9 +231,11 @@ public partial class ProfilePage : ContentPage
         if (_busy) return;
         await UiMotion.PressAsync(sender as VisualElement);
 
-        var action = await DisplayActionSheetAsync(
-            "صورة الملف الشخصي", "إلغاء", "إزالة الصورة",
-            "التقاط صورة بالكاميرا", "اختيار صورة من المعرض");
+        var actionDisplay = await DisplayActionSheetAsync(
+            AppLocalization.TranslateSourceText("صورة الملف الشخصي"), AppLocalization.TranslateSourceText("إلغاء"),
+            AppLocalization.TranslateSourceText("إزالة الصورة"), AppLocalization.TranslateSourceText("التقاط صورة بالكاميرا"),
+            AppLocalization.TranslateSourceText("اختيار صورة من المعرض"));
+        var action = AppLocalization.ResolveSourceText(actionDisplay, "إزالة الصورة", "التقاط صورة بالكاميرا", "اختيار صورة من المعرض");
         if (action == "إزالة الصورة")
         {
             RemovePhotoClicked(sender, EventArgs.Empty);
@@ -282,11 +285,11 @@ public partial class ProfilePage : ContentPage
             var localPath = _profile.SavePhoto(imageBytes, contentType);
             DisplayPhoto(localPath);
             _profileChangedLocally = true;
-            await DisplayAlertAsync("تم تحديث الصورة", "تم تحديث صورة الملف الشخصي بنجاح.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تم تحديث الصورة"),Himo.Services.AppLocalization.TranslateSourceText("تم تحديث صورة الملف الشخصي بنجاح."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذر تحديث الصورة", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر تحديث الصورة"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -297,11 +300,7 @@ public partial class ProfilePage : ContentPage
     private async void RemovePhotoClicked(object sender, EventArgs e)
     {
         if (_busy) return;
-        var confirmed = await DisplayAlertAsync(
-            "إزالة الصورة",
-            "هل تريد إزالة صورة الملف الشخصي؟",
-            "إزالة",
-            "إلغاء");
+        var confirmed = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إزالة الصورة"),Himo.Services.AppLocalization.TranslateSourceText("هل تريد إزالة صورة الملف الشخصي؟"),Himo.Services.AppLocalization.TranslateSourceText("إزالة"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
         if (!confirmed) return;
 
         try
@@ -313,11 +312,11 @@ public partial class ProfilePage : ContentPage
             _profile.ClearPhoto();
             DisplayPhoto(null);
             _profileChangedLocally = true;
-            await DisplayAlertAsync("تمت الإزالة", "تمت إزالة صورة الملف الشخصي.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تمت الإزالة"),Himo.Services.AppLocalization.TranslateSourceText("تمت إزالة صورة الملف الشخصي."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذر إزالة الصورة", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر إزالة الصورة"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -375,9 +374,6 @@ public partial class ProfilePage : ContentPage
 
     private async void CallsNavTapped(object? sender, TappedEventArgs e) =>
         await SwipePageTransition.NavigateToHomeSectionAsync(this, "calls", SwipeDirection.Right);
-
-    private async void PeopleNavTapped(object? sender, TappedEventArgs e) =>
-        await SwipePageTransition.NavigateToHomeSectionAsync(this, "phone", SwipeDirection.Right);
 
     private async void SettingsNavTapped(object? sender, TappedEventArgs e) =>
         await OpenSettingsFromProfileAsync();

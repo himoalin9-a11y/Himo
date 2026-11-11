@@ -1,0 +1,506 @@
+﻿
+11-11 09:43:48.763 D/AndroidRuntime(18573): >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+11-11 09:43:48.769 I/AndroidRuntime(18573): Using default boot image
+11-11 09:43:48.769 I/AndroidRuntime(18573): Leaving lock profiling enabled
+11-11 09:43:48.946 D/AndroidRuntime(18573): Calling main entry com.android.commands.monkey.Monkey
+11-11 09:43:49.027 I/ActivityTaskManager( 3227): START u0 {act=android.intent.action.MAIN 
+cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=com.companyname.himo/.LauncherIconSystemMagenta} with 
+LAUNCH_MULTIPLE from uid 2000
+11-11 09:43:49.030 I/ActivityTaskManager( 3227): ActivityRecord info: ActivityInfo{dba293a 
+com.companyname.himo.LauncherIconSystemMagenta}
+11-11 09:43:49.031 D/ActivityTaskManager( 3227): TaskLaunchParamsModifier:task=null activity=ActivityRecord{229599723 
+u0 com.companyname.himo/.LauncherIconSystemMagenta display-area-from-current-params=null 
+display-area-from-default-fallback=DefaultTaskDisplayArea@175274351 display-id=0 task-display-area-windowing-mode=1 
+suggested-display-area=DefaultTaskDisplayArea@175274351
+11-11 09:43:49.031 I/ActivityStarter( 3227): shouldShowFreeformWindow realCallingPackage = isRes= true rotation= 0 
+orientation = -1 isPortarait = false sourceRecord = null isMagicWin = false isForceRotation = false r.packageName = 
+com.companyname.himo isAE= false sourceLaunchedFromPackage=  isInBlackList= false isInPartialSplitScreen= false r.info 
+= ActivityInfo{dba293a com.companyname.himo.LauncherIconSystemMagenta}
+11-11 09:43:49.032 D/ActivityTaskManager( 3227): TaskLaunchParamsModifier:task=null activity=ActivityRecord{229599723 
+u0 com.companyname.himo/.LauncherIconSystemMagenta t-1} display-area-from-current-params=null 
+display-area-from-default-fallback=DefaultTaskDisplayArea@175274351 display-id=0 task-display-area-windowing-mode=1 
+suggested-display-area=DefaultTaskDisplayArea@175274351 non-freeform-task-display-area 
+display-area=DefaultTaskDisplayArea@175274351 default-portrait freeform-size-mismatch=Rect(317, 795 - 884, 1995)
+11-11 09:43:49.035 I/ActivityTaskManager( 3227): start activity name =com.companyname.himo.LauncherIconDefault
+11-11 09:43:49.035 I/HwTaskEx( 3227): setStartActivityName mStartActivityName = 
+com.companyname.himo.LauncherIconDefault
+11-11 09:43:49.035 D/ActivityTaskManager( 3227): TaskLaunchParamsModifier:task=Task{d919f06 #8058 type=standard 
+A=10324:com.companyname.himo} activity=ActivityRecord{229599723 u0 com.companyname.himo/.LauncherIconSystemMagenta 
+t-1} display-from-task=0 display-id=0 task-display-area-windowing-mode=1 
+suggested-display-area=DefaultTaskDisplayArea@175274351 inherit-from-task=fullscreen non-freeform-task-display-area 
+display-area=DefaultTaskDisplayArea@175274351 default-portrait freeform-size-mismatch=Rect(317, 795 - 884, 1995)
+11-11 09:43:49.036 I/ActivityTaskManager( 3227): onConfigurationChanged recordWindowInformationForPerformance this = 
+ActivityRecord{229599723 u0 com.companyname.himo/.LauncherIconSystemMagenta t8058}
+11-11 09:43:49.036 I/SurfaceFlinger( 2220): createLayer layername: ActivityRecord{229599723 u0 
+com.companyname.himo/.LauncherIconSystemMagenta t8058} address = 0xb4000078206b2520
+11-11 09:43:49.038 I/HwActivityTaskManagerServiceEx( 3227): [snapshot cache] activity = ActivityRecord{229599723 u0 
+com.companyname.himo/.LauncherIconSystemMagenta t8058} can not find SnapshotCache.
+11-11 09:43:49.044 V/WindowManagerShell( 4859): Transition requested (#10096): android.os.BinderProxy@3d5bc20 
+TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=8058 effectiveUid=10324 displayId=0 
+isRunning=true baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] 
+flg=0x10200000 cmp=com.companyname.himo/.LauncherIconSystemMagenta } 
+baseActivity=ComponentInfo{com.companyname.himo/com.companyname.himo.LauncherIconDefault} 
+topActivity=ComponentInfo{com.companyname.himo/com.companyname.himo.LauncherIconDefault} 
+origActivity=ComponentInfo{com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta} 
+realActivity=ComponentInfo{com.companyname.himo/com.companyname.himo.LauncherIconDefault} 
+launchedFromPackage=com.android.shell forceRotateMode=-1 numActivities=1 lastActiveTime=2326591087 
+isSupportsHwFreeForm=true supportsHnSplitScreenMultiWindow=true supportsHnTopBotSplitScreenfalse 
+supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 
+token=WCT{android.window.IWindowContainerToken$Stub$Proxy@21309d9} topActivityType=1 pictureInPictureParams=null 
+isAutoRemoveRecents=false shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 
+displayCutoutSafeInsets=Rect(0, 126 - 0, 0) topActivityInfo=ActivityInfo{5f17f9e 
+com.companyname.himo.LauncherIconSystemMagenta} windowMode=1 launchCookies=[] positionInParent=Point(0, 0) 
+parentTaskId=-1 isFocused=false isVisible=false isFreeformEnterPip=false isVisibleRequested=false 
+isTopActivityNoDisplay=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false 
+isActivityStackTransparent=false lastNonFullscreenBounds=Rect(317, 795 - 884, 1995) capturedLink=null 
+capturedLinkTimestamp=0 requestedVisibleTypes=-9 topActivityRequestOpenInBrowserEducationTimestamp=0 
+appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false eligibleForLetterboxEducation= false 
+isLetterboxEducationEnabled= false isLetterboxDoubleTapEnabled= false eligibleForUserAspectRatioButton= false 
+topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 
+topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 
+topActivityAppBounds=Rect(0, 0 - 1200, 2664) isUserFullscreenOverrideEnabled=false 
+isSystemFullscreenOverrideEnabled=false hasMinAspectRatioOverride=false topActivityLetterboxBounds=null 
+cameraCompatTaskInfo=CameraCompatTaskInfo { freeformCameraCompatMode=inactive}} topActivityMainWindowFrame=null 
+hnTaskInfoEx=HnTaskInfoEx{freeformPaddingType=0 shouldFreeformSetSurfaceCorner=false 
+affinity=10324:com.companyname.himo shouldBeVisible=true appOrientationPolicy=1 gridLimitedPolicy=-1 forceResize=-1 
+extraPackageName=null extraUserId=0 shouldExitMiniWindow=false mIsCustomizedFreeformWindow=false 
+mCustomizedWindowProp=null isDeskTopFreeformAlive=false isSupportDesktopModeFreeform=true isCallerRecents=false 
+isNeedLaunchInSamePosition=false isDisableNotSupportToast=false isNeedLaunchInCaller=false 
+isExitDesktopModeWhenStart=false isSupportLandScapeFreeform=true isSupportLandScapeFreeformLikePC=false 
+isEmptyTaskStartFromRecentForDesktop=false mIsLauncherFromHnEmbedded=false isSupportForceLandscapeFreeformForPad=false 
+mCallerPackageName=com.android.shell mIsTempSplitScreen=false mIsCreatedByOrganizer=false isSupportSave=true 
+isSupportForceLaunchInFreeformInDesktopMode=false shouldHideWindowDecorForDesktop=false desktopTemplateSteplessRatio=0 
+mShouldNotHandledForDesktop=0 mNotSupportExpandSplitScreen=false isNotAllowFreeSplitScreen=false 
+isSupportFoldItSplitScreen=true isSupportsHnFreeform=true isTopClearAndUnSupportExpandSplitScreen=false 
+mTopActivityName=null mNotSupportMagicWinInExtendedSplit=false mIsReorderLayerPendingSplit=false 
+mIsFullToFreeformSpecialTask=false isDesktopFirstStartMode=-1 isTopActivityImmersive=false 
+isActivityUnSupportHnDesktopModeFreeForm=false mIgnoreLandscapeFreeformSwitch=false mMiniProgramKeyAppIAd=null 
+mMiniProgramId=null mSupportAdjustSp
+11-11 09:43:49.050 D/HwWindowStateEx( 3227): construct win com.android.server.wm.HwWindowStateEx@918a592,comp 
+ComponentInfo{com.companyname.himo/com.companyname.himo.LauncherIconDefault},mLayoutInCutoutLandscape false
+11-11 09:43:49.057 I/AndroidRuntime(18573): VM exiting with result code 0.
+11-11 09:43:49.078 I/ActivityManager( 3227): Start proc 18607:com.companyname.himo/u0a324 for top-activity 
+{com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta}
+11-11 09:43:49.139 I/HwActivityTaskManagerServiceEx( 3227): backwardTaskTakeover from:ActivityRecord{204558945 u0 
+com.hihonor.android.launcher/.unihome.UniHomeLauncher t8007}, to:ActivityRecord{229599723 u0 
+com.companyname.himo/.LauncherIconSystemMagenta t8058}
+11-11 09:43:49.142 I/UsageStatsService( 3227): reportEvent : component= 
+ComponentInfo{com.companyname.himo/com.companyname.himo.LauncherIconDefault} eventType= 1
+11-11 09:43:49.144 I/Booster_AwareMonitor( 5166): 
+handleAppSwitch,pid:18607,uid:10324,com.companyname.himo.LauncherIconSystemMagenta
+11-11 09:43:49.144 I/Booster_OllieObserver( 5166): notify registrants event: EVENT_ACTIVITY_STATE_CHANGED, new 
+ActivityInfo: uid = 10324, packageName = com.companyname.himo, activity = 
+com.companyname.himo.LauncherIconSystemMagenta, procState = 2
+11-11 09:43:49.156 D/KitQoeManager( 5166): com.companyname.himo, mForeActivityName 
+com.companyname.himo.LauncherIconSystemMagenta
+11-11 09:43:49.283 D/UserSceneController( 5166): current sceneMap size = 2 as : {Pair{10177 512}=packageName: 
+com.google.android.providers.media.module, uid: 10177, scene: 512, subScene: 1, bindActivity: 
+com.android.providers.media.photopicker.PhotoPickerActivity, confidenceLevel: 0, windowState: 1, activityInfo: uid = 
+10177, packageName = com.google.android.providers.media.module, activity = 
+com.android.providers.media.photopicker.PhotoPickerActivity, procState = 2, priority: 10.0, keySocket: [], ServerIp: 
+[], pid: -1, socketFd: [], Pair{10324 512}=packageName: com.companyname.himo, uid: 10324, scene: 512, subScene: 1, 
+bindActivity: com.companyname.himo.LauncherIconSystemMagenta, confidenceLevel: 0, windowState: 1, activityInfo: uid = 
+10324, packageName = com.companyname.himo, activity = com.companyname.himo.LauncherIconSystemMagenta, procState = 2, 
+priority: 10.0, keySocket: [], ServerIp: [], pid: -1, socketFd: []}
+11-11 09:43:49.432 D/HwWindowManagerServiceEx( 3227): constructHnTransitionAnimationInfo type: open activity : 
+ActivityRecord{229599723 u0 com.companyname.himo/.LauncherIconSystemMagenta t8058}, isSplitMode : false
+11-11 09:43:49.434 V/WindowManager( 3227): Sent Transition (#10096) createdAt=┘ة┘ة-┘ة┘ة ┘ب┘ر:┘ج┘ث:┘ج┘ر.┘ب┘ث┘ة via 
+request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=8058 effectiveUid=10324 
+displayId=0 isRunning=true baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] 
+flg=0x10200000 cmp=com.companyname.himo/.LauncherIconSystemMagenta } 
+baseActivity=ComponentInfo{com.companyname.himo/com.companyname.himo.LauncherIconDefault} 
+topActivity=ComponentInfo{com.companyname.himo/com.companyname.himo.LauncherIconDefault} 
+origActivity=ComponentInfo{com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta} 
+realActivity=ComponentInfo{com.companyname.himo/com.companyname.himo.LauncherIconDefault} 
+launchedFromPackage=com.android.shell forceRotateMode=-1 numActivities=1 lastActiveTime=2326591087 
+isSupportsHwFreeForm=true supportsHnSplitScreenMultiWindow=true supportsHnTopBotSplitScreenfalse 
+supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 
+token=WCT{RemoteToken{cf0439e Task{d919f06 #8058 type=standard A=10324:com.companyname.himo}}} topActivityType=1 
+pictureInPictureParams=null isAutoRemoveRecents=false shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 
+lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=Rect(0, 126 - 0, 0) topActivityInfo=ActivityInfo{dba293a 
+com.companyname.himo.LauncherIconSystemMagenta} windowMode=1 launchCookies=[] positionInParent=Point(0, 0) 
+parentTaskId=-1 isFocused=false isVisible=false isFreeformEnterPip=false isVisibleRequested=false 
+isTopActivityNoDisplay=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false 
+isActivityStackTransparent=false lastNonFullscreenBounds=Rect(317, 795 - 884, 1995) capturedLink=null 
+capturedLinkTimestamp=0 requestedVisibleTypes=-9 topActivityRequestOpenInBrowserEducationTimestamp=0 
+appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false eligibleForLetterboxEducation= false 
+isLetterboxEducationEnabled= false isLetterboxDoubleTapEnabled= false eligibleForUserAspectRatioButton= false 
+topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 
+topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 
+topActivityAppBounds=Rect(0, 0 - 1200, 2664) isUserFullscreenOverrideEnabled=false 
+isSystemFullscreenOverrideEnabled=false hasMinAspectRatioOverride=false topActivityLetterboxBounds=null 
+cameraCompatTaskInfo=CameraCompatTaskInfo { freeformCameraCompatMode=inactive}} topActivityMainWindowFrame=null 
+hnTaskInfoEx=HnTaskInfoEx{freeformPaddingType=0 shouldFreeformSetSurfaceCorner=false 
+affinity=10324:com.companyname.himo shouldBeVisible=true appOrientationPolicy=1 gridLimitedPolicy=-1 forceResize=-1 
+extraPackageName=null extraUserId=0 shouldExitMiniWindow=false mIsCustomizedFreeformWindow=false 
+mCustomizedWindowProp=null isDeskTopFreeformAlive=false isSupportDesktopModeFreeform=true isCallerRecents=false 
+isNeedLaunchInSamePosition=false isDisableNotSupportToast=false isNeedLaunchInCaller=false 
+isExitDesktopModeWhenStart=false isSupportLandScapeFreeform=true isSupportLandScapeFreeformLikePC=false 
+isEmptyTaskStartFromRecentForDesktop=false mIsLauncherFromHnEmbedded=false isSupportForceLandscapeFreeformForPad=false 
+mCallerPackageName=com.android.shell mIsTempSplitScreen=false mIsCreatedByOrganizer=false isSupportSave=true 
+isSupportForceLaunchInFreeformInDesktopMode=false shouldHideWindowDecorForDesktop=false desktopTemplateSteplessRatio=0 
+mShouldNotHandledForDesktop=0 mNotSupportExpandSplitScreen=false isNotAllowFreeSplitScreen=false 
+isSupportFoldItSplitScreen=true isSupportsHnFreeform=true isTopClearAndUnSupportExpandSplitScreen=false 
+mTopActivityName=null mNotSupportMagicWinInExtendedSplit=false mIsReorderLayerPendingSplit=false 
+mIsFullToFreeformSpecialTask=false isDesktopFirstStartMode=-1 isTopActivityImmersive=false 
+isActivityUnSupportHnDesktopModeFreeForm=false mIgnoreLandscapeFreeformSwitch=false mMiniProgramKeyAppIAd=n
+11-11 09:43:49.443 I/SurfaceFlinger( 2220): createLayer layername: cb7e348 ActivityRecordInputSink 
+com.companyname.himo/.LauncherIconDefault address = 0xb400007820774ca0
+11-11 09:43:49.523 D/nativeloader(18607): Load 
+/data/app/~~YciRqkJLIS1Bpg8wzYiAWw==/com.companyname.himo-D5QzkOayX9kYEbUNWgxo_A==/lib/arm64/libmonosgen-2.0.so using 
+class loader ns clns-9 
+(caller=/data/app/~~YciRqkJLIS1Bpg8wzYiAWw==/com.companyname.himo-D5QzkOayX9kYEbUNWgxo_A==/base.apk!classes3.dex): ok
+11-11 09:43:49.525 D/nativeloader(18607): Load 
+/data/app/~~YciRqkJLIS1Bpg8wzYiAWw==/com.companyname.himo-D5QzkOayX9kYEbUNWgxo_A==/lib/arm64/libmonodroid.so using 
+class loader ns clns-9 
+(caller=/data/app/~~YciRqkJLIS1Bpg8wzYiAWw==/com.companyname.himo-D5QzkOayX9kYEbUNWgxo_A==/base.apk!classes3.dex): ok
+11-11 09:43:49.526 W/monodroid(18607): Failed to create directory 
+'/data/user/0/com.companyname.himo/files/.__override__/arm64-v8a'. File exists
+11-11 09:43:49.526 W/monodroid(18607): Creating public update directory: 
+`/data/user/0/com.companyname.himo/files/.__override__/arm64-v8a`
+11-11 09:43:49.527 W/monodroid-debug(18607): Not starting the debugger as the timeout value has been reached; 
+current-time: 1794379429; timeout: 1794379166
+11-11 09:43:49.538 W/monodroid-assembly(18607): open_from_update_dir: assembly file DOES NOT EXIST
+11-11 09:43:49.558 D/DOTNET  (18607): AndroidCryptoNative_InitLibraryOnLoad: jint 
+AndroidCryptoNative_InitLibraryOnLoad(JavaVM *, void *) in 
+/__w/1/s/src/runtime/src/native/libs/System.Security.Cryptography.Native.Android/pal_jni.c
+11-11 09:43:49.559 D/DOTNET  (18607): GetOptionalClassGRef: optional class com/android/org/conscrypt/OpenSSLEngineImpl 
+was not found
+11-11 09:43:49.728 I/TransitionController( 3227):    ChangeInfo{602d04e container=ActivityRecord{229599723 u0 
+com.companyname.himo/.LauncherIconSystemMagenta t8058} flags=0x0}
+11-11 09:43:50.164 D/TingYun (18098): anrModule is true
+11-11 09:43:50.166 W/monodroid-assembly(18607): open_from_bundles: failed to load bundled assembly 
+ar-EG/System.Private.CoreLib.resources.dll
+11-11 09:43:50.166 W/monodroid-assembly(18607): open_from_bundles: the assembly might have been uploaded to the device 
+with FastDev instead
+11-11 09:43:50.166 W/monodroid-assembly(18607): open_from_update_dir: assembly file DOES NOT EXIST
+11-11 09:43:50.166 W/monodroid-assembly(18607): open_from_bundles: failed to load bundled assembly 
+ar-EG/System.Private.CoreLib.resources.dll
+11-11 09:43:50.166 W/monodroid-assembly(18607): open_from_bundles: the assembly might have been uploaded to the device 
+with FastDev instead
+11-11 09:43:50.170 W/monodroid-assembly(18607): open_from_bundles: failed to load bundled assembly 
+ar/System.Private.CoreLib.resources.dll
+11-11 09:43:50.170 W/monodroid-assembly(18607): open_from_bundles: the assembly might have been uploaded to the device 
+with FastDev instead
+11-11 09:43:50.170 W/monodroid-assembly(18607): open_from_update_dir: assembly file DOES NOT EXIST
+11-11 09:43:50.170 W/monodroid-assembly(18607): open_from_bundles: failed to load bundled assembly 
+ar/System.Private.CoreLib.resources.dll
+11-11 09:43:50.170 W/monodroid-assembly(18607): open_from_bundles: the assembly might have been uploaded to the device 
+with FastDev instead
+11-11 09:43:50.739 V/ActivityThread(18607): Handling launch of ActivityRecord{8a9edbb 
+token=android.os.BinderProxy@ae01a4a {com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta}}
+11-11 09:43:51.908 W/monodroid-assembly(18607): open_from_bundles: failed to load bundled assembly 
+ar/Himo.resources.dll
+11-11 09:43:51.908 W/monodroid-assembly(18607): open_from_bundles: the assembly might have been uploaded to the device 
+with FastDev instead
+11-11 09:43:51.908 W/monodroid-assembly(18607): open_from_update_dir: assembly file DOES NOT EXIST
+11-11 09:43:51.908 W/monodroid-assembly(18607): open_from_bundles: failed to load bundled assembly 
+ar/Himo.resources.dll
+11-11 09:43:51.908 W/monodroid-assembly(18607): open_from_bundles: the assembly might have been uploaded to the device 
+with FastDev instead
+11-11 09:43:51.934 D/app_process64(18607): [Himo Startup] First page created directly: AppShell
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemOriginal, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemSapphire, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemAzure, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemCyan, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemTurquoise, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemEmerald, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemGreen, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemLime, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemGold, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemAmber, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemOrange, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemRuby, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemRose, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemMagenta, newState:1, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconSystemIndigo, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassPurple, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassSapphire, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassRose, newState:2, flags:1, userId:0, CallingPid:18607, CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassGold, newState:2, flags:1, userId:0, CallingPid:18607, CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassTurquoise, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassRuby, newState:2, flags:1, userId:0, CallingPid:18607, CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassSilver, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassNight, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassHolographic, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassEmerald, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassIcecyan, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassAmber, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassIndigo, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassLime, newState:2, flags:1, userId:0, CallingPid:18607, CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconGlassMagenta, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional01, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional02, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional03, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional04, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional05, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional06, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional07, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional08, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional09, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional10, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional11, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional12, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional13, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional14, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional15, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional16, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional17, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional18, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional19, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional20, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional21, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional22, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional23, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional24, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconProfessional25, newState:2, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.072 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconHome, newState:2, flags:1, userId:0, CallingPid:18607, CallingUid:10324
+11-11 09:43:52.075 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconHomeDefault, newState:1, flags:1, userId:0, CallingPid:18607, 
+CallingUid:10324
+11-11 09:43:52.075 I/PackageManager( 3227): setEnabledSetting pkg:com.companyname.himo, 
+className:com.companyname.himo.LauncherIconHome, newState:1, flags:1, userId:0, CallingPid:18607, CallingUid:10324
+11-11 09:43:52.089 I/ActivityThread(18607): add activity client record, r= ActivityRecord{8a9edbb 
+token=android.os.BinderProxy@ae01a4a {com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta}} token= 
+android.os.BinderProxy@ae01a4a
+11-11 09:43:52.286 D/HwWindowStateEx( 3227): construct win com.android.server.wm.HwWindowStateEx@2ca1be5,comp 
+ComponentInfo{com.companyname.himo/com.companyname.himo.LauncherIconDefault},mLayoutInCutoutLandscape false
+11-11 09:43:52.287 I/SurfaceFlinger( 2220): createLayer layername: cabd6ba 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta address = 0xb400007820673d00
+11-11 09:43:52.295 W/AWARENESS_AmsRegister(14033): 
+state:onResume,com.companyname.himo,LauncherIconSystemMagenta,taskId:8058,call:,launch:-1,uid:0
+11-11 09:43:52.295 I/AWARENESS_RAAbility(14033): List:[Act{item=com.hihonor.android.launcher0/com.hihonor.android.launc
+her.unihome.UniHomeLauncher,oT=1794379167,aT=265}, 
+Act{item=com.hihonor.iconnect0/com.hihonor.iconnect.notify.Dialog.IConnectAlertDialog,oT=1794378183,aT=4}, 
+Act{item=com.companyname.himo0/com.companyname.himo.LauncherIconSystemMagenta,oT=1794378137,aT=4}, 
+Act{item=com.yottagames.hdfy0/com.yottagames.hdfy.MainActivity,oT=1794376926,aT=8}, 
+Act{item=com.anime.witcher0/com.anime.witcher.HomeActivity,oT=1794376607,aT=4}, 
+Act{item=com.companyname.himo0/com.companyname.himo.LauncherIconSystemMagenta,oT=1794379432,aT=0}]
+11-11 09:43:52.299 D/PhoneWindow(18607): onViewRootImplSet activityToken 
+android.os.BinderProxy@ae01a4a,activityClientRecord ActivityRecord{8a9edbb token=android.os.BinderProxy@ae01a4a 
+{com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta}},isHnNavigationHide false isHidePrivateFlag = 
+false
+11-11 09:43:52.298 D/CoreBackPreview( 3227): Window{cabd6ba u0 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta}: Setting back callback 
+OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@1b0a486, mPriority=-1, 
+mIsAnimationCallback=false, mOverrideBehavior=0}
+11-11 09:43:52.299 D/HwPhoneWindow(18607): onViewRootImplSet activityToken 
+android.os.BinderProxy@ae01a4a,activityClientRecord ActivityRecord{8a9edbb token=android.os.BinderProxy@ae01a4a 
+{com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta}},isHwNavigationHide false
+11-11 09:43:52.299 D/CoreBackPreview( 3227): Window{cabd6ba u0 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta}: Setting back callback 
+OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@ffb1147, mPriority=0, 
+mIsAnimationCallback=false, mOverrideBehavior=0}
+11-11 09:43:52.319 I/SurfaceFlinger( 2220): createLayer layername: 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta address = 0xb40000782076dd80
+11-11 09:43:52.321 I/WindowManager( 3227): Changing focus from null to Window{cabd6ba u0 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta} mode 0 displayId=0
+11-11 09:43:52.321 I/hn_GestureNavManager( 4859): 
+Focus:com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta, Uid:10324, UN:true, LUN:true, FNO:0, 
+IKMW:false, pkg:com.companyname.himo
+11-11 09:43:52.321 V/HwPhoneWindowManager( 3227): updateSystemUiColorLw window=Window{cabd6ba u0 com.companyname.himo/c
+om.companyname.himo.LauncherIconSystemMagenta},MagicStyle=0,StatusBarColor=0x0,NavigationBarColor=0x0, 
+mForceNotchStatusBar=false
+11-11 09:43:52.326 I/SurfaceControl( 3227): nativeRelease 0xb4000073661447d0 count: 1 name: 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta#194342
+11-11 09:43:52.327 D/VRI[LauncherIconSystemMagenta](18607): relayoutWindow: mRelayoutRequested = true
+11-11 09:43:52.331 V/VRI[LauncherIconSystemMagenta](18607): Visible with new config: {1.0 ?mcc0mnc [ar_EG,ar_SA] ldrtl 
+sw369dp w369dp h820dp 520dpi nrml long hdr widecg port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 
+1200, 2664) mAppBounds=Rect(0, 0 - 1200, 2664) mMaxBounds=Rect(0, 0 - 1200, 2664) mDisplayRotation=ROTATION_0 
+mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0 mPopOverMode=undefined} 
+suim:1 fontWeightScale:100 changeUserFlag:0 changeUiModeFlag:0 fullScreenVideoFlag:0 splitScreenState:0 
+landScapeFreeformFlag:1 hoverMode:0 changeIconStyleFlag:0 changeThemeStyleFlag:0 transparentMode:2097152 s.2 
+fontWeightAdjustment=0}
+11-11 09:43:52.331 V/VRI[LauncherIconSystemMagenta](18607): Applying new config to window 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta, globalConfig: {1.0 ?mcc0mnc [ar_EG,ar_SA] ldrtl 
+sw369dp w369dp h820dp 520dpi nrml long hdr widecg port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 
+1200, 2664) mAppBounds=Rect(0, 0 - 1200, 2664) mMaxBounds=Rect(0, 0 - 1200, 2664) mDisplayRotation=ROTATION_0 
+mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0 mPopOverMode=undefined} 
+suim:1 fontWeightScale:100 changeUserFlag:0 changeUiModeFlag:0 fullScreenVideoFlag:0 splitScreenState:0 
+landScapeFreeformFlag:1 hoverMode:0 changeIconStyleFlag:0 changeThemeStyleFlag:0 transparentMode:2097152 s.48604 
+fontWeightAdjustment=0}, overrideConfig: {1.0 ?mcc0mnc [ar_EG,ar_SA] ldrtl sw369dp w369dp h820dp 520dpi nrml long hdr 
+widecg port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 1200, 2664) mAppBounds=Rect(0, 0 - 1200, 
+2664) mMaxBounds=Rect(0, 0 - 1200, 2664) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard 
+mAlwaysOnTop=undefined mRotation=ROTATION_0 mPopOverMode=undefined} suim:1 fontWeightScale:100 changeUserFlag:0 
+changeUiModeFlag:0 fullScreenVideoFlag:0 splitScreenState:0 landScapeFreeformFlag:1 hoverMode:0 changeIconStyleFlag:0 
+changeThemeStyleFlag:0 transparentMode:2097152 s.2 fontWeightAdjustment=0}
+11-11 09:43:52.336 I/BufferQueueProducer(18607): [VRI[LauncherIconSystemMagenta]#0(BLAST 
+Consumer)0](id:48af00000000,api:0,p:-1,c:18607) connect: api=1 producerControlledByApp=true
+11-11 09:43:52.540 I/HWUI    (18607): android_view_RenderNode_setLayerType MauiShapeableImageView, LayerType 2
+11-11 09:43:52.826 I/HWUI    (18607): android_view_RenderNode_setLayerType MauiShapeableImageView, LayerType 2
+11-11 09:43:52.833 I/HWUI    (18607): android_view_RenderNode_setLayerType MauiShapeableImageView, LayerType 2
+11-11 09:43:52.839 I/HWUI    (18607): android_view_RenderNode_setLayerType MauiShapeableImageView, LayerType 2
+11-11 09:43:52.845 I/HWUI    (18607): android_view_RenderNode_setLayerType MauiShapeableImageView, LayerType 2
+11-11 09:43:52.851 I/HWUI    (18607): android_view_RenderNode_setLayerType MauiShapeableImageView, LayerType 2
+11-11 09:43:53.708 I/SurfaceFlinger( 2220): createLayer layername: Surface(name=cabd6ba 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta)/@0x39c80af - animation-leash of starting_reveal 
+address = 0xb400007820755890
+11-11 09:43:53.729 I/ActivityTaskManager( 3227): Displayed com.companyname.himo/.LauncherIconSystemMagenta for user 0: 
++4s686ms
+11-11 09:43:53.738 I/SurfaceFlinger( 2220): sfdebug 
+[com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta#194342] apply visible 1 transactionId 
+13859860170070
+11-11 09:43:53.738 I/VariableRefreshRateHandler( 2220): setCurrentSignals: layerName 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta#194342, type Default, desiredRefreshRate 60.00
+11-11 09:43:53.741 I/InputDispatcher( 3227): Focus entered window: cabd6ba 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta in display 0
+11-11 09:43:53.742 I/InputTransport( 3227): publishFocusEvent(inputChannel = cabd6ba 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta, hasFocus = true)
+11-11 09:43:53.755 I/VariableRefreshRateHandler( 2220): setCurrentSignals: layerName 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta#194342, type Default, desiredRefreshRate 60.00
+11-11 09:43:53.791 I/VRI[LauncherIconSystemMagenta](18607): send MSG_WINDOW_FOCUS_CHANGED msg
+11-11 09:43:53.796 D/VRI[LauncherIconSystemMagenta](18607): handleResized: mForceNextWindowRelayout = false
+11-11 09:43:53.930 V/ImeFocusController(18607): onWindowFocus: com.android.internal.policy.DecorView{92426c8 V.E...... 
+R......D 0,0-1200,2664 aid=0}[LauncherIconSystemMagenta] 
+softInputMode=STATE_UNSPECIFIED|ADJUST_PAN|IS_FORWARD_NAVIGATION
+11-11 09:43:53.959 I/WindowManager( 3227): surfaceControl level and the IME current surface t 
+=android.view.SurfaceControl$Transaction@90e4e7f,mInputMethodSurfaceParent = Surface(name=ActivityRecord{229599723 u0 
+com.companyname.himo/.LauncherIconSystemMagenta t8058})/@0x325b93e
+11-11 09:43:54.050 V/ActivityTaskManager( 3227): Activity idle: ActivityRecord{229599723 u0 
+com.companyname.himo/.LauncherIconSystemMagenta t8058}
+11-11 09:43:54.078 I/WindowManager( 3227): surfaceControl level and the IME current surface t 
+=android.view.SurfaceControl$Transaction@90e4e7f,mInputMethodSurfaceParent = Surface(name=ActivityRecord{229599723 u0 
+com.companyname.himo/.LauncherIconSystemMagenta t8058})/@0x325b93e
+11-11 09:43:54.094 I/SurfaceControl( 4859): nativeRelease 0xb40000736620b550 count: 2 name: Surface(name=cabd6ba 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta)/@0x39c80af - animation-leash of 
+starting_reveal#194345
+11-11 09:43:54.108 I/WindowManager( 3227): removeLeash, the window position need update Window{cabd6ba u0 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta}
+11-11 09:43:54.109 I/SurfaceControl( 3227): nativeRelease 0xb40000736611f4b0 count: 2 name: Surface(name=cabd6ba 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta)/@0x39c80af - animation-leash of 
+starting_reveal#194345
+11-11 09:43:54.204 I/WindowManager( 3227): surfaceControl level and imeTarget current state ,  imeTarget 
+=Window{cabd6ba u0 com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta}
+11-11 09:43:54.204 I/WindowManager( 3227): surfaceControl level and the IME current surface ,t 
+=android.view.SurfaceControl$Transaction@90e4e7f,imeTarget = Window{cabd6ba u0 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta}
+11-11 09:43:54.204 I/WindowManager( 3227): surfaceControl level and imeTarget current state ,  imeTarget 
+=Window{cabd6ba u0 com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta}
+11-11 09:43:54.204 I/WindowManager( 3227): surfaceControl level and the IME current surface ,t 
+=android.view.SurfaceControl$Transaction@90e4e7f,imeTarget = Window{cabd6ba u0 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta}
+11-11 09:43:54.220 I/VariableRefreshRateHandler( 2220): setCurrentSignals: layerName 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta#194342, type Default, desiredRefreshRate 60.00
+11-11 09:43:55.436 I/InputDispatcher( 3227): publishMotion chanel = cabd6ba 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta  MotionEntry = MotionEvent  transform =   [1.0000  
+0.0000  -0.0000]  [0.0000  1.0000  -0.0000]  [0.0000  0.0000  1.0000]
+11-11 09:43:55.439 D/CpuGovernor( 5131): handleAction: action id=231 time=1794379435438 Flag=1 name=touch_up 
+pkg=cabd6ba com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta
+11-11 09:43:55.595 I/InputDispatcher( 3227): publishMotion chanel = cabd6ba 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta  MotionEntry = MotionEvent  transform =   [1.0000  
+0.0000  -0.0000]  [0.0000  1.0000  -0.0000]  [0.0000  0.0000  1.0000]
+11-11 09:43:55.601 D/CpuGovernor( 5131): handleAction: action id=232 time=1794379435598 Flag=2 name=touch_down 
+pkg=cabd6ba com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta
+11-11 09:43:56.493 I/VariableRefreshRateHandler( 2220): setCurrentSignals: layerName 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta#194342, type Default, desiredRefreshRate 60.00
+11-11 09:43:57.106 I/VariableRefreshRateHandler( 2220): setCurrentSignals: layerName 
+com.companyname.himo/com.companyname.himo.LauncherIconSystemMagenta#194342, type Default, desiredRefreshRate 60.00
+
+

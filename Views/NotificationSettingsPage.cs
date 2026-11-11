@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Himo.Services;
@@ -543,7 +543,7 @@ public sealed class NotificationSettingsPage : Himo.Services.LocalizedContentPag
         {
             if (_appNotificationsSwitch is not null)
                 _appNotificationsSwitch.IsToggled = !enabled;
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الإشعارات"), "تعذر تغيير إعداد الإشعارات: " + ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الإشعارات"),Himo.Services.AppLocalization.TranslateSourceText("تعذر تغيير إعداد الإشعارات: " + Himo.Services.AppLocalization.TranslateSourceText(ex.Message)), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             UpdateAppNotificationStatus();
         }
     }
@@ -592,7 +592,7 @@ public sealed class NotificationSettingsPage : Himo.Services.LocalizedContentPag
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الإشعارات"), "تعذر الرجوع: " + ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الإشعارات"),Himo.Services.AppLocalization.TranslateSourceText("تعذر الرجوع: " + Himo.Services.AppLocalization.TranslateSourceText(ex.Message)), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 }

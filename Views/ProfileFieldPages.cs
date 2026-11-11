@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Storage;
 
@@ -66,11 +66,11 @@ internal sealed class ProfileDetailsPage : ProfileEditorPageBase
                 Spacing = 0,
                 Children =
                 {
-                    FieldRow("الاسم", "الاسم الذي يظهر للآخرين", "himo_s9_user.png", _nameValue, async () => await PushEditorAsync(new ProfileDisplayNamePage(_profile, _api, _account))),
+                    FieldRow(AppLocalization.TranslateSourceText("الاسم"), "الاسم الذي يظهر للآخرين", "himo_s9_user.png", _nameValue, async () => await PushEditorAsync(new ProfileDisplayNamePage(_profile, _api, _account))),
                     Separator(),
                     FieldRow("حول", "حالتك وماذا تفعل الآن", "himo_s9_info.png", _aboutValue, async () => await PushEditorAsync(new ProfileStatusPage(_profile, _api, _account))),
                     Separator(),
-                    FieldRow("اسم المستخدم", "اسم فريد لحسابك", "himo_s9_user.png", _usernameValue, async () => await PushEditorAsync(new ProfileUsernamePage(_api))),
+                    FieldRow(AppLocalization.TranslateSourceText("اسم المستخدم"), "اسم فريد لحسابك", "himo_s9_user.png", _usernameValue, async () => await PushEditorAsync(new ProfileUsernamePage(_api))),
                     Separator(),
                     FieldRow("الهاتف", "رقم الاتصال المرتبط بحسابك", "himo_s9_phone.png", _phoneValue, async () => await PushEditorAsync(new AccountPhonePage(_api))),
                     Separator(),
@@ -139,15 +139,15 @@ internal sealed class ProfileDetailsPage : ProfileEditorPageBase
     {
         var path = _profile.Profile.PhotoPath;
         if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
-            await Navigation.PushModalAsync(new ImagePreviewPage(path, "صورة الملف الشخصي"));
+            await Navigation.PushModalAsync(new ImagePreviewPage(path, AppLocalization.TranslateSourceText("صورة الملف الشخصي")));
         else
-            await DisplayAlertAsync("الصورة الشخصية", "لم تضف صورة بعد. اضغط على زر الكاميرا لاختيار صورة.", "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("الصورة الشخصية"), AppLocalization.TranslateSourceText("لم تضف صورة بعد. اضغط على زر الكاميرا لاختيار صورة."), AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     private async Task PushEditorAsync(ContentPage page)
     {
         try { await Navigation.PushModalAsync(page); }
-        catch (Exception ex) { await DisplayAlertAsync("الملف الشخصي", "تعذر فتح الصفحة المطلوبة. " + ex.Message, "حسنًا"); }
+        catch (Exception ex) { await DisplayAlertAsync(AppLocalization.TranslateSourceText("الملف الشخصي"), AppLocalization.TranslateSourceText("تعذر فتح الصفحة المطلوبة. ") + Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا")); }
     }
 
     private static View FieldRow(string title, string subtitle, string icon, Label value, Func<Task> onTap)
@@ -211,7 +211,7 @@ internal sealed class ProfileDisplayNamePage : ProfileEditorPageBase
     private readonly Button _save;
 
     public ProfileDisplayNamePage(ProfileService profile, HimoApiClient api, AccountService account)
-        : base("الاسم", "الاسم الظاهر للآخرين")
+        : base(AppLocalization.TranslateSourceText("الاسم"), "الاسم الظاهر للآخرين")
     {
         _profile = profile; _api = api; _account = account;
         _save = PrimaryButton("حفظ الاسم", SaveClicked);
@@ -230,7 +230,7 @@ internal sealed class ProfileDisplayNamePage : ProfileEditorPageBase
     {
         var name = _entry.Text?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(name) || name.Length > 60)
-        { await DisplayAlertAsync("الاسم", "أدخل اسمًا من حرف واحد إلى 60 حرفًا.", "حسنًا"); return; }
+        { await DisplayAlertAsync(AppLocalization.TranslateSourceText("الاسم"), AppLocalization.TranslateSourceText("أدخل اسمًا من حرف واحد إلى 60 حرفًا."), AppLocalization.TranslateSourceText("حسنًا")); return; }
         _save.IsEnabled = false; _save.Text = "جارٍ الحفظ...";
         try
         {
@@ -244,7 +244,7 @@ internal sealed class ProfileDisplayNamePage : ProfileEditorPageBase
                     _account.SignIn(remote.UserId, remote.Email, name);
             }
             _profile.Update(name, status);
-            await DisplayAlertAsync("تم الحفظ", "تم تحديث الاسم.", "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("تم الحفظ"), AppLocalization.TranslateSourceText("تم تحديث الاسم."), AppLocalization.TranslateSourceText("حسنًا"));
             await CloseEditorAsync();
         }
         catch (Exception ex) { _hint.Text = "تعذر حفظ الاسم: " + ex.Message; }
@@ -313,7 +313,7 @@ internal sealed class ProfileStatusPage : ProfileEditorPageBase
                     _account.SignIn(remote.UserId, remote.Email, name);
             }
             _profile.Update(name, _selected);
-            await DisplayAlertAsync("تم الحفظ", "تم تحديث حالتك الشخصية.", "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("تم الحفظ"), AppLocalization.TranslateSourceText("تم تحديث حالتك الشخصية."), AppLocalization.TranslateSourceText("حسنًا"));
             await CloseEditorAsync();
         }
         catch (Exception ex) { _hint.Text = "تعذر حفظ الحالة: " + ex.Message; }
@@ -328,11 +328,11 @@ internal sealed class ProfileUsernamePage : ProfileEditorPageBase
     private readonly Label _hint = Hint("من 3 إلى 24 حرفًا إنجليزيًا أو رقمًا أو (_) أو (.)، ويجب أن يكون غير مستخدم.");
     private readonly Button _save;
 
-    public ProfileUsernamePage(HimoApiClient api) : base("اسم المستخدم", "معرّف فريد لحسابك")
+    public ProfileUsernamePage(HimoApiClient api) : base(AppLocalization.TranslateSourceText("اسم المستخدم"), "معرّف فريد لحسابك")
     {
         _api = api;
         _save = PrimaryButton("حفظ اسم المستخدم", SaveClicked);
-        SetEditorContent(Card(new VerticalStackLayout { Spacing = 12, Children = { Heading("اسم المستخدم"), EntryCard(_entry), _hint, _save } }));
+        SetEditorContent(Card(new VerticalStackLayout { Spacing = 12, Children = { Heading(AppLocalization.TranslateSourceText("اسم المستخدم")), EntryCard(_entry), _hint, _save } }));
     }
 
     protected override async void OnAppearing()
@@ -344,13 +344,13 @@ internal sealed class ProfileUsernamePage : ProfileEditorPageBase
 
     private async void SaveClicked(object? sender, EventArgs e)
     {
-        if (!_api.HasToken) { await DisplayAlertAsync("اسم المستخدم", "سجّل الدخول أولًا.", "حسنًا"); return; }
+        if (!_api.HasToken) { await DisplayAlertAsync(AppLocalization.TranslateSourceText("اسم المستخدم"), AppLocalization.TranslateSourceText("سجّل الدخول أولًا."), AppLocalization.TranslateSourceText("حسنًا")); return; }
         _save.IsEnabled = false; _save.Text = "جارٍ الحفظ...";
         try
         {
             var result = await _api.UpdateMyUsernameAsync(_entry.Text ?? string.Empty);
             _hint.Text = "تم حفظ اسم المستخدم @" + result.Username;
-            await DisplayAlertAsync("تم الحفظ", "تم تحديث اسم المستخدم.", "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("تم الحفظ"), AppLocalization.TranslateSourceText("تم تحديث اسم المستخدم."), AppLocalization.TranslateSourceText("حسنًا"));
             await CloseEditorAsync();
         }
         catch (Exception ex) { _hint.Text = "تعذر الحفظ: " + ex.Message; }
@@ -416,7 +416,7 @@ internal sealed class ProfileEmailPage : ProfileEditorPageBase
             var updated = await _api.VerifyMyEmailChangeAsync(_email.Text ?? string.Empty, _code.Text ?? string.Empty);
             if (updated.UserId != Guid.Empty && !string.IsNullOrWhiteSpace(updated.Email))
                 _account.SignIn(updated.UserId, updated.Email, updated.Name);
-            await DisplayAlertAsync("تم التغيير", "تم تأكيد البريد الإلكتروني الجديد وتحديث حسابك.", "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("تم التغيير"), AppLocalization.TranslateSourceText("تم تأكيد البريد الإلكتروني الجديد وتحديث حسابك."), AppLocalization.TranslateSourceText("حسنًا"));
             await CloseEditorAsync();
         }
         catch (Exception ex) { _hint.Text = "تعذر تأكيد البريد: " + ex.Message; }
@@ -540,30 +540,30 @@ internal static class ProfilePhotoWorkflow
 
     public static async Task ShowAsync(Page page, ProfileService profile, HimoApiClient api, Action<string?> updateUi)
     {
-        var action = await page.DisplayActionSheetAsync("صورة الملف الشخصي", "إلغاء", "إزالة الصورة", "التقاط صورة بالكاميرا", "اختيار صورة من المعرض");
-        if (action == "إزالة الصورة")
+        var action = await page.DisplayActionSheetAsync(AppLocalization.TranslateSourceText("صورة الملف الشخصي"), AppLocalization.TranslateSourceText("إلغاء"), AppLocalization.TranslateSourceText("إزالة الصورة"), AppLocalization.TranslateSourceText("التقاط صورة بالكاميرا"), AppLocalization.TranslateSourceText("اختيار صورة من المعرض"));
+        if (action == AppLocalization.TranslateSourceText("إزالة الصورة"))
         {
-            var confirm = await page.DisplayAlertAsync("إزالة الصورة", "هل تريد إزالة صورة الملف الشخصي؟", "إزالة", "إلغاء");
+            var confirm = await page.DisplayAlertAsync(AppLocalization.TranslateSourceText("إزالة الصورة"), AppLocalization.TranslateSourceText("هل تريد إزالة صورة الملف الشخصي؟"), AppLocalization.TranslateSourceText("إزالة"), AppLocalization.TranslateSourceText("إلغاء"));
             if (!confirm) return;
             try
             {
                 if (api.HasToken) await api.DeleteMyProfilePhotoAsync();
                 profile.ClearPhoto(); updateUi(null);
-                await page.DisplayAlertAsync("تمت الإزالة", "تمت إزالة صورة الملف الشخصي.", "حسنًا");
+                await page.DisplayAlertAsync(AppLocalization.TranslateSourceText("تمت الإزالة"), AppLocalization.TranslateSourceText("تمت إزالة صورة الملف الشخصي."), AppLocalization.TranslateSourceText("حسنًا"));
             }
-            catch (Exception ex) { await page.DisplayAlertAsync("تعذر إزالة الصورة", ex.Message, "حسنًا"); }
+            catch (Exception ex) { await page.DisplayAlertAsync(AppLocalization.TranslateSourceText("تعذر إزالة الصورة"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا")); }
             return;
         }
-        if (action is not ("التقاط صورة بالكاميرا" or "اختيار صورة من المعرض")) return;
+        if (action != AppLocalization.TranslateSourceText("التقاط صورة بالكاميرا") && action != AppLocalization.TranslateSourceText("اختيار صورة من المعرض")) return;
 
         try
         {
             FileResult? result;
-            if (action == "التقاط صورة بالكاميرا")
+            if (action == AppLocalization.TranslateSourceText("التقاط صورة بالكاميرا"))
                 result = await MediaPicker.Default.CapturePhotoAsync();
             else
             {
-                var photos = await MediaPicker.Default.PickPhotosAsync(new MediaPickerOptions { Title = "اختر صورة الملف الشخصي", SelectionLimit = 1 });
+                var photos = await MediaPicker.Default.PickPhotosAsync(new MediaPickerOptions { Title = AppLocalization.TranslateSourceText("اختر صورة الملف الشخصي"), SelectionLimit = 1 });
                 result = photos is { Count: > 0 } ? photos[0] : null;
             }
             if (result is null) return;
@@ -595,8 +595,8 @@ internal static class ProfilePhotoWorkflow
             if (api.HasToken) await api.UploadMyProfilePhotoAsync(bytes, contentType);
             var path = profile.SavePhoto(bytes, contentType);
             updateUi(path);
-            await page.DisplayAlertAsync("تم تحديث الصورة", "تم تحديث صورة الملف الشخصي بنجاح.", "حسنًا");
+            await page.DisplayAlertAsync(AppLocalization.TranslateSourceText("تم تحديث الصورة"), AppLocalization.TranslateSourceText("تم تحديث صورة الملف الشخصي بنجاح."), AppLocalization.TranslateSourceText("حسنًا"));
         }
-        catch (Exception ex) { await page.DisplayAlertAsync("تعذر تحديث الصورة", ex.Message, "حسنًا"); }
+        catch (Exception ex) { await page.DisplayAlertAsync(AppLocalization.TranslateSourceText("تعذر تحديث الصورة"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا")); }
     }
 }

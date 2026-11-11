@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 using Himo.ViewModels;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
@@ -316,7 +316,7 @@ public sealed class GroupInvitePreviewPage : ContentPage, IQueryAttributable
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذر الانضمام إلى المجموعة", AppLocalization.TranslateSourceText(ex.Message), "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر الانضمام إلى المجموعة"), AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             _joinButton.Text = _preview.IsMember ? "فتح المجموعة" : "انضمام للمجموعة";
         }
         finally

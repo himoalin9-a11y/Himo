@@ -1,3 +1,4 @@
+using Himo.Services;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
 
@@ -31,7 +32,7 @@ public sealed class ImagePreviewPage : Himo.Services.LocalizedContentPage
             Scale = 1,
             AutomationId = "PreviewImage",
         };
-        SemanticProperties.SetDescription(_image, string.IsNullOrWhiteSpace(title) ? "معاينة الصورة" : title);
+        SemanticProperties.SetDescription(_image, string.IsNullOrWhiteSpace(title) ? AppLocalization.TranslateSourceText("معاينة الصورة") : title);
 
         var pinch = new PinchGestureRecognizer();
         pinch.PinchUpdated += OnPinchUpdated;
@@ -53,12 +54,12 @@ public sealed class ImagePreviewPage : Himo.Services.LocalizedContentPage
             VerticalOptions = LayoutOptions.Center,
             AutomationId = "CloseImagePreviewButton",
         };
-        SemanticProperties.SetDescription(closeButton, "إغلاق معاينة الصورة");
+        SemanticProperties.SetDescription(closeButton, AppLocalization.TranslateSourceText("إغلاق معاينة الصورة"));
         closeButton.Clicked += async (_, _) => await CloseAsync();
 
         var titleLabel = new Label
         {
-            Text = string.IsNullOrWhiteSpace(title) ? "معاينة الصورة" : title,
+            Text = string.IsNullOrWhiteSpace(title) ? AppLocalization.TranslateSourceText("معاينة الصورة") : title,
             FontSize = 15,
             FontAttributes = FontAttributes.Bold,
             TextColor = Colors.White,
@@ -93,7 +94,7 @@ public sealed class ImagePreviewPage : Himo.Services.LocalizedContentPage
 
         var hint = new Label
         {
-            Text = "استخدم إصبعين للتقريب، واسحب الصورة بعد تكبيرها",
+            Text = AppLocalization.TranslateSourceText("استخدم إصبعين للتقريب، واسحب الصورة بعد تكبيرها"),
             FontSize = 12,
             TextColor = Color.FromArgb("#E6FFFFFF"),
             HorizontalTextAlignment = TextAlignment.Center,

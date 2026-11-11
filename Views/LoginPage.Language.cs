@@ -1,80 +1,43 @@
-using System;
-using System.Diagnostics;
+﻿using System;
 using System.Linq;
 using Himo.Services;
-using Microsoft.Maui.Controls;
-using Microsoft.Maui.Graphics;
 
 namespace Himo.Views;
 
-/// <summary>
-/// Language selector helpers for LoginPage.
-/// Intentionally does not override OnAppearing because LoginPage already
-/// contains that lifecycle method in its main code-behind file.
-/// </summary>
 public partial class LoginPage
 {
     private static readonly (string Code, string ResourceKey)[] LoginLanguageOptions =
     {
-        ("ar", "LanguageArabic"),
         ("en", "LanguageEnglish"),
+        ("ar", "LanguageArabic"),
         ("fr", "LanguageFrench"),
         ("tr", "LanguageTurkish"),
         ("ur", "LanguageUrdu"),
         ("es", "LanguageSpanish"),
-        ("id", "LanguageIndonesian")
+        ("id", "LanguageIndonesian"),
+        ("de", "LanguageGerman"),
+        ("pt", "LanguagePortuguese"),
+        ("zh-Hans", "LanguageChineseSimplified"),
+        ("hi", "LanguageHindi"),
+        ("ja", "LanguageJapanese")
     };
 
-    private bool _loginLanguageButtonAdded;
+    public void InitializeLoginLanguageSelector() => RefreshLoginLanguageButton();
 
-    // Call this once from the EXISTING LoginPage.OnAppearing() method,
-    // immediately after base.OnAppearing().
-    private void EnsureLoginLanguageButton()
+    private void RefreshLoginLanguageButton()
     {
-        if (_loginLanguageButtonAdded)
+        if (LoginLanguageButton is null)
             return;
 
-        if (Content is not Grid root)
-        {
-            Debug.WriteLine("[Himo Login Language] Login root is not a Grid; selector was not attached.");
-            return;
-        }
+        var selected = LoginLanguageOptions.FirstOrDefault(
+            option => string.Equals(option.Code, AppLocalization.CurrentLanguageCode, StringComparison.Ordinal));
 
-        var languageImage = new ImageButton
-        {
-            Source = "himo_pro_ui_settings_icon_globe.png",
-            BackgroundColor = Colors.Transparent,
-            Padding = 7,
-            WidthRequest = 44,
-            HeightRequest = 44,
-            Aspect = Aspect.AspectFit,
-            HorizontalOptions = LayoutOptions.Fill,
-            VerticalOptions = LayoutOptions.Fill
-        };
-        SemanticProperties.SetDescription(languageImage, AppLocalization.T("LanguageTitle"));
-        languageImage.Clicked += LoginLanguageButtonClicked;
+        var label = string.IsNullOrWhiteSpace(selected.Code)
+            ? AppLocalization.T("LanguageEnglish")
+            : AppLocalization.T(selected.ResourceKey);
 
-        var languageButton = new Border
-        {
-            Content = languageImage,
-            WidthRequest = 50,
-            HeightRequest = 50,
-            Padding = 2,
-            Margin = new Thickness(18, 18, 18, 0),
-            HorizontalOptions = LayoutOptions.End,
-            VerticalOptions = LayoutOptions.Start,
-            BackgroundColor = Color.FromArgb("#D20B1535"),
-            Stroke = new SolidColorBrush(Color.FromArgb("#7657C9")),
-            StrokeThickness = 1,
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle
-            {
-                CornerRadius = new CornerRadius(16)
-            },
-            ZIndex = 100
-        };
-
-        root.Children.Add(languageButton);
-        _loginLanguageButtonAdded = true;
+        LoginLanguageButton.Text = "🌐 " + label;
+        LoginLanguageButton.FlowDirection = Microsoft.Maui.FlowDirection.LeftToRight;
     }
 
     private async void LoginLanguageButtonClicked(object? sender, EventArgs e)
@@ -82,34 +45,40 @@ public partial class LoginPage
         try
         {
             var options = LoginLanguageOptions
-                .Select(option => (
+                .Select(option => new
+                {
                     option.Code,
                     option.ResourceKey,
-                    Label: AppLocalization.T(option.ResourceKey)))
+                    Label = AppLocalization.T(option.ResourceKey)
+                })
                 .ToArray();
 
-            var selected = await DisplayActionSheetAsync(
+            var selectedLabel = await DisplayActionSheetAsync(
                 AppLocalization.T("LanguageTitle"),
                 AppLocalization.T("Cancel"),
                 null,
                 options.Select(option => option.Label).ToArray());
 
-            var chosen = options.FirstOrDefault(option =>
-                string.Equals(option.Label, selected, StringComparison.Ordinal));
-
-            if (string.IsNullOrWhiteSpace(chosen.Code))
+            if (string.IsNullOrWhiteSpace(selectedLabel))
                 return;
 
-            AppLocalization.SetLanguage(chosen.Code);
+            var selected = options.FirstOrDefault(option =>
+                string.Equals(option.Label, selectedLabel, StringComparison.Ordinal));
+
+            if (selected is null)
+                return;
+
+            AppLocalization.SetLanguage(selected.Code);
             AppLocalization.AttachToPage(this);
+            RefreshLoginLanguageButton();
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[Himo Login Language] Could not change language: {ex}");
+            System.Diagnostics.Debug.WriteLine("[Himo Login Language] " + ex);
             await DisplayAlertAsync(
-                AppLocalization.TranslateSourceText("اللغة"),
-                AppLocalization.TranslateSourceText("تعذر تطبيق اللغة المختارة.") + " " + ex.Message,
-                AppLocalization.TranslateSourceText("حسنًا"));
+                AppLocalization.T("LanguageTitle"),
+                Himo.Services.AppLocalization.TranslateSourceText(ex.Message),
+                AppLocalization.T("Cancel"));
         }
     }
 }

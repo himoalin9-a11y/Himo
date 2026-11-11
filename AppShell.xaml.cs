@@ -14,7 +14,6 @@ public partial class AppShell : Shell
     private static readonly QrScannerPageRouteFactory QrScannerFactory = new();
     private static readonly ShareAccountPageRouteFactory ShareAccountFactory = new();
     private readonly IServiceProvider _services;
-    private int _prewarmState;
 
     static AppShell()
     {
@@ -59,9 +58,8 @@ public partial class AppShell : Shell
         // the pending URI now that Shell routes and the home page are ready.
         global::Himo.MainActivity.TryNavigateToPendingAppLink();
 #endif
-        // Also cover the sign-in and app-unlock flows that enter AppShell without
-        // going through the welcome-page timer.
-        _ = PrewarmAccountPagesAfterFirstFrameAsync();
+        // Keep secondary account pages lazy. Constructing their large visual trees
+        // shortly after sign-in used to block the UI thread and cause dropped frames.
     }
 
     private void OnShellNavigated(object? sender, ShellNavigatedEventArgs e)
@@ -78,57 +76,7 @@ public partial class AppShell : Shell
         _ = HimoAppearanceManager.ApplyToTreeAfterFirstFrameAsync(page, batchSize: 48);
     }
 
-    /// <summary>
-    /// Build the two expensive primary pages while the two-second welcome screen
-    /// is visible, then keep them warm for the first navigation as well as later visits.
-    /// Must be called on the UI thread.
-    /// </summary>
-    internal void PrewarmAccountPages()
-    {
-        // Keep the public entry point for the existing splash/session flow, but do
-        // not construct both heavyweight pages in one UI-thread turn.
-        if (Interlocked.CompareExchange(ref _prewarmState, 1, 0) != 0)
-            return;
 
-        _ = PrewarmPagesInSeparateTurnsAsync();
-    }
-
-    private async Task PrewarmPagesInSeparateTurnsAsync()
-    {
-        try
-        {
-            // Each page constructor builds a large XAML tree. Separating the work
-            // gives Android a chance to render between pages instead of producing
-            // one long frame stall that can be felt during navigation.
-            await MainThread.InvokeOnMainThreadAsync(() => SettingsFactory.Preload(_services));
-            await Task.Delay(350).ConfigureAwait(false);
-            await MainThread.InvokeOnMainThreadAsync(() => ProfileFactory.Preload(_services));
-            Volatile.Write(ref _prewarmState, 2);
-        }
-        catch (Exception ex)
-        {
-            // Prewarming is only an optimization; normal lazy navigation remains available.
-            Volatile.Write(ref _prewarmState, 0);
-            System.Diagnostics.Debug.WriteLine($"[Himo PageCache] Staggered prewarming skipped: {ex.Message}");
-        }
-    }
-
-    private async Task PrewarmAccountPagesAfterFirstFrameAsync()
-    {
-        try
-        {
-            // Wait longer than one frame burst and warm only one page per UI turn.
-            // If the user opens a page before it is warmed, normal navigation still works.
-            await Task.Delay(1400).ConfigureAwait(false);
-            if (Volatile.Read(ref _prewarmState) == 2 || Volatile.Read(ref _prewarmState) == 1)
-                return;
-            await MainThread.InvokeOnMainThreadAsync(PrewarmAccountPages);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Himo PageCache] Idle prewarm skipped: {ex.Message}");
-        }
-    }
 }
 
 internal sealed class ChatPageRouteFactory : RouteFactory

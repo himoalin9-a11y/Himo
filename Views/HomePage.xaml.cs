@@ -228,7 +228,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         var shell = Shell.Current;
         if (shell is null)
         {
-            await DisplayAlertAsync("تعذر فتح المحادثة", "واجهة التنقل غير جاهزة. أغلق الصفحة وافتحها مجددًا.", "موافق");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح المحادثة"),Himo.Services.AppLocalization.TranslateSourceText("واجهة التنقل غير جاهزة. أغلق الصفحة وافتحها مجددًا."),Himo.Services.AppLocalization.TranslateSourceText("موافق"));
             return;
         }
 
@@ -245,7 +245,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         }
         else
         {
-            await DisplayAlertAsync("تعذر فتح المحادثة", "معرّف المحادثة غير صالح. حدّث قائمة المحادثات ثم أعد المحاولة.", "موافق");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح المحادثة"),Himo.Services.AppLocalization.TranslateSourceText("معرّف المحادثة غير صالح. حدّث قائمة المحادثات ثم أعد المحاولة."),Himo.Services.AppLocalization.TranslateSourceText("موافق"));
             return;
         }
 
@@ -260,7 +260,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo] Open conversation failed (id={routeId}): {ex}");
-            await DisplayAlertAsync("تعذر فتح المحادثة", "حدث خطأ أثناء فتح المحادثة. أعد المحاولة؛ إذا تكرر الخطأ فراجع سجل التطبيق.", "موافق");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح المحادثة"),Himo.Services.AppLocalization.TranslateSourceText("حدث خطأ أثناء فتح المحادثة. أعد المحاولة؛ إذا تكرر الخطأ فراجع سجل التطبيق."),Himo.Services.AppLocalization.TranslateSourceText("موافق"));
         }
         finally
         {
@@ -575,7 +575,6 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
 
     private async void ChatsTabClicked(object? sender, EventArgs e) => await NavigateSectionAsync("chats");
     private async void CallsTabClicked(object? sender, EventArgs e) => await NavigateSectionAsync("calls");
-    private async void PhoneSearchTabClicked(object? sender, EventArgs e) => await NavigateSectionAsync("phone");
 
     private async void ChatsSectionSwiped(object? sender, SwipedEventArgs e) => await HandleSectionSwipeAsync("chats", e);
     private async void CallsSectionSwiped(object? sender, SwipedEventArgs e) => await HandleSectionSwipeAsync("calls", e);
@@ -724,13 +723,10 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         var idleStroke = new SolidColorBrush(border);
         ChatsTabSurface.BackgroundColor = section == "chats" ? selected : idle;
         CallsTabSurface.BackgroundColor = section == "calls" ? selected : idle;
-        PhoneTabSurface.BackgroundColor = section == "phone" ? selected : idle;
         ChatsTabSurface.Stroke = section == "chats" ? selectedStroke : idleStroke;
         CallsTabSurface.Stroke = section == "calls" ? selectedStroke : idleStroke;
-        PhoneTabSurface.Stroke = section == "phone" ? selectedStroke : idleStroke;
         ChatsTabLabel.TextColor = section == "chats" ? accent : muted;
         CallsTabLabel.TextColor = section == "calls" ? accent : muted;
-        PhoneTabLabel.TextColor = section == "phone" ? accent : muted;
     }
 
     private void ArchiveListClicked(object? sender, EventArgs e)
@@ -802,7 +798,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         {
             PhoneSearchStatusLabel.Text = "تعذر البحث الآن. تحقق من الاتصال بالخادم ثم حاول مجددًا.";
             System.Diagnostics.Debug.WriteLine($"[Himo Home] Phone lookup failed: {ex}");
-            await DisplayAlertAsync("البحث برقم الهاتف", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("البحث برقم الهاتف"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -822,17 +818,13 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         await _api.TokenInitialization;
         if (!_api.HasToken)
         {
-            await DisplayAlertAsync("جهات الاتصال", "سجّل الدخول أولًا للبحث عن أصدقائك.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("جهات الاتصال"),Himo.Services.AppLocalization.TranslateSourceText("سجّل الدخول أولًا للبحث عن أصدقائك."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
         if (!Preferences.Default.Get("himo_contacts_lookup_consent", false))
         {
-            var consent = await DisplayAlertAsync(
-                "الخصوصية وجهات الاتصال",
-                "سيقرأ Himo أرقام الهاتف المحفوظة في جهات اتصالك ويرسل الأرقام اللازمة للمطابقة عبر اتصال آمن. لن يحفظ الخادم دفتر العناوين؛ سيعيد فقط حسابات Himo المطابقة التي سمح أصحابها بالعثور عليهم.",
-                "متابعة",
-                "إلغاء");
+            var consent = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الخصوصية وجهات الاتصال"),Himo.Services.AppLocalization.TranslateSourceText("سيقرأ Himo أرقام الهاتف المحفوظة في جهات اتصالك ويرسل الأرقام اللازمة للمطابقة عبر اتصال آمن. لن يحفظ الخادم دفتر العناوين؛ سيعيد فقط حسابات Himo المطابقة التي سمح أصحابها بالعثور عليهم."),Himo.Services.AppLocalization.TranslateSourceText("متابعة"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
             if (!consent) return;
             Preferences.Default.Set("himo_contacts_lookup_consent", true);
         }
@@ -908,7 +900,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         {
             PhoneSearchStatusLabel.Text = "تعذر البحث في جهات الاتصال. تحقق من الاتصال بالخادم ثم حاول مجددًا.";
             System.Diagnostics.Debug.WriteLine($"[Himo Home] Contacts lookup failed: {ex}");
-            await DisplayAlertAsync("البحث في جهات الاتصال", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("البحث في جهات الاتصال"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -919,7 +911,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
             PhoneSearchProgress.IsVisible = false;
         }
 #else
-        await DisplayAlertAsync("جهات الاتصال", "ميزة البحث في جهات الاتصال متاحة حاليًا على Android.", "حسنًا");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("جهات الاتصال"),Himo.Services.AppLocalization.TranslateSourceText("ميزة البحث في جهات الاتصال متاحة حاليًا على Android."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
 #endif
     }
 
@@ -958,7 +950,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         catch (Exception ex)
         {
             PhoneSearchStatusLabel.Text = "تعذر بدء المحادثة.";
-            await DisplayAlertAsync("المحادثة", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المحادثة"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -1008,17 +1000,14 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         var selected = _selectedConversations.Single();
         if (selected.IsGroup)
         {
-            await DisplayAlertAsync("الحظر", "يمكن حظر حساب فردي فقط، وليس مجموعة كاملة.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الحظر"),Himo.Services.AppLocalization.TranslateSourceText("يمكن حظر حساب فردي فقط، وليس مجموعة كاملة."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
         var action = selected.IsBlocked ? "unblock" : "block";
         if (action == "block")
         {
-            var confirmed = await DisplayAlertAsync(
-                "حظر الحساب",
-                $"هل تريد حظر {selected.Name}؟ لن تتمكن الحسابات المحظورة من إرسال رسائل أو بدء مكالمات مباشرة بينكما.",
-                "حظر", "إلغاء");
+            var confirmed = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حظر الحساب"),Himo.Services.AppLocalization.TranslateSourceText($"هل تريد حظر {selected.Name}؟ لن تتمكن الحسابات المحظورة من إرسال رسائل أو بدء مكالمات مباشرة بينكما."),Himo.Services.AppLocalization.TranslateSourceText("حظر"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
             if (!confirmed) return;
         }
         await ApplyConversationActionAsync(action, new[] { selected });
@@ -1101,7 +1090,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         if (failures.Count > 0)
         {
             var summary = failures.Count == 1 ? failures[0] : $"تعذر تنفيذ الإجراء على {failures.Count} محادثات.";
-            await DisplayAlertAsync("تعذر إكمال بعض الإجراءات", summary, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر إكمال بعض الإجراءات"), summary,Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -1116,7 +1105,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
             "unblock" => "تم إلغاء الحظر.",
             _ => "تم تحديث المحادثات المحددة."
         };
-        await DisplayAlertAsync("Himo", resultMessage, "حسنًا");
+        await DisplayAlertAsync("Himo", resultMessage,Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     private static void UpdateLegacyArchiveList(Conversation conversation, bool archived)
@@ -1139,7 +1128,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
             return;
         if (!Guid.TryParse(call.ConversationId, out var conversationId) || conversationId == Guid.Empty)
         {
-            await DisplayAlertAsync("المكالمة", "المحادثة المرتبطة بهذه المكالمة غير متاحة. افتح المحادثة من القائمة أولًا.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المكالمة"),Himo.Services.AppLocalization.TranslateSourceText("المحادثة المرتبطة بهذه المكالمة غير متاحة. افتح المحادثة من القائمة أولًا."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -1150,7 +1139,7 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("المكالمة", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المكالمة"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 }

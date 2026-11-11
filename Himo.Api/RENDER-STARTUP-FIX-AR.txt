@@ -1,0 +1,28 @@
+إصلاح تشغيل Himo.Api على Render
+================================
+
+ما تم تعديله في هذه النسخة:
+1) جعل GET /health مسار حياة (liveness) مستقلاً وقصيراً، ويعمل قبل HTTPS redirection وRate Limiter وأي اعتماد على MongoDB أو Firebase.
+2) فصل فحص قاعدة البيانات في /health/database. يعيد 503 عند فشل إعداد MongoDB أو الاتصال بها، مع عدم كشف تفاصيل حساسة.
+3) منع خدمة تنظيف الرسائل المنتهية من إنشاء MongoStore أو تنفيذ استعلام MongoDB فور بدء الخادم. تبدأ بعد 30 ثانية وتعمل في الخلفية، وأي فشل فيها يسجل تحذيراً ولا يوقف API.
+4) إضافة رسائل بدء/إيقاف واضحة إلى stdout كي تظهر في Render Application Logs، دون طباعة كلمات مرور أو connection strings أو مفاتيح API.
+
+طريقة النشر:
+- استبدل Himo.Api/Program.cs في مستودع GitHub بالملف الموجود في هذه النسخة.
+- أضف الملف RENDER-STARTUP-FIX-AR.txt اختياريًا للتوثيق.
+- نفّذ commit وpush إلى الفرع المرتبط بخدمة Himo-Api في Render (ظهر سابقًا أنه master).
+- في Render افتح Himo-Api > Events/Deploys وتأكد من نجاح Deploy الجديد قبل الاختبار.
+
+اختبار ما بعد النشر:
+1) افتح https://himo-api.onrender.com/health ويجب أن يعيد HTTP 200 مع JSON status=ok.
+2) افتح https://himo-api.onrender.com/health/database.
+   - HTTP 200 وstatus=ok تعني أن MongoDB والفهارس جاهزة.
+   - HTTP 503 وstatus=degraded تعني أن API تعمل لكن إعداد/اتصال MongoDB يحتاج إصلاحًا. اقرأ سجل Render الذي يبدأ بـ [HimoHealth].
+3) في Render > Logs ابحث عن [HimoStartup] لمعرفة بدء التطبيق وإيقافه، وعن [HimoExpiry] لمشكلات مهمة التنظيف.
+
+تنبيهات:
+- لم يتم تعديل بيانات MongoDB أو حذف أي مجموعة أو حساب.
+- لم يتم تعديل إعدادات Brevo أو Firebase secrets.
+- لم يتم تغيير إعداد الخطة أو بيانات Render.
+- يجب نشر هذه النسخة إلى GitHub/Render؛ إنشاء الأرشيف وحده لا يغيّر الخدمة المنشورة.
+- لم يتوفر .NET SDK في بيئة إعداد الملف، لذلك لم أتمكن من تنفيذ dotnet build أو اختبار حي. يجب اعتبار البناء غير متحقق حتى ينجح Deploy في Render.

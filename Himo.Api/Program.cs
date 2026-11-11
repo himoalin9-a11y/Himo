@@ -211,7 +211,7 @@ webApp.UseDefaultFiles();
 webApp.UseStaticFiles();
 
 webApp.MapGet("/", () => Results.Ok(new { status = "ok", service = "Himo.Api", message = "Himo API is running", health = "/health" }));
-webApp.MapGet("/web", () => Results.Redirect("/web/index.html"));
+webApp.MapGet("/web", () => Results.Redirect("/web/"));
 
 // Android Verified App Links association. Configure one or more SHA-256 signing
 // certificate fingerprints in Render's ANDROID_APP_SHA256_CERT_FINGERPRINTS
@@ -2285,7 +2285,6 @@ sealed class ConversationDto
     public Guid Id { get; init; }
     public string Name { get; init; }
     public string LastMessage { get; init; }
-    public string? LastMessageAttachmentContentType { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
     public int UnreadCount { get; init; }
     public Guid? OtherParticipantUserId { get; init; }
@@ -2314,13 +2313,11 @@ sealed class ConversationDto
         bool isArchived = false,
         bool isMuted = false,
         bool isBlocked = false,
-        bool isGroup = false,
-        string? lastMessageAttachmentContentType = null)
+        bool isGroup = false)
     {
         Id = id;
         Name = name ?? string.Empty;
         LastMessage = lastMessage ?? string.Empty;
-        LastMessageAttachmentContentType = lastMessageAttachmentContentType;
         UpdatedAt = updatedAt;
         UnreadCount = unreadCount;
         OtherParticipantUserId = otherParticipantUserId;

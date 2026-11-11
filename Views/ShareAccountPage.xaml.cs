@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 
 namespace Himo.Views;
 
@@ -132,13 +132,13 @@ public partial class ShareAccountPage : ContentPage
         {
             await Share.Default.RequestAsync(new ShareTextRequest
             {
-                Title = "حسابي على Himo",
-                Text = $"تواصل معي على Himo: {_shareDisplayName}\n{_accountShareUri}"
+                Title = AppLocalization.TranslateSourceText("حسابي على Himo"),
+                Text = $"{AppLocalization.TranslateSourceText("تواصل معي على Himo: ")}{_shareDisplayName}\n{_accountShareUri}"
             });
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذرت المشاركة", ex.Message, "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("تعذرت المشاركة"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -148,11 +148,11 @@ public partial class ShareAccountPage : ContentPage
         try
         {
             await Clipboard.Default.SetTextAsync(_accountShareUri);
-            await DisplayAlertAsync("تم النسخ", "تم نسخ رابط حسابك إلى الحافظة.", "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("تم النسخ"), AppLocalization.TranslateSourceText("تم نسخ رابط حسابك إلى الحافظة."), AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذر النسخ", ex.Message, "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("تعذر النسخ"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -165,11 +165,11 @@ public partial class ShareAccountPage : ContentPage
             return true;
 
         await DisplayAlertAsync(
-            "رابط الحساب",
+            AppLocalization.TranslateSourceText("رابط الحساب"),
             _api.HasToken
-                ? "تعذر تجهيز رابط الحساب. تحقق من اتصالك ثم أعد المحاولة."
-                : "سجّل الدخول إلى Himo أولًا حتى تتمكن من مشاركة حسابك.",
-            "حسنًا");
+                ? AppLocalization.TranslateSourceText("تعذر تجهيز رابط الحساب. تحقق من اتصالك ثم أعد المحاولة.")
+                : AppLocalization.TranslateSourceText("سجّل الدخول إلى Himo أولًا حتى تتمكن من مشاركة حسابك."),
+            AppLocalization.TranslateSourceText("حسنًا"));
         return false;
     }
 

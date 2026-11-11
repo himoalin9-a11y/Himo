@@ -1,0 +1,18 @@
+﻿--------- beginning of (HKS)4B2379983C113DA4A577F152C5F00E0E85076A82E49BA9A2659475CD356EE3DD87B77CA8BA14BEB7DAD0DAFBD1D5E78C003C015A30BEACCAE5D5C0B735285E07ADEDA6C070A998830130CCE3A24BE23399D0F22D7A175815C6725923E908AB9B54EAE3C4C7201D6C1DBA377AAA14EB61D6F01D8D5C84BE501043CC8F99F9FEA86CC0D3AD99B995C6B4D152CD02BE1B2478E74F7F3B99C7ADE3DC513957BA73E8929238FA456A696797E539E87EEC085AEEAE9424EAEF2FD19374338DFEF8FC3DEE24E168E265EB9B7C9142F69A2A80B67FBF7B1CF2134490CDD33AC09B6A3B2198E7C7E69FAACF1BC25C58D8D652F1B33DA4DA9C5B81ED60461B48817182D997(HKE)
+--------- beginning of crash
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: FATAL EXCEPTION: main
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: Process: com.companyname.himo, PID: 30315
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: java.lang.UnsatisfiedLinkError: No implementation found for void crc6488302ad6e9e4df1a.MauiApplication.n_onCreate() (tried Java_crc6488302ad6e9e4df1a_MauiApplication_n_1onCreate and Java_crc6488302ad6e9e4df1a_MauiApplication_n_1onCreate__) - is the library loaded, e.g. System.loadLibrary?
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: 	at crc6488302ad6e9e4df1a.MauiApplication.n_onCreate(Native Method)
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: 	at crc6488302ad6e9e4df1a.MauiApplication.onCreate(MauiApplication.java:17)
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: 	at android.app.Instrumentation.callApplicationOnCreate(Instrumentation.java:1403)
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:9368)
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: 	at android.app.ActivityThread.-$$Nest$mhandleBindApplication(ActivityThread.java:0)
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:3276)
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:124)
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:263)
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:360)
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:10813)
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:648)
+11-09 09:53:18.263 30315 30315 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1012)

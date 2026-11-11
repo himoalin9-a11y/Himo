@@ -1,4 +1,6 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Text;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
@@ -9,8 +11,32 @@ namespace Himo.Views;
 /// <summary>A country calling-code entry used by the Himo phone-number editor.</summary>
 public sealed record CountryDialCode(string Name, string Flag, string DialCode)
 {
+    /// <summary>Country name localized by the active UI culture. The Arabic Name remains
+    /// the stable persisted/search value so changing language never changes saved data.</summary>
+    public string LocalizedName
+    {
+        get
+        {
+            try
+            {
+                var letters = Flag.EnumerateRunes()
+                    .Where(rune => rune.Value is >= 0x1F1E6 and <= 0x1F1FF)
+                    .Select(rune => (char)('A' + rune.Value - 0x1F1E6))
+                    .ToArray();
+                if (letters.Length == 2)
+                    return new RegionInfo(new string(letters)).DisplayName;
+            }
+            catch (ArgumentException)
+            {
+                // A flag without a supported ISO region falls back to the source name.
+            }
+
+            return Name;
+        }
+    }
+
     public string CompactDisplay => $"{Flag}  {DialCode}  ▾";
-    public string SearchText => $"{Name} {DialCode} {Flag}";
+    public string SearchText => $"{Name} {LocalizedName} {DialCode} {Flag}";
 }
 
 /// <summary>Theme-aware country selector with a compact, RTL Arabic layout.</summary>
@@ -248,7 +274,7 @@ public sealed class CountryDialCodePickerPage : Himo.Services.LocalizedContentPa
             MaxLines = 1
         };
         countryName.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
-        countryName.SetBinding(Label.TextProperty, nameof(CountryDialCode.Name));
+        countryName.SetBinding(Label.TextProperty, nameof(CountryDialCode.LocalizedName));
 
         var code = new Label
         {

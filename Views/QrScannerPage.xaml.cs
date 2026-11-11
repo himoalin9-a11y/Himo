@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 using Himo.ViewModels;
 using Microsoft.Maui.ApplicationModel;
 using ZXing.Net.Maui;
@@ -85,14 +85,14 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
             if (status != PermissionStatus.Granted)
             {
                 ScannerStatusLabel.Text = "يلزم السماح باستخدام الكاميرا لمسح رمز QR.";
-                await DisplayAlertAsync("إذن الكاميرا", "فعّل إذن الكاميرا لـ Himo ثم حاول مجددًا.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إذن الكاميرا"),Himo.Services.AppLocalization.TranslateSourceText("فعّل إذن الكاميرا لـ Himo ثم حاول مجددًا."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
         }
         catch (Exception ex)
         {
             ScannerStatusLabel.Text = "تعذر تشغيل الكاميرا.";
-            await DisplayAlertAsync("الكاميرا", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الكاميرا"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 #endif
@@ -136,7 +136,7 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[Himo QR] Scan handling failed: {ex}");
-                try { await DisplayAlertAsync("تعذر قراءة الرمز", "لم نتمكن من معالجة هذا الرمز. وجّه الكاميرا إلى رمز Himo وحاول مجددًا.", "حسنًا"); }
+                try { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر قراءة الرمز"),Himo.Services.AppLocalization.TranslateSourceText("لم نتمكن من معالجة هذا الرمز. وجّه الكاميرا إلى رمز Himo وحاول مجددًا."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
                 catch { }
             }
             finally
@@ -156,7 +156,7 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
     {
         if (!HimoAppLinkRouter.TryNormalizeLink(value, out var uri, _api.BaseUrl))
         {
-            await DisplayAlertAsync("رمز غير صالح", "هذا الرمز لا يحتوي على رابط Himo صالح.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("رمز غير صالح"),Himo.Services.AppLocalization.TranslateSourceText("هذا الرمز لا يحتوي على رابط Himo صالح."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             ScannerStatusLabel.Text = "امسح رمز حساب أو مجموعة Himo.";
             return;
         }
@@ -166,7 +166,7 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
 
         if (!_api.HasToken)
         {
-            await DisplayAlertAsync("تسجيل الدخول", "سجّل الدخول إلى Himo أولًا.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تسجيل الدخول"),Himo.Services.AppLocalization.TranslateSourceText("سجّل الدخول إلى Himo أولًا."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -181,20 +181,15 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
                 if (string.IsNullOrWhiteSpace(qrKey) || qrKey.Length != 64 || qrKey.Any(ch => !Uri.IsHexDigit(ch)))
                     throw new InvalidOperationException("رمز ربط الكمبيوتر غير صالح.");
 
-                var approved = await DisplayAlertAsync(
-                    "تأكيد ربط جهاز جديد",
-                    $"هل تريد ربط {deviceName} بحساب Himo؟ سيصبح بإمكان هذا المتصفح قراءة محادثاتك وإرسال الرسائل حتى تلغي ربطه.",
-                    "ربط الجهاز",
-                    "إلغاء");
+                var approved = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تأكيد ربط جهاز جديد"),Himo.Services.AppLocalization.TranslateSourceText($"هل تريد ربط {deviceName} بحساب Himo؟ سيصبح بإمكان هذا المتصفح قراءة محادثاتك وإرسال الرسائل حتى تلغي ربطه."),Himo.Services.AppLocalization.TranslateSourceText("ربط الجهاز"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
                 if (!approved) return;
 
                 await _api.ApproveWebPairingAsync(pairingId, qrKey, deviceName);
-                await DisplayAlertAsync("تم ربط الكمبيوتر", $"تم ربط {deviceName} بنجاح. يمكنك الآن استخدام Himo من المتصفح.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تم ربط الكمبيوتر"),Himo.Services.AppLocalization.TranslateSourceText($"تم ربط {deviceName} بنجاح. يمكنك الآن استخدام Himo من المتصفح."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 ScannerStatusLabel.Text = "تم ربط جهاز الكمبيوتر بنجاح.";
                 return;
             }
 
-            string routeId;
             if (uri.Host.Equals("user", StringComparison.OrdinalIgnoreCase))
             {
                 if (!Guid.TryParse(Uri.UnescapeDataString(uri.AbsolutePath).Trim('/'), out var userId) || userId == Guid.Empty)
@@ -243,8 +238,6 @@ public partial class QrScannerPage : ContentPage, IQueryAttributable
                 return;
             }
 
-            if (Shell.Current is not null)
-                await SwipePageTransition.NavigateAsync(this, $"chat?id={Uri.EscapeDataString(routeId)}", SwipeDirection.Left);
         }
         catch (Exception ex)
         {

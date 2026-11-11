@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Text.RegularExpressions;
@@ -55,7 +55,7 @@ public sealed class ConversationInfoPage : ContentPage
         var back = MakeButton("‹", 42);
         back.Clicked += async (_, _) => await Navigation.PopAsync();
         top.Add(back, 0, 0);
-        var title = MakeLabel("معلومات المحادثة", 19, true);
+        var title = MakeLabel(AppLocalization.TranslateSourceText("معلومات المحادثة"), 19, true);
         title.VerticalOptions = LayoutOptions.Center;
         top.Add(title, 1, 0);
         top.Add(_topFavoriteButton, 2, 0);
@@ -70,8 +70,8 @@ public sealed class ConversationInfoPage : ContentPage
         root.Add(top, 0, 0);
 
         var content = new VerticalStackLayout { Spacing = 13, Padding = new Thickness(14, 5, 14, 26) };
-        var profile = MakeCard(new VerticalStackLayout { Spacing = 7, HorizontalOptions = LayoutOptions.Center, Padding = new Thickness(10, 13) });
-        var profileStack = (VerticalStackLayout)profile.Content;
+        var profileStack = new VerticalStackLayout { Spacing = 7, HorizontalOptions = LayoutOptions.Center, Padding = new Thickness(10, 13) };
+        var profile = MakeCard(profileStack);
         var avatarGrid = new Grid { WidthRequest = 86, HeightRequest = 86, HorizontalOptions = LayoutOptions.Center };
         var avatarBorder = new Border { WidthRequest = 82, HeightRequest = 82, StrokeThickness = 2, Padding = 0, HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center };
         avatarBorder.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoCard");
@@ -100,7 +100,7 @@ public sealed class ConversationInfoPage : ContentPage
 
         var sharedCardBody = new VerticalStackLayout { Spacing = 10, Padding = 14 };
         var sharedHeader = new Grid { ColumnDefinitions = new ColumnDefinitionCollection { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) }, ColumnSpacing = 8 };
-        sharedHeader.Add(MakeLabel("الوسائط والروابط والمستندات", 15, true), 0, 0);
+        sharedHeader.Add(MakeLabel(AppLocalization.TranslateSourceText("الوسائط والروابط والمستندات"), 15, true), 0, 0);
         var viewAll = MakeButton("عرض الكل  ›", 36);
         viewAll.FontSize = 12;
         viewAll.Clicked += async (_, _) => await OpenSharedAsync("media");
@@ -165,7 +165,7 @@ public sealed class ConversationInfoPage : ContentPage
         var favCard = MakeCard(favBody);
         content.Add(favCard);
 
-        var clearButton = new Button { Text = "مسح محتوى الدردشة", CornerRadius = 14, HeightRequest = 50, FontAttributes = FontAttributes.Bold, TextColor = Colors.White, BackgroundColor = Color.FromArgb("#C73E55") };
+        var clearButton = new Button { Text = AppLocalization.TranslateSourceText("مسح محتوى الدردشة"), CornerRadius = 14, HeightRequest = 50, FontAttributes = FontAttributes.Bold, TextColor = Colors.White, BackgroundColor = Color.FromArgb("#C73E55") };
         clearButton.Clicked += ClearChatClicked;
         content.Add(clearButton);
 
@@ -199,7 +199,7 @@ public sealed class ConversationInfoPage : ContentPage
             if (_settingsBusy || _isSyncingSettings) return;
             _settingsBusy = true;
             try { await changed(e.Value); }
-            catch (Exception ex) { await DisplayAlertAsync("تعذر حفظ الإعداد", ex.Message, "حسنًا"); toggle.IsToggled = !e.Value; }
+            catch (Exception ex) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر حفظ الإعداد"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); toggle.IsToggled = !e.Value; }
             finally { _settingsBusy = false; }
         };
         return card;
@@ -343,18 +343,18 @@ public sealed class ConversationInfoPage : ContentPage
 
     private async void ClearChatClicked(object? sender, EventArgs e)
     {
-        var confirm = await DisplayAlertAsync("مسح محتوى الدردشة", "سيتم مسح الرسائل الحالية من هذا الحساب مع الإبقاء على المحادثة في القائمة. هل تريد المتابعة؟", "مسح المحتوى", "إلغاء");
+        var confirm = await DisplayAlertAsync(AppLocalization.TranslateSourceText("مسح محتوى الدردشة"),Himo.Services.AppLocalization.TranslateSourceText("سيتم مسح الرسائل الحالية من هذا الحساب مع الإبقاء على المحادثة في القائمة. هل تريد المتابعة؟"),Himo.Services.AppLocalization.TranslateSourceText("مسح المحتوى"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
         if (!confirm) return;
         try
         {
             if (_remoteId.HasValue && _api.HasToken)
                 await _api.ClearConversationContentAsync(_remoteId.Value);
             _chat.ClearConversationMessages(_conversation.Id);
-            await DisplayAlertAsync("تم المسح", "تم مسح محتوى الدردشة مع الإبقاء على المحادثة.", "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("تم المسح"),Himo.Services.AppLocalization.TranslateSourceText("تم مسح محتوى الدردشة مع الإبقاء على المحادثة."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذر مسح المحتوى", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر مسح المحتوى"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -418,7 +418,7 @@ public sealed class ConversationSharedContentPage : ContentPage
     {
         _chat = chat; _api = api; _account = account; _conversation = conversation; _key = ConversationFeatureStore.ConversationKey(conversation); _storageMode = storageMode; _lightweightGroupMode = lightweightGroupMode;
         _tab = storageMode ? "media" : NormalizeTab(initialTab);
-        Title = storageMode ? "إدارة مساحة التخزين" : "الوسائط والروابط والمستندات";
+        Title = storageMode ? "إدارة مساحة التخزين" : AppLocalization.TranslateSourceText("الوسائط والروابط والمستندات");
         BuildPage();
         AppLocalization.AttachToPage(this);
     }
@@ -635,7 +635,7 @@ public sealed class ConversationSharedContentPage : ContentPage
         if (list.Count == 0)
         {
             var empty = new VerticalStackLayout { HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center, Padding = 30, Spacing = 8 };
-            empty.Add(ConversationInfoPage.MakeLabel(_tab == "links" ? "لا توجد روابط في هذه المحادثة" : _tab == "documents" ? "لا توجد مستندات في هذه المحادثة" : "لا توجد وسائط في هذه المحادثة", 16, true));
+            empty.Add(ConversationInfoPage.MakeLabel(_tab == "links" ? AppLocalization.TranslateSourceText("لا توجد روابط في هذه المحادثة") : _tab == "documents" ? AppLocalization.TranslateSourceText("لا توجد مستندات في هذه المحادثة") : AppLocalization.TranslateSourceText("لا توجد وسائط في هذه المحادثة"), 16, true));
             _itemsHost.Add(empty);
             return;
         }
@@ -726,7 +726,7 @@ public sealed class ConversationSharedContentPage : ContentPage
                 path = await _api.DownloadAttachmentAsync(messageId, message.AttachmentFileName ?? "file");
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             {
-                await DisplayAlertAsync("الملف", "لم أتمكن من تنزيل الملف من الخادم.", "حسنًا"); return;
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الملف"),Himo.Services.AppLocalization.TranslateSourceText("لم أتمكن من تنزيل الملف من الخادم."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); return;
             }
             if (item.Kind == "image")
                 await Navigation.PushAsync(new ImagePreviewPage(path, item.Title));
@@ -735,7 +735,7 @@ public sealed class ConversationSharedContentPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذر فتح الملف", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح الملف"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -824,17 +824,17 @@ public sealed class DisappearingMessagesPage : ContentPage
         {
             if (!Guid.TryParse(_conversation.RemoteId, out var remoteId) || !_api.HasToken)
             {
-                await DisplayAlertAsync("المحادثة غير متصلة", "يجب أن تكون المحادثة متصلة بالخادم لحفظ مؤقت يعمل على الهاتفين.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المحادثة غير متصلة"),Himo.Services.AppLocalization.TranslateSourceText("يجب أن تكون المحادثة متصلة بالخادم لحفظ مؤقت يعمل على الهاتفين."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
             await _api.SetDisappearingSecondsAsync(remoteId, _selected);
             ConversationFeatureStore.SetLocalDisappearingSeconds(_key, _selected);
-            await DisplayAlertAsync("تم الحفظ", "سيطبق المؤقت على الرسائل الجديدة في هذه المحادثة على الطرفين.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تم الحفظ"),Himo.Services.AppLocalization.TranslateSourceText("سيطبق المؤقت على الرسائل الجديدة في هذه المحادثة على الطرفين."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             await Navigation.PopAsync();
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("تعذر حفظ المؤقت", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر حفظ المؤقت"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 }

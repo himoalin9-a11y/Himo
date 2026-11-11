@@ -1,4 +1,4 @@
-using Himo.Models;
+﻿using Himo.Models;
 using Himo.Services;
 using Microsoft.Maui.Controls.Shapes;
 
@@ -210,6 +210,7 @@ public abstract class AccountSubPageBase : ContentPage
     protected AccountSubPageBase(string title, string subtitle)
     {
         Title = title;
+        Himo.Services.AppLocalization.AttachToPage(this);
         FlowDirection = FlowDirection.RightToLeft;
         BackgroundColor = PageColor;
         SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoBackground");
@@ -554,10 +555,10 @@ public sealed class AccountUsernamePage : AccountSubPageBase
     {
         if (Interlocked.Exchange(ref _saving, 1) != 0) return;
         var name = _nameEntry.Text?.Trim() ?? string.Empty;
-        if (!_api.HasToken) { await DisplayAlertAsync("اسم المستخدم", "سجّل الدخول أولًا.", "حسنًا"); Interlocked.Exchange(ref _saving, 0); return; }
+        if (!_api.HasToken) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("اسم المستخدم"),Himo.Services.AppLocalization.TranslateSourceText("سجّل الدخول أولًا."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); Interlocked.Exchange(ref _saving, 0); return; }
         if (string.IsNullOrWhiteSpace(name) || name.Length > 60)
         {
-            await DisplayAlertAsync("اسم المستخدم", "أدخل اسمًا من حرف واحد إلى 60 حرفًا.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("اسم المستخدم"),Himo.Services.AppLocalization.TranslateSourceText("أدخل اسمًا من حرف واحد إلى 60 حرفًا."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             Interlocked.Exchange(ref _saving, 0); return;
         }
         _saveButton.IsEnabled = false;
@@ -572,9 +573,9 @@ public sealed class AccountUsernamePage : AccountSubPageBase
                 _account.SignIn(updated.UserId, email, normalizedName);
             _profile.Update(normalizedName, normalizedStatus);
             _statusLabel.Text = "تم حفظ اسم المستخدم بنجاح.";
-            await DisplayAlertAsync("تم الحفظ", "تم تحديث اسم المستخدم.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تم الحفظ"),Himo.Services.AppLocalization.TranslateSourceText("تم تحديث اسم المستخدم."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
-        catch (Exception ex) { _statusLabel.Text = "تعذر حفظ الاسم."; await DisplayAlertAsync("تعذر الحفظ", ex.Message, "حسنًا"); }
+        catch (Exception ex) { _statusLabel.Text = "تعذر حفظ الاسم."; await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر الحفظ"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
         finally { _saveButton.IsEnabled = true; _saveButton.Text = "حفظ اسم المستخدم"; Interlocked.Exchange(ref _saving, 0); }
     }
 }
@@ -736,18 +737,18 @@ public sealed class AccountPhonePage : AccountSubPageBase
     private async void SaveClicked(object? sender, EventArgs e)
     {
         if (Interlocked.Exchange(ref _saving, 1) != 0) return;
-        if (!_api.HasToken) { await DisplayAlertAsync("رقم الهاتف", "سجّل الدخول أولًا.", "حسنًا"); Interlocked.Exchange(ref _saving, 0); return; }
+        if (!_api.HasToken) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("رقم الهاتف"),Himo.Services.AppLocalization.TranslateSourceText("سجّل الدخول أولًا."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); Interlocked.Exchange(ref _saving, 0); return; }
         var number = BuildInternationalPhone();
-        if (number.Error is not null) { await DisplayAlertAsync("رقم الهاتف", number.Error, "حسنًا"); Interlocked.Exchange(ref _saving, 0); return; }
+        if (number.Error is not null) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("رقم الهاتف"), number.Error,Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); Interlocked.Exchange(ref _saving, 0); return; }
         var discoverable = _discoverable.IsToggled;
         if (discoverable && string.IsNullOrWhiteSpace(number.Phone))
         {
-            await DisplayAlertAsync("رقم الهاتف", "أدخل رقم الهاتف قبل تفعيل العثور عبر الهاتف.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("رقم الهاتف"),Himo.Services.AppLocalization.TranslateSourceText("أدخل رقم الهاتف قبل تفعيل العثور عبر الهاتف."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             Interlocked.Exchange(ref _saving, 0); return;
         }
         if (discoverable && !_phoneDiscoverable)
         {
-            var accepted = await DisplayAlertAsync("الخصوصية", "سيتمكن من لديه رقمك في جهات الاتصال من العثور على حسابك، ولن يظهر له رقم هاتفك.", "تفعيل", "إلغاء");
+            var accepted = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الخصوصية"),Himo.Services.AppLocalization.TranslateSourceText("سيتمكن من لديه رقمك في جهات الاتصال من العثور على حسابك، ولن يظهر له رقم هاتفك."),Himo.Services.AppLocalization.TranslateSourceText("تفعيل"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
             if (!accepted) { _discoverable.IsToggled = false; Interlocked.Exchange(ref _saving, 0); return; }
         }
         _saveButton.IsEnabled = false; _saveButton.Text = "جارٍ الحفظ...";
@@ -758,9 +759,9 @@ public sealed class AccountPhonePage : AccountSubPageBase
             _discoverable.IsToggled = result.PhoneDiscoverable;
             ApplyStoredPhone(result.ContactPhoneNumber);
             _status.Text = result.ContactPhoneNumber is null ? "تم حذف رقم الهاتف من الحساب." : result.PhoneDiscoverable ? "تم الحفظ والعثور عبر الهاتف مفعّل." : "تم حفظ الرقم؛ العثور عبر الهاتف متوقف.";
-            await DisplayAlertAsync("تم الحفظ", "تم تحديث إعداد رقم الهاتف.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تم الحفظ"),Himo.Services.AppLocalization.TranslateSourceText("تم تحديث إعداد رقم الهاتف."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
-        catch (Exception ex) { _status.Text = "تعذر حفظ رقم الهاتف."; await DisplayAlertAsync("تعذر الحفظ", ex.Message, "حسنًا"); }
+        catch (Exception ex) { _status.Text = "تعذر حفظ رقم الهاتف."; await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر الحفظ"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
         finally { _saveButton.IsEnabled = true; _saveButton.Text = "حفظ رقم الهاتف"; Interlocked.Exchange(ref _saving, 0); }
     }
 }
@@ -776,10 +777,10 @@ public sealed class AccountLoginDetailsPage : AccountSubPageBase
         : base("بيانات تسجيل الدخول", "البريد الإلكتروني ووسائل الدخول")
     {
         _api = api; _account = account; _profile = profile;
-        var changeEmail = SecondaryButton("تغيير البريد الإلكتروني", ChangeEmailClicked);
+        var changeEmail = SecondaryButton("تغيير البريد الإلكتروني", OpenEmailChangeClicked);
         var password = PrimaryButton("إدارة كلمة المرور", OpenPasswordClicked);
         var addAccount = SecondaryButton("تسجيل الدخول بحساب آخر", OpenAddAccountClicked);
-        SetContent(Card(new VerticalStackLayout { Spacing = 11, Children = { Heading("البريد الإلكتروني المسجّل"), _emailLabel, changeEmail, Hint("تغيير البريد الإلكتروني غير مفعّل في الخادم الحالي؛ يتطلب إضافة تحقق آمن من العنوان الجديد."), Separator(), Heading("أمان الحساب"), password, addAccount } }));
+        SetContent(Card(new VerticalStackLayout { Spacing = 11, Children = { Heading("البريد الإلكتروني المسجّل"), _emailLabel, changeEmail, Separator(), Heading("أمان الحساب"), password, addAccount } }));
     }
 
     protected override async void OnAppearing()
@@ -791,7 +792,17 @@ public sealed class AccountLoginDetailsPage : AccountSubPageBase
         catch { _emailLabel.Text = localEmail.Length == 0 ? "تعذر تحميل البريد الإلكتروني." : localEmail; }
     }
 
-    private async void ChangeEmailClicked(object? sender, EventArgs e) => await DisplayAlertAsync("تغيير البريد الإلكتروني", "الخادم الحالي لا يحتوي على إجراء يغيّر البريد بأمان بعد التحقق من العنوان الجديد. لم يتم تغيير أي شيء.", "حسنًا");
+
+    private async void OpenEmailChangeClicked(object? sender, EventArgs e)
+    {
+        if (!_api.HasToken)
+        {
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تغيير البريد الإلكتروني"),Himo.Services.AppLocalization.TranslateSourceText("يجب تسجيل الدخول إلى الحساب أولاً."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            return;
+        }
+
+        await Navigation.PushAsync(new ProfileEmailPage(_api, _account));
+    }
 
     private async void OpenPasswordClicked(object? sender, EventArgs e)
     {
@@ -857,7 +868,7 @@ public sealed class AccountPasswordPage : AccountSubPageBase
             await _api.RequestPasswordResetAsync(_email);
             _status.Text = "إذا كان البريد مسجلًا، فسيصلك رمز التحقق. تحقق من الوارد والرسائل غير المرغوب فيها.";
         }
-        catch (Exception ex) { _status.Text = "تعذر إرسال الرمز."; await DisplayAlertAsync("تعذر إرسال الرمز", ex.Message, "حسنًا"); }
+        catch (Exception ex) { _status.Text = "تعذر إرسال الرمز."; await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر إرسال الرمز"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
         finally { _sendButton.IsEnabled = true; _sendButton.Text = "إرسال رمز التحقق إلى البريد"; Interlocked.Exchange(ref _busy, 0); }
     }
 
@@ -866,9 +877,9 @@ public sealed class AccountPasswordPage : AccountSubPageBase
         if (Interlocked.Exchange(ref _busy, 1) != 0) return;
         var code = PhoneNumberUtils.NormalizeDigits(_code.Text?.Trim());
         var password = _newPassword.Text ?? string.Empty;
-        if (!PhoneNumberUtils.IsValidVerificationCode(code)) { await DisplayAlertAsync("كلمة المرور", "أدخل رمز تحقق مكوّنًا من 6 أرقام.", "حسنًا"); Interlocked.Exchange(ref _busy, 0); return; }
-        if (password.Length is < 8 or > 128) { await DisplayAlertAsync("كلمة المرور", "يجب أن تتراوح كلمة المرور بين 8 و128 حرفًا.", "حسنًا"); Interlocked.Exchange(ref _busy, 0); return; }
-        if (!string.Equals(password, _confirmPassword.Text, StringComparison.Ordinal)) { await DisplayAlertAsync("كلمة المرور", "كلمتا المرور غير متطابقتين.", "حسنًا"); Interlocked.Exchange(ref _busy, 0); return; }
+        if (!PhoneNumberUtils.IsValidVerificationCode(code)) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("كلمة المرور"),Himo.Services.AppLocalization.TranslateSourceText("أدخل رمز تحقق مكوّنًا من 6 أرقام."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); Interlocked.Exchange(ref _busy, 0); return; }
+        if (password.Length is < 8 or > 128) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("كلمة المرور"),Himo.Services.AppLocalization.TranslateSourceText("يجب أن تتراوح كلمة المرور بين 8 و128 حرفًا."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); Interlocked.Exchange(ref _busy, 0); return; }
+        if (!string.Equals(password, _confirmPassword.Text, StringComparison.Ordinal)) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("كلمة المرور"),Himo.Services.AppLocalization.TranslateSourceText("كلمتا المرور غير متطابقتين."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); Interlocked.Exchange(ref _busy, 0); return; }
         _saveButton.IsEnabled = false; _saveButton.Text = "جارٍ التحديث...";
         try
         {
@@ -876,9 +887,9 @@ public sealed class AccountPasswordPage : AccountSubPageBase
             _account.SignIn(account.UserId, account.Email, account.Name);
             _code.Text = _newPassword.Text = _confirmPassword.Text = string.Empty;
             _status.Text = "تم تغيير كلمة المرور بنجاح.";
-            await DisplayAlertAsync("تم التحديث", "تم تغيير كلمة المرور بنجاح.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تم التحديث"),Himo.Services.AppLocalization.TranslateSourceText("تم تغيير كلمة المرور بنجاح."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
-        catch (Exception ex) { _status.Text = "تعذر تغيير كلمة المرور."; await DisplayAlertAsync("تعذر تغيير كلمة المرور", ex.Message, "حسنًا"); }
+        catch (Exception ex) { _status.Text = "تعذر تغيير كلمة المرور."; await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر تغيير كلمة المرور"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
         finally { _saveButton.IsEnabled = true; _saveButton.Text = "حفظ كلمة المرور الجديدة"; Interlocked.Exchange(ref _busy, 0); }
     }
 }
@@ -917,13 +928,13 @@ public sealed class AddAccountPage : AccountSubPageBase
         var password = _password.Text ?? string.Empty;
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@') || email.Length > 254)
         {
-            await DisplayAlertAsync("تسجيل الدخول", "أدخل بريدًا إلكترونيًا صحيحًا.", "حسنًا"); Interlocked.Exchange(ref _busy, 0); return;
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تسجيل الدخول"),Himo.Services.AppLocalization.TranslateSourceText("أدخل بريدًا إلكترونيًا صحيحًا."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); Interlocked.Exchange(ref _busy, 0); return;
         }
         if (password.Length < 8 || password.Length > 128)
         {
-            await DisplayAlertAsync("تسجيل الدخول", "أدخل كلمة مرور صحيحة لا تقل عن 8 أحرف.", "حسنًا"); Interlocked.Exchange(ref _busy, 0); return;
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تسجيل الدخول"),Himo.Services.AppLocalization.TranslateSourceText("أدخل كلمة مرور صحيحة لا تقل عن 8 أحرف."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); Interlocked.Exchange(ref _busy, 0); return;
         }
-        var approved = await DisplayAlertAsync("تبديل الحساب", "سيؤدي تسجيل الدخول إلى جعل الحساب الجديد هو النشط على هذا الجهاز. هل تريد المتابعة؟", "متابعة", "إلغاء");
+        var approved = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تبديل الحساب"),Himo.Services.AppLocalization.TranslateSourceText("سيؤدي تسجيل الدخول إلى جعل الحساب الجديد هو النشط على هذا الجهاز. هل تريد المتابعة؟"),Himo.Services.AppLocalization.TranslateSourceText("متابعة"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
         if (!approved) { Interlocked.Exchange(ref _busy, 0); return; }
         _loginButton.IsEnabled = false; _loginButton.Text = "جارٍ تسجيل الدخول...";
         try
@@ -944,7 +955,7 @@ public sealed class AddAccountPage : AccountSubPageBase
         catch (Exception ex)
         {
             _status.Text = "تعذر تسجيل الدخول بالحساب الآخر.";
-            await DisplayAlertAsync("تعذر تسجيل الدخول", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر تسجيل الدخول"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally { _loginButton.IsEnabled = true; _loginButton.Text = "تسجيل الدخول"; Interlocked.Exchange(ref _busy, 0); }
     }

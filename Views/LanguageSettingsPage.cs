@@ -1,8 +1,6 @@
-using System.Globalization;
-using Microsoft.Maui.Controls;
+﻿using Microsoft.Maui.Controls;
 using Himo.Services;
 using Microsoft.Maui.Controls.Shapes;
-using Microsoft.Maui.Storage;
 
 namespace Himo.Views;
 
@@ -12,8 +10,6 @@ namespace Himo.Views;
 /// </summary>
 public sealed class LanguageSettingsPage : LocalizedContentPage
 {
-    private const string LanguagePreferenceKey = AppLocalization.PreferenceKey;
-
     private sealed record LanguageOption(string Code, string NativeName, string LocalName, bool IsRtl);
 
     private static readonly LanguageOption[] Languages =
@@ -24,7 +20,12 @@ public sealed class LanguageSettingsPage : LocalizedContentPage
         new("tr", "Türkçe", "التركية", false),
         new("ur", "اردو", "الأردية", true),
         new("es", "Español", "الإسبانية", false),
-        new("id", "Bahasa Indonesia", "الإندونيسية", false)
+        new("id", "Bahasa Indonesia", "الإندونيسية", false),
+        new("de", "Deutsch", "الألمانية", false),
+        new("pt", "Português", "البرتغالية", false),
+        new("zh-Hans", "简体中文", "الصينية المبسطة", false),
+        new("hi", "हिन्दी", "الهندية", false),
+        new("ja", "日本語", "اليابانية", false)
     };
 
     private readonly VerticalStackLayout _optionsLayout = new() { Spacing = 9 };
@@ -38,9 +39,9 @@ public sealed class LanguageSettingsPage : LocalizedContentPage
         FlowDirection = AppLocalization.PreferredFlowDirection;
         Shell.SetNavBarIsVisible(this, false);
         SetDynamicResource(BackgroundColorProperty, "HimoBackground");
-        _selectedCode = Preferences.Default.Get(LanguagePreferenceKey, "ar");
+        _selectedCode = AppLocalization.CurrentLanguageCode;
         if (!Languages.Any(x => x.Code.Equals(_selectedCode, StringComparison.OrdinalIgnoreCase)))
-            _selectedCode = "ar";
+            _selectedCode = "en";
 
         Content = BuildPage();
         RefreshSelectedOption();

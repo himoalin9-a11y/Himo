@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 using Himo.Models;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Dispatching;
@@ -145,7 +145,7 @@ public partial class ChatPage
         var conversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
         if (conversation is null)
         {
-            await DisplayAlertAsync("معلومات المحادثة", "تعذر العثور على بيانات المحادثة المحلية.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("معلومات المحادثة"),Himo.Services.AppLocalization.TranslateSourceText("تعذر العثور على بيانات المحادثة المحلية."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -158,7 +158,7 @@ public partial class ChatPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("معلومات المحادثة", "تعذر فتح صفحة المعلومات: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("معلومات المحادثة"),Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح صفحة المعلومات: " + Himo.Services.AppLocalization.TranslateSourceText(ex.Message)),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -182,7 +182,7 @@ public partial class ChatPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("ترجمة الرسائل", "تعذرت الترجمة. تأكد من إعداد خدمة الترجمة في خادم Himo.\n" + ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("ترجمة الرسائل"),Himo.Services.AppLocalization.TranslateSourceText("تعذرت الترجمة. تأكد من إعداد خدمة الترجمة في خادم Himo.\n" + Himo.Services.AppLocalization.TranslateSourceText(ex.Message)),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {

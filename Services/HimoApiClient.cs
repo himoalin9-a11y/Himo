@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using Himo.Models;
 
 #if ANDROID
@@ -1223,6 +1225,79 @@ public sealed class HimoApiClient
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
+    public async Task<MobilePairingQrInfo> StartMobilePairingAsync(CancellationToken cancellationToken = default)
+    {
+        if (!HasToken) throw new InvalidOperationException("يجب تسجيل الدخول على الهاتف الأساسي أولًا.");
+        var qrKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+        using var response = await _http.PostAsJsonAsync("api/devices/mobile-pair/start", new
+        {
+            qrKeyHash = Hash(qrKey)
+        }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<MobilePairingStartResponse>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("لم يستجب الخادم ببيانات ربط الهاتف.");
+        var qrUri = new Uri(new Uri(BaseUrl), $"link-mobile/{result.PairingId:D}?key={Uri.EscapeDataString(qrKey)}");
+        return new MobilePairingQrInfo(result.PairingId, qrUri.ToString(), DateTimeOffset.UtcNow.AddSeconds(result.ExpiresInSeconds));
+    }
+
+    public async Task<IReadOnlyList<MobilePairingRequestInfo>> GetPendingMobilePairingsAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync("api/devices/mobile-pair/pending", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<List<MobilePairingRequestInfo>>(cancellationToken: cancellationToken)
+            ?? new List<MobilePairingRequestInfo>();
+    }
+
+    public async Task ApproveMobilePairingAsync(Guid pairingId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync("api/devices/mobile-pair/approve", new { pairingId }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task CancelMobilePairingAsync(Guid pairingId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync("api/devices/mobile-pair/cancel", new { pairingId }, cancellationToken);
+        if (response.StatusCode != HttpStatusCode.NotFound) await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task<string> ClaimMobilePairingAsync(Guid pairingId, string qrKey, CancellationToken cancellationToken = default)
+    {
+        if (pairingId == Guid.Empty || qrKey.Length != 64) throw new ArgumentException("رمز ربط الهاتف غير صالح.");
+        var pollSecret = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        var pollSecretHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(pollSecret)));
+        var device = GetCurrentDeviceRegistration();
+        using var response = await _http.PostAsJsonAsync("api/devices/mobile-pair/claim", new
+        {
+            pairingId, qrKey, pollSecretHash, deviceId = device.DeviceId, deviceName = device.DeviceName
+        }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return pollSecret;
+    }
+
+    public async Task CompleteMobilePairingAsync(Guid pairingId, string pollSecret, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync("api/devices/mobile-pair/complete", new { pairingId, pollSecret }, cancellationToken);
+        if (response.StatusCode != HttpStatusCode.NotFound) await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task<MobilePairingPollResponse> PollMobilePairingAsync(Guid pairingId, string pollSecret, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync("api/devices/mobile-pair/poll", new { pairingId, pollSecret }, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<MobilePairingPollResponse>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("استجابة ربط الهاتف غير صالحة.");
+    }
+
+    public Account AcceptMobilePairingSession(MobilePairingPollResponse result)
+    {
+        if (!string.Equals(result.Status, "approved", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(result.AccessToken) || result.UserId == Guid.Empty ||
+            string.IsNullOrWhiteSpace(result.Email) || string.IsNullOrWhiteSpace(result.Name))
+            throw new InvalidOperationException("لم تكتمل موافقة الهاتف الأساسي على الربط.");
+        return ApplyAuthResponse(new AuthResponse(result.AccessToken, result.UserId, result.Email, result.Name));
+    }
+
     public async Task<IReadOnlyList<LinkedDeviceInfo>> GetLinkedDevicesAsync(CancellationToken cancellationToken = default)
     {
         using var response = await _http.GetAsync("api/me/devices", cancellationToken);
@@ -1863,7 +1938,8 @@ public sealed class HimoApiClient
         bool IsArchived = false,
         bool IsMuted = false,
         bool IsBlocked = false,
-        bool IsGroup = false);
+        bool IsGroup = false,
+        string? LastMessageAttachmentContentType = null);
 
     public sealed record MessageDto(
         Guid Id,
@@ -1888,6 +1964,7 @@ public sealed class HimoApiClient
         public string? DownloadUrl { get; set; }
     }
 
+    private sealed record MobilePairingStartResponse(Guid PairingId, int ExpiresInSeconds);
     private sealed record DisappearingSettingsResponse(int Seconds);
     private sealed record TranslateResponse(string TranslatedText);
 
@@ -1941,3 +2018,7 @@ public sealed record LinkedDeviceInfo(
     DateTimeOffset CreatedAt,
     DateTimeOffset LastSeenAt,
     bool IsCurrent);
+
+public sealed record MobilePairingQrInfo(Guid PairingId, string QrText, DateTimeOffset ExpiresAt);
+public sealed record MobilePairingRequestInfo(Guid PairingId, string DeviceName, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt);
+public sealed record MobilePairingPollResponse(string Status, string? AccessToken = null, Guid UserId = default, string? Email = null, string? Name = null, string? DeviceName = null);

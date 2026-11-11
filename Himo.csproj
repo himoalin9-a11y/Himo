@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
@@ -21,7 +21,7 @@
     <AndroidLaunchActivity>com.companyname.himo.LauncherIconDefault</AndroidLaunchActivity>
     <ApplicationDisplayVersion>11.14</ApplicationDisplayVersion>
     <ApplicationVersion>124</ApplicationVersion>
-    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net10.0-android36.0'">30.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net10.0-android36.0'">29.0</SupportedOSPlatformVersion>
     <!-- Disable Android Fast Deployment. The phone crash log showed an empty __override__ directory, which causes Mono to abort before the MAUI app starts. -->
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <UseNativeHttpHandler>false</UseNativeHttpHandler>
@@ -131,3 +131,5 @@
   </Target>
 
 </Project>
+
+

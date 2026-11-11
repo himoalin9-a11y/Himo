@@ -95,6 +95,14 @@ public partial class App : Application
         }
     }
 
+    private Views.LoginPage CreateLoginPage()
+    {
+        var page = new Views.LoginPage(_account, _api);
+        AppLocalization.AttachToPage(page);
+        page.InitializeLoginLanguageSelector();
+        return page;
+    }
+
     public void MarkSessionUnlocked() => _sessionUnlocked = true;
 
     protected override void OnStart()
@@ -150,7 +158,7 @@ public partial class App : Application
                     try { _account.SignOut(); } catch { }
                     try { _api.ClearToken(); } catch { }
                     _sessionUnlocked = false;
-                    window.Page = new Views.LoginPage(_account, _api);
+                    window.Page = CreateLoginPage();
                 }
                 await Task.CompletedTask;
 #if ANDROID
@@ -165,7 +173,7 @@ public partial class App : Application
             _sessionUnlocked = false;
             try { _account.SignOut(); } catch { }
             try { _api.ClearToken(); } catch { }
-            window.Page = new Views.LoginPage(_account, _api);
+            window.Page = CreateLoginPage();
         }
     }
 
@@ -247,10 +255,7 @@ public partial class App : Application
 
                 var window = Windows.FirstOrDefault();
                 if (window is not null)
-                {
-                    window.Page = new Views.LoginPage(_account, _api);
-                    AppLocalization.AttachToPage(window.Page);
-                }
+                    window.Page = CreateLoginPage();
             }
             finally
             {
@@ -278,7 +283,7 @@ public partial class App : Application
             {
                 System.Diagnostics.Debug.WriteLine($"AppShell recovery after startup unlock failed: {ex}");
                 _sessionUnlocked = false;
-                window.Page = new Views.LoginPage(_account, _api);
+                window.Page = CreateLoginPage();
             }
 #if ANDROID
             _ = RegisterCurrentPushTokenAsync();
@@ -312,7 +317,7 @@ public partial class App : Application
             if (ReferenceEquals(window.Page, initialDestination) && _account.IsSignedIn)
             {
                 _sessionUnlocked = false;
-                window.Page = new Views.LoginPage(_account, _api);
+                window.Page = CreateLoginPage();
             }
         });
     }
@@ -333,8 +338,7 @@ public partial class App : Application
             if (!_account.IsSignedIn)
             {
                 _sessionUnlocked = false;
-                window.Page = new Views.LoginPage(_account, _api);
-                AppLocalization.AttachToPage(window.Page);
+                window.Page = CreateLoginPage();
                 return window;
             }
 
@@ -350,7 +354,6 @@ public partial class App : Application
             }
 
             window.Page = initialDestination;
-            AppLocalization.AttachToPage(initialDestination);
 
             // Token restoration/validation remains asynchronous and does not hold
             // the native splash or delay first-page creation.

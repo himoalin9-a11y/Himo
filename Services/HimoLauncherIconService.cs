@@ -1,4 +1,4 @@
-﻿using Microsoft.Maui.Storage;
+using Microsoft.Maui.Storage;
 
 namespace Himo.Services;
 
@@ -9,6 +9,7 @@ public static class HimoLauncherIconService
 {
     private const string ActiveAliasPreference = "Himo.ActiveLauncherAlias";
     private const string PendingAliasCleanupPreference = "Himo.LauncherIconCleanupPending";
+    private const string AliasArchitectureMigrationPreference = "Himo.LauncherAliasArchitectureV2";
     private const string DefaultAliasName = "LauncherIconHome";
     public const string SelectedVariantPreference = "Himo.LauncherIconVariant";
 
@@ -73,10 +74,81 @@ public static class HimoLauncherIconService
         };
 
     /// <summary>
+    /// Reconciles all launcher aliases with the saved selection on every app start.
+    /// LauncherIconHome is the real default launcher alias in the current manifest and must
+    /// be disabled whenever a custom icon is selected. LauncherIconHomeDefault is not a
+    /// launcher entry and is intentionally never managed here.
+    /// </summary>
+    public static void EnsureAliasArchitectureMigration()
+    {
+#if ANDROID
+        // Run on every app start, not only once. Android can retain an enabled launcher
+        // component across APK updates; always reconcile it with the saved icon selection.
+
+        try
+        {
+            var context = Android.App.Application.Context;
+            var packageManager = context.PackageManager
+                ?? throw new InvalidOperationException("تعذر الوصول إلى مدير حزم Android.");
+            var packageName = context.PackageName
+                ?? throw new InvalidOperationException("تعذر تحديد اسم حزمة التطبيق.");
+            var allAliases = AliasByFileName.Values
+                .Append(DefaultAliasName)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+
+            var activeAlias = Preferences.Default.Get(ActiveAliasPreference, string.Empty);
+            if (!allAliases.Contains(activeAlias, StringComparer.Ordinal))
+            {
+                var selectedFile = Preferences.Default.Get(SelectedVariantPreference, string.Empty);
+                activeAlias = AliasByFileName.TryGetValue(selectedFile, out var mappedAlias)
+                    ? mappedAlias
+                    : DefaultAliasName;
+            }
+
+            if (OperatingSystem.IsAndroidVersionAtLeast(33))
+            {
+                ApplyAliasSelectionAtomically(packageManager, packageName, activeAlias);
+            }
+            else
+            {
+                var activeComponent = new Android.Content.ComponentName(
+                    packageName, $"{packageName}.{activeAlias}");
+                packageManager.SetComponentEnabledSetting(
+                    activeComponent,
+                    Android.Content.PM.ComponentEnabledState.Enabled,
+                    Android.Content.PM.ComponentEnableOption.DontKillApp);
+
+                foreach (var alias in allAliases)
+                {
+                    if (string.Equals(alias, activeAlias, StringComparison.Ordinal))
+                        continue;
+                    var component = new Android.Content.ComponentName(
+                        packageName, $"{packageName}.{alias}");
+                    packageManager.SetComponentEnabledSetting(
+                        component,
+                        Android.Content.PM.ComponentEnabledState.Disabled,
+                        Android.Content.PM.ComponentEnableOption.DontKillApp);
+                }
+            }
+
+            Preferences.Default.Set(ActiveAliasPreference, activeAlias);
+            Preferences.Default.Set(PendingAliasCleanupPreference, false);
+            Preferences.Default.Set(AliasArchitectureMigrationPreference, true);
+        }
+        catch (Exception ex)
+        {
+            // Leave the migration flag unset so a later launch can retry safely.
+            System.Diagnostics.Debug.WriteLine($"[Himo Launcher Icon] Alias migration failed: {ex}");
+        }
+#endif
+    }
+
+    /// <summary>
     /// Enables the selected launcher alias immediately, but deliberately does not disable
-    /// the old launcher alias while Himo is in the foreground. The native Activity uses
-    /// the stable component name LauncherIconDefault and is never included in cleanup.
-    /// Launcher aliases are cleaned up when MainActivity reaches OnStop.
+    /// the old launcher alias while Himo is in the foreground. Launcher aliases are cleaned
+    /// up when MainActivity reaches OnStop. The native LauncherIconHomeDefault Activity is
+    /// permanent and is never included in alias cleanup.
     /// </summary>
     public static bool TryApply(string imageFileName, out string message)
     {
@@ -175,8 +247,9 @@ public static class HimoLauncherIconService
 #endif
 
     /// <summary>
-    /// Finishes the icon switch after the app moves out of the foreground. The stable
-    /// LauncherIconDefault native Activity is not a launcher alias and is never disabled.
+    /// Finishes the icon switch after the app moves out of the foreground. The default
+    /// LauncherIconHome alias is managed alongside every custom icon; LauncherIconHomeDefault
+    /// is not a launcher entry and is never disabled.
     /// The operation is safe to retry if Android temporarily rejects a component update.
     /// </summary>
     public static void FinalizePendingAliasChanges()
@@ -192,11 +265,6 @@ public static class HimoLauncherIconService
                 ?? throw new InvalidOperationException("تعذر الوصول إلى مدير حزم Android.");
 
             var activeAlias = Preferences.Default.Get(ActiveAliasPreference, DefaultAliasName);
-            // Older app versions used HomeDefault for the visible default icon. It is now
-            // a permanent, non-visible debug launch alias, so migrate old saved state.
-            if (string.Equals(activeAlias, "LauncherIconHomeDefault", StringComparison.Ordinal))
-                activeAlias = DefaultAliasName;
-
             var allAliases = AliasByFileName.Values
                 .Append(DefaultAliasName)
                 .Distinct(StringComparer.Ordinal)

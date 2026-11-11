@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Controls;
 using Himo.Platforms.Android;
@@ -203,7 +203,7 @@ public partial class MediaEditorPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المحرر"), $"تعذر تجهيز الملف للتحرير: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("المحرر"),Himo.Services.AppLocalization.TranslateSourceText($"تعذر تجهيز الملف للتحرير: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)}"), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             await CancelAndCloseAsync();
         }
     }
@@ -522,12 +522,7 @@ public partial class MediaEditorPage : ContentPage
         if (!_textMode)
             return;
 
-        var text = await DisplayPromptAsync(
-            "إضافة نص",
-            "اكتب النص بالعربية أو الإنجليزية",
-            "إضافة",
-            "إلغاء",
-            "مثال: Himo أو مرحباً");
+        var text = await DisplayPromptAsync(Himo.Services.AppLocalization.TranslateSourceText("إضافة نص"),Himo.Services.AppLocalization.TranslateSourceText("اكتب النص بالعربية أو الإنجليزية"),Himo.Services.AppLocalization.TranslateSourceText("إضافة"),Himo.Services.AppLocalization.TranslateSourceText("إلغاء"),Himo.Services.AppLocalization.TranslateSourceText("مثال: Himo أو مرحباً"));
 
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -939,7 +934,7 @@ public partial class MediaEditorPage : ContentPage
             }
             catch (Exception ex)
             {
-                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("القص"), $"تعذر تطبيق القص فعليًا: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("القص"),Himo.Services.AppLocalization.TranslateSourceText($"تعذر تطبيق القص فعليًا: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)}"), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             }
             finally
             {
@@ -1232,7 +1227,7 @@ public partial class MediaEditorPage : ContentPage
         catch (Exception ex)
         {
             _closing = false;
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("التعديل"), $"تعذر حفظ التعديلات: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("التعديل"),Himo.Services.AppLocalization.TranslateSourceText($"تعذر حفظ التعديلات: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)}"), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -1290,11 +1285,11 @@ public partial class MediaEditorPage : ContentPage
             File.Copy(photo.FilePath, Path.Combine(pictures, photo.FileName), overwrite: true);
 #endif
 
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تم الحفظ"), "تم حفظ الصورة في مكتبة الصور.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تم الحفظ"),Himo.Services.AppLocalization.TranslateSourceText("تم حفظ الصورة في مكتبة الصور."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حفظ الصورة"), $"تعذر حفظ الصورة: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حفظ الصورة"),Himo.Services.AppLocalization.TranslateSourceText($"تعذر حفظ الصورة: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)}"), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {

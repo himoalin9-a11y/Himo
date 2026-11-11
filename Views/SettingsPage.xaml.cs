@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using Himo.Services;
 using Himo.ViewModels;
@@ -32,9 +32,15 @@ public partial class SettingsPage : ContentPage
         var currentAccountName = currentAccount?.Name;
         var currentAccountEmail = currentAccount?.Email;
         if (SettingsAccountNameLabel is not null)
+        {
+            SettingsAccountNameLabel.AutomationId = string.IsNullOrWhiteSpace(currentAccountName) ? string.Empty : "Himo.UserSuppliedText";
             SettingsAccountNameLabel.Text = string.IsNullOrWhiteSpace(currentAccountName) ? "حسابك في Himo" : currentAccountName;
+        }
         if (SettingsAccountEmailLabel is not null)
+        {
+            SettingsAccountEmailLabel.AutomationId = string.IsNullOrWhiteSpace(currentAccountEmail) ? string.Empty : "Himo.UserSuppliedText";
             SettingsAccountEmailLabel.Text = string.IsNullOrWhiteSpace(currentAccountEmail) ? "إدارة حسابك وتفضيلاتك" : currentAccountEmail;
+        }
         _chat = chat;
         _notifications = notifications;
         _appLock = appLock;
@@ -64,7 +70,7 @@ public partial class SettingsPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الأجهزة المرتبطة", "تعذر فتح صفحة الأجهزة المرتبطة: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("الأجهزة المرتبطة"), AppLocalization.TranslateSourceText("تعذر فتح صفحة الأجهزة المرتبطة: ") + Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -81,7 +87,7 @@ public partial class SettingsPage : ContentPage
         catch (Exception ex)
         {
             Interlocked.Exchange(ref _accountRouteRegistered, 0);
-            await DisplayAlertAsync("إدارة الحساب", "تعذر فتح صفحة الحساب: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("إدارة الحساب"), AppLocalization.TranslateSourceText("تعذر فتح صفحة الحساب: ") + Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -124,7 +130,7 @@ public partial class SettingsPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الخصوصية", "تعذر فتح إعدادات الخصوصية: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("الخصوصية"), AppLocalization.TranslateSourceText("تعذر فتح إعدادات الخصوصية: ") + Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -136,7 +142,7 @@ public partial class SettingsPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("إعدادات الدردشات", "تعذر فتح إعدادات الدردشات: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("إعدادات الدردشات"), AppLocalization.TranslateSourceText("تعذر فتح إعدادات الدردشات: ") + Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -160,7 +166,7 @@ public partial class SettingsPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("التخزين والبيانات", "تعذر فتح صفحة التخزين والبيانات: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("التخزين والبيانات"), AppLocalization.TranslateSourceText("تعذر فتح صفحة التخزين والبيانات: ") + Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -176,7 +182,7 @@ public partial class SettingsPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الإشعارات", "تعذر فتح إعدادات الإشعارات: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("الإشعارات"), AppLocalization.TranslateSourceText("تعذر فتح إعدادات الإشعارات: ") + Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -203,7 +209,7 @@ public partial class SettingsPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("المظهر والتجربة", "تعذر فتح الصفحة: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("المظهر والتجربة"), AppLocalization.TranslateSourceText("تعذر فتح الصفحة: ") + Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -215,7 +221,7 @@ public partial class SettingsPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("الميزات", "تعذر فتح الصفحة: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("الميزات"), AppLocalization.TranslateSourceText("تعذر فتح الصفحة: ") + Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -284,8 +290,11 @@ public partial class SettingsPage : ContentPage
         var current = _account.CurrentAccount;
         var currentName = current?.Name;
         var currentEmail = current?.Email;
+        // AutomationId is assigned once in the constructor. MAUI does not allow
+        // changing it after the element has been initialized. Only refresh text here.
         if (SettingsAccountNameLabel is not null)
             SettingsAccountNameLabel.Text = string.IsNullOrWhiteSpace(currentName) ? "حسابك في Himo" : currentName;
+
         if (SettingsAccountEmailLabel is not null)
             SettingsAccountEmailLabel.Text = string.IsNullOrWhiteSpace(currentEmail) ? "إدارة حسابك وتفضيلاتك" : currentEmail;
         DisplayOwnProfilePhoto(_profile.Profile.PhotoPath);
@@ -391,7 +400,7 @@ public partial class SettingsPage : ContentPage
         {
             if (NotificationsSwitch is not null)
                 NotificationsSwitch.IsToggled = !e.Value;
-            await DisplayAlertAsync("الإشعارات", $"تعذر تغيير إعداد الإشعارات: {ex.Message}", "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("الإشعارات"), $"{AppLocalization.TranslateSourceText("تعذر تغيير إعداد الإشعارات: ")}{Himo.Services.AppLocalization.TranslateSourceText(ex.Message)}", AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 

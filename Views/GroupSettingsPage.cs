@@ -1,4 +1,4 @@
-using Himo.Models;
+﻿using Himo.Models;
 using Himo.Services;
 using Himo.ViewModels;
 using Microsoft.Maui.ApplicationModel;
@@ -42,6 +42,7 @@ public sealed class GroupSettingsPage : ContentPage
         Shell.SetNavBarIsVisible(this, false);
         BuildPage();
         AppLocalization.AttachToPage(this);
+        AppLocalization.LanguageChanged += OnLanguageChanged;
     }
 
     private async Task LoadMemberPhotosAsync()
@@ -124,7 +125,7 @@ public sealed class GroupSettingsPage : ContentPage
         };
         _timerPicker.SetDynamicResource(Picker.TextColorProperty, "HimoPrimary");
         _timerPicker.SetDynamicResource(Picker.TitleColorProperty, "HimoTextSecondary");
-        foreach (var option in Timers) _timerPicker.Items.Add(option.Title);
+        ApplyTimerTranslations();
         var timerIndex = Array.FindIndex(Timers, x => x.Seconds == _draft.DisappearingSeconds);
         _timerPicker.SelectedIndex = timerIndex < 0 ? 0 : timerIndex;
         _timerPicker.SelectedIndexChanged += (_, _) =>
@@ -318,6 +319,31 @@ public sealed class GroupSettingsPage : ContentPage
         _ = LoadMemberPhotosAsync();
     }
 
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            AppLocalization.ApplyToPage(this);
+            ApplyTimerTranslations();
+            UpdatePermissionSummary();
+        });
+    }
+
+    private void ApplyTimerTranslations()
+    {
+        var selectedIndex = _timerPicker.SelectedIndex;
+        _timerPicker.Items.Clear();
+        foreach (var option in Timers)
+            _timerPicker.Items.Add(AppLocalization.TranslateSourceText(option.Title));
+        _timerPicker.SelectedIndex = selectedIndex >= 0 && selectedIndex < Timers.Length ? selectedIndex : 0;
+    }
+
+    protected override void OnDisappearing()
+    {
+        AppLocalization.LanguageChanged -= OnLanguageChanged;
+        base.OnDisappearing();
+    }
+
     private void UpdatePermissionSummary()
     {
         if (_permissionSummary is null) return;
@@ -332,12 +358,12 @@ public sealed class GroupSettingsPage : ContentPage
         var name = _nameEntry.Text?.Trim() ?? string.Empty;
         if (name.Length is < 2 or > 60)
         {
-            await DisplayAlertAsync("اسم المجموعة", "اكتب اسمًا من حرفين إلى 60 حرفًا.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("اسم المجموعة"),Himo.Services.AppLocalization.TranslateSourceText("اكتب اسمًا من حرفين إلى 60 حرفًا."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
         if (_draft.Members.Count == 0)
         {
-            await DisplayAlertAsync("أعضاء المجموعة", "اختر عضوًا واحدًا على الأقل.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("أعضاء المجموعة"),Himo.Services.AppLocalization.TranslateSourceText("اختر عضوًا واحدًا على الأقل."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -362,12 +388,12 @@ public sealed class GroupSettingsPage : ContentPage
             if (Shell.Current is not null)
                 await Shell.Current.GoToAsync($"chat?id={group.Id:D}", false);
             else
-                await DisplayAlertAsync("تم إنشاء المجموعة", "تم إنشاء المجموعة بنجاح.", "حسنًا");
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تم إنشاء المجموعة"),Himo.Services.AppLocalization.TranslateSourceText("تم إنشاء المجموعة بنجاح."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo Groups] Create group failed: {ex}");
-            await DisplayAlertAsync("تعذر إنشاء المجموعة", ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر إنشاء المجموعة"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {

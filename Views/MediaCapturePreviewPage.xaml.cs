@@ -1,4 +1,4 @@
-namespace Himo.Views;
+﻿namespace Himo.Views;
 
 public partial class MediaCapturePreviewPage : ContentPage
 {
@@ -62,7 +62,7 @@ public partial class MediaCapturePreviewPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("التعديل"), $"تعذر فتح محرر الصورة: {ex.Message}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("التعديل"),Himo.Services.AppLocalization.TranslateSourceText($"تعذر فتح محرر الصورة: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)}"), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 

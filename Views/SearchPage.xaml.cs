@@ -1,4 +1,4 @@
-using Himo.Models;
+﻿using Himo.Models;
 using Himo.Services;
 using Himo.ViewModels;
 using Himo.Platforms.Android.Services;
@@ -38,6 +38,7 @@ public partial class SearchPage : ContentPage
         _api = api;
         _home = home;
         ContactsList.ItemsSource = _visibleContacts;
+        AppLocalization.AttachToPage(this);
     }
 
     protected override void OnAppearing()
@@ -67,7 +68,7 @@ public partial class SearchPage : ContentPage
         if (_loadingContacts) return;
 #if ANDROID
         _loadingContacts = true;
-        SetContactLoading(true, "جارٍ تحميل جهات الاتصال...");
+        SetContactLoading(true, AppLocalization.TranslateSourceText("جارٍ تحميل جهات الاتصال..."));
         try
         {
             var permission = await Permissions.CheckStatusAsync<Permissions.ContactsRead>();
@@ -80,7 +81,7 @@ public partial class SearchPage : ContentPage
                 _contactsLoaded = false; // Retry the permission request if the user grants it in Android settings.
                 await LoadSignedInProfileAsync();
                 await RebuildContactEntriesAsync();
-                ContactsStatusLabel.Text = "يمكنك العثور على حسابك ومحادثاتك السابقة دون إذن جهات الاتصال.";
+                ContactsStatusLabel.Text = AppLocalization.TranslateSourceText("يمكنك العثور على حسابك ومحادثاتك السابقة دون إذن جهات الاتصال.");
                 return;
             }
 
@@ -103,7 +104,7 @@ public partial class SearchPage : ContentPage
                     .ToArray();
 
                 var displayName = string.IsNullOrWhiteSpace(contact.Name)
-                    ? phoneNumbers.FirstOrDefault() ?? emailAddresses.FirstOrDefault() ?? "جهة اتصال بدون اسم"
+                    ? phoneNumbers.FirstOrDefault() ?? emailAddresses.FirstOrDefault() ?? AppLocalization.TranslateSourceText("جهة اتصال بدون اسم")
                     : contact.Name.Trim();
 
                 var normalizedPhones = phoneNumbers
@@ -120,17 +121,17 @@ public partial class SearchPage : ContentPage
             await RebuildContactEntriesAsync();
 
             ContactsStatusLabel.Text = _localContacts.Count == 0
-                ? "لا توجد جهات اتصال على الهاتف."
-                : $"جهات الاتصال: {_localContacts.Count}";
+                ? AppLocalization.TranslateSourceText("لا توجد جهات اتصال على الهاتف.")
+                : $"{AppLocalization.TranslateSourceText("جهات الاتصال")}: {_localContacts.Count}";
 
             // Discover registered Himo users automatically; there is no manual Match button.
             await DiscoverRegisteredHimoContactsAsync();
         }
         catch (Exception ex)
         {
-            ContactsStatusLabel.Text = "تعذر تحميل جهات الاتصال. تحقق من إذن Android ثم حاول مجددًا.";
+            ContactsStatusLabel.Text = AppLocalization.TranslateSourceText("تعذر تحميل جهات الاتصال. تحقق من إذن Android ثم حاول مجددًا.");
             System.Diagnostics.Debug.WriteLine($"[Himo Contacts] Local contact load failed: {ex}");
-            await DisplayAlertAsync("جهات الاتصال", ex.Message, "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("جهات الاتصال"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -138,7 +139,7 @@ public partial class SearchPage : ContentPage
             SetContactLoading(false, ContactsStatusLabel.Text);
         }
 #else
-        ContactsStatusLabel.Text = "عرض جهات الاتصال متاح حاليًا على Android فقط.";
+        ContactsStatusLabel.Text = AppLocalization.TranslateSourceText("عرض جهات الاتصال متاح حاليًا على Android فقط.");
         await Task.CompletedTask;
 #endif
     }
@@ -154,7 +155,7 @@ public partial class SearchPage : ContentPage
             await _api.TokenInitialization;
             if (!_api.HasToken)
             {
-                ContactsStatusLabel.Text = $"جهات الاتصال: {_localContacts.Count} · سجّل الدخول لعرض مستخدمي Himo.";
+                ContactsStatusLabel.Text = $"{AppLocalization.TranslateSourceText("جهات الاتصال")}: {_localContacts.Count} · {AppLocalization.T("ShowHimoUsers")}.";
                 return;
             }
 
@@ -165,15 +166,15 @@ public partial class SearchPage : ContentPage
             if (!Preferences.Default.Get("himo_contacts_lookup_consent", false))
             {
                 var consent = await DisplayAlertAsync(
-                    "عرض مستخدمي Himo",
-                    "لإظهار الأشخاص المسجلين في Himo ضمن جهات اتصالك، سيرسل التطبيق أرقام الهاتف فقط للتحقق بصورة آمنة. لن تُرسل الأسماء أو عناوين البريد، ولن يُحفظ دفتر الهاتف على الخادم.",
-                    "متابعة",
-                    "لاحقًا");
+                    AppLocalization.T("ShowHimoUsers"),
+                    AppLocalization.T("HimoContactLookupConsent"),
+                    AppLocalization.TranslateSourceText("متابعة"),
+                    AppLocalization.T("Later"));
                 if (!consent)
                 {
                     _discoveryDeclined = true;
                     await RebuildContactEntriesAsync(); // Keep self and existing chats visible without phone matching.
-                    ContactsStatusLabel.Text = $"جهات الاتصال: {_localContacts.Count}";
+                    ContactsStatusLabel.Text = $"{AppLocalization.TranslateSourceText("جهات الاتصال")}: {_localContacts.Count}";
                     return;
                 }
 
@@ -191,11 +192,11 @@ public partial class SearchPage : ContentPage
                 _discoveryAttempted = true;
                 _discoveryCompleted = true;
                 await RebuildContactEntriesAsync();
-                ContactsStatusLabel.Text = $"جهات الاتصال: {_localContacts.Count}";
+                ContactsStatusLabel.Text = $"{AppLocalization.TranslateSourceText("جهات الاتصال")}: {_localContacts.Count}";
                 return;
             }
 
-            SetContactLoading(true, "جارٍ عرض حسابات Himo...");
+            SetContactLoading(true, AppLocalization.T("ShowingHimoAccounts"));
 
             // The API accepts up to 250 numbers per request. Keep batches below that limit.
             foreach (var batch in allNumbers.Chunk(200))
@@ -218,14 +219,14 @@ public partial class SearchPage : ContentPage
             var registeredCount = _allEntries.Count(contact => contact.HasHimoAccount);
             var inviteCount = _allEntries.Count - registeredCount;
             ContactsStatusLabel.Text = registeredCount > 0
-                ? $"على Himo: {registeredCount}   ·   للدعوة: {inviteCount}"
-                : $"لم يظهر أي حساب Himo ضمن جهات اتصالك · يمكنك دعوة {inviteCount} شخصًا.";
+                ? $"{AppLocalization.T("ContactsOnHimoShort")}: {registeredCount}   ·   {AppLocalization.T("InviteCountLabel")}: {inviteCount}"
+                : $"{AppLocalization.T("NoHimoMatches")} · {AppLocalization.T("YouCanInvite")} {inviteCount} شخصًا.";
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo Contacts] Registered-contact discovery failed: {ex}");
             await RebuildContactEntriesAsync(); // Keep self and previous chats visible if phone lookup fails.
-            ContactsStatusLabel.Text = "تعذر تحديث مطابقة الأرقام. ما زالت حساباتك ومحادثاتك السابقة متاحة.";
+            ContactsStatusLabel.Text = AppLocalization.T("ContactLookupRefreshFailed");
         }
         finally
         {
@@ -319,7 +320,7 @@ public partial class SearchPage : ContentPage
                     {
                         ContactsLoadIndicator.IsVisible = true;
                         ContactsLoadIndicator.IsRunning = true;
-                        ContactsStatusLabel.Text = "جارٍ البحث في حسابات Himo...";
+                        ContactsStatusLabel.Text = AppLocalization.T("SearchingHimoAccounts");
                     }
 
                     try
@@ -451,13 +452,13 @@ public partial class SearchPage : ContentPage
 
                 var total = combined.Count;
                 if (remoteSearchFailed)
-                    ContactsStatusLabel.Text = $"النتائج المحلية: {matching.Count} · تعذر الاتصال ببحث الحسابات";
+                    ContactsStatusLabel.Text = $"{AppLocalization.T("LocalSearchUnavailable")}: {matching.Count}";
                 else if (!string.IsNullOrWhiteSpace(query))
-                    ContactsStatusLabel.Text = $"نتائج البحث: {total}";
+                    ContactsStatusLabel.Text = $"{AppLocalization.T("SearchResults")}: {total}";
                 else if (_contactsLoaded)
                     ContactsStatusLabel.Text = _discoveryCompleted
-                        ? $"على Himo: {combined.Count(contact => contact.HasHimoAccount)}   ·   جهات الاتصال: {_allEntries.Count}"
-                        : $"جهات الاتصال: {_allEntries.Count}";
+                        ? $"{AppLocalization.T("ContactsOnHimoShort")}: {combined.Count(contact => contact.HasHimoAccount)}   ·   {AppLocalization.TranslateSourceText("جهات الاتصال")}: {_allEntries.Count}"
+                        : $"{AppLocalization.TranslateSourceText("جهات الاتصال")}: {_allEntries.Count}";
 
                 ContactsLoadIndicator.IsVisible = false;
                 ContactsLoadIndicator.IsRunning = false;
@@ -669,7 +670,7 @@ public partial class SearchPage : ContentPage
         _handlingContactAction = true;
         var originalText = button.Text;
         button.IsEnabled = false;
-        button.Text = "جارٍ...";
+        button.Text = AppLocalization.T("Pending");
         try
         {
             if (contact.HasHimoAccount && contact.HimoUserId.HasValue)
@@ -692,11 +693,11 @@ public partial class SearchPage : ContentPage
                     .FirstOrDefault();
                 if (string.IsNullOrWhiteSpace(phone))
                 {
-                    await DisplayAlertAsync("دعوة", "لا يوجد رقم هاتف لهذه الجهة.", "حسنًا");
+                    await DisplayAlertAsync(AppLocalization.T("Invite"), AppLocalization.T("NoPhoneForContact"), AppLocalization.TranslateSourceText("حسنًا"));
                     return;
                 }
 
-                var body = "أدعوك للانضمام إلى Himo للتواصل والمحادثة.";
+                var body = AppLocalization.T("HimoInvitationText");
                 await Sms.Default.ComposeAsync(new SmsMessage(body, new[] { phone }));
             }
         }
@@ -706,18 +707,18 @@ public partial class SearchPage : ContentPage
             {
                 await Share.Default.RequestAsync(new ShareTextRequest
                 {
-                    Title = "دعوة إلى Himo",
-                    Text = "أدعوك للانضمام إلى Himo للتواصل والمحادثة."
+                    Title = AppLocalization.T("InviteToHimo"),
+                    Text = AppLocalization.T("HimoInvitationText")
                 });
             }
             catch (Exception shareException)
             {
-                await DisplayAlertAsync("دعوة", shareException.Message, "حسنًا");
+                await DisplayAlertAsync(AppLocalization.T("Invite"), Himo.Services.AppLocalization.TranslateSourceText(shareException.Message), AppLocalization.TranslateSourceText("حسنًا"));
             }
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync(contact.HasHimoAccount ? "المحادثة" : "دعوة", ex.Message, "حسنًا");
+            await DisplayAlertAsync(contact.HasHimoAccount ? AppLocalization.TranslateSourceText("المحادثة") : AppLocalization.T("Invite"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {

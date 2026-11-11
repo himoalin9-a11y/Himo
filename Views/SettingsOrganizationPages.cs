@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Storage;
@@ -37,6 +37,7 @@ public sealed class AppearanceExperiencePage : ContentPage
 
         root.Add(new ScrollView { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Never }, 0, 1);
         Content = root;
+        AppLocalization.AttachToPage(this);
         _initializingDarkMode = true;
         _darkModeSwitch.IsToggled = HimoAppearanceManager.IsActiveStyleDark;
         _initializingDarkMode = false;
@@ -83,8 +84,10 @@ public sealed class AppearanceExperiencePage : ContentPage
     private async void FontSizeClicked(object? sender, EventArgs e)
     {
         var current = Preferences.Default.Get("himo_settings_font_scale", 1.0);
-        var selected = await DisplayActionSheetAsync("حجم الخط", "إلغاء", null,
-            "صغير · 90%", "متوسط · 100%", "كبير · 115%");
+        var selectedDisplay = await DisplayActionSheetAsync(
+            AppLocalization.TranslateSourceText("حجم الخط"), AppLocalization.TranslateSourceText("إلغاء"), null,
+            AppLocalization.TranslateSourceText("صغير · 90%"), AppLocalization.TranslateSourceText("متوسط · 100%"), AppLocalization.TranslateSourceText("كبير · 115%"));
+        var selected = AppLocalization.ResolveSourceText(selectedDisplay, "صغير · 90%", "متوسط · 100%", "كبير · 115%");
         var scale = selected switch
         {
             "صغير · 90%" => 0.90,
@@ -262,6 +265,7 @@ public sealed class FeaturesSettingsPage : ContentPage
         content.Add(BuildDownloadLinkCard());
         root.Add(new ScrollView { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Never }, 0, 1);
         Content = root;
+        AppLocalization.AttachToPage(this);
 
         _appLockSwitch.Toggled += AppLockToggled;
         _savePinButton.Clicked += SavePinClicked;
@@ -327,7 +331,7 @@ public sealed class FeaturesSettingsPage : ContentPage
         tap.Tapped += async (_, _) =>
         {
             try { await Navigation.PushAsync(new AppDownloadLinkPage(_api), true); }
-            catch (Exception ex) { await DisplayAlertAsync("رابط التطبيق", "تعذر فتح صفحة رابط التطبيق: " + ex.Message, "حسنًا"); }
+            catch (Exception ex) { await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("رابط التطبيق"),Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح صفحة رابط التطبيق: " + Himo.Services.AppLocalization.TranslateSourceText(ex.Message)),Himo.Services.AppLocalization.TranslateSourceText("حسنًا")); }
         };
         row.GestureRecognizers.Add(tap);
         return CreateCard(row);

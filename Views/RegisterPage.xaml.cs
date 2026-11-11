@@ -1,5 +1,7 @@
-using Himo.Models;
+﻿using Himo.Models;
 using Himo.Services;
+using System.Globalization;
+using System.Text;
 
 namespace Himo.Views;
 
@@ -28,6 +30,29 @@ public partial class RegisterPage : ContentPage
 
         public string Label { get; }
         public string DialCode { get; }
+
+        public string LocalizedLabel
+        {
+            get
+            {
+                try
+                {
+                    var flagRunes = Label.EnumerateRunes()
+                        .TakeWhile(rune => rune.Value is >= 0x1F1E6 and <= 0x1F1FF)
+                        .ToArray();
+                    var flag = string.Concat(flagRunes.Select(rune => rune.ToString()));
+                    var isoCode = new string(flagRunes.Select(rune => (char)('A' + rune.Value - 0x1F1E6)).ToArray());
+                    if (isoCode.Length == 2)
+                        return $"{flag} {new RegionInfo(isoCode).DisplayName} ({DialCode})";
+                }
+                catch (ArgumentException)
+                {
+                    // Keep the Arabic source label if the region is not available.
+                }
+
+                return Label;
+            }
+        }
     }
 
     private static readonly CountryDialOption[] CountryDialOptions =
@@ -113,7 +138,7 @@ public partial class RegisterPage : ContentPage
 
         if (string.IsNullOrWhiteSpace(name) || name.Length > 60)
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الاسم"), "أدخل اسمًا صحيحًا لا يتجاوز 60 حرفًا.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الاسم"),Himo.Services.AppLocalization.TranslateSourceText("أدخل اسمًا صحيحًا لا يتجاوز 60 حرفًا."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             NameEntry?.Focus();
             return;
         }
@@ -125,13 +150,13 @@ public partial class RegisterPage : ContentPage
         }
         if (!IsValidOptionalPhone(phone))
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("رقم الهاتف"), "أدخل رقم هاتف صحيحًا من 7 إلى 15 رقمًا، أو اترك الحقل فارغًا لأنه اختياري.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("رقم الهاتف"),Himo.Services.AppLocalization.TranslateSourceText("أدخل رقم هاتف صحيحًا من 7 إلى 15 رقمًا، أو اترك الحقل فارغًا لأنه اختياري."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             PhoneEntry?.Focus();
             return;
         }
         if (password.Length < 8 || password.Length > 128)
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("كلمة المرور"), "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("كلمة المرور"),Himo.Services.AppLocalization.TranslateSourceText("يجب أن تتكون كلمة المرور من 8 أحرف على الأقل."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             PasswordEntry?.Focus();
             return;
         }
@@ -144,7 +169,7 @@ public partial class RegisterPage : ContentPage
         if (TermsCheckBox?.IsChecked != true)
         {
             SetStatus("يجب الموافقة على شروط الاستخدام وسياسة الخصوصية للمتابعة.");
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الموافقة مطلوبة"), "يرجى قراءة شروط الاستخدام وسياسة الخصوصية والموافقة عليهما قبل إنشاء الحساب.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الموافقة مطلوبة"),Himo.Services.AppLocalization.TranslateSourceText("يرجى قراءة شروط الاستخدام وسياسة الخصوصية والموافقة عليهما قبل إنشاء الحساب."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
@@ -179,7 +204,7 @@ public partial class RegisterPage : ContentPage
         catch (Exception ex)
         {
             SetStatus("تعذر إرسال رمز التحقق.");
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إنشاء الحساب"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إنشاء الحساب"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -207,7 +232,7 @@ public partial class RegisterPage : ContentPage
         catch (Exception ex)
         {
             SetStatus("رمز التحقق غير صحيح أو منتهي الصلاحية.");
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تحقق البريد الإلكتروني"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تحقق البريد الإلكتروني"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -236,7 +261,7 @@ public partial class RegisterPage : ContentPage
         catch (Exception ex)
         {
             SetStatus("تعذر إعادة إرسال رمز التحقق.");
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إعادة إرسال الرمز"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إعادة إرسال الرمز"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {
@@ -474,7 +499,7 @@ public partial class RegisterPage : ContentPage
     {
         if (CountryCodePicker is null) return;
         CountryCodePicker.ItemsSource = CountryDialOptions;
-        CountryCodePicker.ItemDisplayBinding = new Binding(nameof(CountryDialOption.Label));
+        CountryCodePicker.ItemDisplayBinding = new Binding(nameof(CountryDialOption.LocalizedLabel));
         CountryCodePicker.SelectedItem = CountryDialOptions[0];
     }
 

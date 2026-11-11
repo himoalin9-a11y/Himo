@@ -137,7 +137,7 @@ public sealed class ChatThemePage : Himo.Services.LocalizedContentPage
         Preferences.Default.Set(ChatBubbleSettingsPage.OutgoingEndKey, theme.OutEnd);
         Preferences.Default.Set(ChatBubbleSettingsPage.IncomingStartKey, theme.InStart);
         Preferences.Default.Set(ChatBubbleSettingsPage.IncomingEndKey, theme.InEnd);
-        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("سمة الدردشة"), $"تم تطبيق سمة {theme.Name} كخلفية لونية مستقلة. لم يتغير اختيار الخلفية الفوتوغرافية المحفوظ.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("سمة الدردشة"),Himo.Services.AppLocalization.TranslateSourceText($"تم تطبيق سمة {theme.Name} كخلفية لونية مستقلة. لم يتغير اختيار الخلفية الفوتوغرافية المحفوظ."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     internal static async Task LoadPreviewAsync(Image image, string assetName)
@@ -421,7 +421,7 @@ public sealed class ChatWallpaperSettingsPage : Himo.Services.LocalizedContentPa
         Preferences.Default.Set(ChatThemePage.BackgroundModeKey, "photo");
         RefreshWallpaperSelection(wallpaperValue);
         _status.Text = $"تم اختيار خلفية {displayName}. ستظهر في المحادثات التي لا تملك خلفية خاصة بها عند فتحها.";
-        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفية الدردشة"), "تم حفظ الخلفية الجديدة.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفية الدردشة"),Himo.Services.AppLocalization.TranslateSourceText("تم حفظ الخلفية الجديدة."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     private async Task PickImageFromGalleryAsync()
@@ -446,7 +446,7 @@ public sealed class ChatWallpaperSettingsPage : Himo.Services.LocalizedContentPa
             Preferences.Default.Set(ChatThemePage.BackgroundModeKey, "photo");
             RefreshWallpaperSelection("local:" + destination);
             _status.Text = "تم حفظ الصورة المختارة وستُستخدم كخلفية للمحادثات.";
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفية الدردشة"), "تم اختيار الصورة وحفظها بنجاح.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفية الدردشة"),Himo.Services.AppLocalization.TranslateSourceText("تم اختيار الصورة وحفظها بنجاح."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
@@ -749,7 +749,7 @@ public sealed class ChatAnimatedWallpaperPage : Himo.Services.LocalizedContentPa
             Preferences.Default.Set(ChatThemePage.BackgroundModeKey, "animated");
             RefreshAnimatedSelection(option.VideoUrl);
             _status.Text = $"تم اختيار فيديو {option.Name}. يلزم اتصال بالإنترنت لتشغيل المقطع الحقيقي داخل المحادثة.";
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفيات متحركة"), "تم حفظ الفيديو الحقيقي. يحتاج التشغيل إلى الإنترنت ويعمل بصمت في تكرار مستمر.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفيات متحركة"),Himo.Services.AppLocalization.TranslateSourceText("تم حفظ الفيديو الحقيقي. يحتاج التشغيل إلى الإنترنت ويعمل بصمت في تكرار مستمر."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         catch (Exception ex)
         {
@@ -767,7 +767,7 @@ public sealed class ChatAnimatedWallpaperPage : Himo.Services.LocalizedContentPa
 
             if (!string.Equals(Path.GetExtension(picked.FileName), ".mp4", StringComparison.OrdinalIgnoreCase))
             {
-                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفيات متحركة"), "اختر ملف فيديو بصيغة MP4 لضمان أفضل توافق مع أجهزة أندرويد.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفيات متحركة"),Himo.Services.AppLocalization.TranslateSourceText("اختر ملف فيديو بصيغة MP4 لضمان أفضل توافق مع أجهزة أندرويد."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
 
@@ -780,7 +780,7 @@ public sealed class ChatAnimatedWallpaperPage : Himo.Services.LocalizedContentPa
             if (info.Length == 0 || info.Length > 100L * 1024 * 1024)
             {
                 try { File.Delete(destination); } catch { }
-                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفيات متحركة"), "حجم الفيديو غير مناسب. اختر فيديو أقل من 100 ميجابايت.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("خلفيات متحركة"),Himo.Services.AppLocalization.TranslateSourceText("حجم الفيديو غير مناسب. اختر فيديو أقل من 100 ميجابايت."), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
                 return;
             }
 

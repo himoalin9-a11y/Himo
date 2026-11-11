@@ -158,7 +158,12 @@ public class MainActivity : MauiAppCompatActivity
         try
         {
             var parameters = new global::Android.App.PictureInPictureParams.Builder();
-            parameters.SetAspectRatio(new global::Android.Util.Rational(9, 16));
+            var activeCallPage = Shell.Current?.Navigation.NavigationStack
+                .OfType<Himo.Views.CallPage>().LastOrDefault();
+            var isVideoCall = string.Equals(activeCallPage?.Mode, "video", StringComparison.OrdinalIgnoreCase);
+            parameters.SetAspectRatio(isVideoCall
+                ? new global::Android.Util.Rational(16, 9)
+                : new global::Android.Util.Rational(9, 16));
             var pipParams = parameters.Build();
             if (pipParams is null)
                 return false;
@@ -246,12 +251,14 @@ public class MainActivity : MauiAppCompatActivity
 
     protected override void OnCreate(global::Android.OS.Bundle? savedInstanceState)
     {
-        // Set the native window background before MAUI creates its first content
-        // view. Setting it only after base.OnCreate left a white frame visible on
-        // some cold starts while the framework and persisted session were loading.
-        SetLaunchWindowBackground();
+        // Let MAUI initialize its splash screen and first native content before
+        // applying the app window background. Applying it before base.OnCreate
+        // can cover the configured Himo splash artwork on cold starts.
         base.OnCreate(savedInstanceState);
-        EnsureVisualStudioLaunchAliasEnabled();
+        // Android launchers can retain an old activity-alias state across updates.
+        // Reconcile every launcher entry with the saved selection so only one icon
+        // can be enabled after startup, even if a previous OnStop cleanup was skipped.
+        Himo.Services.HimoLauncherIconService.EnsureAliasArchitectureMigration();
         SetLaunchWindowBackground();
         ApplyImmersiveFullscreen();
         try { FirebaseCloudMessagingImplementation.OnNewIntent(Intent); } catch { }
@@ -292,30 +299,6 @@ public class MainActivity : MauiAppCompatActivity
         }
     }
 
-
-    private void EnsureVisualStudioLaunchAliasEnabled()
-    {
-        try
-        {
-            var context = Android.App.Application.Context;
-            var packageName = context.PackageName;
-            var packageManager = context.PackageManager;
-            if (string.IsNullOrWhiteSpace(packageName) || packageManager is null)
-                return;
-
-            var launchAlias = new Android.Content.ComponentName(
-                packageName,
-                $"{packageName}.LauncherIconHomeDefault");
-            packageManager.SetComponentEnabledSetting(
-                launchAlias,
-                Android.Content.PM.ComponentEnabledState.Enabled,
-                Android.Content.PM.ComponentEnableOption.DontKillApp);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Himo Debug Launch] Could not enable persistent launch alias: {ex.Message}");
-        }
-    }
 
     private void SetLaunchWindowBackground()
     {

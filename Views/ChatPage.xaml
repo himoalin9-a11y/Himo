@@ -361,7 +361,7 @@
                                 <Image Source="himo_icon_chat_file.png" WidthRequest="20" HeightRequest="20" />
                             </Border>
                             <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
-                                <Label Text="{Binding AttachmentFileName}" FontSize="11.5" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" MaxLines="1" LineBreakMode="TailTruncation" />
+                                <Label Text="{Binding AttachmentDisplayName}" FontSize="11.5" FontAttributes="Bold" TextColor="{DynamicResource HimoPrimary}" MaxLines="1" LineBreakMode="TailTruncation" />
                                 <Label Text="مرفق" FontSize="9.5" TextColor="{DynamicResource HimoPrimary}" />
                             </VerticalStackLayout>
                             <Grid.GestureRecognizers><TapGestureRecognizer Tapped="AttachmentTapped" /></Grid.GestureRecognizers>

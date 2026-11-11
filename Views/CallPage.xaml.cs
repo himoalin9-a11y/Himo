@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 using Himo.Models;
 using Microsoft.Maui.Controls.Shapes;
 #if ANDROID
@@ -174,6 +174,10 @@ public partial class CallPage : ContentPage
     public CallPage(ICallService calls, HimoRealtimeService realtime, WebRtcNegotiationCoordinator negotiation, ChatService chat, HimoApiClient api, INotificationService notifications)
     {
         InitializeComponent();
+        if (NameLabel is not null) NameLabel.AutomationId = "Himo.UserSuppliedText";
+        if (VideoCallNameLabel is not null) VideoCallNameLabel.AutomationId = "Himo.UserSuppliedText";
+        if (InitialLabel is not null) InitialLabel.AutomationId = "Himo.UserSuppliedText";
+        if (VideoPeerInitialLabel is not null) VideoPeerInitialLabel.AutomationId = "Himo.UserSuppliedText";
         AudioAvatarBackgroundImage.HandlerChanged += AudioAvatarBackgroundImageHandlerChanged;
         Himo.Services.AppLocalization.AttachToPage(this);
         _calls = calls;
@@ -557,10 +561,7 @@ public partial class CallPage : ContentPage
             return;
         }
 #endif
-        await DisplayAlertAsync(
-            "تصغير المكالمة",
-            "تعذر فتح النافذة العائمة على هذا الجهاز. ستبقى المكالمة مستمرة في هذه الشاشة.",
-            "حسنًا");
+        await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تصغير المكالمة"),Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح النافذة العائمة على هذا الجهاز. ستبقى المكالمة مستمرة في هذه الشاشة."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
     }
 
     public void SetPictureInPictureMode(bool isInPictureInPicture)
@@ -1518,9 +1519,14 @@ public partial class CallPage : ContentPage
             GroupRemoteVideoGrid.IsVisible = true;
             VideoWaitingOverlay.IsVisible = false;
 
-            // Keep the same renderer host when a group shrinks from two peers to one.
-            // Reparenting a native SurfaceViewRenderer can leave an old EGL sink alive.
-            var columns = peerIds.Length == 1 ? 1 : peerIds.Length <= 4 ? 2 : 3;
+            // Keep portrait orientation and adapt the participant tiles to the
+            // available vertical layout. With two remote peers, stack them in
+            // two full-width rows instead of squeezing them into narrow columns.
+            // For 3/5/etc. peers, use two columns and let the final odd tile span
+            // the row so no participant is left in a tiny, empty-looking cell.
+            // Keep the same renderer host when a group shrinks; reparenting a
+            // native SurfaceViewRenderer can leave an old EGL sink alive.
+            var columns = peerIds.Length <= 2 ? 1 : 2;
             var rows = (int)Math.Ceiling(peerIds.Length / (double)columns);
             GroupRemoteVideoGrid.RowDefinitions.Clear();
             GroupRemoteVideoGrid.ColumnDefinitions.Clear();
@@ -1550,6 +1556,10 @@ public partial class CallPage : ContentPage
                 var tile = _groupRemoteVideoTiles[peerId];
                 Grid.SetRow(tile, index / columns);
                 Grid.SetColumn(tile, index % columns);
+                var spanFinalOddTile = peerIds.Length >= 3 &&
+                                       peerIds.Length % 2 == 1 &&
+                                       index == peerIds.Length - 1;
+                Grid.SetColumnSpan(tile, spanFinalOddTile ? columns : 1);
                 GroupRemoteVideoGrid.Children.Add(tile);
             }
         });
@@ -1771,7 +1781,10 @@ public partial class CallPage : ContentPage
         {
             if (_mode == CallMode.Video)
             {
-                var selected = await DisplayActionSheetAsync("خيارات المكالمة", "إلغاء", null, "تبديل الكاميرا");
+                var selectedDisplay = await DisplayActionSheetAsync(
+                    AppLocalization.TranslateSourceText("خيارات المكالمة"), AppLocalization.TranslateSourceText("إلغاء"), null,
+                    AppLocalization.TranslateSourceText("تبديل الكاميرا"));
+                var selected = AppLocalization.ResolveSourceText(selectedDisplay, "تبديل الكاميرا");
                 if (string.Equals(selected, "تبديل الكاميرا", StringComparison.Ordinal))
                     await MainThread.InvokeOnMainThreadAsync(async () =>
                     {
@@ -1781,7 +1794,7 @@ public partial class CallPage : ContentPage
             }
             else
             {
-                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("معلومات المكالمة"), $"مكالمة صوتية\n{FormatDuration()}", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("معلومات المكالمة"),Himo.Services.AppLocalization.TranslateSourceText($"مكالمة صوتية\n{FormatDuration()}"), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             }
         }
         catch (Exception ex)
@@ -1820,7 +1833,7 @@ public partial class CallPage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Camera switch failed: {ex.Message}");
-            await DisplayAlertAsync("الكاميرا", "تعذر تبديل الكاميرا. حاول مرة أخرى.", "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الكاميرا"),Himo.Services.AppLocalization.TranslateSourceText("تعذر تبديل الكاميرا. حاول مرة أخرى."),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 

@@ -162,6 +162,7 @@ internal sealed class DeleteConversationsConfirmationPage : ContentPage
         };
         root.Children.Add(card);
         Content = root;
+        Himo.Services.AppLocalization.AttachToPage(this);
     }
 
     public static async Task<DeleteConversationsConfirmationResult?> ShowAsync(

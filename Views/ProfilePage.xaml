@@ -38,6 +38,9 @@
                 <Label Text="ملفي الشخصي" FontSize="21" FontAttributes="Bold"
                        TextColor="{DynamicResource HimoPrimary}"
                        HorizontalTextAlignment="Center" />
+                <Label Text="هويتك ومساحتك على Himo" FontSize="11.5"
+                       TextColor="{DynamicResource HimoTextSecondary}"
+                       HorizontalTextAlignment="Center" />
             </VerticalStackLayout>
             <BoxView Grid.Column="2" WidthRequest="42" HeightRequest="42" Opacity="0" />
         </Grid>
@@ -55,6 +58,13 @@
                         <VerticalStackLayout Grid.Column="0" Spacing="7"
                                              VerticalOptions="Center"
                                              FlowDirection="RightToLeft">
+                            <Border HorizontalOptions="Start" Padding="9,4"
+                                    BackgroundColor="{DynamicResource HimoSoft}"
+                                    Stroke="{DynamicResource HimoBorder}" StrokeThickness="0.8">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
+                                <Label Text="ملف Himo الشخصي" FontSize="10.5"
+                                       FontAttributes="Bold" TextColor="{DynamicResource HimoAccent}" />
+                            </Border>
                             <Label x:Name="ProfileNameLabel" Text="مستخدم Himo"
                                    FontSize="24" FontAttributes="Bold"
                                    TextColor="{DynamicResource HimoPrimary}"
@@ -64,6 +74,14 @@
                                    FontSize="13" TextColor="{DynamicResource HimoTextSecondary}"
                                    HorizontalTextAlignment="Start" LineBreakMode="TailTruncation"
                                    MaxLines="2" />
+                            <HorizontalStackLayout Spacing="6" FlowDirection="RightToLeft"
+                                                   HorizontalOptions="Start" Margin="0,2,0,0">
+                                <BoxView WidthRequest="7" HeightRequest="7" CornerRadius="4"
+                                         Color="#20C997" VerticalOptions="Center" />
+                                <Label Text="حسابك على Himo" FontSize="11.5"
+                                       TextColor="{DynamicResource HimoTextSecondary}"
+                                       VerticalTextAlignment="Center" />
+                            </HorizontalStackLayout>
                         </VerticalStackLayout>
 
                         <Grid Grid.Column="1" WidthRequest="112" HeightRequest="112"
@@ -111,6 +129,8 @@
                                              VerticalOptions="Center" FlowDirection="RightToLeft">
                             <Label Text="مشاركة الحساب" FontSize="16" FontAttributes="Bold"
                                    TextColor="{DynamicResource HimoPrimary}" />
+                            <Label Text="اعرض رمز QR أو شارك رابط حسابك مع الآخرين" FontSize="12"
+                                   TextColor="{DynamicResource HimoTextSecondary}" />
                         </VerticalStackLayout>
                         <Border Grid.Column="1" WidthRequest="48" HeightRequest="48"
                                 BackgroundColor="{DynamicResource HimoSoft}"
@@ -262,22 +282,22 @@
                 <Button Text="تسجيل الخروج" Clicked="LogoutClicked"
                         HeightRequest="52" CornerRadius="17"
                         BackgroundColor="{DynamicResource HimoSoft}"
-                        BorderColor="{DynamicResource HimoDanger}" BorderWidth="1"
-                        TextColor="{DynamicResource HimoDanger}" FontSize="15" FontAttributes="Bold" />
+                        BorderColor="#D94B73" BorderWidth="1"
+                        TextColor="#FF5C83" FontSize="15" FontAttributes="Bold" />
                 <Label Text="إدارة ملفك الشخصي وإعدادات Himo من مكان واحد"
                        FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}"
                        HorizontalTextAlignment="Center" Margin="3,0,3,2" />
             </VerticalStackLayout>
         </ScrollView>
 
-        <!-- The same five-item bottom navigation used in Home/Calls/Search. -->
+        <!-- Four-item bottom navigation; people search is available from the floating search button. -->
         <Border x:Name="BottomNavigationBar" Grid.Row="2" Margin="9,7,9,9"
                 HeightRequest="68" MinimumHeightRequest="68" MaximumHeightRequest="68" VerticalOptions="End"
                 BackgroundColor="{DynamicResource HimoCard}"
                 Stroke="{DynamicResource HimoBorder}" StrokeThickness="1.1"
                 Padding="3,4">
             <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
-            <Grid ColumnDefinitions="*,*,*,*,*" FlowDirection="RightToLeft">
+            <Grid ColumnDefinitions="*,*,*,*" FlowDirection="RightToLeft">
                 <Border Grid.Column="0" Margin="2,0" Padding="2,5"
                         BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
@@ -297,15 +317,6 @@
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="CallsNavTapped" /></Border.GestureRecognizers>
                 </Border>
                 <Border Grid.Column="2" Margin="2,0" Padding="2,5"
-                        BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
-                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
-                        <Image Source="home_search_neon.png" WidthRequest="23" HeightRequest="23" Aspect="AspectFit" />
-                        <Label Text="بحث الأشخاص" FontSize="10.5" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" />
-                    </VerticalStackLayout>
-                    <Border.GestureRecognizers><TapGestureRecognizer Tapped="PeopleNavTapped" /></Border.GestureRecognizers>
-                </Border>
-                <Border Grid.Column="3" Margin="2,0" Padding="2,5"
                         BackgroundColor="{DynamicResource HimoSoft}"
                         Stroke="{DynamicResource HimoAccent}" StrokeThickness="1">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
@@ -315,7 +326,7 @@
                                TextColor="{DynamicResource HimoAccent}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                 </Border>
-                <Border Grid.Column="4" Margin="2,0" Padding="2,5"
+                <Border Grid.Column="3" Margin="2,0" Padding="2,5"
                         BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
                     <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
                     <VerticalStackLayout Spacing="2" HorizontalOptions="Center">

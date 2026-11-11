@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 
 namespace Himo.Views;
 
@@ -130,7 +130,7 @@ public partial class AccountManagementPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إدارة الحساب"), "تعذر فتح الصفحة المطلوبة: " + ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إدارة الحساب"),Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح الصفحة المطلوبة: " + Himo.Services.AppLocalization.TranslateSourceText(ex.Message)), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 
@@ -157,7 +157,7 @@ public partial class AccountManagementPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("إجراءات الحساب", "تعذر فتح الصفحة: " + ex.Message, "حسنًا");
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("إجراءات الحساب"),Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح الصفحة: " + Himo.Services.AppLocalization.TranslateSourceText(ex.Message)),Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 

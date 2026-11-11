@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using IOPath = System.IO.Path;
@@ -1043,7 +1043,7 @@ public sealed class StorageDataSettingsPage : Himo.Services.LocalizedContentPage
         {
             if (!File.Exists(entry.FullPath))
             {
-                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الملف"), "لم يعد الملف موجودًا في الذاكرة المحلية.", Himo.Services.AppLocalization.TranslateSourceText("موافق"));
+                await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("الملف"),Himo.Services.AppLocalization.TranslateSourceText("لم يعد الملف موجودًا في الذاكرة المحلية."), Himo.Services.AppLocalization.TranslateSourceText("موافق"));
                 await RefreshScreenAsync();
                 return;
             }
@@ -1051,14 +1051,14 @@ public sealed class StorageDataSettingsPage : Himo.Services.LocalizedContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("فتح الملف"), "تعذر فتح الملف على هذا الجهاز: " + ex.Message, Himo.Services.AppLocalization.TranslateSourceText("موافق"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("فتح الملف"),Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح الملف على هذا الجهاز: " + Himo.Services.AppLocalization.TranslateSourceText(ex.Message)), Himo.Services.AppLocalization.TranslateSourceText("موافق"));
         }
     }
 
     private async Task DeleteFileAsync(StorageFileEntry entry)
     {
         if (!entry.CanDelete || !IsPathInside(entry.FullPath, FileSystem.Current.CacheDirectory)) return;
-        var accepted = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف النسخة المؤقتة"), $"هل تريد حذف النسخة المحلية من «{entry.Name}»؟ لن تُحذف الرسالة أو المرفق من المحادثة على الخادم.", Himo.Services.AppLocalization.TranslateSourceText("حذف"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
+        var accepted = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف النسخة المؤقتة"),Himo.Services.AppLocalization.TranslateSourceText($"هل تريد حذف النسخة المحلية من «{entry.Name}»؟ لن تُحذف الرسالة أو المرفق من المحادثة على الخادم."), Himo.Services.AppLocalization.TranslateSourceText("حذف"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
         if (!accepted) return;
 
         try
@@ -1071,7 +1071,7 @@ public sealed class StorageDataSettingsPage : Himo.Services.LocalizedContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر الحذف"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("موافق"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("تعذر الحذف"), Himo.Services.AppLocalization.TranslateSourceText(ex.Message), Himo.Services.AppLocalization.TranslateSourceText("موافق"));
         }
     }
 

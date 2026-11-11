@@ -1,0 +1,749 @@
+﻿Arabic literal candidate,Occurrences,Source locations
+؟,8,Views/CreateGroupPage.xaml.cs:627; Views/CreateGroupPage.xaml.cs:821; Views/CreateGroupPage.xaml.cs:1042; Views/GroupConversationInfoPages.cs:839; Views/GroupConversationInfoPages.cs:1297; Views/GroupConversationInfoPages.cs:1425; Views/GroupConversationInfoPages.cs:1478; Views/GroupSettingsPage.cs:247
+م,3,Views/GroupConversationInfoPages.cs:210; Views/GroupInvitePreviewPage.cs:147; Views/GroupInvitePreviewPage.cs:256
+إضافة وصف للمجموعة,2,Views/GroupConversationInfoPages.cs:177; Views/GroupConversationInfoPages.cs:306
+إنشاء جديد,2,Views/NewConversationPage.cs:18; Views/NewConversationPage.cs:73
+تعديل الاسم,2,Views/GroupConversationInfoPages.cs:248; Views/GroupConversationInfoPages.cs:262
+تعديل الوصف,2,Views/GroupConversationInfoPages.cs:249; Views/GroupConversationInfoPages.cs:263
+تعذر فتح الصورة: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},2,Views/CameraPage.xaml.cs:571; Views/ChatPage.xaml.cs:3556
+تعذر فتح شاشة المكالمة: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},2,Views/ChatPage.xaml.cs:1880; Views/ChatPage.xaml.cs:1900
+جارٍ تحميل رابط التطبيق...,2,Views/AppDownloadLinkPage.cs:47; Views/AppDownloadLinkPage.cs:187
+ تعذر حذف {counts.Failures.ToString(,1,Views/StorageDataSettingsPage.cs:1107
+)} {inviteCount} شخصًا.,1,Views/SearchPage.xaml.cs:223
+", CultureInfo.InvariantCulture)} / صادر {counts.Sent.ToString(",1,Views/StorageDataSettingsPage.cs:836
+", CultureInfo.InvariantCulture)} رسالة محفوظة • {files.Count.ToString(",1,Views/StorageDataSettingsPage.cs:765
+", CultureInfo.InvariantCulture)} رسالة • وارد {counts.Received.ToString(",1,Views/StorageDataSettingsPage.cs:836
+", CultureInfo.InvariantCulture)} لتسريع فتح الصفحة.",1,Views/StorageDataSettingsPage.cs:964
+", CultureInfo.InvariantCulture)} مرفق • {FormatBytes(localBytes)} محليًا",1,Views/StorageDataSettingsPage.cs:765
+", CultureInfo.InvariantCulture)} مكالمة • {FormatDuration(TimeSpan.FromSeconds(connectedSeconds))}",1,Views/StorageDataSettingsPage.cs:830
+", CultureInfo.InvariantCulture)} ملف • {FormatBytes(recentMedia.Sum(x => x.SizeBytes))} محليًا منذ التصفير",1,Views/StorageDataSettingsPage.cs:833
+", CultureInfo.InvariantCulture)} ملف.",1,Views/StorageDataSettingsPage.cs:1107
+", CultureInfo.InvariantCulture)} ملفًا مؤقتًا.",1,Views/StorageDataSettingsPage.cs:1106
+", CultureInfo.InvariantCulture)} ملفًا من أصل {filtered.Count.ToString(",1,Views/StorageDataSettingsPage.cs:964
+1. الجهة المسؤولة ونطاق السياسة,1,Views/LegalDocumentPages.cs:223
+1. قبول الشروط ونطاقها,1,Views/LegalDocumentPages.cs:190
+10. الرسائل والمكالمات,1,Views/LegalDocumentPages.cs:199
+10. النقل الدولي للبيانات,1,Views/LegalDocumentPages.cs:232
+100 ميجابايت,1,Views/ChatPage.xaml.cs:3334
+11. أذونات الجهاز,1,Views/LegalDocumentPages.cs:200
+11. مدة الاحتفاظ والحذف,1,Views/LegalDocumentPages.cs:233
+12. أمن المعلومات,1,Views/LegalDocumentPages.cs:234
+12. الإبلاغ والحظر والإشراف,1,Views/LegalDocumentPages.cs:201
+13. حقوق أصحاب البيانات,1,Views/LegalDocumentPages.cs:235
+13. خدمات الأطراف الأخرى,1,Views/LegalDocumentPages.cs:202
+14. الملكية الفكرية للتطبيق,1,Views/LegalDocumentPages.cs:203
+14. كيفية تقديم طلب خصوصية,1,Views/LegalDocumentPages.cs:236
+15 تصميمًا زجاجيًا,1,Views/IconAppearanceSettingsPages.cs:295
+15 لونًا للشعار نفسه,1,Views/IconAppearanceSettingsPages.cs:103
+15. الأطفال والقاصرون,1,Views/LegalDocumentPages.cs:237
+15. توفر الخدمة والتحديثات,1,Views/LegalDocumentPages.cs:204
+16. الإشعارات والتفضيلات,1,Views/LegalDocumentPages.cs:238
+16. تعليق الحساب وحذفه,1,Views/LegalDocumentPages.cs:205
+17. إخلاء المسؤولية والمسؤولية القانونية,1,Views/LegalDocumentPages.cs:206
+17. التحليلات وملفات التتبع,1,Views/LegalDocumentPages.cs:239
+18. التعديلات والشكاوى,1,Views/LegalDocumentPages.cs:207
+18. التغييرات على السياسة,1,Views/LegalDocumentPages.cs:240
+19. التواصل والشكاوى,1,Views/LegalDocumentPages.cs:241
+19. بيانات التواصل,1,Views/LegalDocumentPages.cs:208
+2. الجهة المشغلة والتواصل,1,Views/LegalDocumentPages.cs:191
+2. بيانات الحساب,1,Views/LegalDocumentPages.cs:224
+20. قابلية الفصل واللغة,1,Views/LegalDocumentPages.cs:209
+20. مراجعة النسخة قبل النشر,1,Views/LegalDocumentPages.cs:242
+25 أيقونة لامعة وفاخرة لهوية Himo,1,Views/IconAppearanceSettingsPages.cs:55
+25 تصميمًا لامعًا لهوية Himo,1,Views/IconAppearanceSettingsPages.cs:508
+25 ميجابايت,1,Views/ChatPage.xaml.cs:3334
+3. الأهلية والعمر,1,Views/LegalDocumentPages.cs:192
+3. الرسائل والملفات والمكالمات,1,Views/LegalDocumentPages.cs:225
+4. إنشاء الحساب وصحة المعلومات,1,Views/LegalDocumentPages.cs:193
+4. جهات الاتصال,1,Views/LegalDocumentPages.cs:226
+5. بيانات الجهاز والسجلات الفنية,1,Views/LegalDocumentPages.cs:227
+5. حماية الحساب,1,Views/LegalDocumentPages.cs:194
+6 سمات تغيّر ألوان التطبيق وتصميم البطاقات والرموز الداخلية,1,Views/IconAppearanceSettingsPages.cs:20
+6. الاستخدام المسموح,1,Views/LegalDocumentPages.cs:195
+6. الكاميرا والميكروفون والصور والأذونات,1,Views/LegalDocumentPages.cs:228
+7. أغراض المعالجة,1,Views/LegalDocumentPages.cs:229
+7. السلوك والمحتوى المحظور,1,Views/LegalDocumentPages.cs:196
+8. الأساس القانوني للمعالجة,1,Views/LegalDocumentPages.cs:230
+8. الرسائل والوسائط ومحتوى المستخدم,1,Views/LegalDocumentPages.cs:197
+9. الحقوق والترخيص التقني للمحتوى,1,Views/LegalDocumentPages.cs:198
+9. مشاركة البيانات,1,Views/LegalDocumentPages.cs:231
+Himo — تطبيق للتواصل والمحادثات والمكالمات.\nالإصدار: {version},1,Views/ProfilePage.xaml.cs:183
+{(int)duration.TotalDays} يوم {duration.Hours:00}:{duration.Minutes:00},1,Views/NetworkUsageSettingsPage.cs:423
+{_details.Members.Count} أعضاء,1,Views/GroupConversationInfoPages.cs:899
+{_draft.Members.Count} أعضاء,1,Views/GroupSettingsPage.cs:233
+{_selectedMessageIds.Count} محددة,1,Views/ChatPage.xaml.cs:4485
+{calls.Length:N0} مكالمة • {FormatDuration(TimeSpan.FromSeconds(connectedSeconds))},1,Views/NetworkUsageSettingsPage.cs:222
+{counts.Total:N0} رسالة • وارد {counts.Received:N0} / صادر {counts.Sent:N0},1,Views/NetworkUsageSettingsPage.cs:232
+{initial.Members.Count} أعضاء,1,Views/GroupConversationInfoPages.cs:611
+{list.Count} رابطًا,1,Views/ConversationInfoPages.cs:634
+{list.Count} صورة أو فيديو,1,Views/ConversationInfoPages.cs:634
+{list.Count} مستندًا,1,Views/ConversationInfoPages.cs:634
+{list.Count} ملفًا صوتيًا أو صورة أو فيديو,1,Views/ConversationInfoPages.cs:634
+{media.Count:N0} ملف • {FormatBytes(media.Bytes)} منذ التصفير,1,Views/NetworkUsageSettingsPage.cs:225
+{participantCount} مشاركين في المكالمة — يمكنك الانضمام,1,Views/ChatPage.xaml.cs:2010
+{preview.MemberCount} أعضاء,1,Views/GroupInvitePreviewPage.cs:257
+أحمر أنيق مع تباين داكن,1,Views/IconAppearanceSettingsPages.cs:729
+أحمر داكن,1,Views/IconAppearanceSettingsPages.cs:479
+أحمر ياقوتي,1,Views/ChatAppearanceSettingsPages.cs:188
+أخضر زمردي داكن,1,Views/IconAppearanceSettingsPages.cs:728
+أخضر ليموني,1,Views/IconAppearanceSettingsPages.cs:276
+أخضر ناعم,1,Views/IconAppearanceSettingsPages.cs:707
+أدخل 3 أحرف أو أرقام على الأقل,1,Views/GroupConversationInfoPages.cs:1213
+أدخل رقمًا صحيحًا يتكون من 7 إلى 15 رقمًا مع رمز الدولة.,1,Views/AccountSubPages.cs:733
+أدخل رمز PIN لفتح المحادثة,1,Views/ChatPage.ConversationFeatures.cs:47
+أرجواني متوهج,1,Views/IconAppearanceSettingsPages.cs:277
+أرجواني ملكي,1,Views/ChatAppearanceSettingsPages.cs:190
+أرشيف,1,Views/SettingsVisuals.cs:101
+أزرق تقني,1,Views/IconAppearanceSettingsPages.cs:476
+أزرق جليدي,1,Views/IconAppearanceSettingsPages.cs:486
+أزرق عميق مع لمسات سماوية,1,Views/IconAppearanceSettingsPages.cs:726
+أزرق كهربائي على خلفية عميقة,1,Views/IconAppearanceSettingsPages.cs:684
+أزرق ليلي,1,Views/IconAppearanceSettingsPages.cs:684
+أزرق ياقوتي,1,Views/IconAppearanceSettingsPages.cs:264
+أزهار بنفسجية,1,Views/ChatAppearanceSettingsPages.cs:313
+أزهار قريبة,1,Views/ChatAppearanceSettingsPages.cs:314
+أسطح داكنة ولمسات ذهبية فاخرة,1,Views/IconAppearanceSettingsPages.cs:683
+أصدقاء,1,Views/SettingsVisuals.cs:98
+ألوان باردة ومريحة,1,Views/IconAppearanceSettingsPages.cs:704
+ألوان خضراء تركوازية متداخلة,1,Views/ChatAppearanceSettingsPages.cs:30
+ألوان دافئة وخفيفة,1,Views/IconAppearanceSettingsPages.cs:708
+ألوان طبيعية مريحة للعين,1,Views/IconAppearanceSettingsPages.cs:682
+ألوان فقاعات الرسائل,1,Views/ChatAppearanceSettingsPages.cs:201
+أمواج زرقاء,1,Views/ChatAppearanceSettingsPages.cs:29
+أنت مسؤول عن الحفاظ على سرية كلمة المرور ورموز التحقق وعن النشاط الذي يتم من خلال حسابك، إلى الحد الذي يسمح به القانون. لا تشارك رموز الدخول مع أي شخص. أخطر فريق الدعم فورًا إذا اشتبهت في دخول غير مصرح به أو فقدت السيطرة على الحساب. لا يعفي هذا البند مشغّل الخدمة من مسؤوليات الأمن التي يفرضها القانون.,1,Views/LegalDocumentPages.cs:194
+أنشئ مجموعة للأصدقاء أو افتح محادثة مباشرة.,1,Views/NewConversationPage.cs:161
+أنماط ذات حضور أقوى وتفاصيل لونية فاخرة.,1,Views/IconAppearanceSettingsPages.cs:720
+أُرسل رمز التحقق. أدخل الرمز لإكمال إنشاء حسابك.,1,Views/RegisterPage.xaml.cs:197
+أُرسل رمز تحقق جديد إلى بريدك الإلكتروني.,1,Views/RegisterPage.xaml.cs:259
+إبقاء المحادثة في الأرشيف عند وصول رسالة جديدة,1,Views/ChatSettingsPage.cs:72
+إخراج المحادثات من الأرشيف,1,Views/HomePage.xaml.cs:298
+إدارة,1,Views/ChatSettingsPage.cs:75
+إدارة المجموعة,1,Views/GroupSettingsPage.cs:138
+إدارة المشرفين,1,Views/GroupConversationInfoPages.cs:936
+إدخال,1,Views/SettingsVisuals.cs:93
+إذا استخدم Himo أدوات تحليلات أو إعلانات أو أدوات تتبع أو حزم تطوير برمجية خارجية، فيجب ذكر أسمائها أو فئاتها والغرض من استخدامها وأنواع البيانات التي تجمعها وكيفية التحكم فيها. لا تفترض هذه السياسة وجود ملفات تعريف ارتباط أو تتبع إعلاني ما لم تكن هذه التقنيات مستخدمة فعلًا. يجب على مشغّل التطبيق حذف هذا البند أو استكماله وفق التنفيذ الفعلي قبل النشر.,1,Views/LegalDocumentPages.cs:239
+إذا اعتُبر أي بند غير قابل للتنفيذ، تُفسّر بقية البنود بما يتوافق مع القانون إلى أقصى حد مسموح. إذا وُفرت ترجمات، ينبغي توضيح النسخة ذات الحجية عند الاختلاف بما لا ينتقص من الحقوق القانونية للمستخدم. تمثل هذه الشروط الاتفاق المتعلق باستخدام Himo في حدود ما يسمح به القانون.,1,Views/LegalDocumentPages.cs:209
+إذا طلبت ميزة البحث أو مطابقة الأصدقاء الوصول إلى جهات الاتصال ومنحت الإذن، فقد يعالج التطبيق المعلومات اللازمة لتقديم تلك الميزة. يجب توضيح هل تتم المطابقة على الجهاز أم على الخادم، وأي بيانات تُرفع، وكيف تُحمى ومدة الاحتفاظ بها. يمكنك رفض الإذن أو سحبه من إعدادات جهازك؛ وقد لا تعمل ميزة المطابقة عندئذٍ.,1,Views/LegalDocumentPages.cs:226
+إذا كان البريد مسجلًا، فسيصلك رمز التحقق. راجع الوارد والرسائل غير المرغوب فيها.,1,Views/ForgotPasswordPage.xaml.cs:49
+إزالة صورة المجموعة,1,Views/GroupConversationInfoPages.cs:344
+إشعار,1,Views/SettingsVisuals.cs:88
+إضافة ({count}),1,Views/GroupConversationInfoPages.cs:1348
+إضافة إلى المفضلة,1,Views/ConversationInfoPages.cs:163
+إضافة الأعضاء: {add}  ·  الرسائل: {messages},1,Views/GroupSettingsPage.cs:352
+إضافة مجموعة,1,Views/NewConversationPage.cs:112
+إضافة نص,1,Views/MediaEditorPage.xaml.cs:525
+إظهار اقتراحات الملصقات أثناء الكتابة,1,Views/ChatSettingsPage.cs:62
+إظهار الصور والفيديوهات والمرفقات,1,Views/ChatSettingsPage.cs:60
+إعدادات إضافية لحماية التطبيق ومشاركته,1,Views/SettingsOrganizationPages.cs:256
+إعدادات الإشعارات,1,Views/GroupConversationInfoPages.cs:1533
+إعدادات الدردشة,1,Views/ChatSettingsPage.cs:53
+إعدادات المجموعة,1,Views/GroupConversationInfoPages.cs:1523
+إلغاء تحديد {member.Name},1,Views/CreateGroupPage.xaml.cs:605
+إلغاء حظر الشخص,1,Views/HomePage.xaml.cs:305
+إنشاء ملف JSON من الرسائل والمحادثات المحلية,1,Views/ChatSettingsPage.cs:347
+ابحث بالاسم أو الرقم أو البريد,1,Views/GroupConversationInfoPages.cs:1015
+ابحث بالاسم أو رقم الهاتف,1,Views/CreateGroupPage.xaml.cs:145
+ابحث عن شخص وابدأ محادثة خاصة معه.,1,Views/NewConversationPage.cs:115
+ابدأ تواصلك بطريقتك,1,Views/NewConversationPage.cs:159
+ابدأ محادثة جديدة أو ابحث عن أصدقائك برقم الهاتف.,1,Views/HomePage.xaml.cs:476
+اجمع الأشخاص في مساحة واحدة للمحادثة والتواصل.,1,Views/NewConversationPage.cs:112
+احتفاظ,1,Views/SettingsVisuals.cs:101
+احتفظ بنسخة من المحادثات على هذا الجهاز,1,Views/ChatSettingsPage.cs:338
+احتياطي,1,Views/SettingsVisuals.cs:94
+اختر ألوانًا متناسقة لواجهة المحادثة,1,Views/ChatSettingsPage.cs:66
+اختر أيقونتك اللامعة المفضلة,1,Views/IconAppearanceSettingsPages.cs:501
+اختر اللون الذي تفضله. الضغط على الأيقونة يطبقها على مشغّل Android ويحفظ اختيارك داخل التطبيق.,1,Views/IconAppearanceSettingsPages.cs:104
+اختر خلفية من الصور المتاحة أو المعرض,1,Views/ChatSettingsPage.cs:69
+اختر رمزًا,1,Views/GroupConversationInfoPages.cs:471
+اختر سمة لونية للدردشة,1,Views/ChatAppearanceSettingsPages.cs:46
+اختر شعار Himo بلمسة زجاجية ولون لامع,1,Views/IconAppearanceSettingsPages.cs:288
+اختر صورة المجموعة,1,Views/GroupConversationInfoPages.cs:324
+اختر عضوًا واحدًا على الأقل.,1,Views/GroupSettingsPage.cs:366
+اختر لغة واجهات Himo,1,Views/SettingsOrganizationPages.cs:33
+اختر لون شعار Himo مع الحفاظ على تصميمه الأصلي,1,Views/IconAppearanceSettingsPages.cs:96
+اختر ما تريد البدء به,1,Views/NewConversationPage.cs:81
+اختر ما تريد تخصيصه في Himo,1,Views/IconAppearanceSettingsPages.cs:11
+اختر مجموعة أيقونات التطبيق، أو إحدى 6 سمات متكاملة تغيّر ألوان الشاشات والبطاقات والرموز الداخلية.,1,Views/IconAppearanceSettingsPages.cs:13
+اختر مجموعة الأيقونات التي تريد إعدادها,1,Views/IconAppearanceSettingsPages.cs:41
+اختر من بين تصاميم ذهبية وفضية وكريستالية وألوان مضيئة. الضغط على أيقونة يطبّقها كأيقونة Himo على الشاشة الرئيسية في Android.,1,Views/IconAppearanceSettingsPages.cs:509
+اختر نمطًا بسيطًا وواضحًا من المجموعة الافتراضية.,1,Views/IconAppearanceSettingsPages.cs:697
+اختر نمطًا لتطبيق لوحة ألوان متناسقة على واجهات Himo والبطاقات والرموز. سيُحفظ اختيارك بعد إغلاق التطبيق.,1,Views/IconAppearanceSettingsPages.cs:790
+اختيار ألوان الواجهات ومجموعة الأيقونات,1,Views/SettingsOrganizationPages.cs:36
+اختيار صورة,1,Views/CameraPage.xaml.cs:544
+اختيار نوع الأيقونات المستخدمة في واجهة Himo,1,Views/IconAppearanceSettingsPages.cs:14
+استخدم أدوات الإبلاغ والحظر المتاحة للإبلاغ عن السلوك أو المحتوى الذي تعتقد أنه مخالف. قد تراجع Himo البلاغات وتتخذ إجراءً متناسبًا، مثل إزالة محتوى أو تقييد ميزة أو تعليق حساب أو إنهائه، وفق هذه الشروط والقانون والإجراءات المعلنة. لا تضمن أدوات الإبلاغ اكتشاف كل محتوى مخالف أو إزالة كل خطر فورًا.,1,Views/LegalDocumentPages.cs:201
+استخدم مفتاح الإدخال لإرسال الرسالة,1,Views/ChatSettingsPage.cs:59
+استعادة كلمة المرور بطريقة آمنة,1,Views/AccountSubPages.cs:835
+استعد للإقلاع,1,Views/Launch/LaunchPage.cs:114
+استعراض,1,Views/ChatSettingsPage.cs:67
+اسم فريد لحسابك,1,Views/ProfileFieldPages.cs:73
+اضبط حجم نصوص الرسائل,1,Views/ChatSettingsPage.cs:61
+اضغط على أحد النماذج لتحديده. يبقى اختيارك محفوظًا على هذا الجهاز.,1,Views/IconAppearanceSettingsPages.cs:791
+اضغط على أي أيقونة لتطبيقها كأيقونة Himo على الشاشة الرئيسية. قد يحتاج مشغّل الهاتف بضع ثوانٍ لتحديثها.,1,Views/IconAppearanceSettingsPages.cs:131
+اضغط على المركبة للانطلاق,1,Views/Launch/LaunchPage.cs:39
+اعرض الترجمة أسفل الرسالة الأصلية، ويمكن إخفاؤها لكل رسالة,1,Views/ConversationInfoPages.cs:155
+اقتراح الصور والوسائط المستخدمة مؤخرًا,1,Views/ChatSettingsPage.cs:63
+اقتراحات الملصقات,1,Views/ChatSettingsPage.cs:62
+اقتراحات الوسائط الحديثة,1,Views/ChatSettingsPage.cs:63
+اكتب اسم المجموعة,1,Views/GroupSettingsPage.cs:105
+اكتب اسمًا من حرفين على الأقل.,1,Views/GroupConversationInfoPages.cs:487
+اكتب النص بالعربية أو الإنجليزية,1,Views/MediaEditorPage.xaml.cs:525
+اكتب وصف المجموعة,1,Views/GroupConversationInfoPages.cs:529
+الأحمر الياقوتي,1,Views/IconAppearanceSettingsPages.cs:89
+الأخضر الزاهي,1,Views/IconAppearanceSettingsPages.cs:84
+الأخضر الزمردي,1,Views/IconAppearanceSettingsPages.cs:83
+الأخضر الليموني,1,Views/IconAppearanceSettingsPages.cs:85
+الأرجواني,1,Views/IconAppearanceSettingsPages.cs:91
+الأرشفة,1,Views/ChatSettingsPage.cs:71
+الأزرق السماوي,1,Views/IconAppearanceSettingsPages.cs:80
+الأزرق الهادئ,1,Views/IconAppearanceSettingsPages.cs:704
+الأزرق الياقوتي,1,Views/IconAppearanceSettingsPages.cs:79
+الأشخاص المحددون أعضاء بالفعل.,1,Views/GroupConversationInfoPages.cs:1361
+الأعضاء · {_draft.Members.Count},1,Views/GroupSettingsPage.cs:161
+الألوان,1,Views/ChatSettingsPage.cs:68
+الأيقونات الأساسية البسيطة,1,Views/IconAppearanceSettingsPages.cs:43
+الاحتفاظ بالدردشات المؤرشفة,1,Views/ChatSettingsPage.cs:72
+الاسم الذي يظهر للآخرين,1,Views/ProfileFieldPages.cs:69
+الاسم الظاهر للآخرين,1,Views/ProfileFieldPages.cs:214
+الانضمام وإدارة الأعضاء,1,Views/GroupSettingsPage.cs:500
+البحث في المحادثات المؤرشفة,1,Views/HomePage.xaml.cs:710
+البرتقالي اللامع,1,Views/IconAppearanceSettingsPages.cs:88
+البريد الإلكتروني ووسائل الدخول,1,Views/AccountSubPages.cs:777
+البريد المستخدم لتسجيل الدخول,1,Views/ProfileFieldPages.cs:77
+البنفسجي الأصلي,1,Views/IconAppearanceSettingsPages.cs:78
+التخزين السحابي,1,Views/ChatSettingsPage.cs:339
+التخصيص,1,Views/SettingsOrganizationPages.cs:35
+الجهة المسؤولة عن معالجة البيانات الشخصية هي [الاسم القانوني للجهة المشغلة]. للاستفسارات المتعلقة بالخصوصية، تواصل عبر [البريد الرسمي للخصوصية]. توضح هذه السياسة أنواع البيانات التي قد تُعالج عند استخدام Himo، وأغراض المعالجة، والمشاركة والاحتفاظ والحقوق المتاحة. وقد تعرض بعض الميزات إشعارًا إضافيًا يشرح معالجة محددة.,1,Views/LegalDocumentPages.cs:223
+الجهة المسؤولة: [الاسم القانوني للجهة المشغلة]. البريد الإلكتروني للخصوصية: [البريد الرسمي]. العنوان، إن لزم: [العنوان]. الدولة أو الاختصاص القضائي: [الدولة/الاختصاص]. يمكنك تقديم شكوى إلى جهة حماية البيانات المختصة إذا كان ذلك متاحًا بموجب القانون. يجب أن تكون بيانات التواصل المنشورة صحيحة وفعالة.,1,Views/LegalDocumentPages.cs:241
+الجهة المشغلة: [الاسم القانوني للجهة]. البريد الإلكتروني للدعم: [البريد الرسمي]. عنوان المراسلات، إن لزم: [العنوان]. يجب أن تكون وسائل التواصل المنشورة فعالة وأن توجه الطلب إلى الجهة المسؤولة عن Himo.,1,Views/LegalDocumentPages.cs:208
+الحد الأقصى 500 حرف.,1,Views/GroupConversationInfoPages.cs:553
+الحد الأقصى لحجم {(isVideo ? ,1,Views/ChatPage.xaml.cs:3335
+الحد الأقصى للصورة 4 ميغابايت.,1,Views/GroupConversationInfoPages.cs:329
+الحظر متاح للمحادثات المرتبطة بحساب على الخادم فقط.,1,Views/HomePage.xaml.cs:1040
+الخروج,1,Views/GroupConversationInfoPages.cs:753
+الخلفيات,1,Views/ChatSettingsPage.cs:69
+الخلفيات المتحركة,1,Views/ChatSettingsPage.cs:67
+الخلفية الحالية: {currentOption.Name},1,Views/ChatAppearanceSettingsPages.cs:549
+الخلفية المتحركة من جهازك مفعّلة حاليًا.,1,Views/ChatAppearanceSettingsPages.cs:549
+الخلفية المحفوظة قديمة أو غير مدعومة. اختر أحد الفيديوهات الحقيقية من صفحة الخلفيات المتحركة.,1,Views/ChatAppearanceSettingsPages.cs:875
+الدخول باستخدام حساب آخر,1,Views/AccountSubPages.cs:909
+الدوران: {_rotationDegrees}°  •  اضغط قص للتحديد اليدوي.,1,Views/MediaEditorPage.xaml.cs:1078
+الذهبي,1,Views/IconAppearanceSettingsPages.cs:86
+الرمز غير صحيح. حاول مرة أخرى.,1,Views/ChatPage.ConversationFeatures.cs:133
+الروابط,1,Views/ConversationInfoPages.cs:439
+السبب,1,Views/ChatPage.xaml.cs:1823
+السماح باستخدام بيانات الهاتف عند إعداد نسخ احتياطي,1,Views/ChatSettingsPage.cs:345
+السماوي اللامع,1,Views/IconAppearanceSettingsPages.cs:81
+الشروط المنظمة لاستخدام تطبيق Himo,1,Views/LegalDocumentPages.cs:186
+الصفة,1,Views/GroupConversationInfoPages.cs:1486
+الفيروزي,1,Views/IconAppearanceSettingsPages.cs:82
+الكلاسيكية,1,Views/IconAppearanceSettingsPages.cs:703
+الكهرماني,1,Views/IconAppearanceSettingsPages.cs:87
+المجموع: {ConversationInfoPage.FormatBytes(sent + received)}  •  المرسل: {ConversationInfoPage.FormatBytes(sent)}  •  المستلم: {ConversationInfoPage.FormatBytes(received)},1,Views/ConversationInfoPages.cs:476
+المحادثة غير متصلة,1,Views/ConversationInfoPages.cs:827
+المحددون,1,Views/CreateGroupPage.xaml.cs:162
+المراسلات,1,Views/GroupSettingsPage.cs:541
+المستندات,1,Views/ConversationInfoPages.cs:440
+المشاركة والتنزيل,1,Views/SettingsOrganizationPages.cs:262
+المصدر الذي أعاده الخادم ليس ملف فيديو.,1,Views/ChatAppearanceSettingsPages.cs:898
+النسخ الاحتياطي المحلي,1,Views/ChatSettingsPage.cs:343
+النسخ الاحتياطي للدردشات,1,Views/ChatSettingsPage.cs:75
+النيلي,1,Views/IconAppearanceSettingsPages.cs:92
+الهاتف,1,Views/ProfileFieldPages.cs:75
+الوردي اللامع,1,Views/IconAppearanceSettingsPages.cs:90
+الوسائط {media.Count}  •  الروابط {CountLinks(_messages)}  •  المستندات {_messages.Count(IsDocument)},1,Views/ConversationInfoPages.cs:276
+الوصف,1,Views/GroupConversationInfoPages.cs:525
+الوضع الداكن,1,Views/SettingsOrganizationPages.cs:50
+انتهت المكالمة أو لم تعد متاحة.,1,Views/ChatPage.xaml.cs:2049
+انتهت المكالمة الجماعية قبل انضمامك.,1,Views/CallPage.xaml.cs:1034
+انسياب زمردي,1,Views/ChatAppearanceSettingsPages.cs:30
+اهتزاز,1,Views/SettingsVisuals.cs:89
+بحر هادئ,1,Views/ChatAppearanceSettingsPages.cs:321
+بحسب القانون المنطبق، قد تتمتع بحق طلب الوصول إلى بياناتك أو نسخة منها، وتصحيحها أو تحديثها، وطلب حذفها أو تقييد معالجتها، والاعتراض على بعض المعالجات، وسحب الموافقة عندما تكون المعالجة قائمة عليها، وتقديم شكوى إلى الجهة الرقابية المختصة. تُستجاب الطلبات بعد التحقق المعقول من الهوية وضمن المدد القانونية، وقد تنطبق استثناءات قانونية محددة.,1,Views/LegalDocumentPages.cs:235
+بحسب الميزات المستخدمة، قد تعالج الخدمة الرسائل ومحتواها والملفات والصور ومقاطع الفيديو والتسجيلات الصوتية والرسائل الصوتية ومعلومات الاتصال بالمكالمات. ينبغي للنسخة النهائية أن توضّح ما يُخزّن على الجهاز أو الخادم، ومن يمكنه الوصول إليه، ومدد الاحتفاظ، وما إذا كانت النسخ الاحتياطية تُنشأ. لا تفترض أن التشفير التام بين الطرفين متاح إلا إذا كانت الخاصية مطبّقة ومعلنة صراحةً.,1,Views/LegalDocumentPages.cs:225
+بحيرة القمر,1,Views/ChatAppearanceSettingsPages.cs:318
+بحيرة هادئة,1,Views/ChatAppearanceSettingsPages.cs:319
+بحيرة وتموّجات الماء,1,Views/ChatAppearanceSettingsPages.cs:493
+بعد الخروج لن تصلك رسائل المجموعة ولن تظهر في قائمة محادثاتك. هل تريد الخروج؟,1,Views/GroupConversationInfoPages.cs:753
+بعد كم تختفي الرسائل؟,1,Views/ConversationInfoPages.cs:780
+بنفسجي Himo الهادئ,1,Views/IconAppearanceSettingsPages.cs:703
+بنفسجي زجاجي,1,Views/IconAppearanceSettingsPages.cs:263
+بنفسجي كريستالي,1,Views/IconAppearanceSettingsPages.cs:470
+بنفسجي كلاسيكي,1,Views/IconAppearanceSettingsPages.cs:680
+بنفسجي كوني,1,Views/IconAppearanceSettingsPages.cs:487
+بنفسجي لامع,1,Views/ChatAppearanceSettingsPages.cs:183
+بنفسجي مضيء,1,Views/IconAppearanceSettingsPages.cs:727
+بنفسجي نيون,1,Views/IconAppearanceSettingsPages.cs:685
+بيانات الملف الشخصي,1,Views/ProfileFieldPages.cs:22
+بيانات مرسلة,1,Views/SettingsVisuals.cs:95
+بيانات مستلمة,1,Views/SettingsVisuals.cs:95
+تأكد من الرمز وحاول مجددًا.,1,Views/ChatPage.ConversationFeatures.cs:133
+تأكيد البريد الإلكتروني,1,Views/RegisterPage.xaml.cs:576
+تأكيد ربط جهاز جديد,1,Views/QrScannerPage.xaml.cs:184
+تاريخ الانضمام,1,Views/GroupConversationInfoPages.cs:1491
+تبقى الرسائل حتى تحذف يدويًا,1,Views/ConversationInfoPages.cs:785
+تتحمل مسؤولية المحتوى الذي تنشئه أو ترسله أو تشاركه، بما فيه الرسائل والصور ومقاطع الفيديو والتسجيلات الصوتية والملفات ومعلومات الملف الشخصي. تأكد من امتلاك الحقوق والأذونات اللازمة للمحتوى، ومن عدم كشف معلومات خاصة بالآخرين دون أساس مشروع. لا ترسل محتوى تعلم أنه مخالف للقانون أو لهذه الشروط.,1,Views/LegalDocumentPages.cs:197
+تجوال,1,Views/SettingsVisuals.cs:95
+تحديد {member.Name},1,Views/CreateGroupPage.xaml.cs:605
+تحكم في طريقة ظهور Himo واستخدامه,1,Views/SettingsOrganizationPages.cs:28
+تحكّم في طريقة عرض الرسائل والوسائط,1,Views/ChatSettingsPage.cs:53
+تحويل الرسالة إلى,1,Views/ChatPage.xaml.cs:4241
+تختفي الرسائل بعد ثلاثين يومًا,1,Views/ConversationInfoPages.cs:784
+تختفي الرسائل بعد خمسة أيام,1,Views/ConversationInfoPages.cs:783
+تختفي الرسائل بعد ساعة من إرسالها,1,Views/ConversationInfoPages.cs:781
+تختفي الرسائل بعد يوم,1,Views/ConversationInfoPages.cs:782
+تخزين,1,Views/SettingsVisuals.cs:96
+تخصيص,1,Views/ChatSettingsPage.cs:66
+تخصيص Himo,1,Views/IconAppearanceSettingsPages.cs:13
+تذكير,1,Views/SettingsVisuals.cs:88
+تركواز مضيء,1,Views/IconAppearanceSettingsPages.cs:489
+تركوازي,1,Views/ChatAppearanceSettingsPages.cs:189
+تشغيل المظهر الداكن أو الفاتح,1,Views/SettingsOrganizationPages.cs:50
+تصدير نسخة احتياطية,1,Views/ChatSettingsPage.cs:347
+تصغير المكالمة,1,Views/CallPage.xaml.cs:564
+تصميم هادئ وواضح بدرجات زرقاء,1,Views/IconAppearanceSettingsPages.cs:681
+تطبيق الأيقونة,1,Views/IconAppearanceSettingsPages.cs:130
+تظل حقوق المحتوى الذي تنشئه لك أو لصاحب الحق الأصلي. لا تمنح Himo ملكية محتواك. ولغرض تشغيل الميزات التي تطلبها فقط، تمنح مشغّل الخدمة إذنًا محدودًا وغير حصري لمعالجة المحتوى واستضافته ونسخه تقنيًا ونقله وعرضه للمستلمين الذين تختارهم، بالقدر اللازم لتقديم الخدمة وحمايتها، ووفق سياسة الخصوصية والقانون. ينتهي هذا الإذن عندما لا تعود المعالجة لازمة، مع مراعاة النسخ الاحتياطية والالتزامات القانونية.,1,Views/LegalDocumentPages.cs:198
+تظهر المحادثات المؤرشفة هنا ويمكنك إعادتها إلى القائمة الرئيسية.,1,Views/HomePage.xaml.cs:475
+تعديل حجم النص في واجهة الإعدادات,1,Views/SettingsOrganizationPages.cs:60
+تعذر إرسال التسجيل: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/ChatPage.xaml.cs:2969
+تعذر إرسال المرفق: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/ChatPage.xaml.cs:3399
+تعذر إرسال رمز التحقق.,1,Views/RegisterPage.xaml.cs:206
+تعذر إضافة الأعضاء,1,Views/CreateGroupPage.xaml.cs:971
+تعذر إعادة إرسال رمز التحقق.,1,Views/RegisterPage.xaml.cs:263
+تعذر إنشاء الصورة المعدلة.,1,Views/MediaEditorPage.xaml.cs:1206
+تعذر إنشاء الفيديو المعدل.,1,Views/MediaEditorPage.xaml.cs:1200
+تعذر إنشاء محادثة مع هذا الحساب.,1,Views/QrScannerPage.xaml.cs:222
+تعذر إنشاء مساحة تشغيل الفيديو داخل التطبيق.,1,Views/ChatPage.xaml.cs:3864
+تعذر إنشاء مشغل الصوت لهذا الملف.,1,Views/ChatPage.xaml.cs:3023
+تعذر إنشاء ملف الصورة في مكتبة الصور.,1,Views/MediaEditorPage.xaml.cs:1264
+تعذر إنشاء واجهة تشغيل الفيديو.,1,Views/ChatPage.xaml.cs:219
+تعذر اختيار الصورة: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/ChatPage.xaml.cs:3202
+تعذر اختيار الفيديو: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/ChatPage.xaml.cs:3235
+تعذر اختيار الملف: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/ChatPage.xaml.cs:3288
+تعذر الانضمام إلى المجموعة,1,Views/GroupInvitePreviewPage.cs:319
+تعذر الانضمام إلى المكالمة الجماعية. حاول مرة أخرى.,1,Views/CallPage.xaml.cs:1071
+تعذر الانضمام الآن. تحقق من الاتصال وحاول مرة أخرى.,1,Views/ChatPage.xaml.cs:2054
+تعذر التحقق من الحساب المرتبط بالرمز.,1,Views/QrScannerPage.xaml.cs:216
+تعذر التحكم في الفيديو: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/ChatPage.xaml.cs:4064
+تعذر التقاط الوسائط: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/CameraPage.xaml.cs:300
+تعذر الخروج من المجموعة,1,Views/GroupConversationInfoPages.cs:783
+تعذر العثور على المحادثة الحالية.,1,Views/ChatPage.xaml.cs:1201
+تعذر العثور على بيانات المحادثة المحلية.,1,Views/ChatPage.ConversationFeatures.cs:148
+تعذر المتابعة. اضغط للمحاولة مجددًا,1,Views/Launch/LaunchPage.cs:163
+تعذر بدء التسجيل: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/ChatPage.xaml.cs:2898
+تعذر تبديل الكاميرا. حاول مرة أخرى.,1,Views/CallPage.xaml.cs:1836
+تعذر تبديل الكاميرا: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/CameraPage.xaml.cs:530
+تعذر تثبيت اتصال المكالمة الجماعية.,1,Views/CallPage.xaml.cs:1054
+تعذر تجهيز الرمز. تحقق من اتصالك ثم أعد المحاولة.,1,Views/ShareAccountPage.xaml.cs:78
+تعذر تجهيز الملف للتحرير: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/MediaEditorPage.xaml.cs:206
+تعذر تجهيز رمز الحساب. حاول مجددًا.,1,Views/ShareAccountPage.xaml.cs:88
+تعذر تحميل الأشخاص الآن. يمكنك البحث عن حساب بالاسم أو رقم الهاتف.,1,Views/CreateGroupPage.xaml.cs:264
+تعذر تحميل رابط التطبيق. تحقق من اتصال الإنترنت ثم أعد المحاولة.,1,Views/AppDownloadLinkPage.cs:203
+تعذر تحميل ملخص الوسائط: ,1,Views/ConversationInfoPages.cs:293
+تعذر تسجيل الدخول.,1,Views/LoginPage.xaml.cs:111
+تعذر تشغيل التسجيل الصوتي. MediaPlayer: {what}/{extra},1,Views/ChatPage.xaml.cs:3039
+تعذر تشغيل التسجيل: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/ChatPage.xaml.cs:3049
+تعذر تشغيل الفيديو على هذا الجهاز.,1,Views/ChatPage.xaml.cs:3930
+تعذر تشغيل الفيديو: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/ChatPage.xaml.cs:3830
+تعذر تشغيل الفيديو: {args.ErrorMessage},1,Views/ChatPage.xaml.cs:3931
+تعذر تشغيل الكاميرا.,1,Views/QrScannerPage.xaml.cs:94
+تعذر تشغيل المعاينة داخل التطبيق: ,1,Views/ChatAppearanceSettingsPages.cs:723
+تعذر تشغيل كاميرا Himo: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/CameraPage.xaml.cs:118
+تعذر تطبيق القص فعليًا: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/MediaEditorPage.xaml.cs:937
+تعذر تغيير الصورة,1,Views/GroupConversationInfoPages.cs:337
+تعذر تغيير الفلاش: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/CameraPage.xaml.cs:455
+تعذر تغيير كلمة المرور. تأكد من صحة الرمز وأنه لم تنتهِ صلاحيته.,1,Views/ForgotPasswordPage.xaml.cs:119
+تعذر تنزيل فيديو الخلفية كاملًا.,1,Views/ChatAppearanceSettingsPages.cs:906
+تعذر تنفيذ الإجراء على {failures.Count} محادثات.,1,Views/HomePage.xaml.cs:1092
+تعذر تنفيذ العملية: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/AccountActionsPage.cs:171
+تعذر حذف إحدى الرسائل.,1,Views/ChatPage.xaml.cs:4538
+تعذر حذف الحساب: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/AccountActionsPage.cs:231
+تعذر حفظ الإعداد,1,Views/ConversationInfoPages.cs:202
+تعذر حفظ الاسم,1,Views/GroupConversationInfoPages.cs:495
+تعذر حفظ التعديل,1,Views/GroupConversationInfoPages.cs:311
+تعذر حفظ التعديلات: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/MediaEditorPage.xaml.cs:1230
+تعذر حفظ الصورة: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/MediaEditorPage.xaml.cs:1292
+تعذر حفظ المؤقت,1,Views/ConversationInfoPages.cs:837
+تعذر حفظ الوصف,1,Views/GroupConversationInfoPages.cs:561
+تعذر ربط المحادثة بالخادم حاليًا.,1,Views/ChatPage.xaml.cs:4689
+تعذر طلب الرمز الآن. تحقق من اتصالك وحاول مرة أخرى.,1,Views/ForgotPasswordPage.xaml.cs:55
+تعذر فتح إعدادات الأمان والخصوصية.,1,Views/ProfilePage.xaml.cs:151
+تعذر فتح إعدادات الإشعارات.,1,Views/ProfilePage.xaml.cs:154
+تعذر فتح إعدادات المظهر والأيقونات.,1,Views/ProfilePage.xaml.cs:157
+تعذر فتح الرابط. تحقق من الاتصال وحاول مرة أخرى.,1,Views/QrScannerPage.xaml.cs:251
+تعذر فتح المجموعة المرتبطة بالدعوة.,1,Views/GroupInvitePreviewPage.cs:309
+تعذر فتح الملف,1,Views/ConversationInfoPages.cs:738
+تعذر فتح الملف المحدد: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/CameraPage.xaml.cs:622
+تعذر فتح الملف: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/ChatPage.xaml.cs:3570
+تعذر فتح النافذة العائمة على هذا الجهاز. ستبقى المكالمة مستمرة في هذه الشاشة.,1,Views/CallPage.xaml.cs:564
+تعذر فتح صفحة المعلومات: ,1,Views/ChatPage.ConversationFeatures.cs:161
+تعذر فتح صفحة رابط التطبيق: ,1,Views/SettingsOrganizationPages.cs:334
+تعذر فتح صفحة مشاركة الحساب.,1,Views/ProfilePage.xaml.cs:147
+تعذر فتح كاميرا Himo: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/ChatPage.xaml.cs:3169
+تعذر فتح محرر الصورة: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/MediaCapturePreviewPage.xaml.cs:65
+تعذر فتح محرر الوسائط: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/ChatPage.xaml.cs:3268
+تعذر فتح ملف الصورة للكتابة.,1,Views/MediaEditorPage.xaml.cs:1270
+تعذر فتح واجهة إنشاء الحساب. حاول مرة أخرى.,1,Views/LoginPage.xaml.cs:228
+تعذر فتح واجهة المحادثة داخل التطبيق.,1,Views/GroupInvitePreviewPage.cs:314
+تعذر قراءة الرمز,1,Views/QrScannerPage.xaml.cs:139
+تعذر مشاركة الرسالة: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/ChatPage.xaml.cs:4433
+تعذر مطابقة جهات الاتصال الآن. يمكنك متابعة اختيار الأشخاص الذين تتواصل معهم بالفعل.,1,Views/CreateGroupPage.xaml.cs:378
+تعذرت إعادة الإرسال: {Himo.Services.AppLocalization.TranslateSourceText(ex.Message)},1,Views/ChatPage.xaml.cs:4714
+تعذرت الترجمة. تأكد من إعداد خدمة الترجمة في خادم Himo.\n,1,Views/ChatPage.ConversationFeatures.cs:185
+تعذرت معاينة الفيديو داخل التطبيق. تحقق من اتصال الإنترنت ثم حاول مجددًا.,1,Views/ChatAppearanceSettingsPages.cs:700
+تعود حقوق Himo واسمه وشعاره وتصميمه وبرمجياته وعناصره المملوكة إلى مالكي الحقوق المعنيين. يُسمح لك باستخدام التطبيق وفق هذه الشروط فقط. لا يجوز نسخ التطبيق أو إعادة توزيعه أو إجراء هندسة عكسية له أو استغلال علاماته أو تجاوز الحماية التقنية، إلا بالقدر الذي يسمح به القانون أو بإذن كتابي من صاحب الحق.,1,Views/LegalDocumentPages.cs:203
+تغيير الصورة بالكاميرا أو المعرض,1,Views/ProfileFieldPages.cs:53
+تفاصيل زهرية وألوان ناعمة,1,Views/ChatAppearanceSettingsPages.cs:314
+تفضيلات العرض,1,Views/SettingsOrganizationPages.cs:31
+تفضيلات المحادثة,1,Views/ChatSettingsPage.cs:58
+تفعيل إشعارات المحادثات المحددة,1,Views/HomePage.xaml.cs:294
+تكرار النسخ الاحتياطي,1,Views/ChatSettingsPage.cs:342
+تم إلغاء الحظر.,1,Views/HomePage.xaml.cs:1105
+تم إلغاء القص. يمكنك متابعة تعديل الصورة.,1,Views/MediaEditorPage.xaml.cs:897
+تم إنشاء المجموعة,1,Views/GroupSettingsPage.cs:391
+تم إنشاء المجموعة بنجاح.,1,Views/GroupSettingsPage.cs:391
+تم إنشاء ملف قص فارغ.,1,Views/MediaEditorPage.xaml.cs:989
+تم إيقاف الخلفية المتحركة. سيعود استخدام الخلفية الفوتوغرافية المحددة سابقًا.,1,Views/ChatAppearanceSettingsPages.cs:811
+تم إيقاف الخلفية المتحركة. سيعود استخدام السمة اللونية المحددة سابقًا.,1,Views/ChatAppearanceSettingsPages.cs:810
+تم اختيار {count} أعضاء,1,Views/GroupConversationInfoPages.cs:1346
+تم اختيار خلفية {displayName}. ستظهر في المحادثات التي لا تملك خلفية خاصة بها عند فتحها.,1,Views/ChatAppearanceSettingsPages.cs:423
+تم اختيار فيديو {option.Name}. يلزم اتصال بالإنترنت لتشغيل المقطع الحقيقي داخل المحادثة.,1,Views/ChatAppearanceSettingsPages.cs:751
+تم الانضمام، جارٍ توصيل الصوت...,1,Views/CallPage.xaml.cs:1056
+تم تحديث المحادثات المحددة.,1,Views/HomePage.xaml.cs:1106
+تم تحديد {selected.Count},1,Views/HomePage.xaml.cs:290
+تم تطبيق سمة {theme.Name} كخلفية لونية مستقلة. لم يتغير اختيار الخلفية الفوتوغرافية المحفوظ.,1,Views/ChatAppearanceSettingsPages.cs:140
+تم تفعيل إشعارات المحادثات المحددة.,1,Views/HomePage.xaml.cs:1103
+تم حذف {counts.Deleted.ToString(,1,Views/StorageDataSettingsPage.cs:1106
+تم حذف {succeeded.Count} محادثات من قائمتك.,1,Views/HomePage.xaml.cs:1099
+تم حذف المحادثة من قائمتك. يمكنك البحث عن الشخص لبدء محادثة مجددًا.,1,Views/HomePage.xaml.cs:1099
+تم حظر الحساب. لن يتمكن من إرسال رسائل أو بدء مكالمات مباشرة معك.,1,Views/HomePage.xaml.cs:1104
+تم ربط {deviceName} بنجاح. يمكنك الآن استخدام Himo من المتصفح.,1,Views/QrScannerPage.xaml.cs:188
+تم ربط الكمبيوتر,1,Views/QrScannerPage.xaml.cs:188
+تم ربط جهاز الكمبيوتر بنجاح.,1,Views/QrScannerPage.xaml.cs:189
+تم كتم إشعارات المحادثات المحددة.,1,Views/HomePage.xaml.cs:1102
+تم مسح محتوى الدردشة مع الإبقاء على المحادثة.,1,Views/ConversationInfoPages.cs:353
+تم مسح محتوى الدردشة من حسابك.,1,Views/GroupConversationInfoPages.cs:741
+تم نسخ الرابط.,1,Views/GroupConversationInfoPages.cs:1713
+تمت أرشفة المحادثات المحددة. افتح رمز الأرشيف بجانب البحث لعرضها لاحقًا.,1,Views/HomePage.xaml.cs:1100
+تمت إضافة {result.AddedCount} أعضاء.,1,Views/GroupConversationInfoPages.cs:1361
+تمت إضافة {result.AddedCount} عضو.,1,Views/CreateGroupPage.xaml.cs:966
+تمت إعادة المحادثات إلى القائمة الرئيسية.,1,Views/HomePage.xaml.cs:1101
+تموجات بحرية بدرجات ليلية,1,Views/ChatAppearanceSettingsPages.cs:321
+تموجات بنفسجية,1,Views/ChatAppearanceSettingsPages.cs:28
+تموجات زرقاء وسماوية لامعة,1,Views/ChatAppearanceSettingsPages.cs:29
+تموجات مضيئة بالأخضر والأزرق,1,Views/ChatAppearanceSettingsPages.cs:35
+تنزيل تطبيق Himo,1,Views/AppDownloadLinkPage.cs:233
+تنظم هذه الشروط استخدام تطبيق Himo وخدماته وميزاته المتاحة. بإنشاء حساب أو استخدام الخدمة أو تحديد مربع الموافقة عند التسجيل، فإنك تقر بأنك قرأت الشروط وفهمتها وتوافق على الالتزام بها. إذا لم توافق، فلا تُكمل التسجيل أو تستخدم الخدمة.,1,Views/LegalDocumentPages.cs:190
+توحيد ألوان واجهات Himo مع طابع شاشة تسجيل الدخول الداكن والبنفسجي,1,Views/IconAppearanceSettingsPages.cs:27
+تُتاح الخدمة فقط لمن يستوفون العمر والمتطلبات القانونية في البلد المعني. إذا كانت الخدمة تسمح للقاصرين، يجب استكمال ضوابط العمر وموافقة ولي الأمر والإشعارات الخاصة التي يفرضها القانون. لا ينبغي جمع بيانات الأطفال أو استخدامها خلاف المتطلبات القانونية؛ وعند اكتشاف معالجة غير مناسبة، تتخذ الجهة المسؤولة الخطوات القانونية والتقنية اللازمة.,1,Views/LegalDocumentPages.cs:237
+تُحفظ البيانات للمدة الضرورية للغرض الذي جُمعت من أجله، ولتشغيل الحساب وحماية الخدمة ومعالجة النزاعات والوفاء بالالتزامات القانونية، ثم تُحذف أو تُجهّل أو تُقيّد وفق الإجراءات المعتمدة. يجب أن تحدد الجهة المسؤولة مددًا فعلية لكل فئة، بما فيها الرسائل والسجلات والنسخ الاحتياطية، وأن تشرح ما يحدث عند حذف الحساب وما قد يتعذر حذفه فورًا لأسباب تقنية أو قانونية.,1,Views/LegalDocumentPages.cs:233
+تُستخدم التدابير التقنية والتنظيمية المناسبة لحماية البيانات من الوصول أو الإفشاء أو التعديل أو الفقد غير المصرح به، بما يناسب حساسية البيانات والمخاطر. لا يوجد نظام متصل بالشبكة آمن بصورة مطلقة. يتحمل المستخدم مسؤولية اختيار كلمة مرور مناسبة وعدم مشاركة رموز التحقق والإبلاغ عن النشاط المشبوه. تُعالج الحوادث الأمنية وفق المتطلبات القانونية المنطبقة.,1,Views/LegalDocumentPages.cs:234
+تُستخدم الكاميرا والميكروفون والصور والملفات عندما تختار ميزة تتطلبها، مثل التصوير أو مكالمة أو إرسال ملف. يمنح نظام التشغيل الإذن ويمكنك تغييره من إعدادات الجهاز. يجب ألا يواصل التطبيق الوصول إلى مورد حساس خارج سياق الميزة إلا بقدر ما يسمح به الإذن والقانون وما توضحه واجهة التطبيق.,1,Views/LegalDocumentPages.cs:228
+تُعالج البيانات على أساس قانوني مناسب وفق الأنظمة المنطبقة وطبيعة المعالجة؛ وقد يكون ذلك لتقديم الخدمة التي طلبتها، أو للامتثال لالتزام قانوني، أو لحماية الحسابات والخدمة، أو بناءً على موافقتك عندما تكون مطلوبة. إذا استندت معالجة معينة إلى الموافقة، يمكنك سحبها وفق الوسيلة المتاحة، ولا يؤثر السحب في مشروعية المعالجة السابقة له.,1,Views/LegalDocumentPages.cs:230
+تُعرض معاينة {option.Name} داخل Himo. اضغط «استخدام الخلفية» لحفظها للمحادثات.,1,Views/ChatAppearanceSettingsPages.cs:718
+تُقدَّم خدمة Himo بواسطة [الاسم القانوني للجهة المشغلة]. للاستفسارات والشكاوى، تواصل عبر [البريد الإلكتروني الرسمي للدعم]. يخضع استخدام الخدمة للقوانين المعمول بها في [الدولة أو الاختصاص القضائي]، مع مراعاة الحقوق الإلزامية التي لا يجوز التنازل عنها بموجب القانون.,1,Views/LegalDocumentPages.cs:191
+جارٍ إرسال رمز التحقق إلى بريدك الإلكتروني...,1,Views/RegisterPage.xaml.cs:184
+جارٍ إرسال رمز جديد...,1,Views/ForgotPasswordPage.xaml.cs:44
+جارٍ إعادة إرسال رمز التحقق...,1,Views/RegisterPage.xaml.cs:249
+جارٍ الإضافة...,1,Views/GroupConversationInfoPages.cs:1356
+جارٍ الانضمام إلى المجموعة,1,Views/CallPage.xaml.cs:1048
+جارٍ الانضمام إلى المكالمة الجماعية...,1,Views/CallPage.xaml.cs:1046
+جارٍ الانضمام...,1,Views/GroupInvitePreviewPage.cs:291
+جارٍ التحقق من البريد الإلكتروني...,1,Views/RegisterPage.xaml.cs:228
+جارٍ التحقق وتحديث كلمة المرور...,1,Views/ForgotPasswordPage.xaml.cs:105
+جارٍ التقاط الصورة…,1,Views/CameraPage.xaml.cs:209
+جارٍ تجهيز الصورة…,1,Views/MediaEditorPage.xaml.cs:1191
+جارٍ تجهيز الفيديو…,1,Views/MediaEditorPage.xaml.cs:1191
+جارٍ تحميل المجموعة...,1,Views/GroupInvitePreviewPage.cs:159
+جارٍ حفظ الفيديو…,1,Views/CameraPage.xaml.cs:280
+جارٍ طلب رمز التحقق...,1,Views/ForgotPasswordPage.xaml.cs:44
+جارٍ فتح المجموعة...,1,Views/GroupInvitePreviewPage.cs:291
+جارٍ مطابقة الأرقام... ({i + 1}/{batches.Length}),1,Views/HomePage.xaml.cs:885
+جرّب اسمًا أو كلمة بحث أخرى.,1,Views/HomePage.xaml.cs:469
+جلسة الدخول غير متاحة حاليًا.,1,Views/ChatPage.xaml.cs:2264
+جهات,1,Views/SettingsVisuals.cs:98
+جهات اتصال Himo,1,Views/CreateGroupPage.xaml.cs:183
+جهة اتصال تستخدم Himo,1,Views/CreateGroupPage.xaml.cs:566
+حجم فيديو الخلفية غير مناسب.,1,Views/ChatAppearanceSettingsPages.cs:892
+حدّث معلومات حسابك كلٌّ على حدة,1,Views/ProfileFieldPages.cs:22
+حذف {deletable.Count} رسالة؟,1,Views/ChatPage.xaml.cs:4522
+حذف {selected.Count} محادثات ومسح سجلاتها من حسابك؟,1,Views/HomePage.xaml.cs:970
+حذف محادثة {selected[0].Name} من قائمتك ومسح سجلها من حسابك؟,1,Views/HomePage.xaml.cs:969
+حرير الغروب,1,Views/ChatAppearanceSettingsPages.cs:32
+حساب,1,Views/SettingsVisuals.cs:104
+حفظ المؤقت,1,Views/ConversationInfoPages.cs:787
+حقول الزهور,1,Views/ChatAppearanceSettingsPages.cs:495
+حلقات وخطوط نيون زرقاء وبنفسجية,1,Views/ChatAppearanceSettingsPages.cs:33
+حماية التطبيق,1,Views/SettingsOrganizationPages.cs:258
+حماية فتح هذه المحادثة برمز PIN على هذا الجهاز,1,Views/ConversationInfoPages.cs:153
+حمّل تطبيق Himo من الرابط التالي:\n,1,Views/AppDownloadLinkPage.cs:234
+خصص شكل الرسائل المرسلة والمستقبلة,1,Views/ChatSettingsPage.cs:68
+خصوص,1,Views/SettingsVisuals.cs:86
+خط,1,Views/SettingsVisuals.cs:93
+خلفيات متحركة للدردشة,1,Views/ChatAppearanceSettingsPages.cs:525
+خلفيات متحركة هادئة للمحادثة,1,Views/ChatSettingsPage.cs:67
+خلفية,1,Views/SettingsVisuals.cs:92
+خيارات المحادثة,1,Views/ChatPage.xaml.cs:1147
+خيارات تسجيل الدخول,1,Views/LoginPage.xaml.cs:52
+درجات بنفسجية قوية,1,Views/IconAppearanceSettingsPages.cs:727
+دردشة,1,Views/SettingsVisuals.cs:99
+دعوة الأصدقاء,1,Views/CreateGroupPage.xaml.cs:184
+دعوة جهة اتصال,1,Views/CreateGroupPage.xaml.cs:702
+دعوة للانضمام إلى مجموعة,1,Views/GroupInvitePreviewPage.cs:99
+دعوة مجموعة,1,Views/GroupInvitePreviewPage.cs:36
+دوائر ضوئية وتموجات وردية,1,Views/ChatAppearanceSettingsPages.cs:31
+ذهب أسود,1,Views/IconAppearanceSettingsPages.cs:471
+ذهب وردي,1,Views/IconAppearanceSettingsPages.cs:732
+ذهبي,1,Views/ChatAppearanceSettingsPages.cs:187
+ذهبي سداسي,1,Views/IconAppearanceSettingsPages.cs:485
+ذهبي على خلفية داكنة,1,Views/IconAppearanceSettingsPages.cs:725
+ذهبي فاخر,1,Views/IconAppearanceSettingsPages.cs:266
+ذهبي كلاسيكي,1,Views/IconAppearanceSettingsPages.cs:469
+ذهبي لامع,1,Views/IconAppearanceSettingsPages.cs:467
+ذهبي متوهج,1,Views/IconAppearanceSettingsPages.cs:477
+ذهبي مموج,1,Views/IconAppearanceSettingsPages.cs:490
+رابط الحساب غير صالح.,1,Views/QrScannerPage.xaml.cs:197
+رابط المجموعة غير صالح.,1,Views/QrScannerPage.xaml.cs:232
+رابط تنزيل التطبيق,1,Views/AppDownloadLinkPage.cs:131
+رابط فيديو المعاينة غير صالح.,1,Views/ChatAppearanceSettingsPages.cs:679
+ربط الجهاز,1,Views/QrScannerPage.xaml.cs:184
+رخام ذهبي,1,Views/IconAppearanceSettingsPages.cs:472
+رسائل,1,Views/SettingsVisuals.cs:99
+رقم الاتصال المرتبط بحسابك,1,Views/ProfileFieldPages.cs:75
+رمادي متوازن,1,Views/IconAppearanceSettingsPages.cs:706
+رمز QR,1,Views/GroupConversationInfoPages.cs:1644
+رمز التحقق غير صحيح أو منتهي الصلاحية.,1,Views/RegisterPage.xaml.cs:234
+رمز الدولة، الرقم، وخيارات الخصوصية,1,Views/AccountSubPages.cs:596
+رمز دعوة المجموعة,1,Views/GroupConversationInfoPages.cs:1611
+رمز دعوة المجموعة غير موجود أو غير صالح.,1,Views/QrScannerPage.xaml.cs:235
+رمز ربط الكمبيوتر غير صالح.,1,Views/QrScannerPage.xaml.cs:182
+رمز غير صالح,1,Views/QrScannerPage.xaml.cs:159
+رمز من 4 إلى 8 أرقام,1,Views/ChatPage.ConversationFeatures.cs:50
+رنين 1,1,Views/GroupConversationInfoPages.cs:1539
+رنين 2,1,Views/GroupConversationInfoPages.cs:1539
+رنين 3,1,Views/GroupConversationInfoPages.cs:1539
+رنين 4,1,Views/GroupConversationInfoPages.cs:1539
+زجاج وردي,1,Views/ChatAppearanceSettingsPages.cs:31
+زمرد فاخر,1,Views/IconAppearanceSettingsPages.cs:728
+زمرد متوهج,1,Views/IconAppearanceSettingsPages.cs:482
+زمرد منعش,1,Views/IconAppearanceSettingsPages.cs:682
+زمردي,1,Views/ChatAppearanceSettingsPages.cs:186
+زمردي ذهبي,1,Views/IconAppearanceSettingsPages.cs:475
+زمردي متوهج,1,Views/IconAppearanceSettingsPages.cs:272
+زهور حقيقية تتمايل مع الرياح,1,Views/ChatAppearanceSettingsPages.cs:495
+زهور مضيئة بدرجات البنفسجي,1,Views/ChatAppearanceSettingsPages.cs:313
+ساعة,1,Views/ConversationInfoPages.cs:781
+ساعتان,1,Views/GroupSettingsPage.cs:17
+ستة تصاميم متكاملة تغيّر ألوان الشاشات والبطاقات والرموز الداخلية.,1,Views/IconAppearanceSettingsPages.cs:675
+ستظهر هنا محادثات المجموعات عند توفرها.,1,Views/HomePage.xaml.cs:473
+سجّل الدخول أولًا لإنشاء رابط حسابك.,1,Views/ShareAccountPage.xaml.cs:79
+سجّل الدخول إلى Himo أولًا.,1,Views/QrScannerPage.xaml.cs:169
+سجّل الدخول إلى Himo لعرض دعوة المجموعة.,1,Views/GroupInvitePreviewPage.cs:248
+سجّل الدخول مجددًا لتنفيذ هذا الإجراء.,1,Views/HomePage.xaml.cs:1032
+سماء زرقاء,1,Views/IconAppearanceSettingsPages.cs:681
+سماوي جليدي,1,Views/IconAppearanceSettingsPages.cs:273
+سماوي وتركوازي لامع,1,Views/IconAppearanceSettingsPages.cs:731
+سمة,1,Views/SettingsVisuals.cs:92
+سياسة خصوصية Himo • آخر تحديث: 18 أكتوبر 2026,1,Views/LegalDocumentPages.cs:219
+سيتم مسح الرسائل الحالية من هذا الحساب مع الإبقاء على المحادثة في القائمة. هل تريد المتابعة؟,1,Views/ConversationInfoPages.cs:346
+سيتم مسح الرسائل من حسابك فقط، ولن تُحذف من حسابات بقية أعضاء المجموعة. هل تريد المتابعة؟,1,Views/GroupConversationInfoPages.cs:730
+سيطبق المؤقت على الرسائل الجديدة في هذه المحادثة على الطرفين.,1,Views/ConversationInfoPages.cs:832
+سيظهر الرابط هنا بعد ضبط رابط APK أو صفحة المتجر في إعدادات خادم Himo.,1,Views/AppDownloadLinkPage.cs:196
+شرائط لونية بنفسجية متدرجة,1,Views/ChatAppearanceSettingsPages.cs:28
+شرائط ناعمة بألوان الغروب,1,Views/ChatAppearanceSettingsPages.cs:32
+شروق ناري,1,Views/IconAppearanceSettingsPages.cs:480
+شريط ذهبي,1,Views/IconAppearanceSettingsPages.cs:488
+شعارات Himo زجاجية لامعة بـ15 لونًا,1,Views/IconAppearanceSettingsPages.cs:49
+شلال الغابة,1,Views/ChatAppearanceSettingsPages.cs:496
+صدّر المحادثات والرسائل المحفوظة على هذا الجهاز,1,Views/ChatSettingsPage.cs:75
+صوتي,1,Views/GroupConversationInfoPages.cs:1442
+صيغة الصورة غير مدعومة. اختر JPG أو PNG أو WebP أو HEIC.,1,Views/ProfileFieldPages.cs:578
+صيغة الصورة غير مدعومة. اختر صورة بصيغة JPG أو PNG أو WebP أو HEIC.,1,Views/ProfilePage.xaml.cs:345
+طابع محايد وبسيط,1,Views/IconAppearanceSettingsPages.cs:706
+عثرنا على {matches.Count} حسابات. اختر حسابًا لبدء محادثة.,1,Views/HomePage.xaml.cs:794
+عثرنا على حساب واحد. اضغط عليه لبدء محادثة.,1,Views/HomePage.xaml.cs:793
+عرض الرابط ونسخه,1,Views/GroupConversationInfoPages.cs:1646
+عرض الرمز للمسح,1,Views/GroupConversationInfoPages.cs:1644
+عرض الكل  ›,1,Views/ConversationInfoPages.cs:104
+عرض المزيد ({contacts.Count - visibleContacts.Length}),1,Views/CreateGroupPage.xaml.cs:671
+عرض المزيد ({remaining}),1,Views/CreateGroupPage.xaml.cs:531
+عرض الوسائط داخل المحادثة,1,Views/ChatSettingsPage.cs:60
+عضو,1,Views/GroupConversationInfoPages.cs:1486
+عضو في المجموعة,1,Views/GroupConversationInfoPages.cs:1438
+عضو واحد,1,Views/GroupInvitePreviewPage.cs:257
+عنبر ناري,1,Views/IconAppearanceSettingsPages.cs:491
+عُثر على {ordered.Count} حسابًا من جهات اتصالك. اضغط على حساب لبدء محادثة.,1,Views/HomePage.xaml.cs:897
+غابة زمردية,1,Views/ChatAppearanceSettingsPages.cs:320
+غابة عميقة بوهج أخضر,1,Views/ChatAppearanceSettingsPages.cs:320
+غروب البحر,1,Views/ChatAppearanceSettingsPages.cs:497
+غروب الجبال,1,Views/ChatAppearanceSettingsPages.cs:317
+غروب ذهبي,1,Views/ChatAppearanceSettingsPages.cs:322
+غير متصل بالخادم,1,Views/HomePage.xaml.cs:447
+غيّر بريد الدخول بعد التحقق منه,1,Views/ProfileFieldPages.cs:372
+فاتحة ونظيفة,1,Views/IconAppearanceSettingsPages.cs:705
+فتح المحادثة,1,Views/ChatPage.ConversationFeatures.cs:56
+فتح رابط التنزيل,1,Views/AppDownloadLinkPage.cs:59
+فتح صفحة إدارة مساحة التخزين من المتصفح,1,Views/ChatSettingsPage.cs:340
+فشل تطبيق القص فعليًا: الناتج {actual.Width:0}×{actual.Height:0} بدلًا من {expectedWidth}×{expectedHeight}.,1,Views/MediaEditorPage.xaml.cs:1011
+فضي بارد على فحمي,1,Views/IconAppearanceSettingsPages.cs:730
+فضي بنفسجي,1,Views/IconAppearanceSettingsPages.cs:269
+فضي لامع,1,Views/IconAppearanceSettingsPages.cs:478
+فضي معدني,1,Views/IconAppearanceSettingsPages.cs:730
+فقاعات الرسائل,1,Views/ChatSettingsPage.cs:68
+فقاعة,1,Views/SettingsVisuals.cs:99
+فيديو حقيقي لحركة المرور وأضواء المدينة ليلًا,1,Views/ChatAppearanceSettingsPages.cs:494
+فيروزي كريستالي,1,Views/IconAppearanceSettingsPages.cs:267
+قد تتطلب الرسائل والمكالمات معالجة المحتوى وبعض البيانات الفنية لتوصيل الاتصال وتشغيل الميزات وحماية الخدمة وتشخيص الأعطال. قد يتأثر توفر الاتصال بجودة الشبكة أو الجهاز أو خدمات الأطراف الأخرى. لا تفترض أن الرسائل أو المكالمات مشفرة تشفيرًا تامًا بين الطرفين إلا إذا أعلنت Himo عن هذه الخاصية وشرحت نطاقها بوضوح؛ فوجود اتصال آمن لا يعني بالضرورة أن مشغّل الخدمة لا يستطيع الوصول إلى المحتوى.,1,Views/LegalDocumentPages.cs:199
+قد تتطلب ميزات اختيارية أذونات للكاميرا أو الميكروفون أو الصور والملفات أو جهات الاتصال أو الإشعارات. يطلب التطبيق الأذونات ذات الصلة بالميزة، ويمكنك إدارتها من إعدادات الجهاز. قد لا تعمل ميزة عند رفض الإذن اللازم لها، ولا ينبغي أن يمنح الإذن وصولًا أوسع من الحاجة الفعلية للميزة.,1,Views/LegalDocumentPages.cs:200
+قد تشمل بيانات الحساب الاسم واسم المستخدم والبريد الإلكتروني ورقم الهاتف إذا أدخلته وصورة الملف الشخصي والحالة ومعلومات تسجيل الدخول والتحقق. تُستخدم هذه البيانات لإنشاء الحساب وإدارته وتأمينه وتقديم الميزات المرتبطة به. يجب قصر الحقول الإلزامية على ما يلزم فعلًا لتشغيل الخدمة.,1,Views/LegalDocumentPages.cs:224
+قد تعتمد بعض الوظائف على مزودي خدمة مستقلين، مثل الاستضافة أو إرسال البريد ورسائل التحقق أو الإشعارات أو البنية التحتية للمكالمات. يخضع استخدام تلك الخدمات لشروطها وسياسات الخصوصية ذات الصلة، ويجب أن توضّح سياسة الخصوصية مزودي الخدمات الذين تتم مشاركة البيانات معهم فعليًا. لا تتحكم Himo في الخدمات المستقلة التي لا تشغّلها.,1,Views/LegalDocumentPages.cs:202
+قد تُحدّث الخدمة أو تُعدّل أو تتوقف مؤقتًا للصيانة أو الأمن أو لأسباب تشغيلية أو قانونية. سنسعى إلى إشعار المستخدمين بالتغييرات الجوهرية عند الاقتضاء. لا نضمن توافر الخدمة دون انقطاع أو خلوها من الأخطاء في جميع الأوقات، مع عدم استبعاد أي ضمان أو حق لا يسمح القانون باستبعاده.,1,Views/LegalDocumentPages.cs:204
+قد تُحدّث السياسة نتيجة تغير الميزات أو مزودي الخدمة أو المتطلبات القانونية. سنعرض تاريخ آخر تحديث ونوضح التغييرات الجوهرية، ونطلب موافقتك عندما يتطلب القانون ذلك. لا ينبغي تطبيق تغيير جوهري بأثر رجعي على نحو يخالف القانون أو ينتقص من الحقوق الإلزامية.,1,Views/LegalDocumentPages.cs:240
+قد تُستخدم البيانات لإنشاء الحساب والتحقق منه، وإيصال الرسائل والمكالمات، وإتاحة البحث ومشاركة الوسائط، وحفظ الإعدادات، وإرسال إشعارات أو رموز تحقق تطلبها، وتقديم الدعم، وحماية الخدمة من الاحتيال والرسائل المزعجة والاختراق، واستكشاف الأعطال، والوفاء بالالتزامات القانونية. لا ينبغي استخدام البيانات لغرض جديد غير متوافق دون أساس قانوني مناسب أو إشعار أو موافقة عندما تكون مطلوبة.,1,Views/LegalDocumentPages.cs:229
+قد تُشارك البيانات بالقدر اللازم مع مزودي الاستضافة والبنية التحتية، وإرسال البريد ورموز التحقق، والإشعارات، وخدمات الاتصالات أو المكالمات، والدعم والأمن ومكافحة إساءة الاستخدام؛ وذلك إذا كانت هذه الخدمات مستخدمة فعليًا. وقد تُكشف البيانات عند وجود طلب قانوني ملزم أو لحماية الحقوق والسلامة وفق القانون. ينبغي إعداد قائمة داخلية بمزودي الخدمة وأدوارهم واتفاقات حماية البيانات ذات الصلة.,1,Views/LegalDocumentPages.cs:231
+قد تُعالج البيانات في بلد غير البلد الذي تقيم فيه إذا كان مزود الاستضافة أو الخدمة يقع في الخارج. إذا كان ذلك منطبقًا، يجب تحديد البلدان أو طبيعة النقل، وآلية الحماية القانونية المستخدمة، وأي ضمانات أو موافقات يفرضها القانون. لا ينبغي افتراض عدم انتقال البيانات خارج الدولة دون التحقق من البنية التحتية ومواقع مزودي الخدمة.,1,Views/LegalDocumentPages.cs:232
+قد تُعالج بيانات مثل طراز الجهاز وإصدار نظام التشغيل وإصدار التطبيق واللغة والمنطقة الزمنية وعنوان الشبكة ومعرّفات تقنية وسجلات الأعطال والأحداث الأمنية، بالقدر الذي تجمعه الخدمات المستخدمة فعليًا. تُستخدم هذه المعلومات لتشخيص الأخطاء وتحسين التوافق والأداء ومنع إساءة الاستخدام وحماية الحسابات.,1,Views/LegalDocumentPages.cs:227
+قد نحدّث هذه الشروط عند تغيير الخدمة أو المتطلبات القانونية. سنعرض تاريخ آخر تحديث ونوضح التغييرات الجوهرية، ونطلب موافقتك مجددًا عندما يقتضي القانون ذلك. يمكنك تقديم الشكاوى والاستفسارات عبر وسيلة التواصل الرسمية الموضحة في هذه الشروط. لا يؤثر ذلك في حقك في اللجوء إلى جهة مختصة أو استخدام أي وسيلة تظل متاحة لك بموجب القانون.,1,Views/LegalDocumentPages.cs:207
+قدّم معلومات صحيحة وكاملة وحدّثها عند تغيّرها. لا تستخدم اسمًا أو بريدًا أو رقم هاتف لا تملك حق استخدامه، ولا تنتحل شخصية شخص آخر أو تنشئ حسابًا بقصد التضليل. قد يطلب التطبيق التحقق من البريد أو رقم الهاتف لحماية الحساب وتشغيل الميزات.,1,Views/LegalDocumentPages.cs:193
+قفل,1,Views/SettingsVisuals.cs:102
+قفل الدردشة,1,Views/ConversationInfoPages.cs:153
+قمم جبلية بألوان الغروب,1,Views/ChatAppearanceSettingsPages.cs:317
+كاميرا,1,Views/SettingsVisuals.cs:100
+كتم ,1,Views/GroupConversationInfoPages.cs:1556
+كثبان ذهبية وسماء دافئة,1,Views/ChatAppearanceSettingsPages.cs:322
+كريستال أزرق,1,Views/IconAppearanceSettingsPages.cs:474
+كل الخيارات تحافظ على شكل حرف H وكلمة Himo. اضغط على التصميم لتطبيقه كأيقونة فعلية للتطبيق على الشاشة الرئيسية.,1,Views/IconAppearanceSettingsPages.cs:296
+كهرماني ناري,1,Views/IconAppearanceSettingsPages.cs:274
+لؤلؤي ذهبي,1,Views/IconAppearanceSettingsPages.cs:484
+لا تستبعد هذه الشروط أي مسؤولية أو ضمان أو حق للمستهلك لا يجوز استبعاده بموجب القانون. لا تستطيع Himo ضمان سلوك المستخدمين الآخرين أو صحة المحتوى الذي ينشرونه أو استمرار اتصال الشبكات والأجهزة الخارجية. لا تعتمد على الخدمة وحدها في حالات الطوارئ أو الاتصالات التي يتطلب القانون أو طبيعتها وسيلة أكثر موثوقية.,1,Views/LegalDocumentPages.cs:206
+لا توجد محادثات أخرى,1,Views/GroupConversationInfoPages.cs:1178
+لا توجد محادثات ضمن هذا التصنيف,1,Views/HomePage.xaml.cs:466
+لا توجد محادثات غير مقروءة حاليًا.,1,Views/HomePage.xaml.cs:471
+لا توجد محادثات مؤرشفة,1,Views/HomePage.xaml.cs:467
+لا يوجد اتصال إنترنت متاح لإرسال الرسالة.,1,Views/ChatPage.xaml.cs:2266
+لغة,1,Views/SettingsVisuals.cs:91
+لقطات حقيقية لتموّجات الماء وانعكاسات الضوء,1,Views/ChatAppearanceSettingsPages.cs:493
+لم أتمكن من تنزيل الملف من الخادم.,1,Views/ConversationInfoPages.cs:729
+لم نتمكن من معالجة هذا الرمز. وجّه الكاميرا إلى رمز Himo وحاول مجددًا.,1,Views/QrScannerPage.xaml.cs:139
+لم نعثر على حسابات Himo مطابقة. قد لا تكون الأرقام مسجلة أو لم يفعّل أصحاب الحسابات خيار العثور عليهم.,1,Views/HomePage.xaml.cs:896
+لم يتم إنشاء الصورة المقصوصة.,1,Views/MediaEditorPage.xaml.cs:985
+لم يتم إنشاء النتيجة النهائية.,1,Views/MediaEditorPage.xaml.cs:1212
+لم يتم إنشاء ملف الصورة المعدلة.,1,Views/MediaEditorPage.xaml.cs:1342
+لم يتم اختيار خلفية متحركة.,1,Views/ChatAppearanceSettingsPages.cs:841
+لم يتم تطبيق القص فعليًا على الصورة الناتجة.,1,Views/MediaEditorPage.xaml.cs:1397
+لم يتم تنزيل الفيديو بشكل صحيح.,1,Views/ChatPage.xaml.cs:3820
+لم يتم تنزيل ملف التسجيل من الخادم.,1,Views/ChatPage.xaml.cs:3015
+لم يتم نشر رابط تنزيل التطبيق بعد.,1,Views/AppDownloadLinkPage.cs:192
+لمسات بنفسجية مضيئة بطابع عصري,1,Views/IconAppearanceSettingsPages.cs:685
+لمسات ذهبية ودافئة بانسياب ناعم,1,Views/ChatAppearanceSettingsPages.cs:34
+لمسات نحاسية وردية,1,Views/IconAppearanceSettingsPages.cs:732
+لمسة طبيعية منعشة,1,Views/IconAppearanceSettingsPages.cs:707
+لمعاينة أي فيديو، اضغط على صورته؛ ستعمل المعاينة داخل Himo دون فتح مشغل خارجي.,1,Views/ChatAppearanceSettingsPages.cs:537
+لون,1,Views/SettingsVisuals.cs:92
+ليلي داكن,1,Views/IconAppearanceSettingsPages.cs:270
+مؤقت الرسائل,1,Views/ConversationInfoPages.cs:777
+ماء وجبال وطبيعة هادئة,1,Views/ChatAppearanceSettingsPages.cs:319
+مبانٍ حديثة وأضواء ليلية,1,Views/ChatAppearanceSettingsPages.cs:315
+مبانٍ وأزهار وردية,1,Views/ChatAppearanceSettingsPages.cs:316
+متابعة  ‹,1,Views/CreateGroupPage.xaml.cs:121
+متصل بالخادم,1,Views/HomePage.xaml.cs:447
+متصل بالمكالمة الجماعية,1,Views/CallPage.xaml.cs:1056
+مثال: Himo أو مرحباً,1,Views/MediaEditorPage.xaml.cs:525
+مجموعة,1,Views/SettingsVisuals.cs:98
+مجموعة Himo,1,Views/GroupInvitePreviewPage.cs:255
+مجموعة · {_details.Members.Count} أعضاء,1,Views/GroupConversationInfoPages.cs:305
+مجموعة · {details.Members.Count} أعضاء,1,Views/GroupConversationInfoPages.cs:176
+محادث,1,Views/SettingsVisuals.cs:99
+محادثاتك,1,Views/CreateGroupPage.xaml.cs:182
+محادثة موجودة,1,Views/CreateGroupPage.xaml.cs:566
+محادثة واحدة,1,Views/HomePage.xaml.cs:289
+محظور,1,Views/SettingsVisuals.cs:84
+مخزن الوسائط غير متاح.,1,Views/MediaEditorPage.xaml.cs:1260
+مدارات نيون,1,Views/ChatAppearanceSettingsPages.cs:33
+مدة الاختفاء,1,Views/GroupSettingsPage.cs:121
+مدينة ساكورا,1,Views/ChatAppearanceSettingsPages.cs:316
+مدينة ليلية,1,Views/ChatAppearanceSettingsPages.cs:494
+مدينة مضيئة,1,Views/ChatAppearanceSettingsPages.cs:315
+مرحبًا {contact.Name}، أدعوك للانضمام إلى Himo للتواصل معي. رقم التواصل: {contact.Phone},1,Views/CreateGroupPage.xaml.cs:697
+مساحات فاتحة وتباين واضح,1,Views/IconAppearanceSettingsPages.cs:705
+مساحة تخزين Google,1,Views/ChatSettingsPage.cs:340
+مسح QR بالكاميرا غير مدعوم على هذا الجهاز.,1,Views/QrScannerPage.xaml.cs:111
+مشارك واحد في المكالمة — يمكنك الانضمام,1,Views/ChatPage.xaml.cs:2008
+مشاركان في المكالمة — يمكنك الانضمام,1,Views/ChatPage.xaml.cs:2009
+مشاركة رابط تنزيل Himo,1,Views/SettingsOrganizationPages.cs:326
+مطابقة تسجيل الدخول,1,Views/IconAppearanceSettingsPages.cs:702
+مظهر,1,Views/SettingsVisuals.cs:92
+مظهر المحادثة,1,Views/ChatSettingsPage.cs:65
+معاينة خلفية {option.Name} داخل التطبيق,1,Views/ChatAppearanceSettingsPages.cs:574
+معرّف المكالمة الجماعية غير صالح.,1,Views/CallPage.xaml.cs:1012
+معرّف ربط الكمبيوتر غير صالح.,1,Views/QrScannerPage.xaml.cs:178
+معرّف فريد لحسابك,1,Views/ProfileFieldPages.cs:331
+معلومات,1,Views/GroupConversationInfoPages.cs:1445
+معلومات جهة الاتصال والمحادثة,1,Views/ConversationInfoPages.cs:96
+مفتاح الإدخال للإرسال,1,Views/ChatSettingsPage.cs:59
+مقطع حقيقي لأمواج البحر عند الغروب,1,Views/ChatAppearanceSettingsPages.cs:497
+مكالمات,1,Views/SettingsVisuals.cs:97
+مكالمة صوتية جماعية جارية,1,Views/ChatPage.xaml.cs:2003
+مكالمة صوتية\n{FormatDuration()},1,Views/CallPage.xaml.cs:1797
+مكالمة فيديو جماعية جارية,1,Views/ChatPage.xaml.cs:2002
+ملصق,1,Views/SettingsVisuals.cs:100
+ملف الصورة المعدلة فارغ.,1,Views/MediaEditorPage.xaml.cs:1346
+ملف الفيديو المختار غير موجود.,1,Views/ChatAppearanceSettingsPages.cs:846
+ملف الفيديو غير موجود.,1,Views/ChatPage.xaml.cs:3857
+ملف شخصي,1,Views/SettingsVisuals.cs:83
+منظر ليلي وانعكاس القمر,1,Views/ChatAppearanceSettingsPages.cs:318
+مياه شلال حقيقية تتدفق بين الصخور,1,Views/ChatAppearanceSettingsPages.cs:496
+مُرسل {FormatBytes(sentBytes)}   •   مُستلم {FormatBytes(receivedBytes)},1,Views/ConversationInfoPages.cs:281
+نتيجة بحث,1,Views/CreateGroupPage.xaml.cs:566
+نسخ,1,Views/SettingsVisuals.cs:94
+نسخ الآن,1,Views/ChatSettingsPage.cs:347
+نسخ الرابط,1,Views/AppDownloadLinkPage.cs:57
+نغمة,1,Views/SettingsVisuals.cs:90
+نفس الخلفية الليلية واللمسات البنفسجية لشاشة الدخول على جميع واجهات Himo,1,Views/IconAppearanceSettingsPages.cs:702
+نيلي عميق,1,Views/IconAppearanceSettingsPages.cs:275
+هالة بنفسجية,1,Views/IconAppearanceSettingsPages.cs:481
+هالة زرقاء,1,Views/IconAppearanceSettingsPages.cs:483
+هذا اختيار محفوظ محليًا؛ لا توجد مزامنة تلقائية مهيأة,1,Views/ChatSettingsPage.cs:342
+هذا الرمز لا يحتوي على رابط Himo صالح.,1,Views/QrScannerPage.xaml.cs:159
+هذه الدردشة مقفلة,1,Views/ChatPage.ConversationFeatures.cs:43
+هذه السياسة تصف إطارًا عامًا ويجب أن تُطابق ما يفعله تطبيق Himo وخادمه فعليًا. قبل النشر، يجب على الجهة المشغلة التحقق من حقول التسجيل، وخدمات البريد والإشعارات والاستضافة، ومحتوى الرسائل والمكالمات، وتدفق جهات الاتصال، والتشفير، والسجلات، والنسخ الاحتياطية، ومدد الاحتفاظ والحذف، وحقوق المستخدم والقانون المنطبق. يجب إزالة أي بند لا ينطبق وإضافة أي ممارسة معالجة فعلية غير موضحة هنا.,1,Views/LegalDocumentPages.cs:242
+هل تريد إزالة {member.Name} من المجموعة؟,1,Views/GroupConversationInfoPages.cs:940
+هل تريد إزالة الصورة الحالية؟,1,Views/GroupConversationInfoPages.cs:344
+هل تريد الخروج من المجموعات المحددة؟ ({groupCount}),1,Views/DeleteConversationsConfirmationPage.cs:73
+هل تريد حذف النسخة المحلية من «{entry.Name}»؟ لن تُحذف الرسالة أو المرفق من المحادثة على الخادم.,1,Views/StorageDataSettingsPage.cs:1061
+هل تريد حظر {selected.Name}؟ لن تتمكن الحسابات المحظورة من إرسال رسائل أو بدء مكالمات مباشرة بينكما.,1,Views/HomePage.xaml.cs:1010
+هل تريد ربط {deviceName} بحساب Himo؟ سيصبح بإمكان هذا المتصفح قراءة محادثاتك وإرسال الرسائل حتى تلغي ربطه.,1,Views/QrScannerPage.xaml.cs:184
+هولوغرافي,1,Views/IconAppearanceSettingsPages.cs:271
+واجهات احترافية,1,Views/IconAppearanceSettingsPages.cs:719
+واجهة فاتحة بطابع Himo الأصلي,1,Views/IconAppearanceSettingsPages.cs:680
+وردي لؤلؤي,1,Views/IconAppearanceSettingsPages.cs:265
+وردي متوهج,1,Views/ChatAppearanceSettingsPages.cs:184
+وردي هادئ,1,Views/IconAppearanceSettingsPages.cs:708
+وسائط,1,Views/SettingsVisuals.cs:100
+وهج ذهبي,1,Views/ChatAppearanceSettingsPages.cs:34
+ياقوت أحمر,1,Views/IconAppearanceSettingsPages.cs:473
+ياقوتي,1,Views/IconAppearanceSettingsPages.cs:729
+ياقوتي أحمر,1,Views/IconAppearanceSettingsPages.cs:268
+يتطلب الانضمام موافقة مشرف المجموعة.,1,Views/GroupInvitePreviewPage.cs:304
+يتطلب الانضمام موافقة مشرف المجموعة. لا يمكن إتمام الانضمام من هذا الرابط.,1,Views/GroupInvitePreviewPage.cs:264
+يتم توصيلك بالأعضاء الموجودين في المكالمة,1,Views/CallPage.xaml.cs:1049
+يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.,1,Views/RegisterPage.xaml.cs:159
+يجب أن تكون المحادثة متصلة بالخادم لحفظ مؤقت يعمل على الهاتفين.,1,Views/ConversationInfoPages.cs:827
+يجب أن تكون مؤهلًا قانونيًا لاستخدام Himo في بلدك وأن تستوفي الحد الأدنى للعمر الذي تحدده القوانين المعمول بها. إذا كان القانون يشترط موافقة ولي الأمر أو الممثل القانوني، فيجب الحصول عليها قبل الاستخدام. لا يجوز استخدام الخدمة إذا كان ذلك محظورًا قانونًا عليك.,1,Views/LegalDocumentPages.cs:192
+يجب الموافقة على شروط الاستخدام وسياسة الخصوصية للمتابعة.,1,Views/RegisterPage.xaml.cs:171
+يجب تحديد مساحة أصغر من الصورة لتطبيق القص.,1,Views/MediaEditorPage.xaml.cs:968
+يجب تسجيل الدخول إلى الحساب أولاً.,1,Views/AccountSubPages.cs:800
+يجوز استخدام Himo للتواصل الشخصي والأنشطة الأخرى التي تسمح بها ميزات التطبيق والقوانين المعمول بها. يجب احترام الآخرين وحقوقهم، وعدم استخدام الخدمة بطريقة تضر بالمستخدمين أو تعطلها أو تعرضها أو تعرض الغير لمخاطر أمنية أو قانونية.,1,Views/LegalDocumentPages.cs:195
+يشمل ملفات الفيديو في ملف النسخة الاحتياطية,1,Views/ChatSettingsPage.cs:346
+يطبق المؤقت على الرسائل الجديدة في هذه المحادثة.,1,Views/ConversationInfoPages.cs:761
+يلزم السماح باستخدام الكاميرا لمسح رمز QR.,1,Views/QrScannerPage.xaml.cs:87
+يلزم السماح بالميكروفون والكاميرا للانضمام,1,Views/CallPage.xaml.cs:1018
+يمكنك إدارة إشعارات التطبيق والأذونات من إعدادات Himo والجهاز، حيث تتوفر هذه الخيارات. قد تبقى الرسائل التشغيلية الضرورية، مثل رموز التحقق أو إشعارات الأمان، فعالة لتقديم خدمة طلبتها أو لحماية الحساب. يجب أن يوضح التطبيق أي إشعارات تسويقية وكيفية تعطيلها إذا كان يرسلها.,1,Views/LegalDocumentPages.cs:238
+يمكنك إيقاف استخدام الخدمة وطلب حذف الحساب عبر الوسيلة التي توفرها Himo. قد يؤدي الحذف إلى فقدان الوصول إلى الحساب ومحتواه. قد يُعلّق الحساب أو يُنهى عند وجود انتهاك جسيم أو متكرر أو خطر أمني أو التزام قانوني. تُراعى الحقوق والإجراءات الإلزامية التي يقررها القانون، وقد تُحتفظ بعض السجلات للمدة اللازمة قانونًا أو لحماية الخدمة من الاحتيال والنزاعات.,1,Views/LegalDocumentPages.cs:205
+يمكنك العودة إلى المحادثات في أي وقت من زر الرجوع.,1,Views/NewConversationPage.cs:121
+يمكنك تقديم طلب الوصول إلى بياناتك أو تصحيحها أو حذفها أو الاعتراض على معالجتها عبر [مسار طلب الخصوصية داخل التطبيق] أو [البريد الرسمي للخصوصية]. قد نطلب معلومات معقولة للتحقق من هويتك وحماية بياناتك، وسنرد ضمن المدة التي يحددها القانون المنطبق. إذا لم تتمكن من حل طلبك، يمكنك اللجوء إلى جهة حماية البيانات المختصة حيثما ينطبق ذلك.,1,Views/LegalDocumentPages.cs:236
+يمكنك نسخ الرابط أو مشاركته أو فتحه لتنزيل Himo.,1,Views/AppDownloadLinkPage.cs:195
+يُحظر استخدام Himo للتهديد أو الابتزاز أو المضايقة أو التنمر أو المطاردة أو الاحتيال أو انتحال الهوية؛ وللتحريض على العنف أو تسهيل نشاط غير قانوني؛ ولنشر محتوى ينتهك الخصوصية أو حقوق الملكية الفكرية؛ ولإرسال رسائل مزعجة أو روابط تصيد أو برمجيات ضارة؛ ولتوزيع محتوى غير قانوني؛ أو لمحاولة اختراق الحسابات أو تجاوز ضوابط الأمان أو تعطيل الخدمة.,1,Views/LegalDocumentPages.cs:196
+يُعرض أكبر {visible.Length.ToString(,1,Views/StorageDataSettingsPage.cs:964
+⧉  نسخ الرابط,1,Views/GroupConversationInfoPages.cs:1706

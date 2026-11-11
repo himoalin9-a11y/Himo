@@ -53,6 +53,13 @@ public sealed class ChatService
         // Deserialize and prepare the full cache on a worker. Chat histories can be
         // large; grouping thousands of messages on the UI thread caused startup stalls.
         _storeLoadTask = Task.Run(() => PrepareStoreSnapshot(ReadStoreSnapshot()));
+        AppLocalization.LanguageChanged += OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        foreach (var conversation in Conversations)
+            conversation.NotifyLastMessagePreviewChanged();
     }
 
     /// <summary>
@@ -124,7 +131,7 @@ public sealed class ChatService
             var conversation = Conversations.FirstOrDefault(x => x.Id == conversationId);
             if (conversation is not null)
             {
-                conversation.LastMessage = string.Empty;
+                conversation.SetLastMessageText(string.Empty);
                 conversation.UnreadCount = 0;
                 conversation.Time = DateTime.Now.ToString("HH:mm");
                 conversation.UpdatedAt = DateTime.Now;
@@ -170,7 +177,10 @@ public sealed class ChatService
             if (conversation is not null)
             {
                 var latest = messages.OrderByDescending(m => m.SentAt).ThenByDescending(m => m.Id).FirstOrDefault();
-                conversation.LastMessage = latest?.Text ?? string.Empty;
+                if (latest is not null && latest.IsAttachment)
+                    conversation.SetLastMessageAttachment(latest.AttachmentContentType);
+                else
+                    conversation.SetLastMessageText(latest?.Text ?? string.Empty);
                 conversation.Time = latest?.SentAt.ToString("HH:mm") ?? string.Empty;
                 conversation.UpdatedAt = latest?.SentAt ?? cutoff;
             }
@@ -293,8 +303,8 @@ public sealed class ChatService
                 conversation.Name = remote.Name;
                 conversation.Initial = remote.Name.Trim()[..1];
             }
-            if (!string.IsNullOrWhiteSpace(remote.LastMessage))
-                conversation.LastMessage = remote.LastMessage;
+            if (!string.IsNullOrWhiteSpace(remote.LastMessage) || !string.IsNullOrWhiteSpace(remote.LastMessageAttachmentContentType))
+                conversation.SetLastMessageFromServer(remote.LastMessage, remote.UpdatedAt.LocalDateTime, remote.LastMessageAttachmentContentType);
             conversation.Time = remote.UpdatedAt.LocalDateTime.ToString("HH:mm");
             conversation.UpdatedAt = remote.UpdatedAt.LocalDateTime;
             conversation.UnreadCount = remote.UnreadCount;
@@ -378,7 +388,7 @@ public sealed class ChatService
             };
 
             InsertMessageChronological(messages, message);
-            conversation.LastMessage = clean;
+            conversation.SetLastMessageText(clean);
             conversation.Time = message.SentAt.ToString("HH:mm");
             conversation.UpdatedAt = message.SentAt;
             Save();
@@ -422,13 +432,7 @@ public sealed class ChatService
             };
 
             InsertMessageChronological(messages, message);
-            conversation.LastMessage = message.IsAudioAttachment
-                ? "رسالة صوتية"
-                : message.IsImageAttachment
-                    ? "صورة"
-                    : contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)
-                        ? "فيديو"
-                        : fileName;
+            conversation.SetLastMessageAttachment(contentType);
             conversation.Time = now.ToString("HH:mm");
             conversation.UpdatedAt = now;
             Save();
@@ -480,7 +484,7 @@ public sealed class ChatService
             };
 
             InsertMessageChronological(messages, message);
-            conversation.LastMessage = clean;
+            conversation.SetLastMessageText(clean);
             conversation.Time = now.ToString("HH:mm");
             conversation.UpdatedAt = now;
             Save();
@@ -740,7 +744,10 @@ public sealed class ChatService
             var c = Conversations.FirstOrDefault(x => x.Id == conversationId);
             if (c != null)
             {
-                c.LastMessage = text;
+                if (!string.IsNullOrWhiteSpace(attachmentFileName))
+                    c.SetLastMessageAttachment(attachmentContentType);
+                else
+                    c.SetLastMessageText(text);
                 c.Time = localTime.ToString("HH:mm");
                 c.UpdatedAt = localTime;
                 if (!isMine) c.UnreadCount++;

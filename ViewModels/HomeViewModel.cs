@@ -33,7 +33,10 @@ public sealed class HomeViewModel
 
     public HomeViewModel(ChatService chat, HimoApiClient api)
     {
-        _chat = chat; _api = api; SearchCommand = new Command(Filter); Filter();
+        _chat = chat;
+        _api = api;
+        SearchCommand = new Command(Filter);
+        Filter();
     }
 
     /// <summary>Load the local conversation snapshot without blocking the UI, then publish it before network refresh.</summary>
@@ -77,9 +80,10 @@ public sealed class HomeViewModel
                 item.IsMuted = x.IsMuted;
                 item.IsBlocked = x.IsBlocked;
                 item.IsGroup = x.IsGroup;
-                item.LastMessage = x.LastMessage;
-                item.Time = x.UpdatedAt.LocalDateTime.ToString("HH:mm");
-                item.UpdatedAt = x.UpdatedAt.LocalDateTime;
+                var remoteUpdatedAt = x.UpdatedAt.LocalDateTime;
+                item.SetLastMessageFromServer(x.LastMessage, remoteUpdatedAt, x.LastMessageAttachmentContentType);
+                item.Time = remoteUpdatedAt.ToString("HH:mm");
+                item.UpdatedAt = remoteUpdatedAt;
                 item.UnreadCount = x.UnreadCount;
                 return item;
             }).ToList();
@@ -164,7 +168,7 @@ public sealed class HomeViewModel
         local.IsMuted = remote.IsMuted;
         local.IsBlocked = remote.IsBlocked;
         local.IsGroup = remote.IsGroup;
-        local.LastMessage = remote.LastMessage;
+        local.SetLastMessageFromServer(remote.LastMessage, remote.UpdatedAt.LocalDateTime, remote.LastMessageAttachmentContentType);
         local.Time = remote.UpdatedAt.LocalDateTime.ToString("HH:mm");
         _ = LoadConversationPhotosAsync(new[] { local });
         local.UpdatedAt = remote.UpdatedAt.LocalDateTime;

@@ -1454,7 +1454,7 @@ public abstract class SettingsHubPageBase : Himo.Services.LocalizedContentPage
             }
             catch (Exception ex)
             {
-                await DisplayAlertAsync(title, Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح الصفحة: ") + ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+                await DisplayAlertAsync(title, Himo.Services.AppLocalization.TranslateSourceText("تعذر فتح الصفحة: ") + Himo.Services.AppLocalization.TranslateSourceText(ex.Message), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
             }
             finally
             {
@@ -1495,7 +1495,7 @@ public abstract class SettingsHubPageBase : Himo.Services.LocalizedContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("رجوع"), "تعذر الرجوع للصفحة السابقة: " + ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("رجوع"),Himo.Services.AppLocalization.TranslateSourceText("تعذر الرجوع للصفحة السابقة: " + Himo.Services.AppLocalization.TranslateSourceText(ex.Message)), Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
         }
         finally
         {

@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.ApplicationModel.DataTransfer;
 using Microsoft.Maui.Controls.Shapes;
@@ -26,7 +26,7 @@ public sealed class AppDownloadLinkPage : LocalizedContentPage
     public AppDownloadLinkPage(HimoApiClient api)
     {
         _api = api ?? throw new ArgumentNullException(nameof(api));
-        Title = "رابط التطبيق";
+        Title = AppLocalization.TranslateSourceText("رابط التطبيق");
         FlowDirection = FlowDirection.RightToLeft;
         Shell.SetNavBarIsVisible(this, false);
         SetDynamicResource(BackgroundColorProperty, "HimoBackground");
@@ -94,7 +94,7 @@ public sealed class AppDownloadLinkPage : LocalizedContentPage
 
         var title = new Label
         {
-            Text = "رابط التطبيق", FontSize = 23, FontAttributes = FontAttributes.Bold,
+            Text = AppLocalization.TranslateSourceText("رابط التطبيق"), FontSize = 23, FontAttributes = FontAttributes.Bold,
             HorizontalTextAlignment = TextAlignment.Start, VerticalTextAlignment = TextAlignment.Center
         };
         title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
@@ -218,9 +218,9 @@ public sealed class AppDownloadLinkPage : LocalizedContentPage
         try
         {
             await Clipboard.Default.SetTextAsync(_downloadUrl);
-            await DisplayAlertAsync("رابط التطبيق", "تم نسخ رابط تنزيل Himo.", "حسنًا");
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("رابط التطبيق"), AppLocalization.TranslateSourceText("تم نسخ رابط تنزيل Himo."), AppLocalization.TranslateSourceText("حسنًا"));
         }
-        catch (Exception ex) { await DisplayAlertAsync("رابط التطبيق", "تعذر نسخ الرابط: " + ex.Message, "حسنًا"); }
+        catch (Exception ex) { await DisplayAlertAsync(AppLocalization.TranslateSourceText("رابط التطبيق"), AppLocalization.TranslateSourceText("تعذر نسخ الرابط: ") + Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا")); }
     }
 
     private async void ShareClicked(object? sender, EventArgs e)
@@ -234,14 +234,14 @@ public sealed class AppDownloadLinkPage : LocalizedContentPage
                 Text = "حمّل تطبيق Himo من الرابط التالي:\n" + _downloadUrl
             });
         }
-        catch (Exception ex) { await DisplayAlertAsync("مشاركة التطبيق", "تعذرت مشاركة الرابط: " + ex.Message, "حسنًا"); }
+        catch (Exception ex) { await DisplayAlertAsync(AppLocalization.TranslateSourceText("مشاركة التطبيق"), AppLocalization.TranslateSourceText("تعذرت مشاركة الرابط: ") + Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا")); }
     }
 
     private async void OpenClicked(object? sender, EventArgs e)
     {
         if (string.IsNullOrWhiteSpace(_downloadUrl)) return;
         try { await Launcher.Default.OpenAsync(new Uri(_downloadUrl)); }
-        catch (Exception ex) { await DisplayAlertAsync("تنزيل Himo", "تعذر فتح الرابط: " + ex.Message, "حسنًا"); }
+        catch (Exception ex) { await DisplayAlertAsync(AppLocalization.TranslateSourceText("تنزيل Himo"), AppLocalization.TranslateSourceText("تعذر فتح الرابط: ") + Himo.Services.AppLocalization.TranslateSourceText(ex.Message), AppLocalization.TranslateSourceText("حسنًا")); }
     }
 
     private async void RetryClicked(object? sender, EventArgs e) => await LoadDownloadUrlAsync();
