@@ -15,6 +15,7 @@ public sealed class ChatMessageTemplateSelector : DataTemplateSelector
         if (item is not ChatMessage message)
             return TextTemplate ?? throw new InvalidOperationException("Text message template is not configured.");
 
+        if (message.IsDeleted) return TextTemplate ?? throw new InvalidOperationException("Text message template is not configured.");
         if (message.IsImageAttachment) return ImageTemplate ?? TextTemplate!;
         if (message.IsVideoAttachment) return VideoTemplate ?? TextTemplate!;
         if (message.IsAudioAttachment) return AudioTemplate ?? TextTemplate!;

@@ -185,8 +185,8 @@
                         <VerticalStackLayout Spacing="5">
                             <Border Padding="0" BackgroundColor="{DynamicResource HimoBackground}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="0.8">
                                 <Border.StrokeShape><shapes:RoundRectangle CornerRadius="16" /></Border.StrokeShape>
-                                <Grid WidthRequest="240" HeightRequest="330" BackgroundColor="{DynamicResource HimoBackground}">
-                                    <Image Source="{Binding AttachmentLocalPath}" Aspect="AspectFit" IsVisible="{Binding HasLocalImagePreview}" />
+                                <Grid WidthRequest="240" HeightRequest="330" BackgroundColor="{DynamicResource HimoBackground}" Loaded="MessageGestureSurfaceLoaded">
+                                    <Image Source="{Binding AttachmentLocalPath}" Aspect="AspectFit" IsVisible="{Binding HasLocalImagePreview}" Loaded="ImagePreviewLoaded" />
                                     <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="5" IsVisible="False">
                                         <VerticalStackLayout.Triggers>
                                             <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding HasLocalImagePreview}" Value="False">
@@ -246,7 +246,7 @@
                         <VerticalStackLayout Spacing="5">
                             <Border Padding="0" BackgroundColor="{DynamicResource HimoBackground}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="0.8">
                                 <Border.StrokeShape><shapes:RoundRectangle CornerRadius="16" /></Border.StrokeShape>
-                                <Grid WidthRequest="240" HeightRequest="350" BackgroundColor="{DynamicResource HimoBackground}">
+                                <Grid WidthRequest="240" HeightRequest="350" BackgroundColor="{DynamicResource HimoBackground}" Loaded="MessageGestureSurfaceLoaded">
                                     <Image Source="{Binding VideoThumbnailPath}" Aspect="AspectFit" IsVisible="{Binding HasVideoPreview}" />
                                     <Grid IsVisible="False">
                                         <Grid.Triggers>
@@ -304,8 +304,8 @@
                     <Border Style="{StaticResource MediaBubble}" Loaded="MessageBubbleLoaded">
                         <Border.StrokeShape><shapes:RoundRectangle CornerRadius="20" /></Border.StrokeShape>
                         <VerticalStackLayout Spacing="6">
-                            <Grid ColumnDefinitions="56,*,Auto" ColumnSpacing="10" HeightRequest="56">
-                                <ImageButton Grid.Column="0" Source="himo_icon_chat_play.png" WidthRequest="46" HeightRequest="46" Padding="12" BackgroundColor="{DynamicResource HimoSurface}" BorderColor="{DynamicResource HimoBorder}" BorderWidth="0.8" Opacity="1" CornerRadius="14" Clicked="AudioClicked" />
+                            <Grid ColumnDefinitions="56,*,Auto" ColumnSpacing="10" HeightRequest="56" Loaded="MessageGestureSurfaceLoaded">
+                                <ImageButton Grid.Column="0" Source="himo_icon_chat_play.png" WidthRequest="46" HeightRequest="46" Padding="12" BackgroundColor="{DynamicResource HimoSurface}" BorderColor="{DynamicResource HimoBorder}" BorderWidth="0.8" Opacity="1" CornerRadius="14" Clicked="AudioClicked" Loaded="MessageGestureSurfaceLoaded" />
                                 <HorizontalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
                                     <BoxView WidthRequest="2.5" HeightRequest="10" Color="#D8B9FF" /><BoxView WidthRequest="2.5" HeightRequest="18" Color="#C89DFF" /><BoxView WidthRequest="2.5" HeightRequest="26" Color="#E1C8FF" /><BoxView WidthRequest="2.5" HeightRequest="15" Color="{DynamicResource HimoAccent}" /><BoxView WidthRequest="2.5" HeightRequest="22" Color="#E1C8FF" /><BoxView WidthRequest="2.5" HeightRequest="30" Color="#F0DEFF" /><BoxView WidthRequest="2.5" HeightRequest="17" Color="{DynamicResource HimoAccent}" /><BoxView WidthRequest="2.5" HeightRequest="24" Color="#E1C8FF" />
                                 </HorizontalStackLayout>
@@ -355,7 +355,7 @@
                     </Grid>
                     <Border Style="{StaticResource MediaBubble}" Loaded="MessageBubbleLoaded" Padding="8">
                         <Border.StrokeShape><shapes:RoundRectangle CornerRadius="18" /></Border.StrokeShape>
-                        <Grid ColumnDefinitions="42,*" ColumnSpacing="9">
+                        <Grid ColumnDefinitions="42,*" ColumnSpacing="9" Loaded="MessageGestureSurfaceLoaded">
                             <Border WidthRequest="42" HeightRequest="42" BackgroundColor="{DynamicResource HimoCard}" StrokeThickness="0">
                                 <Border.StrokeShape><shapes:RoundRectangle CornerRadius="14" /></Border.StrokeShape>
                                 <Image Source="himo_icon_chat_file.png" WidthRequest="20" HeightRequest="20" />

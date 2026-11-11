@@ -1539,6 +1539,34 @@ webApp.MapDelete("/api/messages/{messageId:guid}", async (Guid messageId, HttpRe
     return Results.Ok(message);
 });
 
+webApp.MapGet("/api/conversations/{id:guid}/messages/permanently-deleted", (Guid id, HttpRequest http, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    try
+    {
+        return Results.Ok(store.GetPermanentlyDeletedMessageIds(id, session.UserId));
+    }
+    catch (InvalidOperationException)
+    {
+        return Results.NotFound();
+    }
+});
+
+webApp.MapDelete("/api/messages/{messageId:guid}/permanent", async (Guid messageId, HttpRequest http, MongoStore store, IHubContext<HimoChatHub> hub) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    var message = store.DeleteMessagePermanently(messageId, session.UserId);
+    if (message is null) return Results.NotFound();
+    var recipients = store.GetOtherParticipantUserIds(message.ConversationId, session.UserId);
+    try
+    {
+        await hub.Clients.Groups(recipients.Select(userId => HimoChatHub.UserGroup(userId)))
+            .SendAsync("MessagePermanentlyDeleted", message, http.HttpContext.RequestAborted);
+    }
+    catch { }
+    return Results.Ok(message);
+});
+
 webApp.MapPost("/api/conversations/{id:guid}/attachments", async (Guid id, HttpRequest http, MongoStore store, IHubContext<HimoChatHub> hub) =>
 {
     if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();

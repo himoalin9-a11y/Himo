@@ -1681,6 +1681,19 @@ sealed class MongoStore
         return expired.Count;
     }
 
+    public IReadOnlyList<Guid> GetPermanentlyDeletedMessageIds(Guid conversationId, Guid userId)
+    {
+        EnsureIndexes();
+        if (!ExistsConversation(conversationId, userId))
+            throw new InvalidOperationException("المحادثة غير موجودة أو لا تملك صلاحية الوصول إليها.");
+
+        return _messages.Find(x => x.ConversationId == GuidText(conversationId) && x.IsPermanentlyDeleted == true)
+            .ToList()
+            .Select(x => Guid.TryParse(x.Id, out var id) ? id : Guid.Empty)
+            .Where(x => x != Guid.Empty)
+            .ToList();
+    }
+
     public IReadOnlyList<MessageDto> GetMessages(Guid id, DateTimeOffset? since = null, DateTimeOffset? before = null, Guid? currentUserId = null, Guid? beforeId = null, int limit = 1000)
     {
         EnsureIndexes();
@@ -1701,6 +1714,7 @@ sealed class MongoStore
         var filters = new List<FilterDefinition<MMessage>>
         {
             Builders<MMessage>.Filter.Eq(x => x.ConversationId, cid),
+            Builders<MMessage>.Filter.Ne(x => x.IsPermanentlyDeleted, true),
             Builders<MMessage>.Filter.Eq(x => x.ExpiresAt, null) | Builders<MMessage>.Filter.Gt(x => x.ExpiresAt, now)
         };
         if (historyBoundary is not null)
@@ -1854,6 +1868,70 @@ sealed class MongoStore
         return ToMessageDto(deletedMessage, userId);
     }
 
+    /// <summary>
+    /// Permanently removes a message and its stored attachment bytes. Only the
+    /// original sender may perform this operation; the resulting event is sent
+    /// to the other participants so their local copies are removed as well.
+    /// </summary>
+    public MessageDto? DeleteMessagePermanently(Guid messageId, Guid userId)
+    {
+        EnsureIndexes();
+        var messageIds = GuidTextVariants(messageId);
+        var senderIds = GuidTextVariants(userId);
+        var filter = Builders<MMessage>.Filter.In(x => x.Id, messageIds)
+            & Builders<MMessage>.Filter.In(x => x.SenderUserId, senderIds)
+            & Builders<MMessage>.Filter.Ne(x => x.IsPermanentlyDeleted, true);
+        var existing = _messages.Find(filter).FirstOrDefault();
+        if (existing is null) return null;
+
+        var deletedAt = NowText();
+        var update = Builders<MMessage>.Update
+            .Set(x => x.Text, string.Empty)
+            .Set(x => x.DeletedAt, deletedAt)
+            .Set(x => x.IsPermanentlyDeleted, true)
+            .Set(x => x.SenderPhoneNumber, string.Empty)
+            .Unset(x => x.ClientMessageId)
+            .Unset(x => x.EditedAt)
+            .Unset(x => x.AttachmentData)
+            .Unset(x => x.AttachmentGridFsId)
+            .Unset(x => x.AudioGridFsId)
+            .Unset(x => x.AttachmentFileName)
+            .Unset(x => x.AttachmentContentType)
+            .Unset(x => x.AttachmentSize)
+            .Unset(x => x.ReplyToMessageId);
+        var tombstone = _messages.FindOneAndUpdate(
+            filter,
+            update,
+            new FindOneAndUpdateOptions<MMessage> { ReturnDocument = ReturnDocument.After });
+        if (tombstone is null) return null;
+
+        // Erase the message body and all attachment bytes/metadata. Keep only an
+        // invisible ID tombstone so offline devices can remove stale local copies.
+        DeleteGridFile(existing);
+        _receipts.DeleteMany(x => x.MessageId == existing.Id);
+
+        var latest = _messages.Find(x => x.ConversationId == existing.ConversationId && x.IsPermanentlyDeleted != true)
+            .ToList()
+            .OrderByDescending(x => x.SentAt, StringComparer.Ordinal)
+            .ThenByDescending(x => x.Id, StringComparer.Ordinal)
+            .FirstOrDefault();
+        if (latest is null)
+        {
+            _conversations.UpdateOne(
+                x => x.Id == existing.ConversationId,
+                Builders<MConversation>.Update.Set(x => x.LastMessage, string.Empty).Set(x => x.UpdatedAt, deletedAt));
+        }
+        else
+        {
+            _conversations.UpdateOne(
+                x => x.Id == existing.ConversationId,
+                Builders<MConversation>.Update.Set(x => x.LastMessage, latest.DeletedAt is null ? latest.Text : "تم حذف هذه الرسالة")
+                    .Set(x => x.UpdatedAt, latest.SentAt));
+        }
+
+        return ToMessageDto(tombstone, userId);
+    }
+
     private static string[] GuidTextVariants(Guid id)
     {
         var formats = new[] { "D", "N", "B", "P" };
@@ -1950,7 +2028,7 @@ sealed class MongoStore
 [BsonIgnoreExtraElements] sealed class MBlockedUser { [BsonId] public string Id { get; set; } = ""; public string BlockerUserId { get; set; } = ""; public string BlockedUserId { get; set; } = ""; public string CreatedAt { get; set; } = ""; }
 [BsonIgnoreExtraElements] sealed class MReport { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string ReporterUserId { get; set; } = ""; public string Reason { get; set; } = ""; public string CreatedAt { get; set; } = ""; }
 [BsonIgnoreExtraElements] sealed class MReceipt { [BsonId] public string Id { get; set; } = ""; public string MessageId { get; set; } = ""; public string RecipientUserId { get; set; } = ""; public string? DeliveredAt { get; set; } public string? ReadAt { get; set; } }
-[BsonIgnoreExtraElements] sealed class MMessage { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string SenderUserId { get; set; } = ""; public string SenderPhoneNumber { get; set; } = ""; public string Text { get; set; } = ""; public string SentAt { get; set; } = ""; public string? ClientMessageId { get; set; } public string? AttachmentFileName { get; set; } public string? AttachmentContentType { get; set; } public long? AttachmentSize { get; set; } public byte[]? AttachmentData { get; set; } public string? AttachmentGridFsId { get; set; } public string? AudioGridFsId { get; set; } public string? ReplyToMessageId { get; set; } public string? EditedAt { get; set; } public string? DeletedAt { get; set; } public string? ExpiresAt { get; set; } }
+[BsonIgnoreExtraElements] sealed class MMessage { [BsonId] public string Id { get; set; } = ""; public string ConversationId { get; set; } = ""; public string SenderUserId { get; set; } = ""; public string SenderPhoneNumber { get; set; } = ""; public string Text { get; set; } = ""; public string SentAt { get; set; } = ""; public string? ClientMessageId { get; set; } public string? AttachmentFileName { get; set; } public string? AttachmentContentType { get; set; } public long? AttachmentSize { get; set; } public byte[]? AttachmentData { get; set; } public string? AttachmentGridFsId { get; set; } public string? AudioGridFsId { get; set; } public string? ReplyToMessageId { get; set; } public string? EditedAt { get; set; } public string? DeletedAt { get; set; } public bool IsPermanentlyDeleted { get; set; } public string? ExpiresAt { get; set; } }
 
 record LinkedDeviceRecord(string DeviceId, string DeviceName, string DeviceType, DateTimeOffset CreatedAt, DateTimeOffset LastSeenAt);
 record MobilePairingRequestInfo(Guid PairingId, string DeviceName, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt);

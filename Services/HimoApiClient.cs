@@ -1674,6 +1674,38 @@ public sealed class HimoApiClient
                 "استجابة حذف الرسالة غير صالحة.");
     }
 
+    public async Task<MessageDto> DeleteMessagePermanentlyAsync(
+        Guid messageId,
+        CancellationToken cancellationToken = default)
+    {
+        using var response =
+            await _http.DeleteAsync(
+                $"api/messages/{messageId}/permanent",
+                cancellationToken);
+
+        await EnsureSuccessAsync(
+            response,
+            cancellationToken);
+
+        return await response.Content
+            .ReadFromJsonAsync<MessageDto>(
+                cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException(
+                "استجابة الحذف النهائي غير صالحة.");
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetPermanentlyDeletedMessageIdsAsync(
+        Guid conversationId,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync(
+            $"api/conversations/{conversationId}/messages/permanently-deleted",
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<Guid[]>(cancellationToken: cancellationToken)
+            ?? Array.Empty<Guid>();
+    }
+
     public async Task<MessageDto> UploadAttachmentAsync(
         Guid conversationId,
         FileResult file,

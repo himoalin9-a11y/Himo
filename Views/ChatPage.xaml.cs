@@ -55,6 +55,7 @@ public partial class ChatPage : ContentPage
     private bool _typingActive;
     private bool _remoteTyping;
     private bool _initialRemoteSyncCompleted;
+    private DateTime _lastPermanentDeleteSyncUtc = DateTime.MinValue;
     private ChatMessage? _replyingTo;
     private readonly HashSet<int> _selectedMessageIds = new();
     // Diagnostic-only stopwatch for identifying which message templates are realized during chat opening.
@@ -151,6 +152,7 @@ public partial class ChatPage : ContentPage
         Interlocked.Exchange(ref _initialScrollInProgress, 0);
         _lastVisibleItemIndex = -1;
         _initialRemoteSyncCompleted = false;
+        _lastPermanentDeleteSyncUtc = DateTime.MinValue;
         _localFirstRenderCompleted = false;
         _visibleOldestSentAt = null;
         _visibleOldestRemoteId = null;
@@ -164,11 +166,31 @@ public partial class ChatPage : ContentPage
 
     // These handlers are temporary diagnostics. They report the template type and elapsed
     // time when each item root reaches Loaded, capped to avoid flooding the device log.
-    private void ChatTextTemplateLoaded(object? sender, EventArgs e) => TraceChatTemplateLoaded("Text");
-    private void ChatImageTemplateLoaded(object? sender, EventArgs e) => TraceChatTemplateLoaded("Image");
-    private void ChatVideoTemplateLoaded(object? sender, EventArgs e) => TraceChatTemplateLoaded("Video");
-    private void ChatAudioTemplateLoaded(object? sender, EventArgs e) => TraceChatTemplateLoaded("Audio");
-    private void ChatFileTemplateLoaded(object? sender, EventArgs e) => TraceChatTemplateLoaded("File");
+    private void ChatTextTemplateLoaded(object? sender, EventArgs e)
+    {
+        TraceChatTemplateLoaded("Text");
+        AttachMessageRowGestures(sender);
+    }
+    private void ChatImageTemplateLoaded(object? sender, EventArgs e)
+    {
+        TraceChatTemplateLoaded("Image");
+        AttachMessageRowGestures(sender);
+    }
+    private void ChatVideoTemplateLoaded(object? sender, EventArgs e)
+    {
+        TraceChatTemplateLoaded("Video");
+        AttachMessageRowGestures(sender);
+    }
+    private void ChatAudioTemplateLoaded(object? sender, EventArgs e)
+    {
+        TraceChatTemplateLoaded("Audio");
+        AttachMessageRowGestures(sender);
+    }
+    private void ChatFileTemplateLoaded(object? sender, EventArgs e)
+    {
+        TraceChatTemplateLoaded("File");
+        AttachMessageRowGestures(sender);
+    }
 
     private void TraceChatTemplateLoaded(string templateKind)
     {
@@ -192,11 +214,13 @@ public partial class ChatPage : ContentPage
         _chat = chat; _api = api; _account = account; _notifications = notifications; _realtime = realtime;
         _realtime.MessageReceived += OnRealtimeMessageReceived;
         _chat.MessagesChanged += OnChatMessagesChanged;
+        _chat.MessageTemplateChanged += OnChatMessageTemplateChanged;
         _realtime.UserPresenceChanged += OnUserPresenceChanged;
         _realtime.UserTypingChanged += OnUserTypingChanged;
         _realtime.MessageDeliveryChanged += OnMessageDeliveryChanged;
         _realtime.MessageEdited += OnMessageEdited;
         _realtime.MessageDeleted += OnMessageDeleted;
+        _realtime.MessagePermanentlyDeleted += OnMessagePermanentlyDeleted;
         _realtime.Reconnected += OnRealtimeReconnected;
         _realtime.GroupCallStateChanged += OnGroupCallStateChanged;
 
@@ -2335,8 +2359,19 @@ public partial class ChatPage : ContentPage
     private void OnMessageDeleted(object? sender, MessageDto message)
     {
         if (!Guid.TryParse(_remoteConversationId, out var conversationId) || message.ConversationId != conversationId) return;
-        if (_chat.UpdateMessageDeleted(message.Id.ToString("D")))
+        _chat.UpdateMessageDeleted(message.Id.ToString("D"));
+    }
+
+    private void OnMessagePermanentlyDeleted(object? sender, MessageDto message)
+    {
+        if (!Guid.TryParse(_remoteConversationId, out var conversationId) || message.ConversationId != conversationId) return;
+        if (_chat.RemoveMessagePermanently(message.Id.ToString("D")))
+        {
+            _selectedMessageIds.RemoveWhere(id => !_chat.GetMessages(_conversationId).Any(x => x.Id == id));
+            if (_selectedMessageIds.Count == 0) ExitSelectionMode();
+            else UpdateSelectionBar();
             RefreshMessagesView(scrollToEnd: false, forceReset: true);
+        }
     }
 
     private void OnMessageDeliveryChanged(object? sender, (Guid MessageId, Guid UserId, string Status) e)
@@ -2474,6 +2509,23 @@ public partial class ChatPage : ContentPage
             catch (OperationCanceledException) { break; }
             catch { }
         }
+    }
+
+    private void OnChatMessageTemplateChanged(int localConversationId)
+    {
+        if (!IsConversationVisible) return;
+        var conversation = _chat.Conversations.FirstOrDefault(x => x.Id == localConversationId);
+        var matchesCurrent = localConversationId == _conversationId ||
+            (conversation is not null && !string.IsNullOrWhiteSpace(_remoteConversationId) &&
+             string.Equals(conversation.RemoteId, _remoteConversationId, StringComparison.OrdinalIgnoreCase));
+        if (!matchesCurrent) return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (!IsConversationVisible) return;
+            if (_conversationId <= 0) _conversationId = localConversationId;
+            RefreshMessagesView(scrollToEnd: false, forceReset: true);
+        });
     }
 
     private void OnChatMessagesChanged(int localConversationId)
@@ -2680,6 +2732,23 @@ public partial class ChatPage : ContentPage
                 if (added && !isMine)
                     _ = _realtime.MarkMessageDeliveredAsync(message.Id);
 
+            }
+
+            if (wasInitialSync || DateTime.UtcNow - _lastPermanentDeleteSyncUtc >= TimeSpan.FromMinutes(1))
+            {
+                try
+                {
+                    var permanentlyDeletedIds = await _api.GetPermanentlyDeletedMessageIdsAsync(
+                        remoteConversationId, cancellationToken).ConfigureAwait(false);
+                    foreach (var deletedId in permanentlyDeletedIds)
+                        _chat.RemoveMessagePermanently(deletedId.ToString("D"));
+                    _lastPermanentDeleteSyncUtc = DateTime.UtcNow;
+                }
+                catch (Exception syncException)
+                {
+                    // A tombstone-sync failure must not block ordinary message history.
+                    System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Permanent-delete tombstone sync failed: {syncException.Message}");
+                }
             }
 
             var allMessages = _chat.GetMessages(_conversationId);
@@ -4208,25 +4277,76 @@ public partial class ChatPage : ContentPage
     {
         if (sender is not Button button || button.BindingContext is not ChatMessage message || message.IsDeleted)
             return;
-
-        if (!Guid.TryParse(message.RemoteId, out var messageId))
+        if (!message.IsMine)
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الرسالة"), "هذه الرسالة لم تحصل بعد على رقم من الخادم، لذلك لا يمكن حذفها الآن.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("حذف الرسالة"),
+                AppLocalization.TranslateSourceText("يمكنك حذف الرسائل التي أرسلتها فقط."),
+                AppLocalization.TranslateSourceText("حسنًا"));
+            return;
+        }
+        if (!Guid.TryParse(message.RemoteId, out _))
+        {
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("حذف الرسالة"),
+                AppLocalization.TranslateSourceText("هذه الرسالة لم تحصل بعد على رقم من الخادم، لذلك لا يمكن حذفها الآن."),
+                AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
-        var confirm = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الرسالة"), AppLocalization.TranslateSourceText("هل تريد حذف الرسالة؟"), Himo.Services.AppLocalization.TranslateSourceText("حذف"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
+        var permanent = await ChoosePermanentDeleteModeAsync(1);
+        if (permanent is null) return;
+
+        var title = AppLocalization.TranslateSourceText(permanent.Value ? "الحذف النهائي" : "حذف من الطرفين");
+        var body = permanent.Value
+            ? AppLocalization.TranslateSourceText("سيتم حذف الرسالة ومرفقها نهائيًا من الخادم ومن المحادثة لدى الطرفين، ولا يمكن التراجع عن ذلك. هل تريد المتابعة؟")
+            : AppLocalization.TranslateSourceText("سيتم حذف محتوى الرسالة لدى الطرفين واستبداله بإشعار بأن الرسالة حُذفت. هل تريد المتابعة؟");
+        var confirm = await DisplayAlertAsync(title, body,
+            AppLocalization.TranslateSourceText(permanent.Value ? "حذف نهائي" : "حذف من الطرفين"),
+            AppLocalization.TranslateSourceText("إلغاء"));
         if (!confirm) return;
 
         try
         {
-            var deleted = await _api.DeleteMessageAsync(messageId);
-            _chat.UpdateMessageDeleted(deleted.Id.ToString("D"));
+            await DeleteMessageWithModeAsync(message, permanent.Value);
             RefreshMessagesView(scrollToEnd: false, forceReset: true);
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الرسالة"), ex.Message, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(title, ex.Message, AppLocalization.TranslateSourceText("حسنًا"));
+        }
+    }
+
+    private async Task<bool?> ChoosePermanentDeleteModeAsync(int count)
+    {
+        var deleteForBoth = AppLocalization.TranslateSourceText("حذف من الطرفين");
+        var deletePermanently = AppLocalization.TranslateSourceText("حذف نهائيًا");
+        var title = count == 1
+            ? AppLocalization.TranslateSourceText("اختر طريقة حذف الرسالة")
+            : AppLocalization.TranslateSourceText("اختر طريقة حذف الرسائل");
+        var choice = await DisplayActionSheetAsync(title,
+            AppLocalization.TranslateSourceText("إلغاء"), null, deleteForBoth, deletePermanently);
+        if (string.Equals(choice, deleteForBoth, StringComparison.Ordinal)) return false;
+        if (string.Equals(choice, deletePermanently, StringComparison.Ordinal)) return true;
+        return null;
+    }
+
+    private async Task DeleteMessageWithModeAsync(ChatMessage message, bool permanently)
+    {
+        if (!message.IsMine || !Guid.TryParse(message.RemoteId, out var messageId))
+            throw new InvalidOperationException(AppLocalization.TranslateSourceText("يمكن حذف الرسائل المرسلة من حسابك فقط وبعد وصولها إلى الخادم."));
+
+        if (permanently)
+        {
+            var deleted = await _api.DeleteMessagePermanentlyAsync(messageId);
+            var remoteId = deleted.Id.ToString("D");
+            if (!_chat.RemoveMessagePermanently(remoteId) &&
+                _chat.GetMessages(_conversationId).Any(x => string.Equals(x.RemoteId, remoteId, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException(AppLocalization.TranslateSourceText("حُذفت الرسالة من الخادم، لكن تعذر تحديث النسخة المحلية. أعد فتح المحادثة للمزامنة."));
+        }
+        else
+        {
+            var deleted = await _api.DeleteMessageAsync(messageId);
+            if (!_chat.UpdateMessageDeleted(deleted.Id.ToString("D")))
+                throw new InvalidOperationException(AppLocalization.TranslateSourceText("حُذفت الرسالة من الخادم، لكن تعذر تحديث النسخة المحلية. أعد فتح المحادثة للمزامنة."));
         }
     }
 
@@ -4312,9 +4432,10 @@ public partial class ChatPage : ContentPage
 
         // The Image consumes the touch sequence itself, so the parent message
         // bubble cannot receive a long-press when the user presses directly
-        // on the photo. Attach the same native long-click behavior to the image.
-        if (!nativeView.LongClickable)
-            nativeView.LongClickable = true;
+        // on the photo. Attach the same native long-click behavior once per view.
+        if (!_longPressViews.Add(nativeView))
+            return;
+        nativeView.LongClickable = true;
 
         nativeView.LongClick += (_, args) =>
         {
@@ -4324,6 +4445,56 @@ public partial class ChatPage : ContentPage
                 args.Handled = true;
             }
         };
+    }
+
+    private void MessageGestureSurfaceLoaded(object? sender, EventArgs e)
+    {
+#if ANDROID
+        if (sender is not Element element || element.Handler?.PlatformView is not global::Android.Views.View nativeView)
+            return;
+        if (!_longPressViews.Add(nativeView))
+            return;
+
+        // Media preview controls can consume their own touch stream. Register the
+        // same long-press selection directly on each interactive media surface.
+        nativeView.LongClickable = true;
+        nativeView.LongClick += (_, args) =>
+        {
+            if (element.BindingContext is ChatMessage message && !message.IsDeleted)
+            {
+                MessageLongPressed(message);
+                args.Handled = true;
+            }
+        };
+#endif
+    }
+
+    private void AttachMessageRowGestures(object? sender)
+    {
+#if ANDROID
+        if (sender is not VerticalStackLayout row || row.Handler?.PlatformView is not global::Android.Views.View nativeView)
+            return;
+        if (!_longPressViews.Add(nativeView))
+            return;
+
+        // The outer row fills the complete chat width. This makes the empty strip
+        // beside a left/right-aligned bubble selectable with the same gestures.
+        nativeView.Clickable = true;
+        nativeView.LongClickable = true;
+        nativeView.Click += (_, _) =>
+        {
+            if (_selectionMode && row.BindingContext is ChatMessage message && !message.IsDeleted)
+                ToggleMessageSelection(message);
+        };
+        nativeView.LongClick += (_, args) =>
+        {
+            if (row.BindingContext is ChatMessage message && !message.IsDeleted)
+            {
+                MessageLongPressed(message);
+                args.Handled = true;
+            }
+        };
+#endif
     }
 
     private void MessageBubbleLoaded(object? sender, EventArgs e)
@@ -4520,30 +4691,41 @@ public partial class ChatPage : ContentPage
             return;
         }
 
-        var deletable = selected.Where(x => Guid.TryParse(x.RemoteId, out _)).ToList();
+        var deletable = selected
+            .Where(x => x.IsMine && Guid.TryParse(x.RemoteId, out _))
+            .ToList();
         if (deletable.Count == 0)
         {
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الرسائل"), "الرسائل المحددة لم تحصل بعد على أرقام من الخادم، أرسلها وانتظر اكتمال الإرسال ثم حاول الحذف.", Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(AppLocalization.TranslateSourceText("حذف الرسائل"),
+                AppLocalization.TranslateSourceText("يمكن حذف الرسائل التي أرسلتها فقط وبعد وصولها إلى الخادم."),
+                AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
-        var confirm = await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الرسائل"), $"حذف {deletable.Count} رسالة؟", Himo.Services.AppLocalization.TranslateSourceText("حذف"), Himo.Services.AppLocalization.TranslateSourceText("إلغاء"));
+        var permanent = await ChoosePermanentDeleteModeAsync(deletable.Count);
+        if (permanent is null) return;
+
+        var title = AppLocalization.TranslateSourceText(permanent.Value ? "الحذف النهائي" : "حذف من الطرفين");
+        var body = permanent.Value
+            ? string.Format(AppLocalization.TranslateSourceText("سيتم حذف {0} رسالة ومرفقاتها نهائيًا من الخادم لدى الطرفين. لا يمكن التراجع عن ذلك. هل تريد المتابعة؟"), deletable.Count)
+            : string.Format(AppLocalization.TranslateSourceText("سيتم حذف {0} رسالة لدى الطرفين واستبدال محتواها بإشعار الحذف. هل تريد المتابعة؟"), deletable.Count);
+        var confirm = await DisplayAlertAsync(title, body,
+            AppLocalization.TranslateSourceText(permanent.Value ? "حذف نهائي" : "حذف من الطرفين"),
+            AppLocalization.TranslateSourceText("إلغاء"));
         if (!confirm) return;
 
         var failures = new List<string>();
         foreach (var message in deletable)
         {
-            if (!Guid.TryParse(message.RemoteId, out var messageId))
-                continue;
-
             try
             {
-                var deleted = await _api.DeleteMessageAsync(messageId);
-                _chat.UpdateMessageDeleted(deleted.Id.ToString("D"));
+                await DeleteMessageWithModeAsync(message, permanent.Value);
             }
             catch (Exception ex)
             {
-                failures.Add(string.IsNullOrWhiteSpace(ex.Message) ? "تعذر حذف إحدى الرسائل." : ex.Message);
+                failures.Add(string.IsNullOrWhiteSpace(ex.Message)
+                    ? AppLocalization.TranslateSourceText("تعذر حذف إحدى الرسائل.")
+                    : ex.Message);
             }
         }
 
@@ -4553,7 +4735,13 @@ public partial class ChatPage : ContentPage
         if (failures.Count > 0)
         {
             var details = string.Join(Environment.NewLine, failures.Distinct().Take(3));
-            await DisplayAlertAsync(Himo.Services.AppLocalization.TranslateSourceText("حذف الرسائل"), details, Himo.Services.AppLocalization.TranslateSourceText("حسنًا"));
+            await DisplayAlertAsync(title, details, AppLocalization.TranslateSourceText("حسنًا"));
+        }
+        else if (selected.Count > deletable.Count)
+        {
+            await DisplayAlertAsync(title,
+                AppLocalization.TranslateSourceText("تم حذف الرسائل التي أرسلتها إلى الخادم فقط. لم تُحذف الرسائل الواردة أو التي لم يكتمل إرسالها."),
+                AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
 

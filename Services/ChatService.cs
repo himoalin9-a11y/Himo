@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Text.Json;
 using Himo.Models;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Storage;
 
 namespace Himo.Services;
 
@@ -20,6 +21,7 @@ public sealed class ChatService
     public event EventHandler? ConversationsChanged;
     // Raised when an incoming/outgoing message is added to the local cache.
     public event Action<int>? MessagesChanged;
+    public event Action<int>? MessageTemplateChanged;
 
     private void NotifyConversationsChanged()
     {
@@ -39,6 +41,18 @@ public sealed class ChatService
         {
             try { MessagesChanged?.Invoke(conversationId); }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo ChatStore] Message change subscriber failed: {ex.Message}"); }
+        }
+
+        if (MainThread.IsMainThread) Notify();
+        else MainThread.BeginInvokeOnMainThread(Notify);
+    }
+
+    private void NotifyMessageTemplateChanged(int conversationId)
+    {
+        void Notify()
+        {
+            try { MessageTemplateChanged?.Invoke(conversationId); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo ChatStore] Message template change subscriber failed: {ex.Message}"); }
         }
 
         if (MainThread.IsMainThread) Notify();
@@ -634,20 +648,113 @@ public sealed class ChatService
     {
         if (string.IsNullOrWhiteSpace(remoteId)) return false;
         EnsureLoaded();
+        int? changedConversationId = null;
         lock (_sync)
         {
-            foreach (var messages in _messages.Values)
+            foreach (var pair in _messages)
             {
-                var message = messages.FirstOrDefault(x => string.Equals(x.RemoteId, remoteId, StringComparison.OrdinalIgnoreCase));
+                var message = pair.Value.FirstOrDefault(x => string.Equals(x.RemoteId, remoteId, StringComparison.OrdinalIgnoreCase));
                 if (message is null) continue;
+                DeleteMessageCacheFiles(message);
+                message.AttachmentLocalPath = null;
+                message.VideoThumbnailPath = null;
+                message.AttachmentFileName = null;
+                message.AttachmentContentType = null;
+                message.AttachmentSize = null;
                 message.Text = "تم حذف هذه الرسالة";
                 message.IsDeleted = true;
                 message.IsEdited = false;
+                message.IsSelected = false;
+                message.TranslatedText = null;
+                message.IsTranslationVisible = false;
+                changedConversationId = pair.Key;
+                var conversation = Conversations.FirstOrDefault(x => x.Id == pair.Key);
+                if (conversation is not null && pair.Value.LastOrDefault()?.Id == message.Id)
+                    conversation.SetLastMessageText(message.Text);
                 Save();
-                return true;
+                break;
             }
         }
+        if (changedConversationId.HasValue)
+        {
+            NotifyMessageTemplateChanged(changedConversationId.Value);
+            NotifyConversationsChanged();
+            return true;
+        }
         return false;
+    }
+
+    /// <summary>Removes a message that the server has permanently deleted.</summary>
+    public bool RemoveMessagePermanently(string remoteId)
+    {
+        if (string.IsNullOrWhiteSpace(remoteId)) return false;
+        EnsureLoaded();
+        int? changedConversationId = null;
+        lock (_sync)
+        {
+            foreach (var pair in _messages)
+            {
+                var message = pair.Value.FirstOrDefault(x => string.Equals(x.RemoteId, remoteId, StringComparison.OrdinalIgnoreCase));
+                if (message is null) continue;
+                DeleteMessageCacheFiles(message);
+                pair.Value.Remove(message);
+                changedConversationId = pair.Key;
+                var conversation = Conversations.FirstOrDefault(x => x.Id == pair.Key);
+                if (conversation is not null)
+                {
+                    var latest = pair.Value.LastOrDefault();
+                    if (latest is null)
+                        conversation.SetLastMessageText(string.Empty);
+                    else if (latest.IsAttachment)
+                        conversation.SetLastMessageAttachment(latest.AttachmentContentType);
+                    else
+                        conversation.SetLastMessageText(latest.Text);
+                    if (latest is not null)
+                    {
+                        conversation.Time = latest.SentAt.ToString("HH:mm");
+                        conversation.UpdatedAt = latest.SentAt;
+                    }
+                }
+                Save();
+                break;
+            }
+        }
+        if (changedConversationId.HasValue)
+        {
+            NotifyMessagesChanged(changedConversationId.Value);
+            NotifyConversationsChanged();
+            return true;
+        }
+        return false;
+    }
+
+    private static void DeleteMessageCacheFiles(ChatMessage message)
+    {
+        if (!Guid.TryParse(message.RemoteId, out var messageId)) return;
+        try
+        {
+            var cacheRoot = Path.GetFullPath(FileSystem.Current.CacheDirectory)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            var expectedAttachmentPrefix = $"himo_{messageId:N}_";
+            var expectedThumbnailPrefix = $"himo_video_thumb_{messageId:D}".Replace('-', '_');
+
+            foreach (var candidate in new[] { message.AttachmentLocalPath, message.VideoThumbnailPath })
+            {
+                if (string.IsNullOrWhiteSpace(candidate)) continue;
+                var fullPath = Path.GetFullPath(candidate);
+                if (!fullPath.StartsWith(cacheRoot, StringComparison.OrdinalIgnoreCase)) continue;
+                var fileName = Path.GetFileName(fullPath);
+                if (!fileName.StartsWith(expectedAttachmentPrefix, StringComparison.OrdinalIgnoreCase) &&
+                    !fileName.StartsWith(expectedThumbnailPrefix, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                try { if (File.Exists(fullPath)) File.Delete(fullPath); } catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatStore] Could not clear deleted message cache: {ex.Message}");
+        }
     }
 
     public bool UpdateMessageText(string remoteId, string text, DateTime? editedAt = null)
@@ -718,6 +825,21 @@ public sealed class ChatService
                 {
                     // The message content is a duplicate, but its receipt may have advanced.
                     var metadataChanged = existingRemote.IsMine && isMine && SetDeliveryStatusIfNewer(existingRemote, deliveryStatus);
+                    var templateChanged = false;
+                    if (isDeleted && !existingRemote.IsDeleted)
+                    {
+                        DeleteMessageCacheFiles(existingRemote);
+                        existingRemote.AttachmentLocalPath = null;
+                        existingRemote.VideoThumbnailPath = null;
+                        existingRemote.AttachmentFileName = null;
+                        existingRemote.AttachmentContentType = null;
+                        existingRemote.AttachmentSize = null;
+                        existingRemote.Text = "تم حذف هذه الرسالة";
+                        existingRemote.IsDeleted = true;
+                        existingRemote.IsEdited = false;
+                        metadataChanged = true;
+                        templateChanged = true;
+                    }
                     if (expiresAt.HasValue && existingRemote.ExpiresAt != expiresAt)
                     {
                         existingRemote.ExpiresAt = expiresAt;
@@ -726,7 +848,8 @@ public sealed class ChatService
                     if (metadataChanged)
                     {
                         Save();
-                        NotifyMessagesChanged(conversationId);
+                        if (templateChanged) NotifyMessageTemplateChanged(conversationId);
+                        else NotifyMessagesChanged(conversationId);
                     }
                     return false;
                 }

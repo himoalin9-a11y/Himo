@@ -1,4 +1,4 @@
-using Himo.Services;
+﻿using Himo.Services;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
@@ -371,16 +371,34 @@ public sealed class ChatMessage : INotifyPropertyChanged
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
         }
     }
-    public bool IsDeleted { get; set; }
+    private bool _isDeleted;
+    public bool IsDeleted
+    {
+        get => _isDeleted;
+        set
+        {
+            if (_isDeleted == value) return;
+            _isDeleted = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDeleted)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsAttachment)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsImageAttachment)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsAudioAttachment)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsVideoAttachment)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasLocalImagePreview)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasVideoPreview)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AttachmentDisplayName)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AttachmentLabel)));
+        }
+    }
     /// <summary>Server-specified expiry for disappearing messages.</summary>
     public DateTime? ExpiresAt { get; set; }
     public string EditedLabel => IsEdited ? "(معدلة)" : string.Empty;
     public string DateSeparatorText { get; set; } = string.Empty;
     public bool HasDateSeparator => !string.IsNullOrWhiteSpace(DateSeparatorText);
     public bool HasReply => !string.IsNullOrWhiteSpace(ReplyToRemoteId) || !string.IsNullOrWhiteSpace(ReplyToText);
-    public string? AttachmentFileName { get; init; }
-    public string? AttachmentContentType { get; init; }
-    public long? AttachmentSize { get; init; }
+    public string? AttachmentFileName { get; set; }
+    public string? AttachmentContentType { get; set; }
+    public long? AttachmentSize { get; set; }
     private string? _attachmentLocalPath;
     public string? AttachmentLocalPath
     {
@@ -446,11 +464,11 @@ public sealed class ChatMessage : INotifyPropertyChanged
         }
     }
 
-    public bool IsAttachment => !string.IsNullOrWhiteSpace(AttachmentFileName);
-    public bool IsImageAttachment => AttachmentContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
+    public bool IsAttachment => !IsDeleted && !string.IsNullOrWhiteSpace(AttachmentFileName);
+    public bool IsImageAttachment => IsAttachment && AttachmentContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
     public bool HasLocalImagePreview => IsImageAttachment && !string.IsNullOrWhiteSpace(AttachmentLocalPath);
-    public bool IsAudioAttachment => AttachmentContentType?.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) == true;
-    public bool IsVideoAttachment => AttachmentContentType?.StartsWith("video/", StringComparison.OrdinalIgnoreCase) == true;
+    public bool IsAudioAttachment => IsAttachment && AttachmentContentType?.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) == true;
+    public bool IsVideoAttachment => IsAttachment && AttachmentContentType?.StartsWith("video/", StringComparison.OrdinalIgnoreCase) == true;
     public bool HasVideoPreview => IsVideoAttachment && !string.IsNullOrWhiteSpace(VideoThumbnailPath);
 
     [JsonIgnore]

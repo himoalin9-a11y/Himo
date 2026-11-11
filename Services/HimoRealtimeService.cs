@@ -25,6 +25,7 @@ public sealed class HimoRealtimeService
     public event EventHandler<(Guid MessageId, Guid UserId, string Status)>? MessageDeliveryChanged;
     public event EventHandler<MessageDto>? MessageEdited;
     public event EventHandler<MessageDto>? MessageDeleted;
+    public event EventHandler<MessageDto>? MessagePermanentlyDeleted;
     public event EventHandler? Reconnected;
     public event EventHandler<CallSignalMessage>? CallSignalReceived;
     public event Action<GroupCallSessionDto>? GroupCallStateChanged;
@@ -180,6 +181,16 @@ public sealed class HimoRealtimeService
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     MessageDeleted?.Invoke(this, message);
+                });
+            });
+
+        connection.On<MessageDto>(
+            "MessagePermanentlyDeleted",
+            message =>
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    MessagePermanentlyDeleted?.Invoke(this, message);
                 });
             });
 
