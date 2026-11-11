@@ -684,6 +684,43 @@ public sealed class ChatService
         return false;
     }
 
+    /// <summary>Removes an outgoing message that has not been accepted by the server yet.</summary>
+    public bool RemovePendingMessage(int conversationId, int localMessageId)
+    {
+        EnsureLoaded();
+        var removed = false;
+        lock (_sync)
+        {
+            if (!_messages.TryGetValue(conversationId, out var messages)) return false;
+            var message = messages.FirstOrDefault(x => x.Id == localMessageId && x.IsMine && x.IsPending);
+            if (message is null) return false;
+
+            DeleteMessageCacheFiles(message);
+            messages.Remove(message);
+            var conversation = Conversations.FirstOrDefault(x => x.Id == conversationId);
+            if (conversation is not null)
+            {
+                var latest = messages.LastOrDefault();
+                if (latest is null) conversation.SetLastMessageText(string.Empty);
+                else if (latest.IsAttachment) conversation.SetLastMessageAttachment(latest.AttachmentContentType);
+                else conversation.SetLastMessageText(latest.Text);
+                if (latest is not null)
+                {
+                    conversation.Time = latest.SentAt.ToString("HH:mm");
+                    conversation.UpdatedAt = latest.SentAt;
+                }
+            }
+            Save();
+            removed = true;
+        }
+        if (removed)
+        {
+            NotifyMessagesChanged(conversationId);
+            NotifyConversationsChanged();
+        }
+        return removed;
+    }
+
     /// <summary>Removes a message that the server has permanently deleted.</summary>
     public bool RemoveMessagePermanently(string remoteId)
     {

@@ -2115,6 +2115,8 @@ public partial class ChatPage : ContentPage
     // older retry or attachment upload cannot hold up the message the user just sent.
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _directMessageSends =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _cancelledPendingClientMessageIds =
+        new(StringComparer.OrdinalIgnoreCase);
 
     private async Task FlushOutboxAsync(string? prioritizeClientMessageId = null)
     {
@@ -2183,6 +2185,8 @@ public partial class ChatPage : ContentPage
                     }
 
                     var clientMessageId = pending.ClientMessageId;
+                    if (_cancelledPendingClientMessageIds.TryRemove(clientMessageId, out _))
+                        continue;
                     _chat.MarkPendingSending(clientMessageId);
 
                     try
@@ -2205,10 +2209,13 @@ public partial class ChatPage : ContentPage
                                 pending.AttachmentFileName ?? Path.GetFileName(localPath),
                                 pending.AttachmentContentType ?? "application/octet-stream");
 
-                            _chat.CompletePendingAttachmentMessage(
-                                pending,
-                                remoteAttachment.Id.ToString("D"),
-                                remoteAttachment.SentAt.LocalDateTime);
+                            if (_cancelledPendingClientMessageIds.TryRemove(clientMessageId, out _))
+                                await _api.DeleteMessagePermanentlyAsync(remoteAttachment.Id);
+                            else
+                                _chat.CompletePendingAttachmentMessage(
+                                    pending,
+                                    remoteAttachment.Id.ToString("D"),
+                                    remoteAttachment.SentAt.LocalDateTime);
 
                             madeProgress = true;
                             continue;
@@ -2226,11 +2233,14 @@ public partial class ChatPage : ContentPage
                             clientMessageId,
                             replyId);
 
-                        _chat.CompletePendingMessage(
-                            pending.ConversationId,
-                            clientMessageId,
-                            remote.Id.ToString("D"),
-                            remote.SentAt.LocalDateTime);
+                        if (_cancelledPendingClientMessageIds.TryRemove(clientMessageId, out _))
+                            await _api.DeleteMessagePermanentlyAsync(remote.Id);
+                        else
+                            _chat.CompletePendingMessage(
+                                pending.ConversationId,
+                                clientMessageId,
+                                remote.Id.ToString("D"),
+                                remote.SentAt.LocalDateTime);
 
                         madeProgress = true;
                     }
@@ -2311,11 +2321,18 @@ public partial class ChatPage : ContentPage
                 clientMessageId,
                 replyId);
 
-            _chat.CompletePendingMessage(
-                localConversationId,
-                clientMessageId,
-                remote.Id.ToString("D"),
-                remote.SentAt.LocalDateTime);
+            if (_cancelledPendingClientMessageIds.TryRemove(clientMessageId, out _))
+            {
+                await _api.DeleteMessagePermanentlyAsync(remote.Id);
+            }
+            else
+            {
+                _chat.CompletePendingMessage(
+                    localConversationId,
+                    clientMessageId,
+                    remote.Id.ToString("D"),
+                    remote.SentAt.LocalDateTime);
+            }
 
             System.Diagnostics.Debug.WriteLine(
                 $"[HimoTiming] direct text send acknowledged elapsed={timing.ElapsedMilliseconds}ms remoteId={remote.Id:D}");
@@ -4284,11 +4301,22 @@ public partial class ChatPage : ContentPage
                 AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
-        if (!Guid.TryParse(message.RemoteId, out _))
+        if (message.IsPending || !Guid.TryParse(message.RemoteId, out _))
         {
-            await DisplayAlertAsync(AppLocalization.TranslateSourceText("حذف الرسالة"),
-                AppLocalization.TranslateSourceText("هذه الرسالة لم تحصل بعد على رقم من الخادم، لذلك لا يمكن حذفها الآن."),
-                AppLocalization.TranslateSourceText("حسنًا"));
+            var confirmPending = await DisplayAlertAsync(
+                AppLocalization.TranslateSourceText("حذف الرسالة"),
+                AppLocalization.TranslateSourceText("هذه الرسالة لم يكتمل إرسالها بعد. هل تريد حذفها من هذا الجهاز وإلغاء إعادة إرسالها؟"),
+                AppLocalization.TranslateSourceText("حذف"),
+                AppLocalization.TranslateSourceText("إلغاء"));
+            if (!confirmPending) return;
+
+            if (!string.IsNullOrWhiteSpace(message.ClientMessageId))
+                _cancelledPendingClientMessageIds[message.ClientMessageId] = 0;
+            if (_chat.RemovePendingMessage(_conversationId, message.Id))
+            {
+                _selectedMessageIds.Remove(message.Id);
+                RefreshMessagesView(scrollToEnd: false, forceReset: true);
+            }
             return;
         }
 
@@ -4692,25 +4720,40 @@ public partial class ChatPage : ContentPage
         }
 
         var deletable = selected
-            .Where(x => x.IsMine && Guid.TryParse(x.RemoteId, out _))
+            .Where(x => x.IsMine && (x.IsPending || Guid.TryParse(x.RemoteId, out _)))
             .ToList();
         if (deletable.Count == 0)
         {
             await DisplayAlertAsync(AppLocalization.TranslateSourceText("حذف الرسائل"),
-                AppLocalization.TranslateSourceText("يمكن حذف الرسائل التي أرسلتها فقط وبعد وصولها إلى الخادم."),
+                AppLocalization.TranslateSourceText("يمكن حذف الرسائل التي أرسلتها فقط."),
                 AppLocalization.TranslateSourceText("حسنًا"));
             return;
         }
 
-        var permanent = await ChoosePermanentDeleteModeAsync(deletable.Count);
-        if (permanent is null) return;
+        var pendingCount = deletable.Count(x => x.IsPending || !Guid.TryParse(x.RemoteId, out _));
+        var sentCount = deletable.Count - pendingCount;
+        bool permanentMode = false;
+        if (sentCount > 0)
+        {
+            var permanent = await ChoosePermanentDeleteModeAsync(sentCount);
+            if (permanent is null) return;
+            permanentMode = permanent.Value;
+        }
 
-        var title = AppLocalization.TranslateSourceText(permanent.Value ? "الحذف النهائي" : "حذف من الطرفين");
-        var body = permanent.Value
-            ? string.Format(AppLocalization.TranslateSourceText("سيتم حذف {0} رسالة ومرفقاتها نهائيًا من الخادم لدى الطرفين. لا يمكن التراجع عن ذلك. هل تريد المتابعة؟"), deletable.Count)
-            : string.Format(AppLocalization.TranslateSourceText("سيتم حذف {0} رسالة لدى الطرفين واستبدال محتواها بإشعار الحذف. هل تريد المتابعة؟"), deletable.Count);
+        var title = AppLocalization.TranslateSourceText(permanentMode ? "الحذف النهائي" : "حذف الرسائل");
+        var serverBody = sentCount == 0
+            ? string.Empty
+            : permanentMode
+                ? string.Format(AppLocalization.TranslateSourceText("سيتم حذف {0} رسالة ومرفقاتها نهائيًا من الخادم لدى الطرفين. لا يمكن التراجع عن ذلك."), sentCount)
+                : string.Format(AppLocalization.TranslateSourceText("سيتم حذف {0} رسالة لدى الطرفين واستبدال محتواها بإشعار الحذف."), sentCount);
+        var pendingBody = pendingCount == 0
+            ? string.Empty
+            : string.Format(AppLocalization.TranslateSourceText("سيتم حذف {0} رسالة لم يكتمل إرسالها من هذا الجهاز وإلغاء إعادة محاولتها."), pendingCount);
+        var body = string.Join(Environment.NewLine + Environment.NewLine,
+            new[] { serverBody, pendingBody }.Where(x => !string.IsNullOrWhiteSpace(x))) +
+            Environment.NewLine + Environment.NewLine + AppLocalization.TranslateSourceText("هل تريد المتابعة؟");
         var confirm = await DisplayAlertAsync(title, body,
-            AppLocalization.TranslateSourceText(permanent.Value ? "حذف نهائي" : "حذف من الطرفين"),
+            AppLocalization.TranslateSourceText(permanentMode ? "حذف نهائي" : "حذف من الطرفين"),
             AppLocalization.TranslateSourceText("إلغاء"));
         if (!confirm) return;
 
@@ -4719,7 +4762,16 @@ public partial class ChatPage : ContentPage
         {
             try
             {
-                await DeleteMessageWithModeAsync(message, permanent.Value);
+                if (message.IsPending || !Guid.TryParse(message.RemoteId, out _))
+                {
+                    if (!string.IsNullOrWhiteSpace(message.ClientMessageId))
+                        _cancelledPendingClientMessageIds[message.ClientMessageId] = 0;
+                    _chat.RemovePendingMessage(_conversationId, message.Id);
+                }
+                else
+                {
+                    await DeleteMessageWithModeAsync(message, permanentMode);
+                }
             }
             catch (Exception ex)
             {
@@ -4740,7 +4792,7 @@ public partial class ChatPage : ContentPage
         else if (selected.Count > deletable.Count)
         {
             await DisplayAlertAsync(title,
-                AppLocalization.TranslateSourceText("تم حذف الرسائل التي أرسلتها إلى الخادم فقط. لم تُحذف الرسائل الواردة أو التي لم يكتمل إرسالها."),
+                AppLocalization.TranslateSourceText("تم حذف الرسائل التي أرسلتها فقط. لم تُحذف الرسائل الواردة أو غير المملوكة لحسابك."),
                 AppLocalization.TranslateSourceText("حسنًا"));
         }
     }
@@ -5480,7 +5532,14 @@ public partial class ChatPage : ContentPage
         }
 
         if (forceReset)
-            SetMessagesItemsSource(_visibleMessages.ToList(), forceReset: true);
+        {
+            var allCurrent = GetOrderedLocalMessages();
+            var visibleCount = Math.Max(_visibleMessages.Count, MessagePageSize);
+            var refreshed = allCurrent.Count > visibleCount
+                ? allCurrent.Skip(allCurrent.Count - visibleCount).ToList()
+                : allCurrent;
+            SetMessagesItemsSource(refreshed, forceReset: true);
+        }
         else
             AppendNewMessagesToVisible();
 
