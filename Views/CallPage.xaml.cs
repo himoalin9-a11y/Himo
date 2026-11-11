@@ -14,6 +14,7 @@ namespace Himo.Views;
 [QueryProperty(nameof(PeerName), "peerName")]
 [QueryProperty(nameof(JoinExistingGroupCall), "joinGroupCall")]
 [QueryProperty(nameof(InitiatorUserId), "initiatorUserId")]
+[QueryProperty(nameof(SelectedParticipantIds), "selectedParticipantIds")]
 public partial class CallPage : ContentPage
 {
     private readonly ICallService _calls;
@@ -22,10 +23,6 @@ public partial class CallPage : ContentPage
     private readonly ChatService _chat;
     private readonly HimoApiClient _api;
     private readonly INotificationService _notifications;
-    private readonly CallHistoryService _callHistory;
-    private Guid _historyEntryId;
-    private Guid _historyCallId;
-    private string? _historyFinalStatus;
 #if ANDROID
     private readonly Dictionary<Guid, WebRtcRendererView> _groupRemoteVideoHosts = new();
     private readonly Dictionary<Guid, Border> _groupRemoteVideoTiles = new();
@@ -44,6 +41,7 @@ public partial class CallPage : ContentPage
     private bool _incomingAnswered;
     private bool _joinExistingGroupCall;
     private Guid _requestedInitiatorUserId;
+    private IReadOnlyList<Guid> _selectedParticipantUserIds = Array.Empty<Guid>();
     private bool _callSetupInProgress;
     private Guid _callId;
     private bool _navigationStarted;
@@ -105,6 +103,17 @@ public partial class CallPage : ContentPage
     {
         get => _requestedInitiatorUserId == Guid.Empty ? string.Empty : _requestedInitiatorUserId.ToString("D");
         set => Guid.TryParse(value, out _requestedInitiatorUserId);
+    }
+
+    public string SelectedParticipantIds
+    {
+        get => string.Join(",", _selectedParticipantUserIds);
+        set => _selectedParticipantUserIds = (value ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(x => Guid.TryParse(x, out var id) ? id : Guid.Empty)
+            .Where(x => x != Guid.Empty)
+            .Distinct()
+            .ToArray();
     }
 
     public string CallId
@@ -175,7 +184,7 @@ public partial class CallPage : ContentPage
         return $"himo_theme_{styleId}_{fileName}";
     }
 
-    public CallPage(ICallService calls, HimoRealtimeService realtime, WebRtcNegotiationCoordinator negotiation, ChatService chat, HimoApiClient api, INotificationService notifications, CallHistoryService callHistory)
+    public CallPage(ICallService calls, HimoRealtimeService realtime, WebRtcNegotiationCoordinator negotiation, ChatService chat, HimoApiClient api, INotificationService notifications)
     {
         InitializeComponent();
         if (NameLabel is not null) NameLabel.AutomationId = "Himo.UserSuppliedText";
@@ -190,7 +199,6 @@ public partial class CallPage : ContentPage
         _chat = chat;
         _api = api;
         _notifications = notifications;
-        _callHistory = callHistory;
         _calls.StateChanged += CallsStateChanged;
         _calls.CallEnded += CallsEnded;
         _negotiation.PeerConnectionsChanged += NegotiationPeerConnectionsChanged;
@@ -581,39 +589,8 @@ public partial class CallPage : ContentPage
         });
     }
 
-    private void EnsureCallHistoryStarted(CallState state)
-    {
-        if (state.CallId == Guid.Empty || state.ConversationId != _conversationId)
-            return;
-        if (_historyCallId == state.CallId && _historyEntryId != Guid.Empty)
-            return;
-
-        var conversation = FindLocalCallConversation();
-        var contactName = !string.IsNullOrWhiteSpace(_peerName) &&
-                          !string.Equals(_peerName, "جهة اتصال", StringComparison.Ordinal)
-            ? _peerName
-            : conversation?.Name ?? _peerName;
-        _historyEntryId = _callHistory.Begin(
-            state.ConversationId.ToString("D"), contactName, _incoming,
-            state.Mode == CallMode.Video ? "video" : "audio", state.CallId);
-        _historyCallId = state.CallId;
-        if (state.IsConnected)
-            _callHistory.MarkConnected(_historyEntryId);
-    }
-
-    private void FinishCallHistory()
-    {
-        if (_historyEntryId == Guid.Empty)
-            return;
-        _callHistory.Finish(_historyEntryId, _historyFinalStatus);
-        _historyEntryId = Guid.Empty;
-    }
-
     private void CallsStateChanged(object? sender, CallState state)
     {
-        EnsureCallHistoryStarted(state);
-        if (state.IsConnected && _historyEntryId != Guid.Empty)
-            _callHistory.MarkConnected(_historyEntryId);
         var stateVersion = Interlocked.Increment(ref _callUiStateVersion);
         MainThread.BeginInvokeOnMainThread(() =>
         {
@@ -911,7 +888,6 @@ public partial class CallPage : ContentPage
                     return;
                 }
                 if (_callId == Guid.Empty) _callId = preparedState.CallId;
-                EnsureCallHistoryStarted(preparedState);
                 if (_notifications.IsIncomingCallSuppressed(_callId.ToString("D")))
                 {
 #if ANDROID
@@ -1010,11 +986,11 @@ public partial class CallPage : ContentPage
                 return;
             }
 
-            await _calls.StartAsync(new CallRequest(_conversationId, _mode, IsGroup: IsGroupCall));
+            await _calls.StartAsync(new CallRequest(
+                _conversationId, _mode, IsGroup: IsGroupCall,
+                SelectedParticipantUserIds: _selectedParticipantUserIds));
             // StartAsync creates the authoritative call ID before signaling.
             _callId = _calls.Current?.CallId ?? Guid.Empty;
-            if (_calls.Current is { } startedCall)
-                EnsureCallHistoryStarted(startedCall);
             StatusLabel.Text = _remoteAccepted ? "تم الرد، جارٍ الاتصال..." : "بانتظار قبول المكالمة...";
 
 #if ANDROID
@@ -1076,8 +1052,6 @@ public partial class CallPage : ContentPage
                 return;
             }
             joinRegistered = true;
-            if (_calls.Current is { } joiningCall)
-                EnsureCallHistoryStarted(joiningCall);
             if (_requestedInitiatorUserId == Guid.Empty)
                 _requestedInitiatorUserId = joined.InitiatorUserId;
 
@@ -1261,7 +1235,6 @@ public partial class CallPage : ContentPage
 #if ANDROID
         StopIncomingRingtone();
 #endif
-        _historyFinalStatus = "مرفوضة";
         try { await _calls.RejectAsync(); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo CallPage] Reject failed: {ex}"); }
         await _notifications.ClearIncomingCallAsync(_conversationId.ToString("D"), _callId.ToString("D"));
@@ -1360,7 +1333,6 @@ public partial class CallPage : ContentPage
 
     private async void CallsEnded(object? sender, EventArgs e)
     {
-        FinishCallHistory();
         Interlocked.Increment(ref _callUiStateVersion);
         _remoteAudioToggleInProgress = false;
         StopTimer();
@@ -1798,9 +1770,6 @@ public partial class CallPage : ContentPage
             return;
         }
 
-        if (isReject)
-            _historyFinalStatus = "مرفوضة";
-
         if (isAnswering || isAccept)
         {
             _remoteAccepted = true;
@@ -1889,16 +1858,9 @@ public partial class CallPage : ContentPage
         try
         {
             if (_incoming && !_incomingAnswered)
-            {
-                _historyFinalStatus = "مرفوضة";
                 await _calls.RejectAsync();
-            }
             else
-            {
-                if (_calls.Current?.IsConnected != true)
-                    _historyFinalStatus = "ملغاة";
                 await _calls.EndAsync();
-            }
         }
         catch (Exception ex)
         {
@@ -1923,16 +1885,9 @@ public partial class CallPage : ContentPage
             if (_calls.Current is not null)
             {
                 if (_incoming && !_incomingAnswered)
-                {
-                    _historyFinalStatus = "مرفوضة";
                     await _calls.RejectAsync();
-                }
                 else
-                {
-                    if (_calls.Current?.IsConnected != true)
-                        _historyFinalStatus = "ملغاة";
                     await _calls.EndAsync();
-                }
             }
 #if ANDROID
             StopIncomingRingtone();

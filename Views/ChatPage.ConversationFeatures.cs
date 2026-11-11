@@ -1,4 +1,4 @@
-﻿using Himo.Services;
+using Himo.Services;
 using Himo.Models;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Dispatching;
@@ -138,6 +138,209 @@ public partial class ChatPage
             _conversationLockPinEntry.Text = string.Empty;
             _conversationLockPinEntry.Focus();
         }
+    }
+
+    private Grid? _headerActionsOverlay;
+    private Grid? _groupMemberPickerOverlay;
+    private readonly HashSet<Guid> _selectedGroupCallMembers = new();
+    private IReadOnlyList<HimoApiClient.GroupMemberDto> _cachedGroupHeaderMembers = Array.Empty<HimoApiClient.GroupMemberDto>();
+
+    private async void HeaderActionsClicked(object? sender, EventArgs e)
+    {
+        if (_headerActionsOverlay is not null)
+        {
+            CloseHeaderActionsMenu();
+            return;
+        }
+
+        var conversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
+        if (conversation?.IsGroup != true)
+        {
+            var infoOption = AppLocalization.TranslateSourceText("معلومات المحادثة");
+            var cancelOption = AppLocalization.TranslateSourceText("إلغاء");
+            var selected = await DisplayActionSheetAsync(
+                AppLocalization.TranslateSourceText("إجراءات المحادثة"), cancelOption, null,
+                AppLocalization.TranslateSourceText("اتصال صوتي"),
+                AppLocalization.TranslateSourceText("اتصال مرئي"), infoOption,
+                AppLocalization.TranslateSourceText("خيارات المحادثة"));
+            if (selected == AppLocalization.TranslateSourceText("اتصال صوتي")) AudioCallClicked(sender, e);
+            else if (selected == AppLocalization.TranslateSourceText("اتصال مرئي")) VideoCallClicked(sender, e);
+            else if (selected == infoOption && conversation is not null)
+                await Navigation.PushAsync(new ConversationInfoPage(_chat, _api, _account, conversation), animated: true);
+            else if (selected == AppLocalization.TranslateSourceText("خيارات المحادثة")) ConversationOptionsClicked(sender, e);
+            return;
+        }
+
+        ShowHeaderActionsMenu();
+        if (_cachedGroupHeaderMembers.Count == 0 && Guid.TryParse(_remoteConversationId, out var groupId))
+        {
+            try
+            {
+                var details = await _api.GetGroupDetailsAsync(groupId);
+                _cachedGroupHeaderMembers = details.Members ?? Array.Empty<HimoApiClient.GroupMemberDto>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Header menu member refresh failed: {ex.Message}");
+            }
+        }
+    }
+
+    private void ShowHeaderActionsMenu()
+    {
+        if (ChatRoot.Content is not Grid root || _headerActionsOverlay is not null) return;
+        var overlay = new Grid { ZIndex = 9000, BackgroundColor = Colors.Transparent };
+        var outside = new Button { BackgroundColor = Colors.Transparent, BorderWidth = 0, Text = string.Empty };
+        outside.Clicked += (_, _) => CloseHeaderActionsMenu();
+        overlay.Add(outside);
+
+        var menu = new Border
+        {
+            Padding = new Thickness(0, 7),
+            WidthRequest = 238,
+            HorizontalOptions = LayoutOptions.Start,
+            VerticalOptions = LayoutOptions.Start,
+            Margin = new Thickness(58, 8, 0, 0),
+            StrokeThickness = 1,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 17 },
+            ZIndex = 2
+        };
+        menu.SetDynamicResource(Border.BackgroundColorProperty, "HimoCard");
+        menu.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+        var stack = new VerticalStackLayout { Spacing = 0 };
+        AddHeaderMenuItem(stack, "☎", "مكالمة صوتية", () => { CloseHeaderActionsMenu(); AudioCallClicked(this, EventArgs.Empty); });
+        AddHeaderMenuItem(stack, "▣", "مكالمة فيديو", () => { CloseHeaderActionsMenu(); VideoCallClicked(this, EventArgs.Empty); });
+        AddHeaderMenuItem(stack, "☷", "تحديد الأشخاص", () => { CloseHeaderActionsMenu(); ShowGroupMemberPicker(); });
+        menu.Content = stack;
+        overlay.Add(menu);
+        root.Add(overlay);
+        _headerActionsOverlay = overlay;
+    }
+
+    private void AddHeaderMenuItem(VerticalStackLayout stack, string symbol, string caption, Action action)
+    {
+        var button = new Button
+        {
+            Text = $"{symbol}     {AppLocalization.TranslateSourceText(caption)}",
+            FontSize = 16,
+            Padding = new Thickness(17, 13),
+            HorizontalOptions = LayoutOptions.Fill,
+            CornerRadius = 0,
+            BackgroundColor = Colors.Transparent,
+            TextColor = Application.Current?.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black
+        };
+        button.Clicked += (_, _) => action();
+        stack.Add(button);
+    }
+
+    private void CloseHeaderActionsMenu()
+    {
+        if (_headerActionsOverlay is null) return;
+        if (ChatRoot.Content is Grid root) root.Remove(_headerActionsOverlay);
+        _headerActionsOverlay = null;
+    }
+
+    private void ShowGroupMemberPicker()
+    {
+        if (ChatRoot.Content is not Grid root || _groupMemberPickerOverlay is not null) return;
+        if (_cachedGroupHeaderMembers.Count == 0)
+        {
+            _ = DisplayAlertAsync(AppLocalization.TranslateSourceText("المجموعة"),
+                AppLocalization.TranslateSourceText("تعذر تحميل أعضاء المجموعة. أعد فتح القائمة بعد التحقق من الاتصال."),
+                AppLocalization.TranslateSourceText("حسنًا"));
+            return;
+        }
+
+        _selectedGroupCallMembers.Clear();
+        var overlay = new Grid { ZIndex = 9100, Padding = new Thickness(22), BackgroundColor = Color.FromArgb("#99000000") };
+        var card = new Border { Padding = 16, VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Fill, MaximumHeightRequest = 560, StrokeThickness = 1, StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 20 } };
+        card.SetDynamicResource(Border.BackgroundColorProperty, "HimoCard");
+        card.SetDynamicResource(Border.StrokeProperty, "HimoBorder");
+        var body = new Grid { RowDefinitions = new RowDefinitionCollection { new(GridLength.Auto), new(GridLength.Star), new(GridLength.Auto), new(GridLength.Auto) }, RowSpacing = 12 };
+        var audio = new Button { Text = AppLocalization.TranslateSourceText("اتصال صوتي"), CornerRadius = 12, FontSize = 13, IsEnabled = false };
+        var video = new Button { Text = AppLocalization.TranslateSourceText("اتصال فيديو"), CornerRadius = 12, FontSize = 13, IsEnabled = false };
+        var title = new Label { Text = AppLocalization.TranslateSourceText("تحديد الأشخاص"), FontSize = 18, FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Center };
+        title.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+        body.Add(title); Grid.SetRow(title, 0);
+        var list = new CollectionView { SelectionMode = SelectionMode.None, ItemsSource = _cachedGroupHeaderMembers.Where(x => x.Id != _account.CurrentAccount?.UserId).OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToList(), ItemTemplate = new DataTemplate(() =>
+        {
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitionCollection { new(GridLength.Star), new(GridLength.Auto) }, Padding = new Thickness(8, 7) };
+            var name = new Label { FontSize = 14, VerticalTextAlignment = TextAlignment.Center };
+            name.SetDynamicResource(Label.TextColorProperty, "HimoPrimary");
+            name.SetBinding(Label.TextProperty, nameof(HimoApiClient.GroupMemberDto.Name));
+            var check = new CheckBox { VerticalOptions = LayoutOptions.Center, Color = Color.FromArgb("#A56BFF") };
+            check.CheckedChanged += (_, args) =>
+            {
+                if (check.BindingContext is HimoApiClient.GroupMemberDto member)
+                {
+                    if (args.Value) _selectedGroupCallMembers.Add(member.Id);
+                    else _selectedGroupCallMembers.Remove(member.Id);
+                    audio.IsEnabled = video.IsEnabled = _selectedGroupCallMembers.Count > 0;
+                }
+            };
+            row.Add(name); row.Add(check); Grid.SetColumn(check, 1);
+            return row;
+        }) };
+        body.Add(list); Grid.SetRow(list, 1);
+        var actions = new Grid { ColumnDefinitions = new ColumnDefinitionCollection { new(GridLength.Star), new(GridLength.Star) }, ColumnSpacing = 10 };
+        audio.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoAccent");
+        video.SetDynamicResource(VisualElement.BackgroundColorProperty, "HimoAccent");
+        audio.SetDynamicResource(Button.TextColorProperty, "HimoOnAccent");
+        video.SetDynamicResource(Button.TextColorProperty, "HimoOnAccent");
+        // The selected IDs are passed to CallPage and sent as targeted SignalR invites.
+        audio.Clicked += async (_, _) => await StartSelectedGroupCallAsync(false);
+        video.Clicked += async (_, _) => await StartSelectedGroupCallAsync(true);
+        actions.Add(audio); actions.Add(video, 1, 0);
+        body.Add(actions); Grid.SetRow(actions, 2);
+        var footer = new Label { Text = AppLocalization.TranslateSourceText("اختر أعضاء المجموعة للمتابعة"), FontSize = 11, HorizontalTextAlignment = TextAlignment.Center };
+        footer.SetDynamicResource(Label.TextColorProperty, "HimoTextSecondary");
+        var close = new Button { Text = AppLocalization.TranslateSourceText("إغلاق"), FontSize = 12, BackgroundColor = Colors.Transparent };
+        close.Clicked += (_, _) => CloseGroupMemberPicker();
+        var footerStack = new VerticalStackLayout { Spacing = 3 };
+        footerStack.Add(footer); footerStack.Add(close);
+        body.Add(footerStack); Grid.SetRow(footerStack, 3);
+        card.Content = body; overlay.Add(card); root.Add(overlay); _groupMemberPickerOverlay = overlay;
+    }
+
+    private async Task StartSelectedGroupCallAsync(bool video)
+    {
+        if (_selectedGroupCallMembers.Count == 0 ||
+            !Guid.TryParse(_remoteConversationId, out var conversationId)) return;
+
+        var selectedIds = _selectedGroupCallMembers
+            .Where(id => id != Guid.Empty && id != (_account.CurrentAccount?.UserId ?? Guid.Empty))
+            .Distinct()
+            .ToArray();
+        if (selectedIds.Length == 0) return;
+
+        CloseGroupMemberPicker();
+        try
+        {
+            // If a group call is already active, join it instead of creating a
+            // second room. The remaining members can join that room independently.
+            if (await TryJoinActiveGroupCallAsync(conversationId)) return;
+
+            var selected = Uri.EscapeDataString(string.Join(",", selectedIds));
+            var mode = video ? "video" : "audio";
+            await SwipePageTransition.NavigateAsync(
+                this,
+                $"CallPage?id={conversationId:D}&mode={mode}&selectedParticipantIds={selected}",
+                SwipeDirection.Left);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync(
+                AppLocalization.TranslateSourceText("المكالمة"),
+                $"تعذر بدء المكالمة مع الأعضاء المحددين: {ex.Message}",
+                AppLocalization.TranslateSourceText("حسنًا"));
+        }
+    }
+
+    private void CloseGroupMemberPicker()
+    {
+        if (_groupMemberPickerOverlay is null) return;
+        if (ChatRoot.Content is Grid root) root.Remove(_groupMemberPickerOverlay);
+        _groupMemberPickerOverlay = null;
     }
 
     private async void ConversationHeaderTapped(object? sender, TappedEventArgs e)

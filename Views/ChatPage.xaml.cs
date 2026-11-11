@@ -34,6 +34,7 @@ public partial class ChatPage : ContentPage
     private int _groupCallRefreshVersion;
     private readonly RangeObservableCollection<ChatMessage> _visibleMessages = new();
     private Conversation? _avatarBoundConversation;
+    private int _groupHeaderMembersRequestId;
     private CancellationTokenSource? _pollCts;
     private readonly SemaphoreSlim _remoteLoadGate = new(1, 1);
     private int _conversationId;
@@ -613,7 +614,11 @@ public partial class ChatPage : ContentPage
         {
             var currentConversation = _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId);
             if (currentConversation is not null)
+            {
                 BindConversationAvatar(currentConversation);
+                if (currentConversation.IsGroup) _ = RefreshGroupHeaderMembersAsync(currentConversation);
+                else if (StatusDot is not null) StatusDot.IsVisible = true;
+            }
         }
 
         _ = ApplySavedChatWallpaperAsync();
@@ -977,6 +982,20 @@ public partial class ChatPage : ContentPage
         NameLabel?.SetValue(Label.TextProperty, displayName);
         InitialLabel?.SetValue(Label.TextProperty, string.IsNullOrWhiteSpace(conversation.Initial) ? displayName[..1] : conversation.Initial);
         BindConversationAvatar(conversation);
+        if (conversation.IsGroup)
+        {
+            if (StatusDot is not null) StatusDot.IsVisible = false;
+            if (StatusLabel is not null)
+            {
+                StatusLabel.FontSize = 10;
+                StatusLabel.Text = AppLocalization.TranslateSourceText("جارٍ تحميل أعضاء المجموعة…");
+            }
+        }
+        else
+        {
+            if (StatusDot is not null) StatusDot.IsVisible = true;
+            if (StatusLabel is not null) StatusLabel.FontSize = 11;
+        }
 
         var recentTrace = Stopwatch.StartNew();
         var recent = _chat.GetRecentMessages(_conversationId, InitialVisibleMessageCount);
@@ -1095,6 +1114,53 @@ public partial class ChatPage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Contact avatar load failed: {ex.Message}");
+        }
+    }
+
+    private async Task RefreshGroupHeaderMembersAsync(Conversation conversation)
+    {
+        if (!conversation.IsGroup || !Guid.TryParse(conversation.RemoteId, out var groupId)) return;
+        var requestId = Interlocked.Increment(ref _groupHeaderMembersRequestId);
+        try
+        {
+            var details = await _api.GetGroupDetailsAsync(groupId);
+            if (requestId != Volatile.Read(ref _groupHeaderMembersRequestId) ||
+                !string.Equals(_remoteConversationId, groupId.ToString("D"), StringComparison.OrdinalIgnoreCase)) return;
+
+            _cachedGroupHeaderMembers = details.Members ?? Array.Empty<HimoApiClient.GroupMemberDto>();
+            var names = _cachedGroupHeaderMembers
+                .Select(x => (x.Name ?? string.Empty).Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.CurrentCultureIgnoreCase)
+                .OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+            const int visibleNames = 3;
+            var shown = names.Take(visibleNames).ToList();
+            var summary = shown.Count == 0
+                ? AppLocalization.TranslateSourceText("لا يوجد أعضاء")
+                : string.Join(" · ", shown);
+            if (names.Count > visibleNames) summary += "  …";
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                if (requestId != Volatile.Read(ref _groupHeaderMembersRequestId) || StatusLabel is null) return;
+                StatusLabel.Text = summary;
+                StatusLabel.FontSize = 10;
+                StatusLabel.MaxLines = 1;
+                StatusLabel.LineBreakMode = LineBreakMode.TailTruncation;
+                if (StatusDot is not null) StatusDot.IsVisible = false;
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo ChatPage] Group header members load failed: {ex.Message}");
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                if (requestId == Volatile.Read(ref _groupHeaderMembersRequestId) && StatusLabel is not null)
+                {
+                    StatusLabel.Text = AppLocalization.TranslateSourceText("المجموعة");
+                    if (StatusDot is not null) StatusDot.IsVisible = false;
+                }
+            });
         }
     }
 
@@ -2398,15 +2464,19 @@ public partial class ChatPage : ContentPage
         _chat.UpdateDeliveryStatus(e.MessageId.ToString("D"), e.Status);
     }
 
+    private bool IsCurrentConversationGroup =>
+        _chat.Conversations.FirstOrDefault(x => x.Id == _conversationId)?.IsGroup == true;
+
     private void OnUserPresenceChanged(object? sender, (Guid UserId, bool IsOnline) e)
     {
-        if (!Guid.TryParse(_remoteConversationId, out var conversationId)) return;
-        if (conversationId == Guid.Empty) return;
+        if (IsCurrentConversationGroup) return;
+        if (!Guid.TryParse(_remoteConversationId, out var conversationId) || conversationId == Guid.Empty) return;
         SetPresenceText(e.IsOnline);
     }
 
     private void OnUserTypingChanged(object? sender, (Guid UserId, Guid ConversationId, bool IsTyping) e)
     {
+        if (IsCurrentConversationGroup) return;
         if (!Guid.TryParse(_remoteConversationId, out var conversationId) || e.ConversationId != conversationId) return;
         _remoteTyping = e.IsTyping;
         if (StatusLabel is not null)
@@ -2415,7 +2485,8 @@ public partial class ChatPage : ContentPage
 
     private void SetPresenceText(bool isOnline)
     {
-        if (_remoteTyping) return;
+        // A group header displays its member-name summary, never individual presence text.
+        if (_remoteTyping || IsCurrentConversationGroup) return;
         if (StatusLabel is not null) StatusLabel.Text = isOnline ? AppLocalization.TranslateSourceText("متصل الآن") : AppLocalization.TranslateSourceText("غير متصل");
         if (StatusDot is not null)
         {

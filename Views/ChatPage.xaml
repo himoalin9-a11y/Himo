@@ -410,9 +410,7 @@
             <Grid ColumnDefinitions="Auto,*,Auto" FlowDirection="LeftToRight">
                 <HorizontalStackLayout Grid.Column="0" Spacing="3" VerticalOptions="Center" HorizontalOptions="Start">
                     <ImageButton Source="himo_icon_chat_back.png" Style="{StaticResource ChatHeaderButton}" Clicked="BackClicked" />
-                    <ImageButton Source="himo_icon_chat_more.png" Style="{StaticResource ChatHeaderButton}" Clicked="ConversationOptionsClicked" AutomationId="ConversationMenuButton" />
-                    <ImageButton Source="himo_icon_chat_video_call.png" Style="{StaticResource ChatHeaderButton}" Clicked="VideoCallClicked" />
-                    <ImageButton Source="himo_icon_chat_voice_call.png" Style="{StaticResource ChatHeaderButton}" Clicked="AudioCallClicked" />
+                    <ImageButton Source="himo_icon_chat_more.png" Style="{StaticResource ChatHeaderButton}" Clicked="HeaderActionsClicked" AutomationId="ConversationActionsButton" />
                 </HorizontalStackLayout>
 
                 <Grid Grid.Column="2" ColumnDefinitions="*,58" ColumnSpacing="9" VerticalOptions="Center" HorizontalOptions="End" FlowDirection="LeftToRight">
@@ -438,7 +436,7 @@
                     <VerticalStackLayout Grid.Column="0" Spacing="1" VerticalOptions="Center" MaximumWidthRequest="190" FlowDirection="RightToLeft">
                         <Label x:Name="NameLabel" Text="محادثة" FontSize="16.5" FontAttributes="Bold"
                                TextColor="{DynamicResource HimoPrimary}" MaxLines="1" LineBreakMode="TailTruncation" />
-                        <Label x:Name="StatusLabel" Text="غير متصل" FontSize="11" TextColor="{DynamicResource HimoTextSecondary}" />
+                        <Label x:Name="StatusLabel" Text="غير متصل" FontSize="10" MaxLines="1" LineBreakMode="TailTruncation" TextColor="{DynamicResource HimoTextSecondary}" />
                     </VerticalStackLayout>
                 </Grid>
             </Grid>

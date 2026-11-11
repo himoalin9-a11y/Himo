@@ -18,8 +18,7 @@ public enum CallSignalType
     Offer,
     Answer,
     IceCandidate,
-    Leave,
-    Connected
+    Leave
 }
 
 public sealed record CallRequest(
@@ -28,7 +27,8 @@ public sealed record CallRequest(
     Guid CallId = default,
     bool IsGroup = false,
     Guid InitiatorUserId = default,
-    bool AllowRejoin = false);
+    bool AllowRejoin = false,
+    IReadOnlyList<Guid>? SelectedParticipantUserIds = null);
 public enum CallLifecycleState
 {
     Idle,
@@ -206,11 +206,41 @@ public sealed class CallService : ICallService, IDisposable
                 // local WebRTC engine is slow, the recipient can still receive and
                 // ring for the call instead of seeing no incoming call at all.
                 inviteAttempted = true;
-                await _realtime.SendCallSignalAsync(
-                    request.ConversationId,
-                    CallSignalType.Invite.ToString(),
-                    CallSignalEnvelope.Serialize(callId, request.Mode, isGroup: request.IsGroup, initiatorUserId: _account.CurrentAccount?.UserId),
-                    cancellationToken);
+                var invitePayload = CallSignalEnvelope.Serialize(
+                    callId, request.Mode, isGroup: request.IsGroup,
+                    initiatorUserId: _account.CurrentAccount?.UserId);
+                var selectedRecipients = request.IsGroup
+                    ? request.SelectedParticipantUserIds?
+                        .Where(id => id != Guid.Empty && id != (_account.CurrentAccount?.UserId ?? Guid.Empty))
+                        .Distinct()
+                        .ToArray()
+                    : null;
+
+                if (selectedRecipients is { Length: > 0 })
+                {
+                    // Ring only the selected members. The hub still publishes the
+                    // active room state to every group member, so anyone not selected
+                    // can join later from the in-chat "Join call" banner.
+                    foreach (var recipientId in selectedRecipients)
+                    {
+                        await _realtime.SendCallSignalAsync(
+                            request.ConversationId,
+                            CallSignalType.Invite.ToString(),
+                            invitePayload,
+                            cancellationToken,
+                            recipientId);
+                    }
+                }
+                else
+                {
+                    // Preserve the existing all-members behavior for the regular
+                    // audio/video call buttons when no explicit selection was made.
+                    await _realtime.SendCallSignalAsync(
+                        request.ConversationId,
+                        CallSignalType.Invite.ToString(),
+                        invitePayload,
+                        cancellationToken);
+                }
                 StartOutgoingTimeout(callId);
 
                 // Deliver the invite immediately; Android audio-route setup can take noticeable time
@@ -745,8 +775,6 @@ public sealed class CallService : ICallService, IDisposable
         _current = _current with { IsConnected = value };
         _lifecycle = value ? CallLifecycleState.Connected : CallLifecycleState.Calling;
         RaiseState();
-        if (value)
-            _ = SendCallSignalBestEffortAsync(_current, CallSignalType.Connected, CancellationToken.None);
     }
 
     private void Clear()

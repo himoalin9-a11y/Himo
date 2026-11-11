@@ -1969,6 +1969,34 @@ sealed class HimoChatHub : Hub
         // the members who have joined. Leave removes one member; an initiator leaving
         // does not terminate the room while other participants remain.
         var updatedGroupCall = UpdateGroupCallRoom(conversationId, session.UserId, normalizedType, payload);
+
+        // In a selective group call, lifecycle/connection acknowledgements are
+        // exchanged only among people who have actually joined the room. The
+        // Invite itself remains targeted to the selected recipient, while the
+        // room-state broadcast below remains visible to every group member so
+        // non-invited members can join at any time.
+        if (!targetUserId.HasValue && _store.IsGroupConversation(conversationId) &&
+            (string.Equals(normalizedType, "Accept", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(normalizedType, "Connected", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(normalizedType, "Leave", StringComparison.OrdinalIgnoreCase)))
+        {
+            var routingSnapshot = updatedGroupCall;
+            if (routingSnapshot is null && TryReadGroupCallEnvelope(payload, out var routingCallId, out _, out _))
+            {
+                lock (GroupCallRoomsGate)
+                {
+                    if (ActiveGroupCallRooms.TryGetValue(conversationId, out var activeRoom) &&
+                        activeRoom.CallId == routingCallId)
+                        routingSnapshot = ToGroupCallSessionDto(activeRoom);
+                }
+            }
+
+            recipientIds = routingSnapshot?.ParticipantUserIds
+                .Where(id => id != Guid.Empty && id != session.UserId)
+                .Distinct()
+                .ToArray() ?? Array.Empty<Guid>();
+        }
+
         try
         {
             if (TryReadCallHistoryEnvelope(payload, out var historyCallId, out var historyMode, out var historyIsGroup))
