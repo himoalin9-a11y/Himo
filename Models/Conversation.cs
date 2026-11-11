@@ -1,4 +1,4 @@
-﻿using Himo.Services;
+using Himo.Services;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
@@ -38,6 +38,7 @@ public sealed class Conversation : INotifyPropertyChanged
             if (_otherParticipantUserId == value) return;
             _otherParticipantUserId = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OtherParticipantUserId)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AvatarPhotoPath)));
         }
     }
 
@@ -50,6 +51,7 @@ public sealed class Conversation : INotifyPropertyChanged
             if (_hasRemoteProfilePhoto == value) return;
             _hasRemoteProfilePhoto = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasRemoteProfilePhoto)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AvatarPhotoPath)));
         }
     }
 
@@ -65,6 +67,35 @@ public sealed class Conversation : INotifyPropertyChanged
         }
     }
 
+    private bool _hasGroupPhoto;
+    public bool HasGroupPhoto
+    {
+        get => _hasGroupPhoto;
+        set => SetField(ref _hasGroupPhoto, value);
+    }
+
+    private long _groupPhotoVersion;
+    public long GroupPhotoVersion
+    {
+        get => _groupPhotoVersion;
+        set => SetField(ref _groupPhotoVersion, value);
+    }
+
+    private string? _groupPhotoPath;
+    public string? GroupPhotoPath
+    {
+        get => _groupPhotoPath;
+        set
+        {
+            if (string.Equals(_groupPhotoPath, value, StringComparison.Ordinal)) return;
+            _groupPhotoPath = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(GroupPhotoPath)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AvatarPhotoPath)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasLocalProfilePhoto)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowProfileInitial)));
+        }
+    }
+
     private string? _profilePhotoPath;
     public string? ProfilePhotoPath
     {
@@ -74,13 +105,15 @@ public sealed class Conversation : INotifyPropertyChanged
             if (string.Equals(_profilePhotoPath, value, StringComparison.Ordinal)) return;
             _profilePhotoPath = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ProfilePhotoPath)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AvatarPhotoPath)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasLocalProfilePhoto)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowProfileInitial)));
         }
     }
 
+    public string? AvatarPhotoPath => IsGroup ? GroupPhotoPath : ProfilePhotoPath;
     public bool HasLocalProfilePhoto =>
-        !string.IsNullOrWhiteSpace(ProfilePhotoPath) && File.Exists(ProfilePhotoPath);
+        !string.IsNullOrWhiteSpace(AvatarPhotoPath) && File.Exists(AvatarPhotoPath);
     public bool ShowProfileInitial => !HasLocalProfilePhoto;
 
     private bool _isSelected;
@@ -115,7 +148,15 @@ public sealed class Conversation : INotifyPropertyChanged
     public bool IsGroup
     {
         get => _isGroup;
-        set => SetField(ref _isGroup, value);
+        set
+        {
+            if (_isGroup == value) return;
+            _isGroup = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsGroup)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AvatarPhotoPath)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasLocalProfilePhoto)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowProfileInitial)));
+        }
     }
 
     public DateTime UpdatedAt

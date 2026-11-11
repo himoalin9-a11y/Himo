@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Himo.Models;
 using Himo.Services;
@@ -323,6 +323,30 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         else
         {
             Grid.SetColumn(CancelSelectionButton, 5);
+        }
+    }
+
+    private async void OwnProfilePhotoTapped(object? sender, TappedEventArgs e)
+    {
+        var path = _profile.Profile.PhotoPath;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+        try { await Navigation.PushModalAsync(new ImagePreviewPage(path, _profile.Profile.Name)); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo] Could not open own profile photo: {ex.Message}"); }
+    }
+
+    private async void ConversationAvatarTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not Image image || image.BindingContext is not Conversation conversation)
+            return;
+        var path = conversation.AvatarPhotoPath;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+        try
+        {
+            await Navigation.PushModalAsync(new ImagePreviewPage(path, conversation.Name));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Himo] Could not open conversation avatar: {ex.Message}");
         }
     }
 

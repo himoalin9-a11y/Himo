@@ -1127,7 +1127,7 @@ sealed class MongoStore
             var unread = (int)_messages.CountDocuments(unreadFilter);
             var isBlocked = isDirect && !isSelfChat && other is not null && _blockedUsers.Find(x => (x.BlockerUserId == uid && x.BlockedUserId == other.Id) || (x.BlockerUserId == other.Id && x.BlockedUserId == uid)).FirstOrDefault() is not null;
             Guid? otherIdParsed = other is not null && Guid.TryParse(other.Id, out var oid) ? oid : null;
-            result.Add(new ConversationDto(Guid.Parse(conversation.Id), isDirect && other is not null ? other.Name : conversation.Name, last?.Text ?? string.Empty, ParseTime(conversation.UpdatedAt, now), unread, otherIdParsed, other?.ProfilePhoto is { Length: > 0 }, other?.ProfilePhotoVersion ?? 0L, state?.IsArchived ?? false, state?.IsMuted ?? false, isBlocked, conversation.IsGroup));
+            result.Add(new ConversationDto(Guid.Parse(conversation.Id), isDirect && other is not null ? other.Name : conversation.Name, last?.Text ?? string.Empty, ParseTime(conversation.UpdatedAt, now), unread, otherIdParsed, other?.ProfilePhoto is { Length: > 0 }, other?.ProfilePhotoVersion ?? 0L, state?.IsArchived ?? false, state?.IsMuted ?? false, isBlocked, conversation.IsGroup, conversation.GroupPhoto is { Length: > 0 }, conversation.GroupPhotoVersion));
         }
         return result.OrderByDescending(x => x.UpdatedAt).ToArray();
     }
@@ -1642,7 +1642,8 @@ sealed class MongoStore
             .Sort(Builders<MMessage>.Sort.Descending(x => x.SentAt).Descending(x => x.Id))
             .Limit(1).FirstOrDefault();
         return new ConversationDto(Guid.Parse(group.Id), group.Name, latestVisibleGroupMessage?.Text ?? string.Empty,
-            ParseTime(group.UpdatedAt, DateTimeOffset.UtcNow), 0, isGroup: true);
+            ParseTime(group.UpdatedAt, DateTimeOffset.UtcNow), 0, isGroup: true,
+            hasGroupPhoto: group.GroupPhoto is { Length: > 0 }, groupPhotoVersion: group.GroupPhotoVersion);
     }
 
     private bool IsGroupAdmin(MConversation group, string userId)
@@ -1674,7 +1675,8 @@ sealed class MongoStore
             };
             _conversations.InsertOne(group);
             foreach (var id in new[] { ownerUserId }.Concat(members)) _participants.InsertOne(new MParticipant { Id = PairId(Guid.Parse(group.Id), id), ConversationId = group.Id, UserId = GuidText(id), JoinedAt = timestamp, LastReadAt = timestamp, IsAdmin = id == ownerUserId });
-            return new ConversationDto(Guid.Parse(group.Id), group.Name, string.Empty, now, 0, isGroup: true);
+            return new ConversationDto(Guid.Parse(group.Id), group.Name, string.Empty, now, 0, isGroup: true,
+                hasGroupPhoto: group.GroupPhoto is { Length: > 0 }, groupPhotoVersion: group.GroupPhotoVersion);
         }
     }
 

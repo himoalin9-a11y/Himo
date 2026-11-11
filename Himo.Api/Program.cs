@@ -2386,6 +2386,8 @@ sealed class ConversationDto
     public bool IsMuted { get; init; }
     public bool IsBlocked { get; init; }
     public bool IsGroup { get; init; }
+    public bool HasGroupPhoto { get; init; }
+    public long GroupPhotoVersion { get; init; }
 
     public ConversationDto()
     {
@@ -2405,7 +2407,9 @@ sealed class ConversationDto
         bool isArchived = false,
         bool isMuted = false,
         bool isBlocked = false,
-        bool isGroup = false)
+        bool isGroup = false,
+        bool hasGroupPhoto = false,
+        long groupPhotoVersion = 0)
     {
         Id = id;
         Name = name ?? string.Empty;
@@ -2419,6 +2423,8 @@ sealed class ConversationDto
         IsMuted = isMuted;
         IsBlocked = isBlocked;
         IsGroup = isGroup;
+        HasGroupPhoto = hasGroupPhoto;
+        GroupPhotoVersion = groupPhotoVersion;
     }
 }
 sealed class ExpiredMessagesCleanupService(

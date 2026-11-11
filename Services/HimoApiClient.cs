@@ -1980,7 +1980,9 @@ public sealed class HimoApiClient
         bool IsMuted = false,
         bool IsBlocked = false,
         bool IsGroup = false,
-        string? LastMessageAttachmentContentType = null);
+        string? LastMessageAttachmentContentType = null,
+        bool HasGroupPhoto = false,
+        long GroupPhotoVersion = 0);
 
     public sealed record MessageDto(
         Guid Id,

@@ -80,6 +80,7 @@
                         <Image.Clip>
                             <EllipseGeometry Center="24,24" RadiusX="24" RadiusY="24" />
                         </Image.Clip>
+                        <Image.GestureRecognizers><TapGestureRecognizer Tapped="OwnProfilePhotoTapped" /></Image.GestureRecognizers>
                     </Image>
                 </Grid>
                 <Border.GestureRecognizers><TapGestureRecognizer Tapped="ProfileClicked" /></Border.GestureRecognizers>
@@ -253,7 +254,8 @@
                                                     <Border.StrokeShape><RoundRectangle CornerRadius="21" /></Border.StrokeShape>
                                                     <Grid>
                                                         <Label Text="{Binding Initial}" IsVisible="{Binding ShowProfileInitial}" FontSize="17.5" FontAttributes="Bold" TextColor="{DynamicResource HimoTextSecondary}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
-                                                        <Image Source="{Binding ProfilePhotoPath}" IsVisible="{Binding HasLocalProfilePhoto}" Aspect="AspectFill" WidthRequest="42" HeightRequest="42">
+                                                        <Image Source="{Binding AvatarPhotoPath}" IsVisible="{Binding HasLocalProfilePhoto}" Aspect="AspectFill" WidthRequest="42" HeightRequest="42">
+                                                            <Image.GestureRecognizers><TapGestureRecognizer Tapped="ConversationAvatarTapped" /></Image.GestureRecognizers>
                                                             <Image.Clip><EllipseGeometry Center="21,21" RadiusX="21" RadiusY="21" /></Image.Clip>
                                                         </Image>
                                                         <Border IsVisible="{Binding IsSelected}" WidthRequest="18" HeightRequest="18" HorizontalOptions="Start" VerticalOptions="End" Margin="-1,0,0,-1" BackgroundColor="{DynamicResource HimoAccent}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="1" ZIndex="5">

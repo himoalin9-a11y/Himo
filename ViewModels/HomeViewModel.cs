@@ -75,6 +75,11 @@ public sealed class HomeViewModel
                 item.ProfilePhotoPath = x.OtherParticipantUserId is Guid photoUserId && x.HasProfilePhoto
                     ? ProfilePhotoCache.Find(photoUserId, x.ProfilePhotoVersion)
                     : null;
+                item.HasGroupPhoto = x.IsGroup && x.HasGroupPhoto;
+                item.GroupPhotoVersion = x.GroupPhotoVersion;
+                item.GroupPhotoPath = x.IsGroup && x.HasGroupPhoto
+                    ? GroupPhotoCache.Find(x.Id, x.GroupPhotoVersion)
+                    : null;
                 item.IsSelected = existing?.IsSelected ?? item.IsSelected;
                 item.IsArchived = x.IsArchived;
                 item.IsMuted = x.IsMuted;
@@ -164,6 +169,11 @@ public sealed class HomeViewModel
         local.ProfilePhotoPath = remote.OtherParticipantUserId is Guid photoUserId && remote.HasProfilePhoto
             ? ProfilePhotoCache.Find(photoUserId, remote.ProfilePhotoVersion)
             : null;
+        local.HasGroupPhoto = remote.IsGroup && remote.HasGroupPhoto;
+        local.GroupPhotoVersion = remote.GroupPhotoVersion;
+        local.GroupPhotoPath = remote.IsGroup && remote.HasGroupPhoto
+            ? GroupPhotoCache.Find(remote.Id, remote.GroupPhotoVersion)
+            : null;
         local.IsArchived = remote.IsArchived;
         local.IsMuted = remote.IsMuted;
         local.IsBlocked = remote.IsBlocked;
@@ -181,8 +191,26 @@ public sealed class HomeViewModel
     {
         foreach (var conversation in conversations)
         {
+            if (conversation.IsGroup)
+            {
+                var groupId = Guid.TryParse(conversation.RemoteId, out var parsedGroupId) ? parsedGroupId : Guid.Empty;
+                if (groupId == Guid.Empty) continue;
+                var groupRevision = conversation.GroupPhotoVersion;
+                var groupHasPhoto = conversation.HasGroupPhoto;
+                try
+                {
+                    var groupPath = await GroupPhotoCache.GetPathAsync(_api, groupId, groupHasPhoto, groupRevision);
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        if (conversation.IsGroup && conversation.GroupPhotoVersion == groupRevision && conversation.HasGroupPhoto == groupHasPhoto)
+                            conversation.GroupPhotoPath = groupPath;
+                    });
+                }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Himo] Group photo load failed for {groupId}: {ex.Message}"); }
+                continue;
+            }
             if (conversation.OtherParticipantUserId is not Guid userId)
-                continue; // Group conversations use their own initials until group photos are supported.
+                continue;
 
             var revision = conversation.ProfilePhotoVersion;
             var hasPhoto = conversation.HasRemoteProfilePhoto;
