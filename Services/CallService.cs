@@ -18,7 +18,8 @@ public enum CallSignalType
     Offer,
     Answer,
     IceCandidate,
-    Leave
+    Leave,
+    Connected
 }
 
 public sealed record CallRequest(
@@ -744,6 +745,8 @@ public sealed class CallService : ICallService, IDisposable
         _current = _current with { IsConnected = value };
         _lifecycle = value ? CallLifecycleState.Connected : CallLifecycleState.Calling;
         RaiseState();
+        if (value)
+            _ = SendCallSignalBestEffortAsync(_current, CallSignalType.Connected, CancellationToken.None);
     }
 
     private void Clear()

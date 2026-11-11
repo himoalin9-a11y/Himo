@@ -342,8 +342,24 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
         UpdateEmptyState();
         DisplayOwnProfilePhoto(_profile.Profile.PhotoPath);
         StartPolling();
+        _ = RefreshCallHistoryAsync();
         _ = RefreshOwnProfilePhotoAsync();
         _ = InitializeHomeAsync();
+    }
+
+    private async Task RefreshCallHistoryAsync()
+    {
+        try
+        {
+            await _api.TokenInitialization;
+            var remote = await _api.GetCallHistoryAsync();
+            _callHistory.MergeRemote(remote);
+        }
+        catch (Exception ex)
+        {
+            // Keep the device-local call list visible if the API is temporarily unavailable.
+            System.Diagnostics.Debug.WriteLine($"[Himo Home] Call history sync skipped: {ex.Message}");
+        }
     }
 
     public void SelectSectionAfterSwipeReturn(string section)
@@ -623,6 +639,8 @@ public partial class HomePage : ContentPage, IHomeSwipeSectionHost
     {
         if (_sectionTransitioning || string.IsNullOrWhiteSpace(section))
             return;
+        if (section == "calls")
+            _ = RefreshCallHistoryAsync();
         if (section != "chats" && _selectionMode)
             ClearConversationSelection();
 

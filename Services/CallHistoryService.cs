@@ -7,7 +7,8 @@ using Microsoft.Maui.Storage;
 namespace Himo.Services;
 
 /// <summary>
-/// Keeps a lightweight, device-local call history for the Home > Calls tab.
+/// Keeps a locally cached call history for the Home > Calls tab and merges the
+/// authenticated server history so the same calls appear on all of the user's devices.
 /// It intentionally stores no phone numbers; entries reference only the Himo conversation id.
 /// </summary>
 public sealed class CallHistoryService
@@ -40,14 +41,14 @@ public sealed class CallHistoryService
         Publish(_items);
     }
 
-    public Guid Begin(string conversationId, string contactName, bool isIncoming, string mode)
+    public Guid Begin(string conversationId, string contactName, bool isIncoming, string mode, Guid callId = default)
     {
         if (!Guid.TryParse(conversationId, out var parsedConversationId) || parsedConversationId == Guid.Empty)
             return Guid.Empty;
 
         var item = new CallHistoryEntry
         {
-            Id = Guid.NewGuid(),
+            Id = callId == Guid.Empty ? Guid.NewGuid() : callId,
             ConversationId = parsedConversationId.ToString("D"),
             ContactName = string.IsNullOrWhiteSpace(contactName) ? "جهة اتصال" : contactName.Trim(),
             IsIncoming = isIncoming,
@@ -58,6 +59,8 @@ public sealed class CallHistoryService
 
         lock (_sync)
         {
+            if (_items.Any(existing => existing.Id == item.Id))
+                return item.Id;
             _items.Insert(0, item);
             if (_items.Count > MaxEntries)
                 _items.RemoveRange(MaxEntries, _items.Count - MaxEntries);
@@ -109,6 +112,37 @@ public sealed class CallHistoryService
                 EndedAt = DateTimeOffset.UtcNow,
                 Status = finalStatus
             };
+            SaveUnsafe();
+            PublishUnsafe();
+        }
+    }
+
+    public void MergeRemote(IEnumerable<CallHistoryRemoteDto> remoteEntries)
+    {
+        if (remoteEntries is null) return;
+        var remote = remoteEntries
+            .Where(item => item.Id != Guid.Empty && item.ConversationId != Guid.Empty)
+            .Select(item => new CallHistoryEntry
+            {
+                Id = item.Id,
+                ConversationId = item.ConversationId.ToString("D"),
+                ContactName = string.IsNullOrWhiteSpace(item.ContactName) ? "جهة اتصال" : item.ContactName,
+                Mode = string.Equals(item.Mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio",
+                IsIncoming = item.IsIncoming,
+                StartedAt = item.StartedAt,
+                ConnectedAt = item.ConnectedAt,
+                EndedAt = item.EndedAt,
+                Status = item.Status
+            }).ToList();
+
+        lock (_sync)
+        {
+            var remoteIds = remote.Select(item => item.Id).ToHashSet();
+            var localOnly = _items.Where(item => !remoteIds.Contains(item.Id));
+            _items = remote.Concat(localOnly)
+                .OrderByDescending(item => item.StartedAt)
+                .Take(MaxEntries)
+                .ToList();
             SaveUnsafe();
             PublishUnsafe();
         }

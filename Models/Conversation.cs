@@ -160,9 +160,30 @@ public sealed class Conversation : INotifyPropertyChanged
             if (!string.IsNullOrWhiteSpace(LastMessageAttachmentContentType))
                 return ChatMessage.GetAttachmentPreviewText(LastMessageAttachmentContentType);
 
+            // Older/server conversation snapshots may contain the attachment's
+            // filename instead of its MIME type. Restore the short media preview
+            // from the filename extension rather than exposing a long device name.
+            var legacy = LastMessage.Trim();
+            var extension = Path.GetExtension(legacy);
+            if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".png", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".gif", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".webp", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".heic", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase))
+                return ChatMessage.GetAttachmentPreviewText("image/unknown");
+            if (extension.Equals(".mp4", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".mov", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".m4v", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".3gp", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".mkv", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".webm", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".avi", StringComparison.OrdinalIgnoreCase))
+                return ChatMessage.GetAttachmentPreviewText("video/unknown");
+
             // Older chat caches stored the Arabic preview itself. Recognize those
             // legacy values so they are localized even before the next message sync.
-            var legacy = LastMessage.Trim();
             if (legacy is "📷 صورة" or "📷 الصورة" or "صورة")
                 return ChatMessage.GetAttachmentPreviewText("image/unknown");
             if (legacy is "🎙️ رسالة صوتية" or "🎙 رسالة صوتية" or "الرسالة الصوتية")
@@ -476,6 +497,14 @@ public sealed class ChatMessage : INotifyPropertyChanged
     {
         get
         {
+            // Media messages are represented by their localized type label, not
+            // by provider-generated or original filenames. Keep real filenames
+            // for ordinary documents only.
+            if (IsImageAttachment)
+                return GetAttachmentTypeLabel("image");
+            if (IsVideoAttachment)
+                return GetAttachmentTypeLabel("video");
+
             var fileName = Path.GetFileName(AttachmentFileName ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(fileName) || IsOpaqueAttachmentName(fileName))
                 return GetAttachmentTypeLabel(AttachmentContentType ?? string.Empty);
@@ -484,9 +513,15 @@ public sealed class ChatMessage : INotifyPropertyChanged
     }
 
     [JsonIgnore]
-    public string AttachmentLabel => string.IsNullOrWhiteSpace(AttachmentFileName)
-        ? string.Empty
-        : $"{GetAttachmentPreviewText(AttachmentContentType)} {AttachmentDisplayName}";
+    public string AttachmentLabel
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(AttachmentFileName)) return string.Empty;
+            if (IsImageAttachment || IsVideoAttachment) return GetAttachmentPreviewText(AttachmentContentType);
+            return $"{GetAttachmentPreviewText(AttachmentContentType)} {AttachmentDisplayName}";
+        }
+    }
 
     public static string GetAttachmentPreviewText(string? contentType)
     {

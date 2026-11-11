@@ -186,7 +186,7 @@
                             <Border Padding="0" BackgroundColor="{DynamicResource HimoBackground}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="0.8">
                                 <Border.StrokeShape><shapes:RoundRectangle CornerRadius="16" /></Border.StrokeShape>
                                 <Grid WidthRequest="240" HeightRequest="330" BackgroundColor="{DynamicResource HimoBackground}" Loaded="MessageGestureSurfaceLoaded">
-                                    <Image Source="{Binding AttachmentLocalPath}" Aspect="AspectFit" IsVisible="{Binding HasLocalImagePreview}" Loaded="ImagePreviewLoaded" />
+                                    <Image Source="{Binding AttachmentLocalPath}" Aspect="AspectFill" IsVisible="{Binding HasLocalImagePreview}" Loaded="ImagePreviewLoaded" />
                                     <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="5" IsVisible="False">
                                         <VerticalStackLayout.Triggers>
                                             <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding HasLocalImagePreview}" Value="False">
@@ -246,7 +246,7 @@
                         <VerticalStackLayout Spacing="5">
                             <Border Padding="0" BackgroundColor="{DynamicResource HimoBackground}" Stroke="{DynamicResource HimoBorder}" StrokeThickness="0.8">
                                 <Border.StrokeShape><shapes:RoundRectangle CornerRadius="16" /></Border.StrokeShape>
-                                <Grid WidthRequest="240" HeightRequest="350" BackgroundColor="{DynamicResource HimoBackground}" Loaded="MessageGestureSurfaceLoaded">
+                                <Grid WidthRequest="{Binding VideoDisplayWidth}" HeightRequest="{Binding VideoDisplayHeight}" BackgroundColor="{DynamicResource HimoBackground}" Loaded="MessageGestureSurfaceLoaded">
                                     <Image Source="{Binding VideoThumbnailPath}" Aspect="AspectFit" IsVisible="{Binding HasVideoPreview}" />
                                     <Grid IsVisible="False">
                                         <Grid.Triggers>

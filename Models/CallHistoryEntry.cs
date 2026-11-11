@@ -45,7 +45,7 @@ public sealed record CallHistoryEntry
     {
         get
         {
-            if (!ConnectedAt.HasValue) return string.Empty;
+            if (!ConnectedAt.HasValue) return EndedAt.HasValue ? "00:00" : string.Empty;
             var until = EndedAt ?? DateTimeOffset.UtcNow;
             var duration = until - ConnectedAt.Value;
             if (duration < TimeSpan.Zero) duration = TimeSpan.Zero;
@@ -55,3 +55,14 @@ public sealed record CallHistoryEntry
         }
     }
 }
+
+public sealed record CallHistoryRemoteDto(
+    Guid Id,
+    Guid ConversationId,
+    string ContactName,
+    string Mode,
+    bool IsIncoming,
+    DateTimeOffset StartedAt,
+    DateTimeOffset? ConnectedAt,
+    DateTimeOffset? EndedAt,
+    string Status);

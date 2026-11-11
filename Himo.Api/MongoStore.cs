@@ -31,6 +31,7 @@ sealed class MongoStore
     private readonly IMongoCollection<MReport> _reports;
     private readonly IMongoCollection<MReceipt> _receipts;
     private readonly IMongoCollection<MMessage> _messages;
+    private readonly IMongoCollection<MCallHistory> _callHistory;
     private readonly GridFSBucket _files;
     private readonly object _sync = new();
     private bool _indexesReady;
@@ -72,6 +73,7 @@ sealed class MongoStore
         _reports = _db.GetCollection<MReport>("conversationReports");
         _receipts = _db.GetCollection<MReceipt>("messageReceipts");
         _messages = _db.GetCollection<MMessage>("messages");
+        _callHistory = _db.GetCollection<MCallHistory>("callHistory");
         _files = new GridFSBucket(_db, new GridFSBucketOptions { BucketName = "messageAttachments", ChunkSizeBytes = 1024 * 1024 });
     }
 
@@ -121,6 +123,7 @@ sealed class MongoStore
             _blockedUsers.Indexes.CreateOne(new CreateIndexModel<MBlockedUser>(Builders<MBlockedUser>.IndexKeys.Ascending(x => x.BlockerUserId).Ascending(x => x.BlockedUserId), new CreateIndexOptions { Unique = true }));
             _messages.Indexes.CreateOne(new CreateIndexModel<MMessage>(Builders<MMessage>.IndexKeys.Ascending(x => x.ConversationId).Descending(x => x.SentAt).Descending(x => x.Id)));
             _messages.Indexes.CreateOne(new CreateIndexModel<MMessage>(Builders<MMessage>.IndexKeys.Ascending(x => x.ExpiresAt)));
+            _callHistory.Indexes.CreateOne(new CreateIndexModel<MCallHistory>(Builders<MCallHistory>.IndexKeys.Ascending(x => x.ParticipantUserIds).Descending(x => x.StartedAt), new CreateIndexOptions { Name = "ix_call_history_participants_started" }));
             _messages.Indexes.CreateOne(new CreateIndexModel<MMessage>(Builders<MMessage>.IndexKeys.Ascending(x => x.ConversationId).Ascending(x => x.SenderUserId).Ascending(x => x.ClientMessageId), new CreateIndexOptions<MMessage> { Unique = true, Name = "ux_message_client_id", PartialFilterExpression = Builders<MMessage>.Filter.Type(x => x.ClientMessageId, BsonType.String) }));
             _receipts.Indexes.CreateOne(new CreateIndexModel<MReceipt>(Builders<MReceipt>.IndexKeys.Ascending(x => x.MessageId).Ascending(x => x.RecipientUserId), new CreateIndexOptions { Unique = true }));
             _conversations.Indexes.CreateOne(new CreateIndexModel<MConversation>(Builders<MConversation>.IndexKeys.Ascending(x => x.OwnerUserId).Descending(x => x.UpdatedAt)));
@@ -878,6 +881,126 @@ sealed class MongoStore
     {
         EnsureIndexes(); var cid = GuidText(conversationId); var uid = GuidText(currentUserId);
         return _participants.Find(x => x.ConversationId == cid && x.UserId != uid).ToList().Select(x => Guid.TryParse(x.UserId, out var id) ? id : Guid.Empty).Where(x => x != Guid.Empty).Distinct().ToArray();
+    }
+
+    public bool StartCallHistory(Guid conversationId, Guid callId, Guid callerUserId, string mode)
+    {
+        EnsureIndexes();
+        if (conversationId == Guid.Empty || callId == Guid.Empty || callerUserId == Guid.Empty ||
+            !ExistsConversation(conversationId, callerUserId)) return false;
+        var participants = _participants.Find(x => x.ConversationId == GuidText(conversationId))
+            .ToList().Select(x => x.UserId).Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal).ToArray();
+        if (!participants.Contains(GuidText(callerUserId), StringComparer.Ordinal)) return false;
+        var id = GuidText(callId);
+        if (_callHistory.Find(x => x.Id == id).FirstOrDefault() is not null) return true;
+        var record = new MCallHistory
+        {
+            Id = id,
+            ConversationId = GuidText(conversationId),
+            CallerUserId = GuidText(callerUserId),
+            ParticipantUserIds = participants,
+            Mode = string.Equals(mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "audio",
+            StartedAt = NowText(),
+            Status = "ringing"
+        };
+        try { _callHistory.InsertOne(record); }
+        catch (MongoWriteException) { /* A retried Invite must not create a duplicate call. */ }
+        return true;
+    }
+
+    public void AddCallHistoryParticipant(Guid callId, Guid conversationId, Guid userId)
+    {
+        EnsureIndexes();
+        if (callId == Guid.Empty || conversationId == Guid.Empty || userId == Guid.Empty ||
+            !ExistsConversation(conversationId, userId)) return;
+        _callHistory.UpdateOne(
+            x => x.Id == GuidText(callId) && x.ConversationId == GuidText(conversationId),
+            Builders<MCallHistory>.Update.AddToSet(x => x.ParticipantUserIds, GuidText(userId)));
+    }
+
+    public void MarkCallHistoryConnected(Guid callId, Guid conversationId, Guid userId)
+    {
+        EnsureIndexes();
+        var filter = Builders<MCallHistory>.Filter.Eq(x => x.Id, GuidText(callId)) &
+                     Builders<MCallHistory>.Filter.Eq(x => x.ConversationId, GuidText(conversationId)) &
+                     Builders<MCallHistory>.Filter.AnyEq(x => x.ParticipantUserIds, GuidText(userId)) &
+                     Builders<MCallHistory>.Filter.Eq(x => x.ConnectedAt, null) &
+                     Builders<MCallHistory>.Filter.Eq(x => x.EndedAt, null);
+        _callHistory.UpdateOne(filter, Builders<MCallHistory>.Update
+            .Set(x => x.ConnectedAt, NowText()).Set(x => x.Status, "connected"));
+    }
+
+    public void FinishCallHistory(Guid callId, Guid conversationId, Guid userId, string status)
+    {
+        EnsureIndexes();
+        if (status is not ("rejected" or "ended")) return;
+        var filter = Builders<MCallHistory>.Filter.Eq(x => x.Id, GuidText(callId)) &
+                     Builders<MCallHistory>.Filter.Eq(x => x.ConversationId, GuidText(conversationId)) &
+                     Builders<MCallHistory>.Filter.AnyEq(x => x.ParticipantUserIds, GuidText(userId)) &
+                     Builders<MCallHistory>.Filter.Eq(x => x.EndedAt, null);
+        _callHistory.UpdateOne(filter, Builders<MCallHistory>.Update
+            .Set(x => x.EndedAt, NowText())
+            .Set(x => x.EndedByUserId, GuidText(userId))
+            .Set(x => x.Status, status));
+    }
+
+    public IReadOnlyList<CallHistoryForUser> GetCallHistory(Guid userId, int limit = 100)
+    {
+        EnsureIndexes();
+        var uid = GuidText(userId);
+        var staleCutoff = DateTimeOffset.UtcNow.AddSeconds(-60).ToString("O", CultureInfo.InvariantCulture);
+        var staleFilter = Builders<MCallHistory>.Filter.AnyEq(x => x.ParticipantUserIds, uid) &
+                          Builders<MCallHistory>.Filter.Eq(x => x.Status, "ringing") &
+                          Builders<MCallHistory>.Filter.Lte(x => x.StartedAt, staleCutoff);
+        _callHistory.UpdateMany(staleFilter, Builders<MCallHistory>.Update
+            .Set(x => x.EndedAt, NowText()).Set(x => x.Status, "ended"));
+        var records = _callHistory.Find(Builders<MCallHistory>.Filter.AnyEq(x => x.ParticipantUserIds, uid))
+            .SortByDescending(x => x.StartedAt).Limit(Math.Clamp(limit, 1, 200)).ToList();
+        var conversationIds = records.Select(x => x.ConversationId).Distinct(StringComparer.Ordinal).ToArray();
+        var conversations = conversationIds.Length == 0
+            ? new Dictionary<string, MConversation>(StringComparer.Ordinal)
+            : _conversations.Find(x => conversationIds.Contains(x.Id)).ToList()
+                .ToDictionary(x => x.Id, StringComparer.Ordinal);
+        var peerIds = records.SelectMany(x => x.ParticipantUserIds)
+            .Where(x => x != uid).Distinct(StringComparer.Ordinal).ToArray();
+        var users = peerIds.Length == 0
+            ? new Dictionary<string, MUser>(StringComparer.Ordinal)
+            : _users.Find(x => peerIds.Contains(x.Id)).ToList()
+                .ToDictionary(x => x.Id, StringComparer.Ordinal);
+        var result = new List<CallHistoryForUser>(records.Count);
+        foreach (var record in records)
+        {
+            var conversationId = Guid.TryParse(record.ConversationId, out var cid) ? cid : Guid.Empty;
+            var callerId = Guid.TryParse(record.CallerUserId, out var caller) ? caller : Guid.Empty;
+            var isIncoming = callerId != userId;
+            var otherId = isIncoming ? callerId : record.ParticipantUserIds
+                .Where(x => x != uid).Select(x => Guid.TryParse(x, out var peer) ? peer : Guid.Empty)
+                .FirstOrDefault(x => x != Guid.Empty);
+            conversations.TryGetValue(record.ConversationId, out var conversation);
+            users.TryGetValue(GuidText(otherId), out var peerUser);
+            var contactName = conversation?.IsGroup == true ? conversation.Name :
+                otherId == Guid.Empty ? (conversation?.Name ?? "جهة اتصال") :
+                peerUser?.Name ?? "جهة اتصال";
+            var status = record.Status switch
+            {
+                "rejected" => "مرفوضة",
+                "ended" when !string.IsNullOrWhiteSpace(record.ConnectedAt) => "مكتملة",
+                "ended" when record.EndedByUserId == uid &&
+                    ParseTime(record.EndedAt) - ParseTime(record.StartedAt) < TimeSpan.FromSeconds(40) => "ملغاة",
+                "ended" when record.EndedByUserId == uid => "لم يتم الرد",
+                "ended" => isIncoming ? "مكالمة فائتة" : "لم يتم الرد",
+                "connected" when string.IsNullOrWhiteSpace(record.EndedAt) => "متصلة",
+                "connected" => "مكتملة",
+                _ => isIncoming ? "مكالمة واردة" : "جارٍ الاتصال"
+            };
+            result.Add(new CallHistoryForUser(
+                Guid.TryParse(record.Id, out var callId) ? callId : Guid.Empty,
+                conversationId, contactName, record.Mode, isIncoming,
+                ParseTime(record.StartedAt), string.IsNullOrWhiteSpace(record.ConnectedAt) ? null : ParseTime(record.ConnectedAt),
+                string.IsNullOrWhiteSpace(record.EndedAt) ? null : ParseTime(record.EndedAt), status));
+        }
+        return result;
     }
 
     public void ApplyConversationAction(Guid conversationId, Guid userId, string action)
@@ -2033,3 +2156,18 @@ sealed class MongoStore
 record LinkedDeviceRecord(string DeviceId, string DeviceName, string DeviceType, DateTimeOffset CreatedAt, DateTimeOffset LastSeenAt);
 record MobilePairingRequestInfo(Guid PairingId, string DeviceName, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt);
 record WebPairingPollResult(string Status, string? AccessToken, string? DeviceName);
+
+[BsonIgnoreExtraElements] sealed class MCallHistory
+{
+    [BsonId] public string Id { get; set; } = "";
+    public string ConversationId { get; set; } = "";
+    public string CallerUserId { get; set; } = "";
+    public string[] ParticipantUserIds { get; set; } = Array.Empty<string>();
+    public string Mode { get; set; } = "audio";
+    public string StartedAt { get; set; } = "";
+    public string? ConnectedAt { get; set; }
+    public string? EndedAt { get; set; }
+    public string? EndedByUserId { get; set; }
+    public string Status { get; set; } = "ringing";
+}
+record CallHistoryForUser(Guid Id, Guid ConversationId, string ContactName, string Mode, bool IsIncoming, DateTimeOffset StartedAt, DateTimeOffset? ConnectedAt, DateTimeOffset? EndedAt, string Status);

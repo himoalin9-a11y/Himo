@@ -549,6 +549,15 @@ public sealed class HimoApiClient
         return name;
     }
 
+    public async Task<IReadOnlyList<CallHistoryRemoteDto>> GetCallHistoryAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync("api/calls/history", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<List<CallHistoryRemoteDto>>(
+            cancellationToken: cancellationToken) ?? new List<CallHistoryRemoteDto>();
+    }
+
     public async Task<UserProfileResponse> GetMyProfileAsync(
         CancellationToken cancellationToken = default)
     {

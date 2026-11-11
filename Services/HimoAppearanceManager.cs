@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
@@ -613,6 +613,13 @@ public static class HimoAppearanceManager
 
     private static bool ShouldThemeIcon(string file)
     {
+        // The media editor uses a dedicated, consistent icon set for its compact
+        // editing toolbar. Keep those source assets intact instead of replacing them
+        // during the asynchronous page-theme pass; this prevents toolbar glyphs from
+        // disappearing while the captured image editor is being presented.
+        if (file.StartsWith("himo_pro_ui_mediaeditor_", StringComparison.OrdinalIgnoreCase))
+            return false;
+
         // Keep semantic white/red controls unchanged; these assets are intentionally
         // high-contrast and do not have generated per-palette variants.
         if (FixedMeaningIcons.Contains(file))

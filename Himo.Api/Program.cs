@@ -768,6 +768,12 @@ webApp.MapGet("/api/me", (HttpRequest http, MongoStore store) =>
     return Results.Ok(store.GetProfile(session.UserId));
 });
 
+webApp.MapGet("/api/calls/history", (HttpRequest http, MongoStore store) =>
+{
+    if (!store.TryGetSession(http, out var session) || session is null) return Results.Unauthorized();
+    return Results.Ok(store.GetCallHistory(session.UserId));
+});
+
 // Profile links reveal only public fields and require an authenticated Himo session.
 webApp.MapGet("/api/users/{id:guid}/profile", (Guid id, HttpRequest http, MongoStore store) =>
 {
@@ -1911,6 +1917,14 @@ sealed class HimoChatHub : Hub
         }
 
         var payload = SerializeGroupCallEnvelope(snapshot);
+        try
+        {
+            _store.AddCallHistoryParticipant(callId, conversationId, session.UserId);
+        }
+        catch (Exception historyEx)
+        {
+            Console.Error.WriteLine($"[Himo CallHistory] Group join persistence failed: {historyEx.Message}");
+        }
         // Exchange a synthetic Accept with each already-joined member. This tells
         // both sides to create their missing Mesh PeerConnection without ringing
         // the whole group again. The joining device starts local media after this
@@ -1955,6 +1969,33 @@ sealed class HimoChatHub : Hub
         // the members who have joined. Leave removes one member; an initiator leaving
         // does not terminate the room while other participants remain.
         var updatedGroupCall = UpdateGroupCallRoom(conversationId, session.UserId, normalizedType, payload);
+        try
+        {
+            if (TryReadCallHistoryEnvelope(payload, out var historyCallId, out var historyMode, out var historyIsGroup))
+            {
+                if (string.Equals(normalizedType, "Invite", StringComparison.OrdinalIgnoreCase))
+                    _store.StartCallHistory(conversationId, historyCallId, session.UserId, historyMode);
+                else if (string.Equals(normalizedType, "Accept", StringComparison.OrdinalIgnoreCase))
+                    _store.AddCallHistoryParticipant(historyCallId, conversationId, session.UserId);
+                else if (string.Equals(normalizedType, "Connected", StringComparison.OrdinalIgnoreCase))
+                {
+                    _store.AddCallHistoryParticipant(historyCallId, conversationId, session.UserId);
+                    _store.MarkCallHistoryConnected(historyCallId, conversationId, session.UserId);
+                }
+                else if (string.Equals(normalizedType, "Reject", StringComparison.OrdinalIgnoreCase) && !historyIsGroup)
+                    _store.FinishCallHistory(historyCallId, conversationId, session.UserId, "rejected");
+                else if (historyIsGroup && updatedGroupCall is { IsActive: false })
+                    _store.FinishCallHistory(historyCallId, conversationId, session.UserId,
+                        string.Equals(normalizedType, "Reject", StringComparison.OrdinalIgnoreCase) ? "rejected" : "ended");
+                else if (!historyIsGroup && string.Equals(normalizedType, "End", StringComparison.OrdinalIgnoreCase))
+                    _store.FinishCallHistory(historyCallId, conversationId, session.UserId, "ended");
+            }
+        }
+        catch (Exception historyEx)
+        {
+            // Call-history persistence must never interrupt WebRTC signaling.
+            Console.Error.WriteLine($"[Himo CallHistory] Signal persistence failed: {historyEx.Message}");
+        }
         var message = new CallSignalMessage(conversationId, session.UserId, normalizedType, payload, targetUserId);
         foreach (var recipientId in recipientIds)
             await Clients.Group(UserGroup(recipientId)).SendAsync("CallSignalReceived", message);
@@ -2088,6 +2129,29 @@ sealed class HimoChatHub : Hub
             isGroup = true,
             initiatorUserId = state.InitiatorUserId
         });
+
+    private static bool TryReadCallHistoryEnvelope(string? payload, out Guid callId, out string mode, out bool isGroup)
+    {
+        callId = Guid.Empty;
+        mode = "audio";
+        isGroup = false;
+        if (string.IsNullOrWhiteSpace(payload)) return false;
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(payload);
+            var root = document.RootElement;
+            if (!root.TryGetProperty("callId", out var callElement) ||
+                !Guid.TryParse(callElement.GetString(), out callId) || callId == Guid.Empty)
+                return false;
+            if (root.TryGetProperty("mode", out var modeElement) &&
+                string.Equals(modeElement.GetString(), "video", StringComparison.OrdinalIgnoreCase))
+                mode = "video";
+            if (root.TryGetProperty("isGroup", out var groupElement))
+                isGroup = groupElement.ValueKind == System.Text.Json.JsonValueKind.True;
+            return true;
+        }
+        catch { return false; }
+    }
 
     private static bool TryReadGroupCallEnvelope(
         string? payload,
